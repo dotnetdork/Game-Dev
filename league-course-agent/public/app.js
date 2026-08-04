@@ -823,19 +823,41 @@ function publishGame() {
 }
 
 /* ---------- leaderboards ---------- */
-const sampleBoard = [{ name: 'Ava', xp: 4200 }, { name: 'Leo', xp: 3850 }, { name: 'Mia', xp: 2600 }, { name: 'Sam', xp: 1950 }, { name: 'Kai', xp: 1200 }, { name: 'Noa', xp: 700 }];
+const sampleBoard = [ // names shown privacy-safe (first name + last initial), like the Gallery
+  { name: 'Ava R.', xp: 4200, week: 620, cls: true },
+  { name: 'Leo M.', xp: 3850, week: 410, cls: true },
+  { name: 'Mia T.', xp: 2600, week: 900, cls: false },
+  { name: 'Sam K.', xp: 1950, week: 300, cls: true },
+  { name: 'Kai P.', xp: 1200, week: 720, cls: false },
+  { name: 'Noa B.', xp: 700, week: 150, cls: true }
+];
+let boardScope = 'class', boardRange = 'all';
 function renderBoard() {
-  const rows = sampleBoard.concat([{ name: 'You', xp: state.xp, you: true }]).sort(function (a, b) { return b.xp - a.xp; });
-  const max = rows[0].xp || 1;
+  const me = { name: 'You', xp: state.xp, week: state.xp, cls: true, you: true };
+  let rows = sampleBoard.concat([me]);
+  if (boardScope === 'class') rows = rows.filter(function (r) { return r.cls; });
+  const val = function (r) { return boardRange === 'week' ? r.week : r.xp; };
+  rows = rows.slice().sort(function (a, b) { return val(b) - val(a); });
+  const max = val(rows[0]) || 1;
+  const myRank = rows.findIndex(function (r) { return r.you; }) + 1;
   const body = rows.map(function (r, i) {
     const medal = i === 0 ? 'g' : (i === 1 ? 's' : (i === 2 ? 'b' : ''));
     const lvl = Math.floor(r.xp / 1000) + 1;
-    return '<div class="lrow' + (r.you ? ' you' : '') + '"><div class="rank ' + medal + '">' + (i < 3 ? ['🥇','🥈','🥉'][i] : (i + 1)) + '</div>'
+    const rankCell = i < 3 ? '<span class="mdi mdi-medal"></span>' : (i + 1);
+    return '<div class="lrow' + (r.you ? ' you' : '') + '"><div class="rank ' + medal + '">' + rankCell + '</div>'
       + '<div class="avatar" style="' + avatarStyle(r.name) + '">' + r.name.charAt(0).toUpperCase() + '</div>'
-      + '<div class="who"><div class="nm">' + r.name + '</div><div class="lv">Level ' + lvl + '</div><div class="lbar"><div style="width:' + (r.xp / max * 100) + '%"></div></div></div>'
-      + '<div class="xp">' + r.xp + ' XP</div></div>';
+      + '<div class="who"><div class="nm">' + r.name + '</div><div class="lv">Level ' + lvl + '</div><div class="lbar"><div style="width:' + (val(r) / max * 100) + '%"></div></div></div>'
+      + '<div class="xp">' + val(r) + ' XP</div></div>';
   }).join('');
-  return '<div class="phead"><div><h2><span class="mdi mdi-podium"></span>Leaderboards</h2><p class="sub">Ranked by total XP.</p></div></div><div class="board">' + body + '</div>';
+  const seg = function (attr, opts) { return '<span class="seg">' + opts.map(function (o) { return '<button data-' + attr + '="' + o[0] + '"' + ((attr === 'bscope' ? boardScope : boardRange) === o[0] ? ' class="on"' : '') + '>' + o[1] + '</button>'; }).join('') + '</span>'; };
+  const controls = '<div class="board-controls">'
+    + seg('bscope', [['class', 'My class'], ['all', 'Everyone']])
+    + seg('brange', [['all', 'All-time'], ['week', 'This week']])
+    + '<span class="your-rank">Your rank <span class="r">#' + myRank + '</span> &middot; ' + val(me) + ' XP</span>'
+    + '</div>';
+  const empty = (val(me) === 0) ? '<div class="empty">Finish lessons to earn XP and climb the board!</div>' : '';
+  return '<div class="phead"><div><h2><span class="mdi mdi-podium"></span>Leaderboards</h2><p class="sub">' + (boardScope === 'class' ? 'Your class' : 'Everyone') + ' &middot; ' + (boardRange === 'week' ? 'this week' : 'all-time') + '</p></div></div>'
+    + '<div class="board">' + controls + empty + body + '</div>';
 }
 
 /* ---------- docs / help ---------- */
@@ -877,6 +899,10 @@ function resetProgress() {
 function wirePage(page) {
   document.querySelectorAll('#page [data-buy]').forEach(function (b) { b.addEventListener('click', function () { buyAsset(b.getAttribute('data-buy')); }); });
   if (page === 'gallery') { var pb = $('publishBtn'); if (pb) pb.addEventListener('click', publishGame); }
+  if (page === 'leaderboards') {
+    document.querySelectorAll('#page [data-bscope]').forEach(function (b) { b.addEventListener('click', function () { boardScope = b.getAttribute('data-bscope'); showPage('leaderboards'); }); });
+    document.querySelectorAll('#page [data-brange]').forEach(function (b) { b.addEventListener('click', function () { boardRange = b.getAttribute('data-brange'); showPage('leaderboards'); }); });
+  }
   if (page === 'help') { var rb = $('resetBtn'); if (rb) rb.addEventListener('click', resetProgress); }
   if (page === 'docs') { document.querySelectorAll('#page [data-goto]').forEach(function (link) { link.addEventListener('click', function (e) { e.preventDefault(); var el = document.getElementById('doc-' + link.getAttribute('data-goto')); if (el) el.scrollIntoView({ behavior: 'smooth', block: 'start' }); }); }); }
 }
