@@ -38,9 +38,9 @@ Refreshed to match the pivot (Pass-4-style revision driven by the second client 
 - No **student/instructor interviews** yet — evidence is research + one client conversation.
 
 ## Current stage / activity
-**Stage 2 — Analysis** (started 2026-07-28, in parallel with the still-open product name). `ua5-stage-2-analysis.md` created. **Section 1 (Landscape) drafted**, pending Jay's approval; Sections 2 (Stakeholders/users) and 3 (Jobs-to-be-done + scenarios) next. Stage 3 (Specification & Wireframes) still to come.
+**Stage 2 — Analysis** (in parallel with the still-open product name). `ua5-stage-2-analysis.md`: Section 1 (Landscape) approved; **Sections 2 (Stakeholders/users) and 3 (Jobs-to-be-done + 5 jobs, each with a scenario + a things-go-wrong branch) drafted**, pending Jay's approval. If approved, Stage 2 is substantively complete → hand to orchestrator for the Stage 2 → Stage 3 (Specification & Wireframes) transition.
 
-Two possible `ua2` refinements surfaced by the landscape (logged in `ua5` "Open from this stage"): name adult AI-coding tools as an adjacent alternative, and sharpen the differentiation vs. no-code kid engines.
+Course-shape confirmed 2026-07-28: single guided game throughline + unlock assets; in-lesson instanced challenges (modify code / find bug); AI-generated quick questions (Parsons etc.) + brief quizzes; multi-agent (tutor/grader/coder). UI relabel pending: Showcase→"Gallery"; old Gallery→asset store (name TBD). `ua2` refinement flags parked (Jay's call).
 
 ## Last updated
-- 2026-07-28 · by stage-2-analysis (Section 1 draft)
+- 2026-07-28 · by stage-2-analysis (Sections 2 & 3 draft)
