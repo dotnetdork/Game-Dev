@@ -617,10 +617,14 @@ function refreshFiles() {
     const lbl = document.createElement('span'); lbl.className = 'lbl'; lbl.textContent = name;
     row.appendChild(icon); row.appendChild(lbl);
     row.addEventListener('click', function () { openFile(name); });
-    if (name !== 'game.js' && name !== 'main.js') { // core files can't be deleted
+    if (name !== 'game.js' && name !== 'main.js') { // core files can't be deleted — they get a reset instead
       const del = document.createElement('button'); del.className = 'del'; del.title = 'Delete ' + name; del.innerHTML = '<span class="mdi mdi-close"></span>';
       del.addEventListener('click', function (e) { e.stopPropagation(); deleteFile(name); });
       row.appendChild(del);
+    } else {
+      const rst = document.createElement('button'); rst.className = 'del rst'; rst.title = 'Reset ' + name + ' to the default'; rst.innerHTML = '<span class="mdi mdi-restore"></span>';
+      rst.addEventListener('click', function (e) { e.stopPropagation(); resetFile(name); });
+      row.appendChild(rst);
     }
     list.appendChild(row);
   });
@@ -716,15 +720,16 @@ if ($('conToggle')) $('conToggle').addEventListener('click', function () { conso
 if ($('conClear')) $('conClear').addEventListener('click', conClear);
 window.addEventListener('message', function (e) { const d = e && e.data; if (d && d.__gamelog) { conLine(d.level || 'log', d.text || ''); if (d.level === 'error' && $('view-play') && !$('view-play').hidden) showConsole(true, true); } });
 conClear();
-function resetGame() {
-  modal({ title: 'Reset your game?', message: 'This restores the original starter game, replacing your current game.js. Your other files are kept.', okLabel: 'Reset it', onOk: function () {
-    project.files['game.js'] = STAR_CODE; if (project.order.indexOf('game.js') < 0) project.order.unshift('game.js');
-    saveProject(); toast('Starter game restored.');
+function resetFile(name) {
+  const def = name === 'main.js' ? BOOT_CODE : STAR_CODE;
+  modal({ title: 'Reset ' + name + '?', message: 'This restores the original ' + name + ', replacing your changes. Your other files are kept.', okLabel: 'Reset it', onOk: function () {
+    project.files[name] = def; if (project.order.indexOf(name) < 0) project.order.push(name);
+    saveProject(); toast(name + ' restored.');
     if (!$('view-play').hidden) startGame(); if (!$('view-code').hidden) loadCode(); loadSettings();
   } });
 }
+function resetGame() { resetFile('game.js'); }
 if ($('resetGameBtn')) $('resetGameBtn').addEventListener('click', resetGame);
-if ($('resetCodeBtn')) $('resetCodeBtn').addEventListener('click', resetGame);
 
 /* ---------- collapsible AI dock ---------- */
 let aiCollapsed = false;
