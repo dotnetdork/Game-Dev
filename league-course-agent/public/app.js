@@ -329,7 +329,7 @@ function lessonBodyHTML(f) {
     + '<span class="lchip"><span class="mdi mdi-lightning-bolt"></span>+' + f.l.xp + ' XP</span>'
     + (done ? '<span class="lchip"><span class="mdi mdi-check-circle"></span>Completed</span>' : '')
     + '</div>';
-  return '<div class="lesson-hero"><div class="eyebrow">' + f.m.name + '</div><h1>' + f.l.t + '</h1>'
+  return '<div class="lesson-hero"><h1>' + f.l.t + '</h1>'
     + (f.l.d ? '<p class="lead">' + f.l.d + '</p>' : '') + meta + '</div>'
     + '<div class="lesson-content">' + f.l.body
     + '<div class="challenge"><div class="ch-h"><span class="mdi mdi-flag-checkered"></span> Challenge</div>'
