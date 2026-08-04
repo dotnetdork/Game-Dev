@@ -559,14 +559,6 @@ function selectLesson(idx) {
   renderQuizCells($('lessonBody'));
   applyAIMode(f.l.ai);
   const btn = $('completeBtn'); if (btn) btn.addEventListener('click', function () { completeLesson(); });
-  const rail = $('learnRail');
-  if (rail) {
-    rail.innerHTML = railHTML(f);
-    rail.querySelectorAll('[data-goto-lesson]').forEach(function (el) { el.addEventListener('click', function () { const gi = +el.getAttribute('data-goto-lesson'); if (lessonUnlocked(gi)) selectLesson(gi); else toast('Complete the previous lesson first.'); }); });
-    const rj = $('railJump'); if (rj) rj.addEventListener('click', function () { const ch = $('lessonBody').querySelector('.challenge'); if (ch) ch.scrollIntoView({ behavior: 'smooth', block: 'start' }); });
-    const rp = $('railPrev'); if (rp && !rp.disabled) rp.addEventListener('click', function () { selectLesson(curIdx - 1); });
-    const rn = $('railNext'); if (rn && !rn.disabled) rn.addEventListener('click', function () { if (lessonUnlocked(curIdx + 1)) selectLesson(curIdx + 1); });
-  }
   renderOutline(); switchView('learn');
 }
 function completeLesson() {
@@ -597,7 +589,6 @@ function switchView(view) {
   if (view === 'play') { $('crumb').textContent = 'Playing: ' + course.name; startGame(); loadSettings(); } else { stopGame(); }
   setAIMode(view === 'learn' ? 'tutor' : 'coder');   // Learn = ask the tutor; Code/Play = build with the coder
   if (view === 'learn') showConsole(false); else if (view === 'code') showConsole(true, true); else showConsole(true, false); // log: open on Code, closed on Play
-  setAICollapsed(view === 'learn'); // free reading width on Learn; assistant open for Code/Play
 }
 document.querySelectorAll('.vtab').forEach(function (btn) { btn.addEventListener('click', function () { switchView(btn.getAttribute('data-view')); }); });
 function startGame() { // build a self-contained page from the browser-side project and run it in the iframe (no server)

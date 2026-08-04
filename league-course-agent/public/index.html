@@ -144,26 +144,7 @@
   [hidden]{display:none !important;}
 
   /* learn = scrollable article */
-  #view-learn{background:var(--bg);overflow:hidden;display:flex;}
-  .learn-main{flex:1;min-width:0;overflow:auto;}
-  .learn-rail{flex:none;width:264px;border-left:1px solid var(--line);background:var(--panel);overflow:auto;padding:20px 18px;}
-  .learn-rail h4{font-size:11px;letter-spacing:1px;text-transform:uppercase;color:var(--dim);margin:0 0 10px;font-weight:700;}
-  .rail-jump{width:100%;margin-bottom:20px;background:var(--brand);color:var(--brand-ink);border:0;border-radius:9px;padding:10px;font-weight:700;cursor:pointer;display:inline-flex;align-items:center;justify-content:center;gap:6px;font-family:var(--font);}
-  .rail-prog{margin-bottom:22px;}
-  .rail-prog .bar{height:7px;background:#0d2440;border:1px solid var(--line);border-radius:5px;overflow:hidden;margin-top:8px;}
-  .rail-prog .bar > div{height:100%;background:linear-gradient(90deg,var(--teal),var(--green));transition:width .3s;}
-  .rail-prog .pct{font-size:12px;color:var(--muted);margin-top:6px;}
-  .rail-list{display:flex;flex-direction:column;gap:2px;margin-bottom:22px;}
-  .rail-item{display:flex;align-items:center;gap:8px;font-size:12.5px;color:var(--muted);padding:6px 8px;border-radius:6px;border-left:3px solid transparent;cursor:pointer;}
-  .rail-item .mdi{font-size:15px;}
-  .rail-item:hover{background:#122c4c;color:var(--ink);}
-  .rail-item.cur{background:var(--sel);color:#fff;border-left-color:var(--brand);}
-  .rail-item.done .mdi{color:var(--gold);}
-  .rail-item.locked{color:var(--lock);cursor:not-allowed;}
-  .rail-nav{display:flex;gap:8px;}
-  .rail-nav button{flex:1;background:var(--panel2);color:var(--ink);border:1px solid var(--line);border-radius:8px;padding:8px;font-weight:600;cursor:pointer;font-size:12.5px;display:inline-flex;align-items:center;justify-content:center;gap:5px;font-family:var(--font);}
-  .rail-nav button:disabled{opacity:.4;cursor:default;}
-  @media (max-width:1200px){ .learn-rail{display:none;} }
+  #view-learn{background:var(--bg);overflow:auto;display:block;}
   .lesson{max-width:none;margin:0;background:transparent;border:0;box-shadow:none;border-radius:0;padding:0 0 60px;}
   .lesson-hero{padding:30px 48px 24px;background:linear-gradient(135deg,var(--mod,#143561),#0d2440);border-bottom:1px solid var(--line);}
   .lesson-content{padding:28px 48px 0;max-width:760px;}
@@ -415,7 +396,7 @@
           </div>
         </div>
         <div class="viewbody">
-          <div class="view" id="view-learn"><div class="learn-main"><div class="lesson" id="lessonBody"></div></div><aside class="learn-rail" id="learnRail"></aside></div>
+          <div class="view" id="view-learn"><div class="lesson" id="lessonBody"></div></div>
           <div class="view" id="view-code" hidden><textarea id="codeeditor"></textarea></div>
           <div class="view" id="view-play" hidden><iframe id="gameFrame" title="Game viewport"></iframe></div>
         </div>
