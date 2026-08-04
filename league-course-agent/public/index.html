@@ -212,6 +212,14 @@
   .wiki-sec h3 .mdi{color:var(--teal);}
   .wiki-sec p{color:#c3d3e6;line-height:1.7;margin:0 0 12px;}
   .wiki-sec pre{background:#08121f;border:1px solid var(--line);border-radius:10px;padding:14px 16px;overflow-x:auto;color:#cfe0f2;font-family:Consolas,monospace;font-size:12.5px;line-height:1.55;margin:0;}
+  .lesson img{max-width:100%;border-radius:10px;}
+  .lesson blockquote{margin:14px 0;padding:10px 14px;border-left:3px solid var(--teal);background:#0d2440;border-radius:0 8px 8px 0;color:#c3d3e6;}
+  .lesson blockquote p{margin:0;}
+  .runcell{margin:14px 0;border:1px solid var(--line);border-radius:10px;overflow:hidden;background:#0d2440;}
+  .runcell textarea{width:100%;border:0;background:#08121f;color:#cfe0f2;font-family:Consolas,monospace;font-size:12.5px;line-height:1.5;padding:10px 12px;resize:vertical;min-height:64px;display:block;}
+  .runcell .runbar{display:flex;justify-content:flex-end;padding:6px 8px;background:var(--panel2);}
+  .runcell .runbtn{background:var(--teal);color:#04231d;border:0;border-radius:6px;padding:5px 12px;font-weight:600;cursor:pointer;display:inline-flex;align-items:center;gap:6px;}
+  .runcell iframe.runout{width:100%;height:120px;border:0;border-top:1px solid var(--line);display:none;background:#08121f;}
   .info-hint{padding:0 12px 10px;color:var(--dim);font-size:11.5px;line-height:1.4;}
 
   .toast{position:fixed;left:50%;bottom:56px;transform:translateX(-50%) translateY(20px);background:var(--panel2);color:var(--ink);
@@ -317,6 +325,8 @@
 <script src="https://cdnjs.cloudflare.com/ajax/libs/codemirror/5.65.16/mode/javascript/javascript.min.js"></script>
 <script src="https://unpkg.com/prettier@2.8.8/standalone.js"></script>
 <script src="https://unpkg.com/prettier@2.8.8/parser-babel.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/js-yaml/4.1.0/js-yaml.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/marked/12.0.2/marked.min.js"></script>
 <script src="app.js"></script>
 </body>
 </html>

@@ -46,6 +46,7 @@ function rateLimited(id) {
 // ---- static hosting ----
 app.use(express.static(path.join(ROOT, 'public')));
 app.use('/workspace', express.static(WORKSPACE, { etag: false, lastModified: false, cacheControl: false }));
+app.use('/content', express.static(path.join(ROOT, 'content'), { etag: false, lastModified: false, cacheControl: false })); // authored course: YAML structure + Markdown lessons (read-only)
 
 // ---- file access: safe .js names inside the workspace only ----
 const SAFE_NAME = /^[A-Za-z0-9_-]+\.js$/;

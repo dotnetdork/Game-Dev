@@ -1,0 +1,26 @@
+# Course structure. Edit this to add/reorder modules and lessons.
+# Each lesson id maps to content/lessons/<id>.md
+id: course1
+name: "Game Development — Level 1"   # course name TBD
+library: Phaser
+modules:
+  - id: getting-started
+    name: Getting Started
+    stars: 120
+    lessons: [welcome, how-it-works]
+  - id: game-design-basics
+    name: Game Design Basics
+    stars: 150
+    lessons: [what-makes-games-fun, mechanics-and-rules, genres-and-ideas, pitch-your-game]
+  - id: development-basics
+    name: Development Basics
+    stars: 180
+    lessons: [scenes-and-objects, sprites-and-movement, collisions-and-scoring, reading-code-with-ai]
+  - id: build-your-game
+    name: Build Your Game
+    stars: 220
+    lessons: [set-up-your-project, get-it-moving, add-challenges]
+  - id: polish-and-publish
+    name: Polish & Publish
+    stars: 250
+    lessons: [juice-and-game-feel, publish-and-share]

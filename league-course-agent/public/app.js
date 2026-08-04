@@ -250,33 +250,44 @@ function renderFooter() {
   $('xpBar').style.width = (into / 1000 * 100) + '%';
 }
 
-const course = {
-  id: 'course1', name: 'Star Catcher Basics', library: 'Phaser',
-  modules: [
-    { name: 'Getting Started', stars: 120, lessons: [
-      { t: 'Welcome', xp: 250, d: 'Meet the course: what you\'ll build, how the workspace is laid out, and what to expect each week.' },
-      { t: 'How This Works', xp: 250, d: 'A tour of the panels — the outline, the viewport, and your AI helper.' } ]},
-    { name: 'Game Design Basics', stars: 150, lessons: [
-      { t: 'What Makes Games Fun', xp: 300, d: 'The core ingredients of fun: challenge, feedback, and reward.' },
-      { t: 'Mechanics & Rules', xp: 300, d: 'What a mechanic is, how rules shape play, and the core loop.' },
-      { t: 'Genres & Ideas', xp: 300, d: 'Common 2D genres and shaping a small, achievable idea.' },
-      { t: 'Pitch Your Game', xp: 350, d: 'Describe your game in a sentence and pitch it before building.' } ]},
-    { name: 'Development Basics', stars: 180, lessons: [
-      { t: 'Scenes & Objects', xp: 350, d: 'How a game is structured — scenes, objects, and how the pieces fit together.' },
-      { t: 'Sprites & Movement', xp: 400, d: 'Put a character on screen and make it move.' },
-      { t: 'Collisions & Scoring', xp: 400, d: 'Detect when things touch, and keep score.' },
-      { t: 'Reading Code with AI', xp: 450, d: 'Use the AI helper to change code, then read what it did.' } ]},
-    { name: 'Build Your Game', stars: 220, lessons: [
-      { t: 'Set Up Your Project', xp: 400, d: 'Open the project and run it for the first time.' },
-      { t: 'Get It Moving', xp: 450, d: 'Your first working feature — a player you control.' },
-      { t: 'Add Challenges', xp: 500, d: 'Add enemies, obstacles, or things to collect.' } ]},
-    { name: 'Polish & Publish', stars: 250, lessons: [
-      { t: 'Juice & Game Feel', xp: 450, d: 'Small effects that make a game feel great to play.' },
-      { t: 'Publish & Share', xp: 500, d: 'Get your game online to share a link with family and friends.' } ]}
-  ]
-};
-const flat = [];
-course.modules.forEach(function (m, mi) { m.lessons.forEach(function (l, li) { flat.push({ mi: mi, li: li, id: mi + '.' + li, l: l, m: m }); }); });
+/* Course content is AUTHORED in /content: course.yaml (structure) + lessons/*.md
+   (Markdown with YAML front-matter). Loaded read-only at boot; edit the files, not this code. */
+let course = { id: 'course1', name: 'Course', library: 'Phaser', modules: [] };
+let flat = [];
+function buildFlat() {
+  flat = [];
+  course.modules.forEach(function (m, mi) { m.lessons.forEach(function (l, li) { flat.push({ mi: mi, li: li, id: mi + '.' + li, l: l, m: m }); }); });
+}
+function splitFrontMatter(text) {
+  const m = text.match(/^---\s*\n([\s\S]*?)\n---\s*\n?([\s\S]*)$/);
+  if (!m) return { meta: {}, body: text };
+  let meta = {}; try { meta = jsyaml.load(m[1]) || {}; } catch (e) { meta = {}; }
+  return { meta: meta, body: m[2] };
+}
+function loadCourse() {
+  return fetch('content/course.yaml').then(function (r) { return r.text(); }).then(function (y) {
+    const data = jsyaml.load(y) || {};
+    course = { id: data.id, name: data.name || 'Course', library: data.library || 'Phaser', modules: [] };
+    const jobs = [];
+    (data.modules || []).forEach(function (mod) {
+      const module = { name: mod.name, stars: mod.stars || 0, lessons: [] };
+      course.modules.push(module);
+      (mod.lessons || []).forEach(function (lessonId) {
+        const lesson = { t: lessonId, xp: 0, d: '', body: '', ai: 'full' };
+        module.lessons.push(lesson);
+        jobs.push(fetch('content/lessons/' + lessonId + '.md').then(function (r) { return r.ok ? r.text() : ''; }).then(function (md) {
+          const fm = splitFrontMatter(md || '');
+          lesson.t = (fm.meta && fm.meta.title) || lessonId;
+          lesson.xp = (fm.meta && fm.meta.xp) || 0;
+          lesson.d = (fm.meta && fm.meta.summary) || '';
+          lesson.ai = (fm.meta && fm.meta.ai) || 'full';
+          lesson.body = marked.parse(fm.body || '');
+        }).catch(function () { lesson.body = '<p>(Could not load this lesson.)</p>'; }));
+      });
+    });
+    return Promise.all(jobs).then(buildFlat);
+  });
+}
 function lessonUnlocked(idx) { return idx === 0 || !!state.done[flat[idx - 1].id]; }
 
 /* ---------- outline ---------- */
@@ -309,29 +320,50 @@ function renderOutline() {
   });
 }
 
-/* ---------- dummy lesson article ---------- */
+/* ---------- lesson (rendered from authored Markdown) ---------- */
 function lessonBodyHTML(f) {
   const done = !!state.done[f.id];
   return '<div class="eyebrow">' + f.m.name + '</div>'
     + '<h1>' + f.l.t + '</h1>'
-    + '<p class="lead">' + f.l.d + '</p>'
-    + '<h2>What you\'ll learn</h2>'
-    + '<ul><li>The idea behind <b>' + f.l.t.toLowerCase() + '</b> and why it matters in a real game.</li>'
-    + '<li>How it shows up in the Star Catcher project you\'re building.</li>'
-    + '<li>A small change you can try yourself with help from the AI.</li></ul>'
-    + '<p>This is placeholder lesson content so you can see the layout. In the finished course this section walks through the concept step by step, with pictures and short examples a student can follow at their own pace.</p>'
-    + '<p>You\'ll usually read a little, then jump to the <b>Code</b> tab to try it and the <b>Play</b> tab to see the result. The AI Assistant on the right can explain anything or make a change for you.</p>'
-    + '<h2>Example</h2>'
-    + '<pre>// a tiny taste of the code you\'ll work with\nfunction spawnObject(scene) {\n  const x = Phaser.Math.Between(30, 770);\n  scene.stars.create(x, -20, "star").setVelocityY(160);\n}</pre>'
-    + '<div class="tip"><span class="mdi mdi-lightbulb-on"></span><div>Tip: try asking the AI "what does this function do?" — reading code you didn\'t write is a real skill.</div></div>'
-    + '<div class="challenge"><div class="ch-h"><span class="mdi mdi-flag-checkered"></span> Challenge (coming soon)</div>'
-    + '<div style="color:var(--muted);margin-bottom:6px;">The hands-on challenge for this lesson will live here. Finishing it completes the lesson.</div>'
+    + (f.l.d ? '<p class="lead">' + f.l.d + '</p>' : '')
+    + f.l.body
+    + '<div class="challenge"><div class="ch-h"><span class="mdi mdi-flag-checkered"></span> Challenge</div>'
+    + '<div style="color:var(--muted);margin-bottom:6px;">Finish the challenge to complete this lesson and unlock the next one.</div>'
     + '<button class="btn-primary" id="completeBtn"' + (done ? ' disabled' : '') + '><span class="mdi mdi-' + (done ? 'check' : 'flag-checkered') + '"></span>' + (done ? 'Completed  (+' + f.l.xp + ' XP)' : 'Complete challenge  (+' + f.l.xp + ' XP)') + '</button></div>';
+}
+let currentAIMode = 'full';
+function applyAIMode(mode) {
+  currentAIMode = mode || 'full';
+  const inp = $('aiText'), btn = $('aiSend');
+  if (!inp || !btn) return;
+  if (currentAIMode === 'off') { inp.disabled = true; btn.disabled = true; inp.placeholder = 'AI is off for this challenge — try it yourself!'; }
+  else if (currentAIMode === 'guided') { inp.disabled = false; btn.disabled = false; inp.placeholder = 'Guided: tell the AI exactly what to change'; }
+  else { inp.disabled = false; btn.disabled = false; inp.placeholder = 'Ask the AI to change your game...'; }
+}
+function renderRunCells(root) {
+  root.querySelectorAll('pre > code.language-run').forEach(function (code) {
+    const pre = code.parentNode; const src = code.textContent;
+    const cell = document.createElement('div'); cell.className = 'runcell';
+    const ta = document.createElement('textarea'); ta.value = src; ta.spellcheck = false;
+    ta.rows = Math.min(14, Math.max(3, src.split('\n').length));
+    const bar = document.createElement('div'); bar.className = 'runbar';
+    const btn = document.createElement('button'); btn.className = 'runbtn'; btn.innerHTML = '<span class="mdi mdi-play"></span>Run';
+    const out = document.createElement('iframe'); out.className = 'runout'; out.setAttribute('sandbox', 'allow-scripts');
+    btn.addEventListener('click', function () {
+      const userCode = ta.value.replace(/<\/(script)/gi, '<\\/$1');
+      out.srcdoc = '<!doctype html><body style="margin:0;font:12.5px Consolas,monospace;color:#cfe0f2;background:#08121f;padding:8px"><pre id="o" style="margin:0;white-space:pre-wrap"></pre><scr' + 'ipt>var o=document.getElementById("o");function w(){o.textContent+=[].slice.call(arguments).join(" ")+"\\n";}console.log=w;console.info=w;console.warn=w;console.error=function(){o.textContent+="\\u26a0 "+[].slice.call(arguments).join(" ")+"\\n";};try{\n' + userCode + '\n}catch(e){o.textContent+="\\u26a0 "+e.message+"\\n";}</scr' + 'ipt></body>';
+      out.style.display = 'block';
+    });
+    bar.appendChild(btn); cell.appendChild(ta); cell.appendChild(bar); cell.appendChild(out);
+    pre.parentNode.replaceChild(cell, pre);
+  });
 }
 function selectLesson(idx) {
   curIdx = idx; const f = flat[idx];
   $('crumb').dataset.lesson = f.m.name + ': ' + f.l.t;
   $('lessonBody').innerHTML = lessonBodyHTML(f);
+  renderRunCells($('lessonBody'));
+  applyAIMode(f.l.ai);
   const btn = $('completeBtn'); if (btn) btn.addEventListener('click', function () { completeLesson(); });
   renderOutline(); switchView('learn');
 }
@@ -410,6 +442,7 @@ function addMsg(who, text) { const m = document.createElement('div'); m.classNam
 function refreshAfterEdit() { loadSettings(); refreshFiles(); if (!$('view-play').hidden) startGame(); if (!$('view-code').hidden) loadCode(); }
 function sendAI() {
   const box = $('aiText'); const text = box.value.trim(); if (!text) return;
+  if (currentAIMode === 'off') { toast('The AI is off for this challenge — give it a try yourself!'); return; }
   addMsg('user', text); box.value = ''; const pending = addMsg('bot', 'Thinking…');
   // the code lives in the browser; we send it along, the server relays the AI, and we apply the change here
   fetch('/api/ai', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ studentId: studentId, message: text, code: project.files['game.js'] || '' }) })
@@ -611,4 +644,6 @@ $('editor').style.setProperty('--leftw', '280px'); $('editor').style.setProperty
 makeResizer($('resLeft'), 'left'); makeResizer($('resRight'), 'right');
 
 /* ---------- boot ---------- */
-renderFooter(); renderOutline(); selectLesson(0); showPage('courses');
+renderFooter(); showPage('courses');
+loadCourse().then(function () { renderOutline(); selectLesson(0); })
+  .catch(function () { $('lessonBody').innerHTML = '<p style="color:var(--muted)">Could not load the course content. Is the server running?</p>'; });
