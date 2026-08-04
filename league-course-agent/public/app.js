@@ -329,8 +329,8 @@ function lessonBodyHTML(f) {
     + '<span class="lchip"><span class="mdi mdi-lightning-bolt"></span>+' + f.l.xp + ' XP</span>'
     + (done ? '<span class="lchip"><span class="mdi mdi-check-circle"></span>Completed</span>' : '')
     + '</div>';
-  return '<div class="lesson-hero"><h1>' + f.l.t + '</h1>'
-    + (f.l.d ? '<p class="lead">' + f.l.d + '</p>' : '') + meta + '</div>'
+  return '<div class="lesson-hero"><div class="hero-inner"><h1>' + f.l.t + '</h1>'
+    + (f.l.d ? '<p class="lead">' + f.l.d + '</p>' : '') + meta + '</div></div>'
     + '<div class="lesson-content">' + f.l.body
     + '<div class="challenge"><div class="ch-h"><span class="mdi mdi-flag-checkered"></span> Challenge</div>'
     + '<div style="color:var(--muted);margin-bottom:6px;">Finish the challenge to complete this lesson and unlock the next one.</div>'
@@ -361,6 +361,7 @@ function setAIMode(mode) {
   const tag = $('aiModelTag'); if (tag) { const spec = aiModels[aiMode] || ''; tag.textContent = spec.replace(/^[^:]+:/, '') || '…'; tag.title = spec; }
   if (aiMode === 'tutor') { const inp = $('aiText'), btn = $('aiSend'); if (inp) { inp.disabled = false; inp.placeholder = 'Ask the tutor about this lesson...'; } if (btn) btn.disabled = false; }
   else { applyAIMode(currentAIMode); }
+  if (typeof renderChat === 'function') renderChat(aiMode);
 }
 /* ```run — editable JS cell. Directives (as // @lines): @goal: <text>, @expect: <substring>, @slider: name min max step value */
 function renderRunCells(root) {
@@ -612,10 +613,24 @@ function refreshFiles() {
   const list = $('fileList'); list.innerHTML = '';
   fileNames().forEach(function (name) {
     const row = document.createElement('div'); row.className = 'filerow' + (name === currentFile ? ' active' : '');
-    row.innerHTML = '<span class="mdi mdi-language-javascript"></span><span class="lbl">' + name + '</span>';
+    const icon = document.createElement('span'); icon.className = 'mdi mdi-language-javascript';
+    const lbl = document.createElement('span'); lbl.className = 'lbl'; lbl.textContent = name;
+    row.appendChild(icon); row.appendChild(lbl);
     row.addEventListener('click', function () { openFile(name); });
+    if (name !== 'game.js' && name !== 'main.js') { // core files can't be deleted
+      const del = document.createElement('button'); del.className = 'del'; del.title = 'Delete ' + name; del.innerHTML = '<span class="mdi mdi-close"></span>';
+      del.addEventListener('click', function (e) { e.stopPropagation(); deleteFile(name); });
+      row.appendChild(del);
+    }
     list.appendChild(row);
   });
+}
+function deleteFile(name) {
+  modal({ title: 'Delete ' + name + '?', message: 'This removes the file from your project. This cannot be undone.', okLabel: 'Delete', onOk: function () {
+    delete project.files[name]; const i = project.order.indexOf(name); if (i >= 0) project.order.splice(i, 1);
+    if (currentFile === name) currentFile = 'game.js';
+    saveProject(); refreshFiles(); loadCode(); toast('Deleted ' + name);
+  } });
 }
 function openFile(name) { if (!$('view-code').hidden) { project.files[currentFile] = codeEditor.getValue(); saveProject(); } currentFile = name; $('crumb').textContent = name; refreshFiles(); loadCode(); }
 function loadCode() { const t = project.files[currentFile]; codeEditor.setValue(typeof t === 'string' ? formatJS(t) : '// (empty file)'); codeEditor.refresh(); }
@@ -637,8 +652,11 @@ function loadSettings() { const cfg = parseConfig(project.files['game.js'] || ''
 
 /* ---------- AI ---------- */
 const aiMsgs = $('aiMsgs');
-function addMsg(who, text) { const m = document.createElement('div'); m.className = 'msg ' + who; setMsg(m, who, text); aiMsgs.appendChild(m); aiMsgs.scrollTop = aiMsgs.scrollHeight; return m; }
-function setMsg(m, who, text) { if (who === 'bot') { try { m.innerHTML = marked.parse(String(text)); } catch (e) { m.textContent = String(text); } } else { m.textContent = text; } aiMsgs.scrollTop = aiMsgs.scrollHeight; }
+const chats = { coder: [], tutor: [] };   // separate conversation per mode
+function renderBubble(who, text) { const m = document.createElement('div'); m.className = 'msg ' + who; if (who === 'bot') { try { m.innerHTML = marked.parse(String(text)); } catch (e) { m.textContent = String(text); } } else { m.textContent = text; } return m; }
+function addMsg(who, text) { const entry = { who: who, text: text }; (chats[aiMode] || (chats[aiMode] = [])).push(entry); const m = renderBubble(who, text); m.__entry = entry; aiMsgs.appendChild(m); aiMsgs.scrollTop = aiMsgs.scrollHeight; return m; }
+function setMsg(m, who, text) { if (m && m.__entry) { m.__entry.who = who; m.__entry.text = text; } if (who === 'bot') { try { m.innerHTML = marked.parse(String(text)); } catch (e) { m.textContent = String(text); } } else { m.textContent = text; } aiMsgs.scrollTop = aiMsgs.scrollHeight; }
+function renderChat(mode) { aiMsgs.innerHTML = ''; (chats[mode] || []).forEach(function (en) { const m = renderBubble(en.who, en.text); m.__entry = en; aiMsgs.appendChild(m); }); aiMsgs.scrollTop = aiMsgs.scrollHeight; }
 function refreshAfterEdit() { loadSettings(); refreshFiles(); if (!$('view-play').hidden) startGame(); if (!$('view-code').hidden) loadCode(); }
 function askTutor(question, context) {
   addMsg('user', question); const pending = addMsg('bot', 'Thinking…');
@@ -673,7 +691,9 @@ function sendAI() {
 }
 $('aiSend').addEventListener('click', sendAI);
 $('aiText').addEventListener('keydown', function (e) { if (e.key === 'Enter') sendAI(); });
-addMsg('bot', "Hi! Two modes up top: **Tutor** explains the lesson and answers questions, and **Build** changes your game's code. I switch automatically with your tab — Learn uses Tutor; Code and Play use Build.");
+chats.coder.push({ who: 'bot', text: "Hi! I'm your **Build** helper. Tell me what to change or add to your game — like \"make the player move faster\" — and I'll edit the code." });
+chats.tutor.push({ who: 'bot', text: "Hi! I'm your **Tutor**. Ask me anything about the lesson or the code and I'll explain it — I won't change your game." });
+renderChat(aiMode);
 $('modeToggle').addEventListener('click', function () { setAIMode(aiMode === 'tutor' ? 'coder' : 'tutor'); });
 fetch('/api/info').then(function (r) { return r.json(); }).then(function (d) { aiModels = d.agents || { coder: d.model, tutor: d.model }; setAIMode(aiMode); }).catch(function () {});
 
@@ -694,8 +714,16 @@ function showConsole(show, open) {
 }
 if ($('conToggle')) $('conToggle').addEventListener('click', function () { consoleOpen = !consoleOpen; $('console').classList.toggle('collapsed', !consoleOpen); });
 if ($('conClear')) $('conClear').addEventListener('click', conClear);
-window.addEventListener('message', function (e) { const d = e && e.data; if (d && d.__gamelog) conLine(d.level || 'log', d.text || ''); });
+window.addEventListener('message', function (e) { const d = e && e.data; if (d && d.__gamelog) { conLine(d.level || 'log', d.text || ''); if (d.level === 'error' && $('view-play') && !$('view-play').hidden) showConsole(true, true); } });
 conClear();
+function resetGame() {
+  modal({ title: 'Reset your game?', message: 'This restores the original starter game, replacing your current game.js. Your other files are kept.', okLabel: 'Reset it', onOk: function () {
+    project.files['game.js'] = STAR_CODE; if (project.order.indexOf('game.js') < 0) project.order.unshift('game.js');
+    saveProject(); toast('Starter game restored.');
+    if (!$('view-play').hidden) startGame(); if (!$('view-code').hidden) loadCode(); loadSettings();
+  } });
+}
+if ($('resetGameBtn')) $('resetGameBtn').addEventListener('click', resetGame);
 
 /* ---------- collapsible AI dock ---------- */
 let aiCollapsed = false;
