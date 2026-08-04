@@ -93,6 +93,25 @@
   .fb-row.sel{border-color:var(--azure);}
   .fb-row.correct{border-color:var(--green);background:#0f2e22;}
   .fb-row.wrong{border-color:var(--gold);background:#2e2410;}
+  /* quiz display polish */
+  .quizcell{padding:16px 18px;}
+  .quiz-h{font-size:15px;margin-bottom:12px;}
+  .quiz-h .mdi{font-size:18px;color:var(--azure);}
+  .mcq-opt{padding:11px 14px;border-radius:10px;transition:border-color .1s,background .1s;}
+  .mcq-opt:hover{border-color:#3a6da3;}
+  .mcq-opt:has(input:checked){border-color:var(--azure);background:#12304f;}
+  .mcq-opt input{accent-color:var(--azure);width:16px;height:16px;flex:none;}
+  .quiz-check{background:var(--brand);color:var(--brand-ink);padding:9px 20px;border-radius:8px;font-size:13px;margin-top:14px;box-shadow:0 2px 10px rgba(245,130,10,.28);}
+  .quiz-result{font-size:13.5px;margin-top:12px;font-weight:600;}
+  /* in-lesson challenge minigame */
+  .challenge-mini{border:1px solid var(--brand);border-radius:14px;background:#1a130a;padding:18px 20px;margin-top:26px;}
+  .cm-h{display:flex;align-items:center;gap:8px;font-size:13px;letter-spacing:1px;text-transform:uppercase;color:var(--brand);font-weight:700;margin-bottom:10px;}
+  .cm-task{color:#e6d6c2;font-size:14.5px;margin-bottom:12px;line-height:1.6;}
+  .cm-code{width:100%;background:#08121f;border:1px solid var(--line);border-radius:8px;color:#cfe0f2;font-family:Consolas,monospace;font-size:12.5px;line-height:1.5;padding:10px 12px;resize:vertical;display:block;}
+  .cm-stage{width:100%;height:210px;border:0;border-radius:8px;margin-top:10px;background:#08121f;display:block;}
+  .cm-bar{display:flex;align-items:center;gap:12px;margin-top:10px;}
+  .cm-run{background:var(--brand);color:var(--brand-ink);border:0;border-radius:8px;padding:8px 16px;font-weight:700;cursor:pointer;display:inline-flex;align-items:center;gap:6px;font-family:var(--font);}
+  .cm-status{font-size:13px;} .cm-status.ok{color:var(--green);font-weight:700;} .cm-status.no{color:var(--gold);}
   .dock-body{flex:1;min-height:0;display:flex;flex-direction:column;overflow:hidden;}
   #panel-outline{flex:1;min-height:0;overflow:auto;padding:4px 0;}
   #panel-info{flex:1;min-height:0;overflow:auto;}
@@ -363,7 +382,7 @@
 </head>
 <body>
   <div class="topbar">
-    <div class="brand"><img class="brand-logo" src="https://images.jointheleague.org/logos/logo_JTL_horiz.png" alt="The League of Amazing Programmers"><span class="brand-tag">Game Dev</span></div>
+    <div class="brand"><img class="brand-logo" src="https://images.jointheleague.org/logos/wordmark.png" alt="The League of Amazing Programmers"><span class="brand-tag">Game Dev</span></div>
     <div class="topnav">
       <button class="navitem on" data-page="courses"><span class="mdi mdi-school"></span>Courses</button>
       <button class="navitem" data-page="store"><span class="mdi mdi-cart-outline"></span>Store</button>

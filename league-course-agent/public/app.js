@@ -329,13 +329,14 @@ function lessonBodyHTML(f) {
     + '<span class="lchip"><span class="mdi mdi-lightning-bolt"></span>+' + f.l.xp + ' XP</span>'
     + (done ? '<span class="lchip"><span class="mdi mdi-check-circle"></span>Completed</span>' : '')
     + '</div>';
+  const hasChallenge = /language-challenge/.test(f.l.body || '');   // lessons with a minigame complete via winning it
+  const completeBox = hasChallenge ? '' :
+    '<div class="challenge"><div class="ch-h"><span class="mdi mdi-check-circle-outline"></span> Finish this lesson</div>'
+    + '<div style="color:var(--muted);margin-bottom:6px;">Mark it complete to earn XP and unlock the next lesson.</div>'
+    + '<button class="btn-primary" id="completeBtn"' + (done ? ' disabled' : '') + '><span class="mdi mdi-' + (done ? 'check' : 'arrow-right') + '"></span>' + (done ? 'Completed  (+' + f.l.xp + ' XP)' : 'Complete lesson  (+' + f.l.xp + ' XP)') + '</button></div>';
   return '<div class="lesson-hero"><div class="hero-inner"><h1>' + f.l.t + '</h1>'
     + (f.l.d ? '<p class="lead">' + f.l.d + '</p>' : '') + meta + '</div></div>'
-    + '<div class="lesson-content">' + f.l.body
-    + '<div class="challenge"><div class="ch-h"><span class="mdi mdi-flag-checkered"></span> Challenge</div>'
-    + '<div style="color:var(--muted);margin-bottom:6px;">Finish the challenge to complete this lesson and unlock the next one.</div>'
-    + '<button class="btn-primary" id="completeBtn"' + (done ? ' disabled' : '') + '><span class="mdi mdi-' + (done ? 'check' : 'flag-checkered') + '"></span>' + (done ? 'Completed  (+' + f.l.xp + ' XP)' : 'Complete challenge  (+' + f.l.xp + ' XP)') + '</button></div>'
-    + '</div>';
+    + '<div class="lesson-content">' + f.l.body + completeBox + '</div>';
 }
 let currentAIMode = 'full';   // the current lesson's coder policy: full | guided | off
 let aiMode = 'coder';         // which agent the panel talks to: tutor | coder
@@ -529,6 +530,35 @@ function buildFindBug(q, body, check, say) {
     say(ok, ok ? 'Correct — that’s the bug!' : (q.explain ? 'Not quite — ' + q.explain : 'Not quite — the highlighted line has the bug.'));
   });
 }
+/* ```challenge — an editable mini-game embedded in the lesson. YAML: task, code. The student's code
+   calls win() when the goal is reached; that completes the lesson (replaces the "tick a box" button). */
+function renderChallengeCells(root) {
+  root.querySelectorAll('pre > code.language-challenge').forEach(function (code) {
+    let c; try { c = jsyaml.load(code.textContent) || {}; } catch (e) { c = {}; }
+    const pre = code.parentNode; const tok = 'cm' + Math.random().toString(36).slice(2, 9);
+    const cell = document.createElement('div'); cell.className = 'challenge-mini';
+    cell.innerHTML = '<div class="cm-h"><span class="mdi mdi-flag-checkered"></span>Challenge</div>';
+    if (c.task) { const t = document.createElement('div'); t.className = 'cm-task'; t.textContent = c.task; cell.appendChild(t); }
+    const ta = document.createElement('textarea'); ta.className = 'cm-code'; ta.value = c.code || ''; ta.spellcheck = false; ta.rows = Math.min(18, Math.max(4, (c.code || '').split('\n').length));
+    const stage = document.createElement('iframe'); stage.className = 'cm-stage'; stage.setAttribute('sandbox', 'allow-scripts');
+    const bar = document.createElement('div'); bar.className = 'cm-bar';
+    const run = document.createElement('button'); run.className = 'cm-run'; run.innerHTML = '<span class="mdi mdi-play"></span>Run &amp; check';
+    const status = document.createElement('div'); status.className = 'cm-status';
+    function build(userCode) {
+      const safe = userCode.replace(/<\/(script)/gi, '<\\/$1');
+      return '<!doctype html><body style="margin:0;background:#08121f;display:flex;align-items:center;justify-content:center;height:100vh"><canvas id="c" width="300" height="200" style="background:#0d2137;border-radius:8px"></canvas><scr' + 'ipt>var canvas=document.getElementById("c"),ctx=canvas.getContext("2d"),__w=false;function win(){if(__w)return;__w=true;try{parent.postMessage({__cm:true,tok:"' + tok + '",win:true},"*");}catch(e){}}window.onerror=function(m){try{parent.postMessage({__cm:true,tok:"' + tok + '",err:String(m)},"*");}catch(e){}};try{\n' + safe + '\n}catch(e){window.onerror(e.message);}<\/scr' + 'ipt></body>';
+    }
+    window.addEventListener('message', function (e) {
+      const d = e && e.data; if (!d || !d.__cm || d.tok !== tok) return;
+      if (d.win) { status.className = 'cm-status ok'; status.textContent = 'Challenge complete!'; if (flat[curIdx] && !state.done[flat[curIdx].id]) completeLesson(); }
+      else if (d.err) { status.className = 'cm-status no'; status.textContent = 'Error: ' + d.err; }
+    });
+    run.addEventListener('click', function () { status.className = 'cm-status'; status.textContent = 'Running…'; stage.srcdoc = build(ta.value); });
+    bar.appendChild(run); bar.appendChild(status);
+    cell.appendChild(ta); cell.appendChild(stage); cell.appendChild(bar);
+    pre.parentNode.replaceChild(cell, pre);
+  });
+}
 const MODULE_HERO = ['#143561', '#2f2a6b', '#1f5b63', '#5b3320', '#1f6b45', '#6b2a52', '#26456b', '#4a6b26', '#6b5320', '#33305b'];
 const MODULE_ACCENT = ['#3e8fd6', '#8b7cff', '#2fd0b6', '#f5820a', '#3ddc84', '#ff6b9d', '#59a5ff', '#a3d94a', '#f5b02e', '#7c9cff'];
 function moduleHero(mi) { return MODULE_HERO[mi % MODULE_HERO.length]; }
@@ -558,6 +588,7 @@ function selectLesson(idx) {
   currentLessonText = ($('lessonBody').textContent || '').replace(/\s+/g, ' ').trim().slice(0, 3000);
   renderRunCells($('lessonBody'));
   renderQuizCells($('lessonBody'));
+  renderChallengeCells($('lessonBody'));
   applyAIMode(f.l.ai);
   const btn = $('completeBtn'); if (btn) btn.addEventListener('click', function () { completeLesson(); });
   renderOutline(); switchView('learn');

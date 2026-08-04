@@ -21,3 +21,21 @@ feedback:
   - "That's a rule change, and a bad one!"
   - "That removes feedback, not adds it."
 ```
+
+## Your challenge
+
+```challenge
+task: Add some screen shake. Set a shake amount above zero so the box jitters — a little juice wins this one.
+code: |
+  let frames = 0;
+  const shakeAmount = 0;      // change this to add shake
+  function frame() {
+    const dx = (Math.random() - 0.5) * shakeAmount;
+    ctx.clearRect(0, 0, 300, 200);
+    ctx.fillStyle = "#e94b4b"; ctx.fillRect(130 + dx, 85, 40, 30);
+    frames = frames + 1;
+    if (shakeAmount > 0 && frames > 30) win();
+    else if (frames <= 30) requestAnimationFrame(frame);
+  }
+  frame();
+```

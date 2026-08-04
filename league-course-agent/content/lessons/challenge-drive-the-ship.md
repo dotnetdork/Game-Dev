@@ -23,3 +23,21 @@ feedback:
 ```
 
 When it works, press **Complete challenge** to earn your XP.
+
+## Your challenge
+
+```challenge
+task: The ship isn't moving. Give it a speed so it drives right and reaches the flag — it wins automatically when it gets there.
+code: |
+  let x = 20;
+  const speed = 0;            // change this so the ship moves
+  function frame() {
+    x = x + speed;
+    ctx.clearRect(0, 0, 300, 200);
+    ctx.fillStyle = "#f5b02e"; ctx.fillRect(272, 78, 8, 44);
+    ctx.fillStyle = "#2fd0b6"; ctx.fillRect(x, 92, 30, 16);
+    if (x >= 262) win();
+    else requestAnimationFrame(frame);
+  }
+  frame();
+```

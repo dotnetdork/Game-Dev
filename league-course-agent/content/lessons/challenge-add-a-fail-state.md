@@ -21,3 +21,20 @@ explain: "It should be lives <= 0. With < 0, the game never ends exactly at 0 li
 ```
 
 Fix it in your own code, test it in Play, then press Complete.
+
+## Your challenge
+
+```challenge
+task: Health should drop by 1 each tick and end the game at 0 — but it never changes. Fix the marked line so it loses a point each tick.
+code: |
+  let health = 3;
+  function tick() {
+    health = health;          // BUG: this should lose 1 each tick
+    ctx.clearRect(0, 0, 300, 200);
+    ctx.fillStyle = "#eaf1f8"; ctx.font = "20px monospace";
+    ctx.fillText("Health: " + health, 90, 95);
+    if (health <= 0) { ctx.fillText("Game Over!", 92, 130); win(); }
+    else setTimeout(tick, 350);
+  }
+  tick();
+```

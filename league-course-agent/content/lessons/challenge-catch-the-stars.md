@@ -22,3 +22,21 @@ distractors:
 ```
 
 Then make it happen in the **Code** tab (AI is in guided mode) and press Complete.
+
+## Your challenge
+
+```challenge
+task: The star is stuck at the top. Give it a fall speed so it drops to the paddle — that catches it and wins.
+code: |
+  let y = 10;
+  const fallSpeed = 0;        // change this so the star falls
+  function frame() {
+    y = y + fallSpeed;
+    ctx.clearRect(0, 0, 300, 200);
+    ctx.fillStyle = "#2fd0b6"; ctx.fillRect(120, 182, 60, 10);
+    ctx.fillStyle = "#ffd23f"; ctx.fillRect(145, y, 12, 12);
+    if (y >= 168) win();
+    else requestAnimationFrame(frame);
+  }
+  frame();
+```
