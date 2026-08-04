@@ -354,7 +354,7 @@ function setAIMode(mode) {
   aiMode = (mode === 'tutor') ? 'tutor' : 'coder';
   const tog = $('modeToggle');
   if (tog) {
-    tog.innerHTML = '<span class="mdi ' + (aiMode === 'tutor' ? 'mdi-school-outline' : 'mdi-code-braces') + '"></span>';
+    tog.innerHTML = '<span class="mdi ' + (aiMode === 'tutor' ? 'mdi-comment-text-outline' : 'mdi-code-tags') + '"></span>';
     tog.title = aiMode === 'tutor' ? 'Tutor mode (explains) — click to switch to Build' : 'Build mode (edits code) — click to switch to Tutor';
     tog.classList.toggle('tutor', aiMode === 'tutor'); tog.classList.toggle('coder', aiMode === 'coder');
   }

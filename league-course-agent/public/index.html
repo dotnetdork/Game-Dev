@@ -50,12 +50,11 @@
   .res:hover{background:#2b4a6e;}
   .dock-head{padding:9px 12px;font-size:11px;letter-spacing:1.5px;font-weight:700;color:var(--dim);
     text-transform:uppercase;border-bottom:1px solid var(--line);background:var(--panel2);display:flex;justify-content:space-between;align-items:center;}
-  .dock-head .tag{color:var(--teal);text-transform:none;font-weight:600;}
+  .dock-head .tag{color:var(--teal);text-transform:none;font-weight:600;font-size:11px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;max-width:120px;flex:none;}
   .dock-head .ai-title{display:flex;align-items:center;gap:8px;}
   .dock-head .ai-ava{width:20px;height:20px;border-radius:50%;object-fit:cover;background:var(--panel);}
-  .dock-head{flex-wrap:wrap;gap:6px;}
-  .dock-head .ai-title{flex:1;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;letter-spacing:.3px;}
-  .dock-head .tag{flex-basis:100%;order:5;margin-top:1px;}
+  .dock-head{flex-wrap:nowrap;gap:6px;}
+  .dock-head .ai-title{flex:1;min-width:0;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;text-transform:none;letter-spacing:0;}
   .ai-toggle{display:inline-flex;align-items:center;justify-content:center;width:30px;height:24px;background:var(--panel);border:1px solid var(--line);border-radius:7px;cursor:pointer;color:var(--ink);text-transform:none;}
   .ai-toggle .mdi{font-size:16px;}
   .ai-toggle.tutor{color:var(--teal);border-color:var(--teal);}
@@ -421,7 +420,7 @@
         <div class="res l" id="resRight"></div>
         <div class="dock-head">
           <span class="ai-title"><img class="ai-ava" src="https://images.jointheleague.org/logos/clearRobotRing4.png" alt="">AI Assistant</span>
-          <button class="ai-toggle coder" id="modeToggle" title="Build mode — click to switch to Tutor"><span class="mdi mdi-code-braces"></span></button>
+          <button class="ai-toggle coder" id="modeToggle" title="Build mode — click to switch to Tutor"><span class="mdi mdi-code-tags"></span></button>
           <span class="tag" id="aiModelTag">model…</span>
           <button class="ai-collapse" id="aiCollapse" title="Hide the assistant"><span class="mdi mdi-chevron-right"></span></button>
         </div>
