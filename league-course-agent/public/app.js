@@ -299,7 +299,7 @@ function renderOutline() {
     const modLocked = !lessonUnlocked(firstIdx);
     const sec = document.createElement('div'); sec.className = 'sec';
     const head = document.createElement('div'); head.className = 'sec-head' + (modLocked ? ' locked' : '');
-    head.innerHTML = '<span class="tri">' + (modLocked ? '▸' : '▾') + '</span><span class="mdi ' + (modLocked ? 'mdi-lock' : 'mdi-folder') + '"></span><span class="lbl">' + m.name + '</span>';
+    head.innerHTML = '<span class="tri">' + (modLocked ? '▸' : '▾') + '</span><span class="mdi ' + (modLocked ? 'mdi-lock' : 'mdi-folder') + '"' + (modLocked ? '' : ' style="color:' + moduleAccent(mi) + '"') + '></span><span class="lbl">' + m.name + '</span>';
     if (modLocked) sec.classList.add('collapsed');
     head.addEventListener('click', function () {
       if (modLocked) { toast('Finish the previous module to unlock this one.'); return; }
@@ -528,15 +528,45 @@ function buildFindBug(q, body, check, say) {
     say(ok, ok ? 'Correct — that’s the bug!' : (q.explain ? 'Not quite — ' + q.explain : 'Not quite — the highlighted line has the bug.'));
   });
 }
+const MODULE_HERO = ['#143561', '#2f2a6b', '#1f5b63', '#5b3320', '#1f6b45', '#6b2a52', '#26456b', '#4a6b26', '#6b5320', '#33305b'];
+const MODULE_ACCENT = ['#3e8fd6', '#8b7cff', '#2fd0b6', '#f5820a', '#3ddc84', '#ff6b9d', '#59a5ff', '#a3d94a', '#f5b02e', '#7c9cff'];
+function moduleHero(mi) { return MODULE_HERO[mi % MODULE_HERO.length]; }
+function moduleAccent(mi) { return MODULE_ACCENT[mi % MODULE_ACCENT.length]; }
+function railHTML(f) {
+  const mod = course.modules[f.mi];
+  const total = mod.lessons.length;
+  const doneCount = mod.lessons.filter(function (l, li) { return state.done[f.mi + '.' + li]; }).length;
+  const pct = Math.round(doneCount / total * 100);
+  const items = mod.lessons.map(function (l, li) {
+    const gi = flat.findIndex(function (x) { return x.mi === f.mi && x.li === li; });
+    const done = !!state.done[f.mi + '.' + li], locked = !lessonUnlocked(gi), cur = gi === curIdx;
+    const icon = done ? 'mdi-check-circle' : (locked ? 'mdi-lock' : 'mdi-circle-small');
+    return '<div class="rail-item' + (cur ? ' cur' : '') + (done ? ' done' : '') + (locked ? ' locked' : '') + '" data-goto-lesson="' + gi + '"><span class="mdi ' + icon + '"></span>' + l.t + '</div>';
+  }).join('');
+  const prevOk = curIdx > 0, nextOk = (curIdx + 1) < flat.length && lessonUnlocked(curIdx + 1);
+  return '<button class="rail-jump" id="railJump"><span class="mdi mdi-flag-checkered"></span>Jump to challenge</button>'
+    + '<div class="rail-prog"><h4>Module progress</h4><div class="pct">' + doneCount + ' of ' + total + ' lessons</div><div class="bar"><div style="width:' + pct + '%"></div></div></div>'
+    + '<div><h4>In this module</h4><div class="rail-list">' + items + '</div></div>'
+    + '<div class="rail-nav"><button id="railPrev"' + (prevOk ? '' : ' disabled') + '><span class="mdi mdi-arrow-left"></span>Prev</button><button id="railNext"' + (nextOk ? '' : ' disabled') + '>Next<span class="mdi mdi-arrow-right"></span></button></div>';
+}
 function selectLesson(idx) {
   curIdx = idx; const f = flat[idx];
   $('crumb').dataset.lesson = f.m.name + ': ' + f.l.t;
   $('lessonBody').innerHTML = lessonBodyHTML(f);
+  $('lessonBody').style.setProperty('--mod', moduleHero(f.mi));
   currentLessonText = ($('lessonBody').textContent || '').replace(/\s+/g, ' ').trim().slice(0, 3000);
   renderRunCells($('lessonBody'));
   renderQuizCells($('lessonBody'));
   applyAIMode(f.l.ai);
   const btn = $('completeBtn'); if (btn) btn.addEventListener('click', function () { completeLesson(); });
+  const rail = $('learnRail');
+  if (rail) {
+    rail.innerHTML = railHTML(f);
+    rail.querySelectorAll('[data-goto-lesson]').forEach(function (el) { el.addEventListener('click', function () { const gi = +el.getAttribute('data-goto-lesson'); if (lessonUnlocked(gi)) selectLesson(gi); else toast('Complete the previous lesson first.'); }); });
+    const rj = $('railJump'); if (rj) rj.addEventListener('click', function () { const ch = $('lessonBody').querySelector('.challenge'); if (ch) ch.scrollIntoView({ behavior: 'smooth', block: 'start' }); });
+    const rp = $('railPrev'); if (rp && !rp.disabled) rp.addEventListener('click', function () { selectLesson(curIdx - 1); });
+    const rn = $('railNext'); if (rn && !rn.disabled) rn.addEventListener('click', function () { if (lessonUnlocked(curIdx + 1)) selectLesson(curIdx + 1); });
+  }
   renderOutline(); switchView('learn');
 }
 function completeLesson() {
@@ -567,6 +597,7 @@ function switchView(view) {
   if (view === 'play') { $('crumb').textContent = 'Playing: ' + course.name; startGame(); loadSettings(); } else { stopGame(); }
   setAIMode(view === 'learn' ? 'tutor' : 'coder');   // Learn = ask the tutor; Code/Play = build with the coder
   if (view === 'learn') showConsole(false); else if (view === 'code') showConsole(true, true); else showConsole(true, false); // log: open on Code, closed on Play
+  setAICollapsed(view === 'learn'); // free reading width on Learn; assistant open for Code/Play
 }
 document.querySelectorAll('.vtab').forEach(function (btn) { btn.addEventListener('click', function () { switchView(btn.getAttribute('data-view')); }); });
 function startGame() { // build a self-contained page from the browser-side project and run it in the iframe (no server)
@@ -675,10 +706,17 @@ if ($('conClear')) $('conClear').addEventListener('click', conClear);
 window.addEventListener('message', function (e) { const d = e && e.data; if (d && d.__gamelog) conLine(d.level || 'log', d.text || ''); });
 conClear();
 
+/* ---------- collapsible AI dock ---------- */
+let aiCollapsed = false;
+function updateFab() { const fab = $('aiFab'); if (fab) fab.hidden = !(aiCollapsed && $('page') && $('page').hidden); }
+function setAICollapsed(c) { aiCollapsed = c; const ed = $('editor'); if (ed) ed.style.setProperty('--rightw', c ? '0px' : '320px'); updateFab(); }
+if ($('aiCollapse')) $('aiCollapse').addEventListener('click', function () { setAICollapsed(true); });
+if ($('aiFab')) $('aiFab').addEventListener('click', function () { setAICollapsed(false); });
+
 /* ---------- page router ---------- */
 function showPage(page) {
   document.querySelectorAll('.navitem').forEach(function (b) { b.classList.toggle('on', b.getAttribute('data-page') === page); });
-  if (page === 'courses') { $('editor').hidden = false; $('page').hidden = true; return; }
+  if (page === 'courses') { $('editor').hidden = false; $('page').hidden = true; updateFab(); return; }
   stopGame(); $('editor').hidden = true; $('page').hidden = false;
   const pg = $('page');
   if (page === 'store') pg.innerHTML = renderStore();
@@ -687,6 +725,7 @@ function showPage(page) {
   else if (page === 'docs') pg.innerHTML = renderDocs();
   else if (page === 'help') pg.innerHTML = renderHelp();
   wirePage(page);
+  updateFab();
 }
 document.querySelectorAll('.navitem').forEach(function (b) { b.addEventListener('click', function () { showPage(b.getAttribute('data-page')); }); });
 
