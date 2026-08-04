@@ -38,9 +38,14 @@ Refreshed to match the pivot (Pass-4-style revision driven by the second client 
 - No **student/instructor interviews** yet — evidence is research + one client conversation.
 
 ## Current stage / activity
-**Stage 2 — Analysis** (in parallel with the still-open product name). `ua5-stage-2-analysis.md`: Section 1 (Landscape) approved; **Sections 2 (Stakeholders/users) and 3 (Jobs-to-be-done + 5 jobs, each with a scenario + a things-go-wrong branch) drafted**, pending Jay's approval. If approved, Stage 2 is substantively complete → hand to orchestrator for the Stage 2 → Stage 3 (Specification & Wireframes) transition.
+**Stage 3 — Specification** (document side). `ua6-specification.md` drafted: overview, 21-screen inventory, five-part descriptions, requirements/constraints/open-questions. Per Jay, **wireframes are replaced by editing the working app** — each screen in `ua6` carries a build status ([built]/[rename]/[extend]/[new]) so the spec doubles as the implementation checklist. Next: implement, in a prioritized order (MVP order emerges as we build).
 
-Course-shape confirmed 2026-07-28: single guided game throughline + unlock assets; in-lesson instanced challenges (modify code / find bug); AI-generated quick questions (Parsons etc.) + brief quizzes; multi-agent (tutor/grader/coder). UI relabel pending: Showcase→"Gallery"; old Gallery→asset store (name TBD). `ua2` refinement flags parked (Jay's call).
+Repo pushed to GitHub: https://github.com/dotnetdork/LEAGUE-GameDev (single repo: app + `.ua/` + `docs/`).
+
+## Completed (this stretch)
+- 2026-07-28 Stage 1 positioning revised for the pivot (name still open).
+- 2026-07-28 Stage 2 Analysis (`ua5`) drafted — landscape, stakeholders/users/compliance, 5 jobs + scenarios.
+- 2026-07-28 Stage 3 spec (`ua6`) drafted; wireframes swapped for direct app edits.
 
 ## Last updated
-- 2026-07-28 · by stage-2-analysis (Sections 2 & 3 draft)
+- 2026-07-28 · by specification (ua6 draft)
