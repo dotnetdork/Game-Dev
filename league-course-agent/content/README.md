@@ -1,65 +1,37 @@
-# Course content
+# Authoring the course
 
-Edit these files to build the course — no app code required.
+Everything here is editable without touching app code.
 
-## `course.yaml`
-Defines modules and their lessons, in order. Each lesson id maps to
-`lessons/<id>.md`. `stars` is awarded when the whole module is completed.
+## course.yaml
+Modules in order; each lists lesson ids that map to lessons/<id>.md.
+`stars` is awarded when the whole module is completed.
 
-## Lessons — `lessons/<id>.md`
-Each lesson is Markdown with a YAML **front-matter** block at the top:
+## Lesson front-matter
+Each lessons/<id>.md starts with a YAML block:
 
-```
----
-title: Welcome
-xp: 250
-ai: full          # full | guided | off  (controls the AI panel for this lesson)
-summary: One line shown under the title.
----
+    ---
+    title: Sprites & Movement
+    xp: 350
+    ai: full          # full | guided | off  (controls the AI panel for this lesson)
+    summary: One line shown under the title.
+    ---
+    # Markdown body
 
-# Markdown body goes here
-```
+- ai: full = normal help · guided = student must say exactly what to change · off = AI disabled.
+- Quote any value with a colon, e.g. summary: "Fun: goal, feedback, reward."
 
-- `ai: full` = normal AI help; `guided` = student must say exactly what to change;
-  `off` = AI disabled for that challenge.
-- **Quote any value that contains a colon**, e.g. `summary: "Fun: challenge, feedback, reward."`
-  (an unquoted colon breaks YAML).
+## Runnable cells (```run)
+Editable JavaScript + Run button. Optional directives as // comment lines:
+- // @goal: <text>       shows a goal banner
+- // @expect: <text>     after Run, if output contains <text> it shows "Goal met!"
+- // @slider: name min max step value   adds a live slider; `name` is set for you and re-runs on drag
 
-## Runnable code
-Use a fenced block tagged `run` to make an editable, runnable JavaScript cell
-(sandboxed; output shows below it):
+## Quizzes (```quiz) — checked locally, answer is 0-based
+- type: mcq        options + answer + optional feedback[] per option
+- type: predict    like mcq but shows read-only `code:` first (predict the output)
+- type: parsons    lines: [...] in correct order; optional distractors: [{text, why}] (drag to order)
+- type: fillblank  code with ___ becomes an input; answer may be a list; optional explain
+- type: findbug    code: [lines...]; student clicks the buggy line; answer is the 0-based line index; explain
 
-    ```run
-    console.log("hello");
-    ```
-
-Standard Markdown (headings, lists, **bold**, images, `> quotes`, normal ```js code blocks) all render.
-Quizzes, in-lesson challenges, and tutor checkpoints are coming once we finalize their syntax.
-
-## Interactive widgets (provisional syntax)
-
-These use fenced code blocks. The exact syntax may change once we finalize the widget format, but content is easy to convert.
-
-Quiz — multiple choice (`answer` is 0-based):
-
-    ```quiz
-    type: mcq
-    prompt: When does update() run?
-    options:
-      - Once at the start
-      - Every frame
-    answer: 1
-    ```
-
-Quiz — Parsons (list the lines in the CORRECT order; the app shuffles them for the student):
-
-    ```quiz
-    type: parsons
-    prompt: Order these steps.
-    lines:
-      - First step
-      - Second step
-    ```
-
-
-Reminder: quote any value containing a colon.
+Standard Markdown (headings, lists, **bold**, images, > quotes, plain code blocks) renders normally.
+Syntax may still evolve; content converts easily if it does.
