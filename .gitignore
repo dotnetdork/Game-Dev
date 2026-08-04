@@ -1,0 +1,4 @@
+# The app has its own git repository; it is versioned separately.
+league-course-agent/
+
+.DS_Store
