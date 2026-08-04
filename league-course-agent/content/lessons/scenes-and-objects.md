@@ -1,22 +1,18 @@
 ---
 title: Scenes & Objects
-xp: 350
+xp: 300
 ai: full
-summary: How a game is structured — scenes, objects, and how the pieces fit.
+summary: Where everything in your game lives.
 ---
-
-A Phaser game runs inside a **scene**. The scene has two key functions:
-
-- `create()` runs **once** when the scene starts — build your world here.
-- `update()` runs **every frame** (about 60 times a second) — movement and checks go here.
-
-Put the lines in the order they run, from first to last:
+A **scene** is one screen of your game (a menu, a level). Everything in it — the player, enemies, score text — is an **object** that lives on the scene. In our code the scene is usually the variable `scene`, and we hang things off it like `scene.player` and `scene.score`.
 
 ```quiz
-type: parsons
-prompt: Order these from what happens first to what happens last.
-lines:
-  - The scene starts
-  - create() runs one time to build the world
-  - update() runs over and over, every frame
+type: mcq
+prompt: In our games, where do the player and score "live"?
+options: [On the scene, In the console, On the internet]
+answer: 0
+feedback:
+  - "Right — objects live on the scene."
+  - "The console just shows messages."
+  - "They live in your game, in memory, not online."
 ```

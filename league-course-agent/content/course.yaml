@@ -1,26 +1,46 @@
-# Course structure. Edit this to add/reorder modules and lessons.
+# Course structure. Edit to add/reorder modules and lessons.
 # Each lesson id maps to content/lessons/<id>.md
 id: course1
 name: "Game Development — Level 1"   # course name TBD
 library: Phaser
 modules:
-  - id: getting-started
-    name: Getting Started
+  - id: welcome
+    name: "Welcome & What You'll Build"
+    stars: 100
+    lessons: [what-youll-build, tour-of-the-studio, play-and-tinker, how-the-course-works]
+  - id: what-makes-games-fun
+    name: "What Makes Games Fun"
     stars: 120
-    lessons: [welcome, how-it-works]
-  - id: game-design-basics
-    name: Game Design Basics
+    lessons: [ingredients-of-fun, mechanics-rules-core-loop, genres, playtesting]
+  - id: engines-and-languages
+    name: "Game Engines & the Languages Games Are Made Of"
     stars: 150
-    lessons: [what-makes-games-fun, mechanics-and-rules, genres-and-ideas, pitch-your-game]
-  - id: development-basics
-    name: Development Basics
+    lessons: [what-is-an-engine, tour-of-engines, languages-games-use, minecraft-case-study, why-javascript-phaser]
+  - id: who-makes-games
+    name: "Who Makes Games?"
+    stars: 120
+    lessons: [people-behind-a-game, designers-programmers-artists, animators-sound-level, producers-and-qa, you-and-your-ai]
+  - id: systems-and-architecture
+    name: "How a Game Is Built: Systems & Architecture"
     stars: 180
-    lessons: [scenes-and-objects, sprites-and-movement, collisions-and-scoring, reading-code-with-ai]
+    lessons: [the-game-loop, scenes-and-objects, systems-of-a-game, entities-and-components, keeping-code-tidy, state-machines]
+  - id: sprites-and-movement
+    name: "Sprites & Movement"
+    stars: 180
+    lessons: [sprite-on-screen, reading-input, moving-with-velocity, challenge-drive-the-ship]
+  - id: collisions-and-scoring
+    name: "Collisions & Scoring"
+    stars: 200
+    lessons: [detecting-overlaps, variables-and-score, score-and-lives-ui, challenge-catch-the-stars]
+  - id: rules-wins-losses
+    name: "Rules, Wins & Losses"
+    stars: 200
+    lessons: [conditionals, lives-timers-spawning, game-over-restart, challenge-add-a-fail-state]
+  - id: juice-and-game-feel
+    name: "Juice & Game Feel"
+    stars: 200
+    lessons: [what-is-juice, tweens-and-motion, screen-shake-particles, sound-effects, challenge-make-a-hit-feel-great]
   - id: build-your-game
-    name: Build Your Game
-    stars: 220
-    lessons: [set-up-your-project, get-it-moving, add-challenges]
-  - id: polish-and-publish
-    name: Polish & Publish
-    stars: 250
-    lessons: [juice-and-game-feel, publish-and-share]
+    name: "Build Your Game"
+    stars: 300
+    lessons: [choose-your-game, plan-it, build-the-core-loop, add-enemies-and-challenge, polish-and-juice, publish]
