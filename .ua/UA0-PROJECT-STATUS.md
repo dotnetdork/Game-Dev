@@ -37,8 +37,10 @@ Refreshed to match the pivot (Pass-4-style revision driven by the second client 
 - Build the real **design-first curriculum** (replace Learn placeholders).
 - No **student/instructor interviews** yet — evidence is research + one client conversation.
 
-## Next framework step
-Stages **2 (Analysis)** and **3 (Specification & Wireframes)** were skipped during prototyping. Next: Stage 2 — Analysis (landscape, stakeholders/users, jobs-to-be-done + scenarios), now grounded in the meeting + prototype.
+## Current stage / activity
+**Stage 2 — Analysis** (started 2026-07-28, in parallel with the still-open product name). `ua5-stage-2-analysis.md` created. **Section 1 (Landscape) drafted**, pending Jay's approval; Sections 2 (Stakeholders/users) and 3 (Jobs-to-be-done + scenarios) next. Stage 3 (Specification & Wireframes) still to come.
+
+Two possible `ua2` refinements surfaced by the landscape (logged in `ua5` "Open from this stage"): name adult AI-coding tools as an adjacent alternative, and sharpen the differentiation vs. no-code kid engines.
 
 ## Last updated
-- 2026-07-28 · by positioning-statement (Stage 1 revision)
+- 2026-07-28 · by stage-2-analysis (Section 1 draft)
