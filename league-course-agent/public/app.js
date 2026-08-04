@@ -323,13 +323,19 @@ function renderOutline() {
 /* ---------- lesson (rendered from authored Markdown) ---------- */
 function lessonBodyHTML(f) {
   const done = !!state.done[f.id];
-  return '<div class="eyebrow">' + f.m.name + '</div>'
-    + '<h1>' + f.l.t + '</h1>'
-    + (f.l.d ? '<p class="lead">' + f.l.d + '</p>' : '')
-    + f.l.body
+  const total = f.m.lessons.length;
+  const meta = '<div class="lesson-meta">'
+    + '<span class="lchip"><span class="mdi mdi-book-open-page-variant"></span>Lesson ' + (f.li + 1) + ' of ' + total + '</span>'
+    + '<span class="lchip"><span class="mdi mdi-lightning-bolt"></span>+' + f.l.xp + ' XP</span>'
+    + (done ? '<span class="lchip"><span class="mdi mdi-check-circle"></span>Completed</span>' : '')
+    + '</div>';
+  return '<div class="lesson-hero"><div class="eyebrow">' + f.m.name + '</div><h1>' + f.l.t + '</h1>'
+    + (f.l.d ? '<p class="lead">' + f.l.d + '</p>' : '') + meta + '</div>'
+    + '<div class="lesson-content">' + f.l.body
     + '<div class="challenge"><div class="ch-h"><span class="mdi mdi-flag-checkered"></span> Challenge</div>'
     + '<div style="color:var(--muted);margin-bottom:6px;">Finish the challenge to complete this lesson and unlock the next one.</div>'
-    + '<button class="btn-primary" id="completeBtn"' + (done ? ' disabled' : '') + '><span class="mdi mdi-' + (done ? 'check' : 'flag-checkered') + '"></span>' + (done ? 'Completed  (+' + f.l.xp + ' XP)' : 'Complete challenge  (+' + f.l.xp + ' XP)') + '</button></div>';
+    + '<button class="btn-primary" id="completeBtn"' + (done ? ' disabled' : '') + '><span class="mdi mdi-' + (done ? 'check' : 'flag-checkered') + '"></span>' + (done ? 'Completed  (+' + f.l.xp + ' XP)' : 'Complete challenge  (+' + f.l.xp + ' XP)') + '</button></div>'
+    + '</div>';
 }
 let currentAIMode = 'full';   // the current lesson's coder policy: full | guided | off
 let aiMode = 'coder';         // which agent the panel talks to: tutor | coder
