@@ -1,0 +1,17 @@
+{
+  "name": "league-course-agent",
+  "version": "0.1.0",
+  "private": true,
+  "type": "commonjs",
+  "description": "LEAGUE Game Dev course shell + sandboxed AI agent (runs on a server or in Codespaces).",
+  "scripts": {
+    "start": "node server.js"
+  },
+  "engines": {
+    "node": ">=18"
+  },
+  "dependencies": {
+    "express": "^4.19.2",
+    "dotenv": "^16.4.5"
+  }
+}

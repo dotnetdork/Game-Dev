@@ -1,0 +1,13 @@
+{
+  "name": "LEAGUE Game Dev",
+  "short_name": "Game Dev",
+  "description": "The League of Amazing Programmers — browser-based game development course.",
+  "start_url": ".",
+  "display": "standalone",
+  "background_color": "#0a1728",
+  "theme_color": "#102a49",
+  "icons": [
+    { "src": "https://images.jointheleague.org/logos/android-chrome-192x192.png", "sizes": "192x192", "type": "image/png" },
+    { "src": "https://images.jointheleague.org/logos/android-chrome-512x512.png", "sizes": "512x512", "type": "image/png", "purpose": "any maskable" }
+  ]
+}
