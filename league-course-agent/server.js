@@ -17,12 +17,33 @@ const ROOT = __dirname;
 const WORKSPACE = path.join(ROOT, 'workspace');
 const GAME_FILE = path.join(WORKSPACE, 'game.js');
 
-// ---- AI provider (keys stay server-side, never sent to the browser) ----
-const PROVIDER = process.env.AI_PROVIDER || 'ollama';
+// ---- AI providers (keys stay server-side, never sent to the browser) ----
+// Multiple agents (coder / tutor / quiz / grader) each get their own model, set in .env.
+// A model spec is "<provider>:<model>", e.g. "ollama:qwen2.5-coder:7b",
+// "openrouter:qwen/qwen-2.5-coder-7b", "anthropic:claude-3-5-sonnet-latest".
+// No prefix => DEFAULT_PROVIDER is used. Everything works on local Ollama or on OpenRouter.
+const DEFAULT_PROVIDER = process.env.AI_PROVIDER || 'ollama';
 const OLLAMA_URL = process.env.OLLAMA_URL || 'http://localhost:11434/api/chat';
-const OLLAMA_MODEL = process.env.OLLAMA_MODEL || 'llama3.1';
+const OLLAMA_MODEL = process.env.OLLAMA_MODEL || 'qwen2.5-coder:7b';
 const ANTHROPIC_KEY = process.env.ANTHROPIC_API_KEY || '';
 const ANTHROPIC_MODEL = process.env.ANTHROPIC_MODEL || 'claude-3-5-sonnet-latest';
+const OPENROUTER_KEY = process.env.OPENROUTER_API_KEY || '';
+const OPENROUTER_URL = 'https://openrouter.ai/api/v1/chat/completions';
+
+const AGENT_MODELS = {
+  coder:  process.env.CODER_MODEL  || '',   // edits the game code
+  tutor:  process.env.TUTOR_MODEL  || '',   // explains / answers questions
+  quiz:   process.env.QUIZ_MODEL   || '',   // (scaffold) writes questions
+  grader: process.env.GRADER_MODEL || ''    // (scaffold) checks work
+};
+const KNOWN_PROVIDERS = ['ollama', 'openrouter', 'anthropic'];
+function resolveModel(agent) {
+  let spec = AGENT_MODELS[agent] || '';
+  if (!spec) spec = DEFAULT_PROVIDER + ':' + (DEFAULT_PROVIDER === 'anthropic' ? ANTHROPIC_MODEL : OLLAMA_MODEL);
+  const i = spec.indexOf(':');
+  if (i > 0 && KNOWN_PROVIDERS.indexOf(spec.slice(0, i)) >= 0) return { provider: spec.slice(0, i), model: spec.slice(i + 1) };
+  return { provider: DEFAULT_PROVIDER, model: spec };
+}
 
 // ---- SANDBOX: the only fields the agent may change, with safe ranges ----
 const TUNABLES = {
@@ -60,9 +81,11 @@ app.get('/api/files/:name', (req, res) => {                               // rea
 });
 app.get('/api/config', (req, res) => res.json(currentConfig(fs.readFileSync(GAME_FILE, 'utf8')))); // current game settings
 
-// ---- which model is running (for the AI panel header) ----
+// ---- which models are running (per agent) ----
 app.get('/api/info', (req, res) => {
-  res.json({ provider: PROVIDER, model: PROVIDER === 'anthropic' ? ANTHROPIC_MODEL : OLLAMA_MODEL });
+  const agents = {};
+  ['coder', 'tutor', 'quiz', 'grader'].forEach(function (a) { const m = resolveModel(a); agents[a] = m.provider + ':' + m.model; });
+  res.json({ agents: agents, provider: DEFAULT_PROVIDER, model: resolveModel('coder').model });
 });
 
 // ---- WRITE access: students may edit/create only safe .js files in the workspace ----
@@ -133,30 +156,52 @@ function buildSystem(gameCode) {
     + '- If it is just a question, reply with only {"reply":"..."} and no other fields.\n'
     + '- Output nothing but the single JSON object.';
 }
+function buildTutorSystem(gameCode, context) {
+  return 'You are a friendly coding tutor for kids aged 11-15 in a game-dev course. '
+    + 'Explain clearly and briefly, in plain language, and help them UNDERSTAND the code rather than doing their work for them. '
+    + 'Point to the relevant function or idea when it helps. Keep answers short; show only tiny snippets if needed; never dump large code.\n'
+    + (context ? '\nThe student is asking about this part of the lesson:\n"""\n' + context + '\n"""\n' : '')
+    + (gameCode ? '\nCurrent game.js for reference:\n```javascript\n' + gameCode + '\n```' : '');
+}
+const AGENT_SYSTEMS = {
+  quiz: 'You write short comprehension questions for kids (11-15) learning to code. Output ONLY a JSON object.',
+  grader: 'You check a student\'s answer or code change for a kids coding course. Output ONLY a JSON object with {"pass": true/false, "hint": "..."}.'
+};
 function extractCode(raw) {
   const m = raw.match(/```(?:javascript|js)?\s*([\s\S]*?)```/i);
   return m ? m[1].trim() : null;
 }
 function stripCode(raw) { return raw.replace(/```[\s\S]*?```/, '').trim(); }
-async function callAI(system, user) {
-  if (PROVIDER === 'anthropic') {
+async function callAI(spec, system, user, wantJSON) {
+  const provider = spec.provider, model = spec.model;
+  if (provider === 'anthropic') {
     if (!ANTHROPIC_KEY) throw new Error('ANTHROPIC_API_KEY not set');
     const r = await fetch('https://api.anthropic.com/v1/messages', {
       method: 'POST',
       headers: { 'x-api-key': ANTHROPIC_KEY, 'anthropic-version': '2023-06-01', 'content-type': 'application/json' },
-      body: JSON.stringify({ model: ANTHROPIC_MODEL, max_tokens: 2000, system, messages: [{ role: 'user', content: user }] })
+      body: JSON.stringify({ model: model, max_tokens: 2000, system: system, messages: [{ role: 'user', content: user }] })
     });
     if (!r.ok) throw new Error('Anthropic HTTP ' + r.status);
     const d = await r.json();
     return (d.content && d.content[0] && d.content[0].text) || '';
   }
+  if (provider === 'openrouter') {
+    if (!OPENROUTER_KEY) throw new Error('OPENROUTER_API_KEY not set');
+    const body = { model: model, messages: [{ role: 'system', content: system }, { role: 'user', content: user }] };
+    if (wantJSON) body.response_format = { type: 'json_object' };
+    const r = await fetch(OPENROUTER_URL, {
+      method: 'POST', headers: { 'Authorization': 'Bearer ' + OPENROUTER_KEY, 'content-type': 'application/json' },
+      body: JSON.stringify(body)
+    });
+    if (!r.ok) throw new Error('OpenRouter HTTP ' + r.status);
+    const d = await r.json();
+    return (d.choices && d.choices[0] && d.choices[0].message && d.choices[0].message.content) || '';
+  }
   // default: local Ollama (free). format:json nudges clean JSON out of small models.
-  const r = await fetch(OLLAMA_URL, {
-    method: 'POST', headers: { 'content-type': 'application/json' },
-    body: JSON.stringify({ model: OLLAMA_MODEL, stream: false, format: 'json',
-      options: { num_ctx: 8192, num_predict: 2048, temperature: 0.3 },
-      messages: [{ role: 'system', content: system }, { role: 'user', content: user }] })
-  });
+  const body = { model: model, stream: false, options: { num_ctx: 8192, num_predict: 2048, temperature: 0.3 },
+    messages: [{ role: 'system', content: system }, { role: 'user', content: user }] };
+  if (wantJSON) body.format = 'json';
+  const r = await fetch(OLLAMA_URL, { method: 'POST', headers: { 'content-type': 'application/json' }, body: JSON.stringify(body) });
   if (!r.ok) throw new Error('Ollama HTTP ' + r.status);
   const d = await r.json();
   return (d.message && d.message.content) || d.response || '';
@@ -168,14 +213,34 @@ async function callAI(system, user) {
 app.post('/api/ai', async (req, res) => {
   const id = (req.body && req.body.studentId) || req.ip || 'anon';
   if (rateLimited(id)) return res.status(429).json({ reply: 'Slow down a moment - you have hit the request limit. Try again shortly.' });
-  const message = ((req.body && req.body.message) || '').toString().slice(0, 800);
+  const message = ((req.body && req.body.message) || '').toString().slice(0, 2000);
   if (!message) return res.status(400).json({ reply: 'Please type a message.' });
   const gameCode = ((req.body && req.body.code) || '').toString().slice(0, 100000);
+  const context = ((req.body && req.body.context) || '').toString().slice(0, 4000);
+  let agent = (req.body && req.body.agent) || 'coder';
+  if (['coder', 'tutor', 'quiz', 'grader'].indexOf(agent) < 0) agent = 'coder';   // controller: keep to known agents
+  const spec = resolveModel(agent);
 
+  // TUTOR: plain-language explanation, no code edits.
+  if (agent === 'tutor') {
+    let raw;
+    try { raw = await callAI(spec, buildTutorSystem(gameCode, context), message, false); }
+    catch (e) { return res.status(502).json({ reply: 'The tutor is not reachable right now (' + e.message + ').' }); }
+    return res.json({ reply: (raw || '').trim() || 'Hmm, I am not sure — try rephrasing.' });
+  }
+
+  // QUIZ / GRADER (scaffold): return whatever JSON the model produced.
+  if (agent === 'quiz' || agent === 'grader') {
+    let raw;
+    try { raw = await callAI(spec, AGENT_SYSTEMS[agent], message, true); }
+    catch (e) { return res.status(502).json({ error: 'The ' + agent + ' agent is not reachable (' + e.message + ').' }); }
+    return res.json({ result: extractJSON(raw) || {} });
+  }
+
+  // CODER (default): return ops the browser applies to game.js.
   let raw;
-  try { raw = await callAI(buildSystem(gameCode), message); }
+  try { raw = await callAI(spec, buildSystem(gameCode), message, true); }
   catch (e) { return res.status(502).json({ reply: 'The AI service is not reachable right now (' + e.message + ').' }); }
-
   const parsed = extractJSON(raw) || { reply: (raw || '').trim() || 'Done.' };
   const ops = {};
   ['config', 'functions', 'create', 'update', 'newFile', 'replaceFile'].forEach(function (k) {
@@ -184,4 +249,7 @@ app.post('/api/ai', async (req, res) => {
   res.json({ reply: parsed.reply || 'Done.', ops: Object.keys(ops).length ? ops : null });
 });
 
-app.listen(PORT, () => console.log('Course agent on http://localhost:' + PORT + '  (AI provider: ' + PROVIDER + ')'));
+app.listen(PORT, () => {
+  const c = resolveModel('coder'), t = resolveModel('tutor');
+  console.log('Course agent on http://localhost:' + PORT + '  (coder: ' + c.provider + ':' + c.model + ' · tutor: ' + t.provider + ':' + t.model + ')');
+});

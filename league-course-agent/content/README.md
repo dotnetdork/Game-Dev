@@ -35,3 +35,37 @@ Use a fenced block tagged `run` to make an editable, runnable JavaScript cell
 
 Standard Markdown (headings, lists, **bold**, images, `> quotes`, normal ```js code blocks) all render.
 Quizzes, in-lesson challenges, and tutor checkpoints are coming once we finalize their syntax.
+
+## Interactive widgets (provisional syntax)
+
+These use fenced code blocks. The exact syntax may change once we finalize the widget format, but content is easy to convert.
+
+Quiz — multiple choice (`answer` is 0-based):
+
+    ```quiz
+    type: mcq
+    prompt: When does update() run?
+    options:
+      - Once at the start
+      - Every frame
+    answer: 1
+    ```
+
+Quiz — Parsons (list the lines in the CORRECT order; the app shuffles them for the student):
+
+    ```quiz
+    type: parsons
+    prompt: Order these steps.
+    lines:
+      - First step
+      - Second step
+    ```
+
+Tutor checkpoint — a scoped question answered by the tutor agent:
+
+    ```tutor
+    context: A few lines of the concept the tutor should focus on.
+    prompt: The question to ask on the student's behalf.
+    ```
+
+Reminder: quote any value containing a colon.

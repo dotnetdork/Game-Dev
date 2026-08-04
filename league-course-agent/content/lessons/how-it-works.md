@@ -7,16 +7,26 @@ summary: A quick tour of the studio — the outline, the viewport, and your AI h
 
 The studio has three tabs you'll switch between constantly:
 
-- **Learn** — the lesson you're reading right now.
-- **Code** — your game's files. **Save** keeps your changes; **Run** plays them.
+- **Learn** — the lesson you're reading now.
+- **Code** — your game's files. **Save** keeps changes; **Run** plays them.
 - **Play** — runs your game and shows its settings and a log for debugging.
 
-On the right is your **AI Assistant**. Tell it what you want to change and it edits the code for you — but *you* decide what should change.
+On the right is your **AI Assistant**. Tell it what you want changed and it edits the code — but *you* decide what changes.
 
 ```run
-console.log("Change this number, then press Run:");
 const speed = 200;
 console.log("The player moves at " + speed + " pixels per second.");
+console.log("Change 200 to 400 and press Run again.");
 ```
 
-When a lesson has a **challenge**, finishing it earns XP and unlocks the next lesson.
+Quick check:
+
+```quiz
+type: mcq
+prompt: Which tab do you press to see your game actually play?
+options:
+  - Learn
+  - Code
+  - Play
+answer: 2
+```

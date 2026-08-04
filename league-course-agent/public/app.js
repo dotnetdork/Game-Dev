@@ -358,11 +358,93 @@ function renderRunCells(root) {
     pre.parentNode.replaceChild(cell, pre);
   });
 }
+function shuffleOrder(n) {
+  let a = []; for (let i = 0; i < n; i++) a.push(i);
+  if (n < 2) return a;
+  let tries = 0;
+  do { for (let i = a.length - 1; i > 0; i--) { const j = Math.floor(Math.random() * (i + 1)); const t = a[i]; a[i] = a[j]; a[j] = t; } tries++; }
+  while (a.every(function (v, i) { return v === i; }) && tries < 12);
+  return a;
+}
+/* ```quiz  (provisional syntax) — Parsons or multiple-choice, checked locally */
+function renderQuizCells(root) {
+  root.querySelectorAll('pre > code.language-quiz').forEach(function (code) {
+    let q; try { q = jsyaml.load(code.textContent) || {}; } catch (e) { q = {}; }
+    const pre = code.parentNode;
+    const cell = document.createElement('div'); cell.className = 'quizcell';
+    cell.innerHTML = '<div class="quiz-h"><span class="mdi mdi-help-circle-outline"></span>' + (q.prompt || 'Quick check') + '</div>';
+    const body = document.createElement('div'); body.className = 'quiz-body'; cell.appendChild(body);
+    const result = document.createElement('div'); result.className = 'quiz-result';
+    const check = document.createElement('button'); check.className = 'quiz-check'; check.textContent = 'Check';
+    if (q.type === 'parsons') {
+      const lines = (q.lines || []); let order = shuffleOrder(lines.length);
+      const list = document.createElement('div'); list.className = 'parsons';
+      function draw() {
+        list.innerHTML = '';
+        order.forEach(function (li, pos) {
+          const row = document.createElement('div'); row.className = 'parsons-row';
+          const btns = document.createElement('div'); btns.className = 'parsons-btns';
+          const up = document.createElement('button'); up.className = 'pbtn'; up.innerHTML = '<span class="mdi mdi-chevron-up"></span>'; up.disabled = pos === 0;
+          const dn = document.createElement('button'); dn.className = 'pbtn'; dn.innerHTML = '<span class="mdi mdi-chevron-down"></span>'; dn.disabled = pos === order.length - 1;
+          up.addEventListener('click', function () { const t = order[pos - 1]; order[pos - 1] = order[pos]; order[pos] = t; draw(); });
+          dn.addEventListener('click', function () { const t = order[pos + 1]; order[pos + 1] = order[pos]; order[pos] = t; draw(); });
+          btns.appendChild(up); btns.appendChild(dn);
+          const c = document.createElement('code'); c.textContent = lines[li];
+          row.appendChild(btns); row.appendChild(c); list.appendChild(row);
+        });
+      }
+      draw(); body.appendChild(list);
+      check.addEventListener('click', function () {
+        const ok = order.every(function (v, i) { return v === i; });
+        result.className = 'quiz-result ' + (ok ? 'ok' : 'no'); result.textContent = ok ? 'Correct — nice ordering!' : 'Not yet — keep rearranging the lines.';
+      });
+    } else {
+      const opts = (q.options || []); let chosen = -1; const nm = 'q' + Math.random().toString(36).slice(2, 8);
+      opts.forEach(function (opt, i) {
+        const row = document.createElement('label'); row.className = 'mcq-opt';
+        const radio = document.createElement('input'); radio.type = 'radio'; radio.name = nm;
+        radio.addEventListener('change', function () { chosen = i; });
+        const span = document.createElement('span'); span.textContent = opt;
+        row.appendChild(radio); row.appendChild(span); body.appendChild(row);
+      });
+      check.addEventListener('click', function () {
+        if (chosen < 0) { result.className = 'quiz-result'; result.textContent = 'Pick an answer first.'; return; }
+        const ok = chosen === Number(q.answer);
+        result.className = 'quiz-result ' + (ok ? 'ok' : 'no');
+        result.textContent = ok ? 'Correct!' : (q.explain ? 'Not quite — ' + q.explain : 'Not quite — try again.');
+      });
+    }
+    body.appendChild(check); cell.appendChild(result);
+    pre.parentNode.replaceChild(cell, pre);
+  });
+}
+/* ```tutor  (provisional syntax) — a scoped question answered by the tutor agent */
+function renderTutorCells(root) {
+  root.querySelectorAll('pre > code.language-tutor').forEach(function (code) {
+    let t; try { t = jsyaml.load(code.textContent) || {}; } catch (e) { t = {}; }
+    const pre = code.parentNode; const q = t.prompt || t.question || 'Ask the tutor about this.';
+    const cell = document.createElement('div'); cell.className = 'tutorcell';
+    cell.innerHTML = '<div class="tutor-h"><span class="mdi mdi-robot-happy-outline"></span>Ask the tutor</div><div class="tutor-q"></div>';
+    cell.querySelector('.tutor-q').textContent = q;
+    const btn = document.createElement('button'); btn.className = 'tutor-btn'; btn.innerHTML = '<span class="mdi mdi-message-question-outline"></span>Ask';
+    const ans = document.createElement('div'); ans.className = 'tutor-ans';
+    btn.addEventListener('click', function () {
+      btn.disabled = true; ans.textContent = 'Thinking…';
+      fetch('/api/ai', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ studentId: studentId, agent: 'tutor', message: q, context: (t.context || '') }) })
+        .then(function (r) { return r.json(); }).then(function (d) { ans.textContent = d.reply || '—'; btn.disabled = false; })
+        .catch(function () { ans.textContent = 'Could not reach the tutor.'; btn.disabled = false; });
+    });
+    cell.appendChild(btn); cell.appendChild(ans);
+    pre.parentNode.replaceChild(cell, pre);
+  });
+}
 function selectLesson(idx) {
   curIdx = idx; const f = flat[idx];
   $('crumb').dataset.lesson = f.m.name + ': ' + f.l.t;
   $('lessonBody').innerHTML = lessonBodyHTML(f);
   renderRunCells($('lessonBody'));
+  renderQuizCells($('lessonBody'));
+  renderTutorCells($('lessonBody'));
   applyAIMode(f.l.ai);
   const btn = $('completeBtn'); if (btn) btn.addEventListener('click', function () { completeLesson(); });
   renderOutline(); switchView('learn');
@@ -445,7 +527,7 @@ function sendAI() {
   if (currentAIMode === 'off') { toast('The AI is off for this challenge — give it a try yourself!'); return; }
   addMsg('user', text); box.value = ''; const pending = addMsg('bot', 'Thinking…');
   // the code lives in the browser; we send it along, the server relays the AI, and we apply the change here
-  fetch('/api/ai', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ studentId: studentId, message: text, code: project.files['game.js'] || '' }) })
+  fetch('/api/ai', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ studentId: studentId, agent: 'coder', message: text, code: project.files['game.js'] || '' }) })
     .then(function (r) { return r.json(); }).then(function (data) {
       pending.textContent = data.reply || 'Done.';
       const ops = data.ops; if (!ops) return;

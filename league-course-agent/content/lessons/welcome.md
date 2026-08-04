@@ -15,7 +15,7 @@ Welcome! Over this course you'll build a **real game** you can play in your brow
 
 ## Try some code
 
-This is a runnable snippet. Press **Run** and watch the output:
+Press **Run** and watch the output — then change a number and run it again:
 
 ```run
 console.log("Hello, game maker!");
@@ -24,4 +24,9 @@ for (let i = 1; i <= 3; i++) {
 }
 ```
 
-> Tip: reading code you didn't write is a real skill — you can ask the tutor about any line, anytime.
+Stuck or curious? You can always ask the tutor:
+
+```tutor
+context: This course teaches you to read code and direct an AI to build a game, instead of typing everything yourself.
+prompt: What will I actually be able to do by the end of this course?
+```
