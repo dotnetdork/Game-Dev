@@ -356,21 +356,56 @@ function setAIMode(mode) {
   if (aiMode === 'tutor') { const inp = $('aiText'), btn = $('aiSend'); if (inp) { inp.disabled = false; inp.placeholder = 'Ask the tutor about this lesson...'; } if (btn) btn.disabled = false; }
   else { applyAIMode(currentAIMode); }
 }
+/* ```run — editable JS cell. Directives (as // @lines): @goal: <text>, @expect: <substring>, @slider: name min max step value */
 function renderRunCells(root) {
   root.querySelectorAll('pre > code.language-run').forEach(function (code) {
-    const pre = code.parentNode; const src = code.textContent;
+    const pre = code.parentNode; const raw = code.textContent;
+    let goal = '', expect = ''; const sliders = []; const bodyLines = [];
+    raw.split('\n').forEach(function (ln) {
+      let m;
+      if (m = ln.match(/^\s*\/\/\s*@goal:\s*(.+)$/)) goal = m[1].trim();
+      else if (m = ln.match(/^\s*\/\/\s*@expect:\s*(.+)$/)) expect = m[1].trim();
+      else if (m = ln.match(/^\s*\/\/\s*@slider:\s*([A-Za-z_$][\w$]*)\s+(-?[\d.]+)\s+(-?[\d.]+)\s+(-?[\d.]+)\s+(-?[\d.]+)\s*$/)) sliders.push({ name: m[1], min: +m[2], max: +m[3], step: +m[4], value: +m[5] });
+      else bodyLines.push(ln);
+    });
+    const src = bodyLines.join('\n').replace(/^\n+/, '');
+    const tok = 'rc' + Math.random().toString(36).slice(2, 9);
     const cell = document.createElement('div'); cell.className = 'runcell';
-    const ta = document.createElement('textarea'); ta.value = src; ta.spellcheck = false;
-    ta.rows = Math.min(14, Math.max(3, src.split('\n').length));
+    if (goal) { const g = document.createElement('div'); g.className = 'run-goal'; g.innerHTML = '<span class="mdi mdi-target"></span>'; g.appendChild(document.createTextNode(goal)); cell.appendChild(g); }
+    const sEls = {};
+    if (sliders.length) {
+      const sw = document.createElement('div'); sw.className = 'run-sliders';
+      sliders.forEach(function (s) {
+        const row = document.createElement('label'); row.className = 'run-slider';
+        const nm = document.createElement('span'); nm.className = 'rs-name'; nm.textContent = s.name + ' = ';
+        const val = document.createElement('b'); val.textContent = s.value; nm.appendChild(val);
+        const inp = document.createElement('input'); inp.type = 'range'; inp.min = s.min; inp.max = s.max; inp.step = s.step; inp.value = s.value;
+        inp.addEventListener('input', function () { val.textContent = inp.value; run(); });
+        sEls[s.name] = inp; row.appendChild(nm); row.appendChild(inp); sw.appendChild(row);
+      });
+      cell.appendChild(sw);
+    }
+    const ta = document.createElement('textarea'); ta.value = src; ta.spellcheck = false; ta.rows = Math.min(16, Math.max(3, src.split('\n').length));
     const bar = document.createElement('div'); bar.className = 'runbar';
     const btn = document.createElement('button'); btn.className = 'runbtn'; btn.innerHTML = '<span class="mdi mdi-play"></span>Run';
+    const status = document.createElement('span'); status.className = 'run-status';
     const out = document.createElement('iframe'); out.className = 'runout'; out.setAttribute('sandbox', 'allow-scripts');
-    btn.addEventListener('click', function () {
-      const userCode = ta.value.replace(/<\/(script)/gi, '<\\/$1');
-      out.srcdoc = '<!doctype html><body style="margin:0;font:12.5px Consolas,monospace;color:#cfe0f2;background:#08121f;padding:8px"><pre id="o" style="margin:0;white-space:pre-wrap"></pre><scr' + 'ipt>var o=document.getElementById("o");function w(){o.textContent+=[].slice.call(arguments).join(" ")+"\\n";}console.log=w;console.info=w;console.warn=w;console.error=function(){o.textContent+="\\u26a0 "+[].slice.call(arguments).join(" ")+"\\n";};try{\n' + userCode + '\n}catch(e){o.textContent+="\\u26a0 "+e.message+"\\n";}</scr' + 'ipt></body>';
-      out.style.display = 'block';
-    });
-    bar.appendChild(btn); cell.appendChild(ta); cell.appendChild(bar); cell.appendChild(out);
+    function buildDoc(userCode) {
+      const prefix = sliders.map(function (s) { return 'const ' + s.name + ' = ' + sEls[s.name].value + ';'; }).join('\n');
+      const safe = (prefix + '\n' + userCode).replace(/<\/(script)/gi, '<\\/$1');
+      return '<!doctype html><body style="margin:0;font:12.5px Consolas,monospace;color:#cfe0f2;background:#08121f;padding:8px"><pre id="o" style="margin:0;white-space:pre-wrap"></pre><scr' + 'ipt>var o=document.getElementById("o");function w(){o.textContent+=[].slice.call(arguments).join(" ")+"\\n";}console.log=w;console.info=w;console.warn=w;console.error=function(){o.textContent+="\\u26a0 "+[].slice.call(arguments).join(" ")+"\\n";};try{\n' + safe + '\n}catch(e){o.textContent+="\\u26a0 "+e.message+"\\n";}try{parent.postMessage({__runcell:true,tok:"' + tok + '",text:o.textContent},"*");}catch(e){}</scr' + 'ipt></body>';
+    }
+    function run() { out.style.display = 'block'; out.srcdoc = buildDoc(ta.value); }
+    if (expect) {
+      window.addEventListener('message', function (e) {
+        const d = e && e.data; if (!d || !d.__runcell || d.tok !== tok) return;
+        const met = (d.text || '').indexOf(expect) >= 0;
+        status.className = 'run-status ' + (met ? 'ok' : 'no'); status.textContent = met ? 'Goal met!' : 'Not yet — check the output.';
+      });
+    }
+    btn.addEventListener('click', run);
+    bar.appendChild(btn); bar.appendChild(status);
+    cell.appendChild(ta); cell.appendChild(bar); cell.appendChild(out);
     pre.parentNode.replaceChild(cell, pre);
   });
 }
@@ -382,76 +417,109 @@ function shuffleOrder(n) {
   while (a.every(function (v, i) { return v === i; }) && tries < 12);
   return a;
 }
-/* ```quiz  (provisional syntax) — Parsons (drag-and-drop) or multiple-choice, checked locally */
+/* ```quiz  (provisional syntax) — types: mcq | predict | parsons | fillblank | findbug. All checked locally. */
 function renderQuizCells(root) {
   root.querySelectorAll('pre > code.language-quiz').forEach(function (code) {
     let q; try { q = jsyaml.load(code.textContent) || {}; } catch (e) { q = {}; }
     const pre = code.parentNode;
     const cell = document.createElement('div'); cell.className = 'quizcell';
-    cell.innerHTML = '<div class="quiz-h"><span class="mdi mdi-help-circle-outline"></span>' + (q.prompt || 'Quick check') + '</div>';
+    const head = document.createElement('div'); head.className = 'quiz-h'; head.innerHTML = '<span class="mdi mdi-help-circle-outline"></span>'; head.appendChild(document.createTextNode(q.prompt || 'Quick check')); cell.appendChild(head);
     const body = document.createElement('div'); body.className = 'quiz-body'; cell.appendChild(body);
     const result = document.createElement('div'); result.className = 'quiz-result';
     const check = document.createElement('button'); check.className = 'quiz-check'; check.textContent = 'Check';
-    if (q.type === 'parsons') {
-      const lines = (q.lines || []); let order = shuffleOrder(lines.length); let dragFrom = null;
-      const list = document.createElement('div'); list.className = 'parsons';
-      function draw() {
-        list.innerHTML = '';
-        order.forEach(function (li, pos) {
-          const row = document.createElement('div'); row.className = 'parsons-row'; row.draggable = true;
-          const handle = document.createElement('span'); handle.className = 'drag-handle'; handle.innerHTML = '<span class="mdi mdi-drag-horizontal-variant"></span>';
-          const c = document.createElement('code'); c.textContent = lines[li];
-          row.appendChild(handle); row.appendChild(c);
-          row.addEventListener('dragstart', function () { dragFrom = pos; row.classList.add('dragging'); });
-          row.addEventListener('dragend', function () { row.classList.remove('dragging'); });
-          row.addEventListener('dragover', function (e) { e.preventDefault(); row.classList.add('over'); });
-          row.addEventListener('dragleave', function () { row.classList.remove('over'); });
-          row.addEventListener('drop', function (e) {
-            e.preventDefault(); row.classList.remove('over');
-            if (dragFrom === null || dragFrom === pos) { dragFrom = null; return; }
-            const moved = order.splice(dragFrom, 1)[0]; order.splice(pos, 0, moved); dragFrom = null; draw();
-          });
-          list.appendChild(row);
-        });
-      }
-      draw(); body.appendChild(list);
-      check.addEventListener('click', function () {
-        const ok = order.every(function (v, i) { return v === i; });
-        result.className = 'quiz-result ' + (ok ? 'ok' : 'no'); result.textContent = ok ? 'Correct — nice ordering!' : 'Not yet — drag the lines into the right order.';
-      });
-    } else {
-      const opts = (q.options || []); let chosen = -1; const nm = 'q' + Math.random().toString(36).slice(2, 8); const rows = [];
-      opts.forEach(function (opt, i) {
-        const row = document.createElement('label'); row.className = 'mcq-opt'; rows.push(row);
-        const radio = document.createElement('input'); radio.type = 'radio'; radio.name = nm;
-        radio.addEventListener('change', function () { chosen = i; });
-        const span = document.createElement('span'); span.textContent = opt;
-        row.appendChild(radio); row.appendChild(span); body.appendChild(row);
-      });
-      check.addEventListener('click', function () {
-        if (chosen < 0) { result.className = 'quiz-result'; result.textContent = 'Pick an answer first.'; return; }
-        const ans = Number(q.answer); const ok = chosen === ans;
-        rows.forEach(function (r, i) { r.classList.remove('correct', 'wrong'); if (i === ans) r.classList.add('correct'); else if (i === chosen) r.classList.add('wrong'); });
-        result.className = 'quiz-result ' + (ok ? 'ok' : 'no');
-        result.textContent = ok ? 'Correct!' : (q.explain ? 'Not quite — ' + q.explain : 'Not quite — the highlighted answer is correct.');
-      });
-    }
+    const say = function (ok, msg) { result.className = 'quiz-result ' + (ok ? 'ok' : 'no'); result.textContent = msg; };
+    const type = q.type || 'mcq';
+    if (type === 'parsons') buildParsons(q, body, check, say);
+    else if (type === 'fillblank') buildFill(q, body, check, say);
+    else if (type === 'findbug') buildFindBug(q, body, check, say);
+    else buildMCQ(q, body, check, say, type === 'predict');
     body.appendChild(check); cell.appendChild(result);
     pre.parentNode.replaceChild(cell, pre);
   });
 }
-/* ```tutor  (provisional syntax) — a small inline button that routes a scoped question into the AI panel */
-function renderTutorCells(root) {
-  root.querySelectorAll('pre > code.language-tutor').forEach(function (code) {
-    let t; try { t = jsyaml.load(code.textContent) || {}; } catch (e) { t = {}; }
-    const pre = code.parentNode; const q = t.prompt || t.question || 'Ask the tutor about this.';
-    const cell = document.createElement('div'); cell.className = 'tutor-inline';
-    const icon = document.createElement('span'); icon.className = 'mdi mdi-robot-happy-outline';
-    const label = document.createElement('span'); label.textContent = q;
-    const btn = document.createElement('button'); btn.innerHTML = '<span class="mdi mdi-message-question-outline"></span>Ask the tutor';
-    btn.addEventListener('click', function () { setAIMode('tutor'); askTutor(q, t.context || currentLessonText); });
-    cell.appendChild(icon); cell.appendChild(label); cell.appendChild(btn);
-    pre.parentNode.replaceChild(cell, pre);
+function buildMCQ(q, body, check, say, isPredict) {
+  if (isPredict && q.code) { const pc = document.createElement('pre'); pc.className = 'quiz-code'; pc.textContent = q.code; body.appendChild(pc); }
+  const opts = q.options || []; const fb = q.feedback || []; let chosen = -1; const nm = 'q' + Math.random().toString(36).slice(2, 8); const rows = [];
+  opts.forEach(function (opt, i) {
+    const row = document.createElement('label'); row.className = 'mcq-opt'; rows.push(row);
+    const radio = document.createElement('input'); radio.type = 'radio'; radio.name = nm;
+    radio.addEventListener('change', function () { chosen = i; });
+    const span = document.createElement('span'); span.textContent = opt;
+    row.appendChild(radio); row.appendChild(span); body.appendChild(row);
+  });
+  check.addEventListener('click', function () {
+    if (chosen < 0) { say(false, 'Pick an answer first.'); return; }
+    const ans = Number(q.answer); const ok = chosen === ans;
+    rows.forEach(function (r, i) { r.classList.remove('correct', 'wrong'); if (i === ans) r.classList.add('correct'); else if (i === chosen) r.classList.add('wrong'); });
+    if (ok) say(true, 'Correct!');
+    else say(false, fb[chosen] ? 'Not quite — ' + fb[chosen] : (q.explain ? 'Not quite — ' + q.explain : 'Not quite — the highlighted answer is correct.'));
+  });
+}
+function buildParsons(q, body, check, say) {
+  const items = (q.lines || []).map(function (t) { return { text: t, distractor: false, why: '' }; })
+    .concat((q.distractors || []).map(function (d) { return { text: (typeof d === 'string' ? d : d.text), distractor: true, why: (typeof d === 'string' ? '' : (d.why || '')) }; }));
+  const correct = (q.lines || []); const hasDist = (q.distractors || []).length > 0;
+  let order = shuffleOrder(items.length); const used = {}; items.forEach(function (_, i) { used[i] = true; }); let dragFrom = null;
+  const list = document.createElement('div'); list.className = 'parsons';
+  function draw() {
+    list.innerHTML = '';
+    order.forEach(function (idx, pos) {
+      const it = items[idx];
+      const row = document.createElement('div'); row.className = 'parsons-row' + (used[idx] ? '' : ' unused'); row.draggable = true;
+      const handle = document.createElement('span'); handle.className = 'drag-handle'; handle.innerHTML = '<span class="mdi mdi-drag-horizontal-variant"></span>';
+      row.appendChild(handle);
+      if (hasDist) { const cb = document.createElement('input'); cb.type = 'checkbox'; cb.className = 'p-use'; cb.checked = used[idx]; cb.addEventListener('change', function () { used[idx] = cb.checked; row.classList.toggle('unused', !cb.checked); }); row.appendChild(cb); }
+      const c = document.createElement('code'); c.textContent = it.text; row.appendChild(c);
+      row.addEventListener('dragstart', function () { dragFrom = pos; row.classList.add('dragging'); });
+      row.addEventListener('dragend', function () { row.classList.remove('dragging'); });
+      row.addEventListener('dragover', function (e) { e.preventDefault(); row.classList.add('over'); });
+      row.addEventListener('dragleave', function () { row.classList.remove('over'); });
+      row.addEventListener('drop', function (e) { e.preventDefault(); row.classList.remove('over'); if (dragFrom === null || dragFrom === pos) { dragFrom = null; return; } const mv = order.splice(dragFrom, 1)[0]; order.splice(pos, 0, mv); dragFrom = null; draw(); });
+      list.appendChild(row);
+    });
+  }
+  draw(); body.appendChild(list);
+  const hint = document.createElement('div'); hint.className = 'parsons-hint'; hint.textContent = hasDist ? 'Drag into order — and uncheck any lines that don’t belong.' : 'Drag the lines into the right order.'; body.appendChild(hint);
+  check.addEventListener('click', function () {
+    const kept = order.filter(function (idx) { return used[idx]; }).map(function (idx) { return items[idx]; });
+    const badDist = kept.filter(function (it) { return it.distractor; });
+    if (badDist.length) { say(false, badDist[0].why ? 'Not quite — ' + badDist[0].why : 'Not quite — one of the lines you kept doesn’t belong.'); return; }
+    const texts = kept.map(function (it) { return it.text; });
+    const ok = texts.length === correct.length && texts.every(function (t, i) { return t === correct[i]; });
+    say(ok, ok ? 'Correct — nice ordering!' : 'Not yet — check the order (and which lines you kept).');
+  });
+}
+function buildFill(q, body, check, say) {
+  const tpl = String(q.code || q.template || ''); const parts = tpl.split('___');
+  const wrap = document.createElement('div'); wrap.className = 'fill-code';
+  const input = document.createElement('input'); input.type = 'text'; input.className = 'fill-input'; input.spellcheck = false; input.placeholder = '?';
+  if (parts.length >= 2) { wrap.appendChild(document.createTextNode(parts[0])); wrap.appendChild(input); wrap.appendChild(document.createTextNode(parts.slice(1).join('___'))); }
+  else { wrap.appendChild(input); }
+  body.appendChild(wrap);
+  const answers = (Array.isArray(q.answer) ? q.answer : [q.answer]).map(function (a) { return String(a).trim(); });
+  check.addEventListener('click', function () {
+    const v = input.value.trim();
+    const ok = answers.some(function (a) { return a === v || a.toLowerCase() === v.toLowerCase(); });
+    say(ok, ok ? 'Correct!' : (q.explain ? 'Not quite — ' + q.explain : 'Not quite — try again.'));
+  });
+}
+function buildFindBug(q, body, check, say) {
+  const lines = q.code || q.lines || []; let chosen = -1; const rows = [];
+  const wrap = document.createElement('div'); wrap.className = 'findbug';
+  lines.forEach(function (ln, i) {
+    const row = document.createElement('div'); row.className = 'fb-row'; rows.push(row);
+    const num = document.createElement('span'); num.className = 'fb-num'; num.textContent = (i + 1);
+    const c = document.createElement('code'); c.textContent = ln;
+    row.appendChild(num); row.appendChild(c);
+    row.addEventListener('click', function () { chosen = i; rows.forEach(function (r) { r.classList.remove('sel'); }); row.classList.add('sel'); });
+    wrap.appendChild(row);
+  });
+  body.appendChild(wrap);
+  check.addEventListener('click', function () {
+    if (chosen < 0) { say(false, 'Click the line you think has the bug.'); return; }
+    const ans = Number(q.answer); const ok = chosen === ans;
+    rows.forEach(function (r, i) { r.classList.remove('correct', 'wrong'); if (i === ans) r.classList.add('correct'); else if (i === chosen) r.classList.add('wrong'); });
+    say(ok, ok ? 'Correct — that’s the bug!' : (q.explain ? 'Not quite — ' + q.explain : 'Not quite — the highlighted line has the bug.'));
   });
 }
 function selectLesson(idx) {
@@ -492,15 +560,19 @@ function switchView(view) {
   if (view === 'code') { $('crumb').textContent = currentFile; refreshFiles(); loadCode(); setTimeout(function () { codeEditor.refresh(); }, 0); }
   if (view === 'play') { $('crumb').textContent = 'Playing: ' + course.name; startGame(); loadSettings(); } else { stopGame(); }
   setAIMode(view === 'learn' ? 'tutor' : 'coder');   // Learn = ask the tutor; Code/Play = build with the coder
+  if (view === 'learn') showConsole(false); else if (view === 'code') showConsole(true, true); else showConsole(true, false); // log: open on Code, closed on Play
 }
 document.querySelectorAll('.vtab').forEach(function (btn) { btn.addEventListener('click', function () { switchView(btn.getAttribute('data-view')); }); });
 function startGame() { // build a self-contained page from the browser-side project and run it in the iframe (no server)
+  conClear();
   const ordered = ['game.js'].concat(fileNames().filter(function (n) { return n !== 'game.js' && n !== 'main.js'; }));
   if (typeof project.files['main.js'] === 'string') ordered.push('main.js');
   const scripts = ordered.map(function (n) { return '<' + 'script>\n' + (project.files[n] || '') + '\n<' + '/script>'; }).join('\n');
+  const capture = '<' + 'script>(function(){function s(l,a){try{parent.postMessage({__gamelog:true,level:l,text:[].slice.call(a).map(String).join(" ")},"*");}catch(e){}}var c=console,lg=c.log.bind(c);c.log=function(){lg.apply(c,arguments);s("log",arguments);};var wn=c.warn.bind(c);c.warn=function(){wn.apply(c,arguments);s("warn",arguments);};var er=c.error.bind(c);c.error=function(){er.apply(c,arguments);s("error",arguments);};window.onerror=function(m){s("error",[m]);return false;};})();<' + '/script>\n';
   const html = '<!doctype html><html><head><meta charset="utf-8">'
     + '<style>html,body{margin:0;height:100%;background:#06101c;overflow:hidden}#game{width:100%;height:100vh}</style></head><body>'
     + '<div id="game"></div>\n'
+    + capture
     + '<' + 'script src="https://cdn.jsdelivr.net/npm/phaser@3.80.1/dist/phaser.min.js"><' + '/script>\n'
     + scripts + '\n</body></html>';
   $('gameFrame').removeAttribute('src'); $('gameFrame').srcdoc = html;
@@ -576,6 +648,26 @@ $('aiText').addEventListener('keydown', function (e) { if (e.key === 'Enter') se
 addMsg('bot', "Hi! Two modes up top: **Tutor** explains the lesson and answers questions, and **Build** changes your game's code. I switch automatically with your tab — Learn uses Tutor; Code and Play use Build.");
 $('modeToggle').addEventListener('click', function () { setAIMode(aiMode === 'tutor' ? 'coder' : 'tutor'); });
 fetch('/api/info').then(function (r) { return r.json(); }).then(function (d) { aiModels = d.agents || { coder: d.model, tutor: d.model }; setAIMode(aiMode); }).catch(function () {});
+
+/* ---------- console / log panel (bottom of Code & Play) ---------- */
+function conLine(level, text) {
+  const body = $('consoleBody'); if (!body) return;
+  const empty = body.querySelector('.cl-empty'); if (empty) empty.remove();
+  const d = document.createElement('div'); d.className = 'cl' + (level === 'error' ? ' err' : (level === 'warn' ? ' warn' : ''));
+  d.textContent = text; body.appendChild(d); body.scrollTop = body.scrollHeight;
+}
+function conClear() { const b = $('consoleBody'); if (b) b.innerHTML = '<div class="cl cl-empty">Console output from your game appears here.</div>'; }
+let consoleOpen = true;
+function showConsole(show, open) {
+  const c = $('console'); if (!c) return;
+  c.hidden = !show;
+  if (open !== undefined) consoleOpen = open;
+  c.classList.toggle('collapsed', !consoleOpen);
+}
+if ($('conToggle')) $('conToggle').addEventListener('click', function () { consoleOpen = !consoleOpen; $('console').classList.toggle('collapsed', !consoleOpen); });
+if ($('conClear')) $('conClear').addEventListener('click', conClear);
+window.addEventListener('message', function (e) { const d = e && e.data; if (d && d.__gamelog) conLine(d.level || 'log', d.text || ''); });
+conClear();
 
 /* ---------- page router ---------- */
 function showPage(page) {

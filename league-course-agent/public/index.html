@@ -72,6 +72,26 @@
   .lesson .tutor-inline{display:inline-flex;align-items:center;gap:8px;margin:14px 0;padding:8px 12px;border:1px solid var(--line);border-left:3px solid var(--teal);border-radius:0 8px 8px 0;background:#0d2440;color:#c3d3e6;font-size:14px;cursor:default;}
   .lesson .tutor-inline .mdi{color:var(--teal);}
   .lesson .tutor-inline button{background:var(--teal);color:#04231d;border:0;border-radius:6px;padding:4px 12px;font-weight:600;cursor:pointer;display:inline-flex;align-items:center;gap:5px;white-space:nowrap;}
+  .run-goal{display:flex;align-items:center;gap:8px;padding:8px 12px;background:#0d2440;border-bottom:1px solid var(--line);font-size:13px;color:#c3d3e6;}
+  .run-goal .mdi{color:var(--gold);}
+  .run-sliders{padding:8px 12px;border-bottom:1px solid var(--line);display:flex;flex-direction:column;gap:8px;background:#0d2440;}
+  .run-slider{display:flex;align-items:center;gap:10px;font-size:12.5px;color:#c3d3e6;}
+  .run-slider .rs-name{min-width:130px;} .run-slider .rs-name b{color:var(--teal);}
+  .run-slider input[type=range]{flex:1;}
+  .run-status{font-size:12.5px;margin-left:8px;align-self:center;} .run-status.ok{color:var(--green);} .run-status.no{color:var(--gold);}
+  .quiz-code{background:#08121f;border:1px solid var(--line);border-radius:8px;padding:10px 12px;font-family:Consolas,monospace;font-size:12.5px;color:#cfe0f2;white-space:pre-wrap;margin:0 0 4px;overflow-x:auto;}
+  .parsons-row .p-use{margin:0 2px;}
+  .parsons-row.unused{opacity:.5;} .parsons-row.unused code{text-decoration:line-through;}
+  .parsons-hint{font-size:12px;color:var(--dim);margin-top:2px;}
+  .fill-code{background:#08121f;border:1px solid var(--line);border-radius:8px;padding:10px 12px;font-family:Consolas,monospace;font-size:12.5px;color:#cfe0f2;white-space:pre-wrap;}
+  .fill-input{background:#0d2440;border:1px solid var(--azure);border-radius:5px;color:var(--ink);font-family:Consolas,monospace;font-size:12.5px;padding:2px 6px;width:120px;}
+  .findbug{display:flex;flex-direction:column;gap:2px;}
+  .fb-row{display:flex;gap:10px;align-items:flex-start;padding:4px 8px;border:1px solid transparent;border-radius:6px;cursor:pointer;font-family:Consolas,monospace;font-size:12.5px;color:#cfe0f2;background:#08121f;}
+  .fb-row:hover{border-color:var(--line);}
+  .fb-row .fb-num{color:var(--dim);min-width:16px;text-align:right;}
+  .fb-row.sel{border-color:var(--azure);}
+  .fb-row.correct{border-color:var(--green);background:#0f2e22;}
+  .fb-row.wrong{border-color:var(--gold);background:#2e2410;}
   .dock-body{flex:1;min-height:0;display:flex;flex-direction:column;overflow:hidden;}
   #panel-outline{flex:1;min-height:0;overflow:auto;padding:4px 0;}
   #panel-info{flex:1;min-height:0;overflow:auto;}
@@ -144,6 +164,19 @@
   .CodeMirror{flex:1;height:100%;font-family:Consolas,"Courier New",monospace;font-size:12.5px;}
   #view-play{background:#06101c;}
   #gameFrame{flex:1;border:0;width:100%;height:100%;}
+  .console{flex:none;display:flex;flex-direction:column;border-top:1px solid var(--line);background:#0a1524;height:34%;}
+  .console.collapsed{height:auto;}
+  .console.collapsed .console-body{display:none;}
+  .console-head{flex:none;display:flex;align-items:center;gap:8px;padding:4px 8px;background:var(--panel2);border-bottom:1px solid var(--line);font-size:11.5px;color:var(--muted);}
+  .console-head .con-title{display:flex;align-items:center;gap:6px;font-weight:600;letter-spacing:.5px;text-transform:uppercase;}
+  .console-head .con-title .mdi{color:var(--azure);}
+  .con-toggle{background:none;border:0;color:var(--muted);cursor:pointer;display:flex;padding:0;}
+  .con-toggle .mdi{font-size:18px;transition:transform .15s;}
+  .console.collapsed .con-toggle .mdi{transform:rotate(-90deg);}
+  .con-clear{margin-left:auto;background:var(--panel);border:1px solid var(--line);color:var(--muted);border-radius:5px;padding:2px 8px;font-size:11px;cursor:pointer;}
+  .console-body{flex:1;min-height:0;overflow:auto;padding:6px 10px;font-family:Consolas,monospace;font-size:12px;line-height:1.5;color:#cfe0f2;}
+  .console-body .cl{white-space:pre-wrap;} .console-body .cl.err{color:#ff9b9b;} .console-body .cl.warn{color:var(--gold);}
+  .console-body .cl-empty{color:var(--dim);}
 
   .ai{display:flex;flex-direction:column;flex:1;min-height:0;}
   .ai-msgs{flex:1;min-height:0;overflow:auto;padding:12px;display:flex;flex-direction:column;gap:10px;}
@@ -329,6 +362,14 @@
           <div class="view" id="view-learn"><div class="lesson" id="lessonBody"></div></div>
           <div class="view" id="view-code" hidden><textarea id="codeeditor"></textarea></div>
           <div class="view" id="view-play" hidden><iframe id="gameFrame" title="Game viewport"></iframe></div>
+        </div>
+        <div class="console" id="console" hidden>
+          <div class="console-head">
+            <button class="con-toggle" id="conToggle" title="Show or hide the log"><span class="mdi mdi-chevron-down"></span></button>
+            <span class="con-title"><span class="mdi mdi-console-line"></span>Console</span>
+            <button class="con-clear" id="conClear" title="Clear the log">Clear</button>
+          </div>
+          <div class="console-body" id="consoleBody"></div>
         </div>
       </div>
 
