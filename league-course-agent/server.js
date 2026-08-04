@@ -153,6 +153,7 @@ function buildSystem(gameCode) {
     + '- Use replaceFile ONLY when the student clearly asks to remove/delete/rewrite something.\n'
     + '- Put any new adjustable number in "config" so it appears in the settings panel.\n'
     + '- Use only Phaser 3 APIs and the patterns already in the file. Never write a new Phaser.Game.\n'
+    + '- For drawing, use only real Phaser 3 Graphics methods (fillRect, fillRoundedRect, fillCircle, fillTriangle, beginPath/moveTo/lineTo/closePath/fillPath, generateTexture). Do NOT use HTML-canvas methods like cubicCurveTo, bezierCurveTo, or arcTo — they do not exist on Phaser Graphics and crash the game.\n'
     + '- If it is just a question, reply with only {"reply":"..."} and no other fields.\n'
     + '- Output nothing but the single JSON object.';
 }

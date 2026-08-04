@@ -724,6 +724,7 @@ function resetGame() {
   } });
 }
 if ($('resetGameBtn')) $('resetGameBtn').addEventListener('click', resetGame);
+if ($('resetCodeBtn')) $('resetCodeBtn').addEventListener('click', resetGame);
 
 /* ---------- collapsible AI dock ---------- */
 let aiCollapsed = false;
