@@ -346,8 +346,13 @@ function applyAIMode(mode) {
 }
 function setAIMode(mode) {
   aiMode = (mode === 'tutor') ? 'tutor' : 'coder';
-  document.querySelectorAll('.ai-mode').forEach(function (b) { b.classList.toggle('on', b.getAttribute('data-mode') === aiMode); });
-  const tag = $('aiModelTag'); if (tag) { tag.textContent = aiMode === 'tutor' ? 'Tutor' : 'Build'; tag.title = aiModels[aiMode] || ''; }
+  const tog = $('modeToggle');
+  if (tog) {
+    tog.innerHTML = '<span class="mdi ' + (aiMode === 'tutor' ? 'mdi-school-outline' : 'mdi-code-braces') + '"></span>';
+    tog.title = aiMode === 'tutor' ? 'Tutor mode (explains) — click to switch to Build' : 'Build mode (edits code) — click to switch to Tutor';
+    tog.classList.toggle('tutor', aiMode === 'tutor'); tog.classList.toggle('coder', aiMode === 'coder');
+  }
+  const tag = $('aiModelTag'); if (tag) { const spec = aiModels[aiMode] || ''; tag.textContent = spec.replace(/^[^:]+:/, '') || '…'; tag.title = spec; }
   if (aiMode === 'tutor') { const inp = $('aiText'), btn = $('aiSend'); if (inp) { inp.disabled = false; inp.placeholder = 'Ask the tutor about this lesson...'; } if (btn) btn.disabled = false; }
   else { applyAIMode(currentAIMode); }
 }
@@ -456,7 +461,6 @@ function selectLesson(idx) {
   currentLessonText = ($('lessonBody').textContent || '').replace(/\s+/g, ' ').trim().slice(0, 3000);
   renderRunCells($('lessonBody'));
   renderQuizCells($('lessonBody'));
-  renderTutorCells($('lessonBody'));
   applyAIMode(f.l.ai);
   const btn = $('completeBtn'); if (btn) btn.addEventListener('click', function () { completeLesson(); });
   renderOutline(); switchView('learn');
@@ -570,7 +574,7 @@ function sendAI() {
 $('aiSend').addEventListener('click', sendAI);
 $('aiText').addEventListener('keydown', function (e) { if (e.key === 'Enter') sendAI(); });
 addMsg('bot', "Hi! Two modes up top: **Tutor** explains the lesson and answers questions, and **Build** changes your game's code. I switch automatically with your tab — Learn uses Tutor; Code and Play use Build.");
-document.querySelectorAll('.ai-mode').forEach(function (b) { b.addEventListener('click', function () { setAIMode(b.getAttribute('data-mode')); }); });
+$('modeToggle').addEventListener('click', function () { setAIMode(aiMode === 'tutor' ? 'coder' : 'tutor'); });
 fetch('/api/info').then(function (r) { return r.json(); }).then(function (d) { aiModels = d.agents || { coder: d.model, tutor: d.model }; setAIMode(aiMode); }).catch(function () {});
 
 /* ---------- page router ---------- */

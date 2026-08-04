@@ -23,10 +23,3 @@ for (let i = 1; i <= 3; i++) {
   console.log("Level " + i + " unlocked");
 }
 ```
-
-Stuck or curious? You can always ask the tutor:
-
-```tutor
-context: This course teaches you to read code and direct an AI to build a game, instead of typing everything yourself.
-prompt: What will I actually be able to do by the end of this course?
-```

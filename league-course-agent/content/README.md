@@ -61,11 +61,5 @@ Quiz — Parsons (list the lines in the CORRECT order; the app shuffles them for
       - Second step
     ```
 
-Tutor checkpoint — a scoped question answered by the tutor agent:
-
-    ```tutor
-    context: A few lines of the concept the tutor should focus on.
-    prompt: The question to ask on the student's behalf.
-    ```
 
 Reminder: quote any value containing a colon.

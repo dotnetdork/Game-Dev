@@ -20,8 +20,3 @@ lines:
   - create() runs one time to build the world
   - update() runs over and over, every frame
 ```
-
-```tutor
-context: create() runs once at the start; update() runs every frame after that.
-prompt: Why would putting setup code in update() instead of create() cause problems?
-```
