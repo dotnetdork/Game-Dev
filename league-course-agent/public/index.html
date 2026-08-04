@@ -52,6 +52,25 @@
   .dock-head .tag{color:var(--teal);text-transform:none;font-weight:600;}
   .dock-head .ai-title{display:flex;align-items:center;gap:8px;}
   .dock-head .ai-ava{width:20px;height:20px;border-radius:50%;object-fit:cover;background:var(--panel);}
+  .dock-head{flex-wrap:wrap;gap:6px;}
+  .ai-modes{display:flex;gap:4px;text-transform:none;letter-spacing:0;}
+  .ai-mode{display:inline-flex;align-items:center;gap:4px;font-size:11px;font-weight:600;color:var(--muted);background:var(--panel);border:1px solid var(--line);border-radius:999px;padding:3px 9px;cursor:pointer;font-family:var(--font);}
+  .ai-mode .mdi{font-size:13px;}
+  .ai-mode.on{background:var(--sel);border-color:var(--azure);color:var(--ink);}
+  .msg.bot p{margin:0 0 8px;} .msg.bot p:last-child{margin-bottom:0;}
+  .msg.bot ul,.msg.bot ol{margin:0 0 8px;padding-left:18px;}
+  .msg.bot pre{background:#08121f;border:1px solid var(--line);border-radius:8px;padding:8px 10px;overflow-x:auto;font-family:Consolas,monospace;font-size:12px;color:#cfe0f2;margin:0 0 8px;}
+  .msg.bot code{font-family:Consolas,monospace;font-size:12px;background:#0d2440;padding:1px 4px;border-radius:4px;}
+  .msg.bot pre code{background:none;padding:0;}
+  .mcq-opt.correct{border-color:var(--green);background:#0f2e22;}
+  .mcq-opt.wrong{border-color:var(--gold);background:#2e2410;}
+  .parsons-row{cursor:grab;user-select:none;}
+  .parsons-row.dragging{opacity:.45;}
+  .parsons-row.over{border-color:var(--azure);box-shadow:inset 0 0 0 1px var(--azure);}
+  .parsons-row .drag-handle{color:var(--dim);display:flex;align-items:center;}
+  .lesson .tutor-inline{display:inline-flex;align-items:center;gap:8px;margin:14px 0;padding:8px 12px;border:1px solid var(--line);border-left:3px solid var(--teal);border-radius:0 8px 8px 0;background:#0d2440;color:#c3d3e6;font-size:14px;cursor:default;}
+  .lesson .tutor-inline .mdi{color:var(--teal);}
+  .lesson .tutor-inline button{background:var(--teal);color:#04231d;border:0;border-radius:6px;padding:4px 12px;font-weight:600;cursor:pointer;display:inline-flex;align-items:center;gap:5px;white-space:nowrap;}
   .dock-body{flex:1;min-height:0;display:flex;flex-direction:column;overflow:hidden;}
   #panel-outline{flex:1;min-height:0;overflow:auto;padding:4px 0;}
   #panel-info{flex:1;min-height:0;overflow:auto;}
@@ -314,7 +333,14 @@
 
       <div class="dock right">
         <div class="res l" id="resRight"></div>
-        <div class="dock-head"><span class="ai-title"><img class="ai-ava" src="https://images.jointheleague.org/logos/clearRobotRing4.png" alt="">AI Assistant</span><span class="tag" id="aiModelTag">model…</span></div>
+        <div class="dock-head">
+          <span class="ai-title"><img class="ai-ava" src="https://images.jointheleague.org/logos/clearRobotRing4.png" alt="">AI Assistant</span>
+          <span class="ai-modes">
+            <button class="ai-mode" id="mode-tutor" data-mode="tutor" title="Explains and answers — won't change your code"><span class="mdi mdi-school-outline"></span>Tutor</button>
+            <button class="ai-mode" id="mode-coder" data-mode="coder" title="Changes your game's code"><span class="mdi mdi-code-braces"></span>Build</button>
+          </span>
+          <span class="tag" id="aiModelTag">model…</span>
+        </div>
         <div class="ai">
           <div class="ai-msgs" id="aiMsgs"></div>
           <div class="ai-input">

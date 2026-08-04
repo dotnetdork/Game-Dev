@@ -331,14 +331,25 @@ function lessonBodyHTML(f) {
     + '<div style="color:var(--muted);margin-bottom:6px;">Finish the challenge to complete this lesson and unlock the next one.</div>'
     + '<button class="btn-primary" id="completeBtn"' + (done ? ' disabled' : '') + '><span class="mdi mdi-' + (done ? 'check' : 'flag-checkered') + '"></span>' + (done ? 'Completed  (+' + f.l.xp + ' XP)' : 'Complete challenge  (+' + f.l.xp + ' XP)') + '</button></div>';
 }
-let currentAIMode = 'full';
+let currentAIMode = 'full';   // the current lesson's coder policy: full | guided | off
+let aiMode = 'coder';         // which agent the panel talks to: tutor | coder
+let aiModels = {};            // per-agent model names from /api/info
+let currentLessonText = '';   // plain text of the current lesson, used as tutor context
 function applyAIMode(mode) {
   currentAIMode = mode || 'full';
+  if (aiMode !== 'coder') return;   // in Tutor mode the lesson's coder policy doesn't gate the box
   const inp = $('aiText'), btn = $('aiSend');
   if (!inp || !btn) return;
   if (currentAIMode === 'off') { inp.disabled = true; btn.disabled = true; inp.placeholder = 'AI is off for this challenge — try it yourself!'; }
   else if (currentAIMode === 'guided') { inp.disabled = false; btn.disabled = false; inp.placeholder = 'Guided: tell the AI exactly what to change'; }
   else { inp.disabled = false; btn.disabled = false; inp.placeholder = 'Ask the AI to change your game...'; }
+}
+function setAIMode(mode) {
+  aiMode = (mode === 'tutor') ? 'tutor' : 'coder';
+  document.querySelectorAll('.ai-mode').forEach(function (b) { b.classList.toggle('on', b.getAttribute('data-mode') === aiMode); });
+  const tag = $('aiModelTag'); if (tag) { tag.textContent = aiMode === 'tutor' ? 'Tutor' : 'Build'; tag.title = aiModels[aiMode] || ''; }
+  if (aiMode === 'tutor') { const inp = $('aiText'), btn = $('aiSend'); if (inp) { inp.disabled = false; inp.placeholder = 'Ask the tutor about this lesson...'; } if (btn) btn.disabled = false; }
+  else { applyAIMode(currentAIMode); }
 }
 function renderRunCells(root) {
   root.querySelectorAll('pre > code.language-run').forEach(function (code) {
@@ -366,7 +377,7 @@ function shuffleOrder(n) {
   while (a.every(function (v, i) { return v === i; }) && tries < 12);
   return a;
 }
-/* ```quiz  (provisional syntax) — Parsons or multiple-choice, checked locally */
+/* ```quiz  (provisional syntax) — Parsons (drag-and-drop) or multiple-choice, checked locally */
 function renderQuizCells(root) {
   root.querySelectorAll('pre > code.language-quiz').forEach(function (code) {
     let q; try { q = jsyaml.load(code.textContent) || {}; } catch (e) { q = {}; }
@@ -377,31 +388,36 @@ function renderQuizCells(root) {
     const result = document.createElement('div'); result.className = 'quiz-result';
     const check = document.createElement('button'); check.className = 'quiz-check'; check.textContent = 'Check';
     if (q.type === 'parsons') {
-      const lines = (q.lines || []); let order = shuffleOrder(lines.length);
+      const lines = (q.lines || []); let order = shuffleOrder(lines.length); let dragFrom = null;
       const list = document.createElement('div'); list.className = 'parsons';
       function draw() {
         list.innerHTML = '';
         order.forEach(function (li, pos) {
-          const row = document.createElement('div'); row.className = 'parsons-row';
-          const btns = document.createElement('div'); btns.className = 'parsons-btns';
-          const up = document.createElement('button'); up.className = 'pbtn'; up.innerHTML = '<span class="mdi mdi-chevron-up"></span>'; up.disabled = pos === 0;
-          const dn = document.createElement('button'); dn.className = 'pbtn'; dn.innerHTML = '<span class="mdi mdi-chevron-down"></span>'; dn.disabled = pos === order.length - 1;
-          up.addEventListener('click', function () { const t = order[pos - 1]; order[pos - 1] = order[pos]; order[pos] = t; draw(); });
-          dn.addEventListener('click', function () { const t = order[pos + 1]; order[pos + 1] = order[pos]; order[pos] = t; draw(); });
-          btns.appendChild(up); btns.appendChild(dn);
+          const row = document.createElement('div'); row.className = 'parsons-row'; row.draggable = true;
+          const handle = document.createElement('span'); handle.className = 'drag-handle'; handle.innerHTML = '<span class="mdi mdi-drag-horizontal-variant"></span>';
           const c = document.createElement('code'); c.textContent = lines[li];
-          row.appendChild(btns); row.appendChild(c); list.appendChild(row);
+          row.appendChild(handle); row.appendChild(c);
+          row.addEventListener('dragstart', function () { dragFrom = pos; row.classList.add('dragging'); });
+          row.addEventListener('dragend', function () { row.classList.remove('dragging'); });
+          row.addEventListener('dragover', function (e) { e.preventDefault(); row.classList.add('over'); });
+          row.addEventListener('dragleave', function () { row.classList.remove('over'); });
+          row.addEventListener('drop', function (e) {
+            e.preventDefault(); row.classList.remove('over');
+            if (dragFrom === null || dragFrom === pos) { dragFrom = null; return; }
+            const moved = order.splice(dragFrom, 1)[0]; order.splice(pos, 0, moved); dragFrom = null; draw();
+          });
+          list.appendChild(row);
         });
       }
       draw(); body.appendChild(list);
       check.addEventListener('click', function () {
         const ok = order.every(function (v, i) { return v === i; });
-        result.className = 'quiz-result ' + (ok ? 'ok' : 'no'); result.textContent = ok ? 'Correct — nice ordering!' : 'Not yet — keep rearranging the lines.';
+        result.className = 'quiz-result ' + (ok ? 'ok' : 'no'); result.textContent = ok ? 'Correct — nice ordering!' : 'Not yet — drag the lines into the right order.';
       });
     } else {
-      const opts = (q.options || []); let chosen = -1; const nm = 'q' + Math.random().toString(36).slice(2, 8);
+      const opts = (q.options || []); let chosen = -1; const nm = 'q' + Math.random().toString(36).slice(2, 8); const rows = [];
       opts.forEach(function (opt, i) {
-        const row = document.createElement('label'); row.className = 'mcq-opt';
+        const row = document.createElement('label'); row.className = 'mcq-opt'; rows.push(row);
         const radio = document.createElement('input'); radio.type = 'radio'; radio.name = nm;
         radio.addEventListener('change', function () { chosen = i; });
         const span = document.createElement('span'); span.textContent = opt;
@@ -409,32 +425,27 @@ function renderQuizCells(root) {
       });
       check.addEventListener('click', function () {
         if (chosen < 0) { result.className = 'quiz-result'; result.textContent = 'Pick an answer first.'; return; }
-        const ok = chosen === Number(q.answer);
+        const ans = Number(q.answer); const ok = chosen === ans;
+        rows.forEach(function (r, i) { r.classList.remove('correct', 'wrong'); if (i === ans) r.classList.add('correct'); else if (i === chosen) r.classList.add('wrong'); });
         result.className = 'quiz-result ' + (ok ? 'ok' : 'no');
-        result.textContent = ok ? 'Correct!' : (q.explain ? 'Not quite — ' + q.explain : 'Not quite — try again.');
+        result.textContent = ok ? 'Correct!' : (q.explain ? 'Not quite — ' + q.explain : 'Not quite — the highlighted answer is correct.');
       });
     }
     body.appendChild(check); cell.appendChild(result);
     pre.parentNode.replaceChild(cell, pre);
   });
 }
-/* ```tutor  (provisional syntax) — a scoped question answered by the tutor agent */
+/* ```tutor  (provisional syntax) — a small inline button that routes a scoped question into the AI panel */
 function renderTutorCells(root) {
   root.querySelectorAll('pre > code.language-tutor').forEach(function (code) {
     let t; try { t = jsyaml.load(code.textContent) || {}; } catch (e) { t = {}; }
     const pre = code.parentNode; const q = t.prompt || t.question || 'Ask the tutor about this.';
-    const cell = document.createElement('div'); cell.className = 'tutorcell';
-    cell.innerHTML = '<div class="tutor-h"><span class="mdi mdi-robot-happy-outline"></span>Ask the tutor</div><div class="tutor-q"></div>';
-    cell.querySelector('.tutor-q').textContent = q;
-    const btn = document.createElement('button'); btn.className = 'tutor-btn'; btn.innerHTML = '<span class="mdi mdi-message-question-outline"></span>Ask';
-    const ans = document.createElement('div'); ans.className = 'tutor-ans';
-    btn.addEventListener('click', function () {
-      btn.disabled = true; ans.textContent = 'Thinking…';
-      fetch('/api/ai', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ studentId: studentId, agent: 'tutor', message: q, context: (t.context || '') }) })
-        .then(function (r) { return r.json(); }).then(function (d) { ans.textContent = d.reply || '—'; btn.disabled = false; })
-        .catch(function () { ans.textContent = 'Could not reach the tutor.'; btn.disabled = false; });
-    });
-    cell.appendChild(btn); cell.appendChild(ans);
+    const cell = document.createElement('div'); cell.className = 'tutor-inline';
+    const icon = document.createElement('span'); icon.className = 'mdi mdi-robot-happy-outline';
+    const label = document.createElement('span'); label.textContent = q;
+    const btn = document.createElement('button'); btn.innerHTML = '<span class="mdi mdi-message-question-outline"></span>Ask the tutor';
+    btn.addEventListener('click', function () { setAIMode('tutor'); askTutor(q, t.context || currentLessonText); });
+    cell.appendChild(icon); cell.appendChild(label); cell.appendChild(btn);
     pre.parentNode.replaceChild(cell, pre);
   });
 }
@@ -442,6 +453,7 @@ function selectLesson(idx) {
   curIdx = idx; const f = flat[idx];
   $('crumb').dataset.lesson = f.m.name + ': ' + f.l.t;
   $('lessonBody').innerHTML = lessonBodyHTML(f);
+  currentLessonText = ($('lessonBody').textContent || '').replace(/\s+/g, ' ').trim().slice(0, 3000);
   renderRunCells($('lessonBody'));
   renderQuizCells($('lessonBody'));
   renderTutorCells($('lessonBody'));
@@ -475,6 +487,7 @@ function switchView(view) {
   if (view === 'learn') $('crumb').textContent = $('crumb').dataset.lesson || 'Lesson';
   if (view === 'code') { $('crumb').textContent = currentFile; refreshFiles(); loadCode(); setTimeout(function () { codeEditor.refresh(); }, 0); }
   if (view === 'play') { $('crumb').textContent = 'Playing: ' + course.name; startGame(); loadSettings(); } else { stopGame(); }
+  setAIMode(view === 'learn' ? 'tutor' : 'coder');   // Learn = ask the tutor; Code/Play = build with the coder
 }
 document.querySelectorAll('.vtab').forEach(function (btn) { btn.addEventListener('click', function () { switchView(btn.getAttribute('data-view')); }); });
 function startGame() { // build a self-contained page from the browser-side project and run it in the iframe (no server)
@@ -520,16 +533,25 @@ function loadSettings() { const cfg = parseConfig(project.files['game.js'] || ''
 
 /* ---------- AI ---------- */
 const aiMsgs = $('aiMsgs');
-function addMsg(who, text) { const m = document.createElement('div'); m.className = 'msg ' + who; m.textContent = text; aiMsgs.appendChild(m); aiMsgs.scrollTop = aiMsgs.scrollHeight; return m; }
+function addMsg(who, text) { const m = document.createElement('div'); m.className = 'msg ' + who; setMsg(m, who, text); aiMsgs.appendChild(m); aiMsgs.scrollTop = aiMsgs.scrollHeight; return m; }
+function setMsg(m, who, text) { if (who === 'bot') { try { m.innerHTML = marked.parse(String(text)); } catch (e) { m.textContent = String(text); } } else { m.textContent = text; } aiMsgs.scrollTop = aiMsgs.scrollHeight; }
 function refreshAfterEdit() { loadSettings(); refreshFiles(); if (!$('view-play').hidden) startGame(); if (!$('view-code').hidden) loadCode(); }
+function askTutor(question, context) {
+  addMsg('user', question); const pending = addMsg('bot', 'Thinking…');
+  fetch('/api/ai', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ studentId: studentId, agent: 'tutor', message: question, context: context || '', code: project.files['game.js'] || '' }) })
+    .then(function (r) { return r.json(); }).then(function (d) { setMsg(pending, 'bot', d.reply || '—'); })
+    .catch(function () { setMsg(pending, 'bot', 'Could not reach the tutor.'); });
+}
 function sendAI() {
   const box = $('aiText'); const text = box.value.trim(); if (!text) return;
-  if (currentAIMode === 'off') { toast('The AI is off for this challenge — give it a try yourself!'); return; }
-  addMsg('user', text); box.value = ''; const pending = addMsg('bot', 'Thinking…');
+  if (aiMode === 'coder' && currentAIMode === 'off') { toast('The AI is off for this challenge — give it a try yourself!'); return; }
+  box.value = '';
+  if (aiMode === 'tutor') { askTutor(text, currentLessonText); return; }
+  addMsg('user', text); const pending = addMsg('bot', 'Thinking…');
   // the code lives in the browser; we send it along, the server relays the AI, and we apply the change here
   fetch('/api/ai', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ studentId: studentId, agent: 'coder', message: text, code: project.files['game.js'] || '' }) })
     .then(function (r) { return r.json(); }).then(function (data) {
-      pending.textContent = data.reply || 'Done.';
+      setMsg(pending, 'bot', data.reply || 'Done.');
       const ops = data.ops; if (!ops) return;
       if (ops.newFile && typeof ops.newFile.name === 'string' && typeof ops.newFile.code === 'string') {
         let nm = ops.newFile.name.trim(); if (!/\.js$/.test(nm)) nm += '.js';
@@ -547,8 +569,9 @@ function sendAI() {
 }
 $('aiSend').addEventListener('click', sendAI);
 $('aiText').addEventListener('keydown', function (e) { if (e.key === 'Enter') sendAI(); });
-addMsg('bot', 'Hi! Ask me to change or add to your game — e.g. "add a power-up that gives an extra life", "make bombs fall slower", or "add a new enemy". I edit game.js for you. You can also ask questions like "what does spawnObject do?"');
-fetch('/api/info').then(function (r) { return r.json(); }).then(function (d) { var el = $('aiModelTag'); if (el) el.textContent = d.model || d.provider; }).catch(function () {});
+addMsg('bot', "Hi! Two modes up top: **Tutor** explains the lesson and answers questions, and **Build** changes your game's code. I switch automatically with your tab — Learn uses Tutor; Code and Play use Build.");
+document.querySelectorAll('.ai-mode').forEach(function (b) { b.addEventListener('click', function () { setAIMode(b.getAttribute('data-mode')); }); });
+fetch('/api/info').then(function (r) { return r.json(); }).then(function (d) { aiModels = d.agents || { coder: d.model, tutor: d.model }; setAIMode(aiMode); }).catch(function () {});
 
 /* ---------- page router ---------- */
 function showPage(page) {
