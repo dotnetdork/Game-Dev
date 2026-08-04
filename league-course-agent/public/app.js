@@ -568,7 +568,7 @@ function startGame() { // build a self-contained page from the browser-side proj
   const ordered = ['game.js'].concat(fileNames().filter(function (n) { return n !== 'game.js' && n !== 'main.js'; }));
   if (typeof project.files['main.js'] === 'string') ordered.push('main.js');
   const scripts = ordered.map(function (n) { return '<' + 'script>\n' + (project.files[n] || '') + '\n<' + '/script>'; }).join('\n');
-  const capture = '<' + 'script>(function(){function s(l,a){try{parent.postMessage({__gamelog:true,level:l,text:[].slice.call(a).map(String).join(" ")},"*");}catch(e){}}var c=console,lg=c.log.bind(c);c.log=function(){lg.apply(c,arguments);s("log",arguments);};var wn=c.warn.bind(c);c.warn=function(){wn.apply(c,arguments);s("warn",arguments);};var er=c.error.bind(c);c.error=function(){er.apply(c,arguments);s("error",arguments);};window.onerror=function(m){s("error",[m]);return false;};})();<' + '/script>\n';
+  const capture = '<' + 'script>(function(){function f(a){a=[].slice.call(a);if(typeof a[0]==="string"&&/%[csdfoO]/.test(a[0])){var i=1;var o=a[0].replace(/%[csdfoO]/g,function(m){if(m==="%c"){i++;return "";}return String(a[i++]);});return (o+" "+a.slice(i).join(" ")).replace(/\\s+/g," ").trim();}return a.map(String).join(" ");}function s(l,a){try{parent.postMessage({__gamelog:true,level:l,text:f(a)},"*");}catch(e){}}var c=console,lg=c.log.bind(c);c.log=function(){lg.apply(c,arguments);s("log",arguments);};var wn=c.warn.bind(c);c.warn=function(){wn.apply(c,arguments);s("warn",arguments);};var er=c.error.bind(c);c.error=function(){er.apply(c,arguments);s("error",arguments);};window.onerror=function(m){s("error",[m]);return false;};})();<' + '/script>\n';
   const html = '<!doctype html><html><head><meta charset="utf-8">'
     + '<style>html,body{margin:0;height:100%;background:#06101c;overflow:hidden}#game{width:100%;height:100vh}</style></head><body>'
     + '<div id="game"></div>\n'
@@ -675,8 +675,8 @@ function showPage(page) {
   if (page === 'courses') { $('editor').hidden = false; $('page').hidden = true; return; }
   stopGame(); $('editor').hidden = true; $('page').hidden = false;
   const pg = $('page');
-  if (page === 'gallery') pg.innerHTML = renderGallery();
-  else if (page === 'showcase') pg.innerHTML = renderShowcase();
+  if (page === 'store') pg.innerHTML = renderStore();
+  else if (page === 'gallery') pg.innerHTML = renderGallery();
   else if (page === 'leaderboards') pg.innerHTML = renderBoard();
   else if (page === 'docs') pg.innerHTML = renderDocs();
   else if (page === 'help') pg.innerHTML = renderHelp();
@@ -684,73 +684,72 @@ function showPage(page) {
 }
 document.querySelectorAll('.navitem').forEach(function (b) { b.addEventListener('click', function () { showPage(b.getAttribute('data-page')); }); });
 
-/* ---------- gallery ---------- */
-const examples = [
-  { id: 'starcatcher', name: 'Star Catcher', mdi: 'mdi-star-four-points', col: '#2b6cb0', cost: 0, tags: ['Arcade', 'Easy'], desc: 'Catch falling stars and dodge bombs. The starter game.', code: STAR_CODE },
-  { id: 'skydodge', name: 'Sky Dodge', mdi: 'mdi-cube-outline', col: '#2c7a7b', cost: 150, tags: ['Dodge', 'Easy'], desc: 'Slide left and right to dodge falling blocks as long as you can.', code: SKY_CODE },
-  { id: 'coinrush', name: 'Coin Rush', mdi: 'mdi-circle-multiple', col: '#b7791f', cost: 150, tags: ['Collect', 'Easy'], desc: 'Race the clock to grab as many coins as you can.', code: COIN_CODE },
-  { id: 'paddlebounce', name: 'Paddle Bounce', mdi: 'mdi-circle-double', col: '#6b46c1', cost: 175, tags: ['Reflex', 'Medium'], desc: 'Keep the ball bouncing on your paddle.', code: PADDLE_CODE },
-  { id: 'snake', name: 'Snake', mdi: 'mdi-snake', col: '#276749', cost: 200, soon: true, tags: ['Classic', 'Medium'], desc: 'Coming soon — grow the snake without crashing into yourself.' },
-  { id: 'breakout', name: 'Brick Breaker', mdi: 'mdi-view-grid', col: '#9b2c2c', cost: 200, soon: true, tags: ['Arcade', 'Medium'], desc: 'Coming soon — smash all the bricks with the ball.' },
-  { id: 'whack', name: 'Whack-a-Star', mdi: 'mdi-gesture-tap', col: '#805ad5', cost: 150, soon: true, tags: ['Reflex', 'Easy'], desc: 'Coming soon — tap the stars before they vanish.' },
-  { id: 'space', name: 'Space Blaster', mdi: 'mdi-rocket-launch', col: '#2b6cb0', cost: 250, soon: true, tags: ['Shooter', 'Hard'], desc: 'Coming soon — blast asteroids before they reach you.' },
-  { id: 'maze', name: 'Maze Runner', mdi: 'mdi-map-marker-path', col: '#1a936f', cost: 200, soon: true, tags: ['Puzzle', 'Medium'], desc: 'Coming soon — find your way to the exit.' },
-  { id: 'flappy', name: 'Flap Hero', mdi: 'mdi-bird', col: '#c05621', cost: 175, soon: true, tags: ['Reflex', 'Hard'], desc: 'Coming soon — flap through the gaps.' }
-];
-function renderGallery() {
-  const cards = examples.map(function (e) {
-    const owned = !!state.unlocked[e.id];
-    let btn;
-    if (e.soon) btn = '<button class="gbtn locked" disabled>Coming soon</button>';
-    else if (owned) btn = '<button class="gbtn owned-btn" data-open="' + e.id + '"><span class="mdi mdi-pencil"></span>Open</button>';
-    else btn = '<button class="gbtn" data-buy="' + e.id + '"><span class="mdi mdi-lock-open-variant"></span>Unlock</button>';
-    const price = owned ? '<span class="owned"><span class="mdi mdi-check-decagram"></span>Owned</span>' : '<span class="cost"><span class="mdi mdi-star"></span>' + e.cost + '</span>';
-    const tags = e.tags.map(function (t) { return '<span class="chip">' + t + '</span>'; }).join('');
-    return '<div class="gcard"><div class="art" style="background:linear-gradient(135deg,' + e.col + ',#0b1a2e)"><span class="mdi ' + e.mdi + '"></span></div>'
-      + '<div class="body"><h3>' + e.name + '</h3><div class="tags">' + tags + '</div><p>' + e.desc + '</p><div class="cta">' + price + btn + '</div></div></div>';
-  }).join('');
-  return '<div class="phead"><div><h2><span class="mdi mdi-view-grid"></span>Gallery</h2><p class="sub">Example games for ' + course.name + '. Unlock with ★ Stars, then open one to make it your own.</p></div></div><div class="cardgrid">' + cards + '</div>';
-}
-function openExample(id) {
-  const ex = examples.find(function (e) { return e.id === id; });
-  modal({ title: 'Open "' + ex.name + '"?', message: 'This loads the game into your browser as your own editable copy, replacing your current game.js. Your other scripts are kept, and the original template stays safe.', okLabel: 'Open it',
-    onOk: function () {
-      project.files['game.js'] = ex.code;
-      if (project.order.indexOf('game.js') < 0) project.order.unshift('game.js');
-      if (typeof project.files['main.js'] !== 'string') { project.files['main.js'] = BOOT_CODE; project.order.push('main.js'); }
-      currentFile = 'game.js'; saveProject();
-      toast('Loaded ' + ex.name + '.'); showPage('courses'); switchView('play');
-    } });
-}
-function buyExample(id) {
-  const ex = examples.find(function (e) { return e.id === id; });
-  if (state.stars < ex.cost) { toast('Not enough Stars — you need ★ ' + ex.cost + '.'); return; }
-  modal({ title: 'Unlock "' + ex.name + '"?', message: 'This costs ★ ' + ex.cost + '. You have ★ ' + state.stars + '.', okLabel: 'Unlock',
-    onOk: function () { state.stars -= ex.cost; state.unlocked[id] = true; saveState(); toast('Unlocked ' + ex.name + '!'); showPage('gallery'); } });
-}
-
-/* ---------- showcase ---------- */
-const sampleShowcase = [
-  { name: 'Neon Jumper', author: 'Ava', mdi: 'mdi-rocket', col: '#2b6cb0', plays: 214 },
-  { name: 'Bug Squash', author: 'Leo', mdi: 'mdi-bug', col: '#276749', plays: 187 },
-  { name: 'Cloud Hopper', author: 'Mia', mdi: 'mdi-cloud', col: '#6b46c1', plays: 143 },
-  { name: 'Laser Cats', author: 'Sam', mdi: 'mdi-cat', col: '#9b2c2c', plays: 98 }
+/* ---------- asset store (spend Stars on assets that drop into your project as files) ---------- */
+const assets = [
+  { id: 'robot', name: 'Robot sprite', cat: 'Sprite', mdi: 'mdi-robot', col: '#2b6cb0', cost: 120, desc: 'A blocky robot for a player or enemy.', file: 'robot.js',
+    code: "// robot.js — a robot sprite.\n// In create(): makeRobot(this); then use the key 'robot'.\nfunction makeRobot(scene) {\n  const g = scene.make.graphics({ add: false });\n  g.fillStyle(0x9fb3c8, 1); g.fillRoundedRect(2, 6, 24, 20, 4);\n  g.fillStyle(0x35c2f5, 1); g.fillRect(7, 11, 4, 4); g.fillRect(17, 11, 4, 4);\n  g.generateTexture('robot', 28, 28); g.destroy();\n}\n" },
+  { id: 'diamond', name: 'Diamond', cat: 'Sprite', mdi: 'mdi-diamond-stone', col: '#2c7a7b', cost: 120, desc: 'A shiny collectible.', file: 'diamond.js',
+    code: "// diamond.js — a diamond collectible.\n// In create(): makeDiamond(this); then use the key 'diamond'.\nfunction makeDiamond(scene) {\n  const g = scene.make.graphics({ add: false });\n  g.fillStyle(0x59e0ff, 1); g.beginPath();\n  g.moveTo(14, 0); g.lineTo(28, 14); g.lineTo(14, 28); g.lineTo(0, 14); g.closePath(); g.fillPath();\n  g.generateTexture('diamond', 28, 28); g.destroy();\n}\n" },
+  { id: 'heart', name: 'Heart', cat: 'Sprite', mdi: 'mdi-heart', col: '#9b2c2c', cost: 100, desc: 'For lives or health pickups.', file: 'heart.js',
+    code: "// heart.js — a heart sprite.\n// In create(): makeHeart(this); then use the key 'heart'.\nfunction makeHeart(scene) {\n  const g = scene.make.graphics({ add: false });\n  g.fillStyle(0xff5a7a, 1); g.fillCircle(8, 9, 7); g.fillCircle(18, 9, 7);\n  g.fillTriangle(1, 11, 25, 11, 13, 26);\n  g.generateTexture('heart', 26, 26); g.destroy();\n}\n" },
+  { id: 'slime', name: 'Slime enemy', cat: 'Enemy', mdi: 'mdi-emoticon-devil', col: '#276749', cost: 150, desc: 'A bouncy slime to chase the player.', file: 'slime.js',
+    code: "// slime.js — a slime enemy.\n// In create(): makeSlime(this); then use the key 'slime'.\nfunction makeSlime(scene) {\n  const g = scene.make.graphics({ add: false });\n  g.fillStyle(0x3ddc84, 1); g.fillRoundedRect(0, 8, 30, 18, 9);\n  g.fillStyle(0x0b1a2e, 1); g.fillCircle(10, 16, 3); g.fillCircle(20, 16, 3);\n  g.generateTexture('slime', 30, 26); g.destroy();\n}\n" },
+  { id: 'spikeball', name: 'Spike ball', cat: 'Enemy', mdi: 'mdi-alert-octagon', col: '#c05621', cost: 150, desc: 'A spiky hazard to avoid.', file: 'spikeball.js',
+    code: "// spikeball.js — a spiky hazard.\n// In create(): makeSpikeball(this); then use the key 'spikeball'.\nfunction makeSpikeball(scene) {\n  const g = scene.make.graphics({ add: false });\n  g.fillStyle(0xe94b4b, 1); g.fillCircle(14, 14, 10);\n  g.fillStyle(0xffb4b4, 1); for (let a = 0; a < 8; a++) { const r = a * Math.PI / 4; g.fillCircle(14 + Math.cos(r) * 13, 14 + Math.sin(r) * 13, 2); }\n  g.generateTexture('spikeball', 28, 28); g.destroy();\n}\n" },
+  { id: 'space-bg', name: 'Space background', cat: 'Background', mdi: 'mdi-star-shooting', col: '#3730a3', cost: 150, desc: 'A starfield backdrop.', file: 'space-bg.js',
+    code: "// space-bg.js — a starfield background.\n// In create(): makeSpaceBg(this); scene.add.image(400, 300, 'space-bg');\nfunction makeSpaceBg(scene) {\n  const g = scene.make.graphics({ add: false });\n  g.fillStyle(0x0a1330, 1); g.fillRect(0, 0, 800, 600);\n  g.fillStyle(0xffffff, 1); for (let i = 0; i < 120; i++) g.fillCircle(Math.random() * 800, Math.random() * 600, Math.random() * 1.5);\n  g.generateTexture('space-bg', 800, 600); g.destroy();\n}\n" },
+  { id: 'low-gravity', name: 'Low gravity', cat: 'Physics', mdi: 'mdi-feather', col: '#6b46c1', cost: 100, desc: 'Floaty, moon-like gravity.', file: 'low-gravity.js',
+    code: "// low-gravity.js — floaty physics.\n// In create(): applyLowGravity(this);\nfunction applyLowGravity(scene) {\n  scene.physics.world.gravity.y = 120;\n}\n" },
+  { id: 'bouncy', name: 'Bouncy world', cat: 'Physics', mdi: 'mdi-basketball', col: '#b7791f', cost: 100, desc: 'Things bounce off the walls.', file: 'bouncy.js',
+    code: "// bouncy.js — make a sprite bounce.\n// After creating a sprite: makeBouncy(sprite);\nfunction makeBouncy(sprite) {\n  sprite.setBounce(1);\n  sprite.setCollideWorldBounds(true);\n}\n" },
+  { id: 'fast-fall', name: 'Fast fall', cat: 'Physics', mdi: 'mdi-arrow-down-bold', col: '#0e7490', cost: 100, desc: 'Heavier, faster-falling gravity.', file: 'fast-fall.js',
+    code: "// fast-fall.js — heavy gravity.\n// In create(): applyFastFall(this);\nfunction applyFastFall(scene) {\n  scene.physics.world.gravity.y = 700;\n}\n" }
 ];
 function avatarStyle(name) { let h = 0; for (let i = 0; i < name.length; i++) h = name.charCodeAt(i) + ((h << 5) - h); return 'background:hsl(' + (Math.abs(h) % 360) + ' 62% 58%)'; }
-function renderShowcase() {
-  const mine = (state.published || []).map(function (p) { return { name: p.name, author: 'You', mdi: 'mdi-gamepad-variant', col: '#0f6', plays: 0 }; });
-  const all = mine.concat(sampleShowcase);
+function renderStore() {
+  const cards = assets.map(function (a) {
+    const owned = !!state.unlocked[a.id];
+    const btn = owned ? '<span class="owned"><span class="mdi mdi-check-decagram"></span>Owned</span>'
+      : '<button class="gbtn" data-buy="' + a.id + '"><span class="mdi mdi-cart-outline"></span>Buy</button>';
+    const price = '<span class="cost"><span class="mdi mdi-star"></span>' + a.cost + '</span>';
+    return '<div class="gcard"><div class="art" style="background:linear-gradient(135deg,' + a.col + ',#0b1a2e)"><span class="mdi ' + a.mdi + '"></span></div>'
+      + '<div class="body"><h3>' + a.name + '</h3><div class="tags"><span class="chip">' + a.cat + '</span></div><p>' + a.desc + '</p><div class="cta">' + price + btn + '</div></div></div>';
+  }).join('');
+  return '<div class="phead"><div><h2><span class="mdi mdi-cart-outline"></span>Store</h2><p class="sub">Spend ★ Stars on assets. Each one drops a file into your project you can use in your game.</p></div><span class="star-balance"><span class="mdi mdi-star"></span>' + state.stars + '</span></div><div class="cardgrid">' + cards + '</div>';
+}
+function buyAsset(id) {
+  const a = assets.find(function (x) { return x.id === id; });
+  if (!a || state.unlocked[a.id]) return;
+  if (state.stars < a.cost) { toast('Not enough Stars — you need ★ ' + a.cost + '.'); return; }
+  modal({ title: 'Buy "' + a.name + '"?', message: 'Costs ★ ' + a.cost + ' and adds ' + a.file + ' to your project. You have ★ ' + state.stars + '.', okLabel: 'Buy it',
+    onOk: function () {
+      state.stars -= a.cost; state.unlocked[a.id] = true; saveState();
+      if (project.files[a.file] === undefined) { project.files[a.file] = a.code; project.order.push(a.file); saveProject(); }
+      toast('Bought ' + a.name + ' — added ' + a.file + ' to your Files.'); showPage('store');
+    } });
+}
+
+/* ---------- gallery (student games) ---------- */
+const sampleGallery = [
+  { name: 'Neon Jumper', author: 'Ava R.', mdi: 'mdi-rocket', col: '#2b6cb0', plays: 214 },
+  { name: 'Bug Squash', author: 'Leo M.', mdi: 'mdi-bug', col: '#276749', plays: 187 },
+  { name: 'Cloud Hopper', author: 'Mia T.', mdi: 'mdi-cloud', col: '#6b46c1', plays: 143 },
+  { name: 'Laser Cats', author: 'Sam K.', mdi: 'mdi-cat', col: '#9b2c2c', plays: 98 }
+];
+function renderGallery() {
+  const mine = (state.published || []).map(function (p) { return { name: p.name, author: 'You', mdi: 'mdi-gamepad-variant', col: '#0f766e', plays: 0 }; });
+  const all = mine.concat(sampleGallery);
   const cards = all.map(function (g) {
     return '<div class="scard"><div class="art" style="background:linear-gradient(135deg,' + g.col + ',#0b1a2e)"><span class="mdi ' + g.mdi + '"></span><div class="play"><span class="mdi mdi-play-circle"></span></div></div>'
       + '<div class="body"><div class="avatar" style="' + avatarStyle(g.author) + '">' + g.author.charAt(0).toUpperCase() + '</div>'
       + '<div class="meta"><h3>' + g.name + '</h3><div class="by">by ' + g.author + '</div></div>'
       + '<span class="stat"><span class="mdi mdi-play"></span>' + g.plays + '</span></div></div>';
   }).join('');
-  return '<div class="phead"><div><h2><span class="mdi mdi-star-box-multiple"></span>Showcase</h2><p class="sub">Games students have published. Hover a card to preview (video clips coming later).</p></div><button class="gbtn" id="publishBtn"><span class="mdi mdi-upload"></span>Publish my game</button></div><div class="cardgrid">' + cards + '</div>';
+  return '<div class="phead"><div><h2><span class="mdi mdi-view-grid"></span>Gallery</h2><p class="sub">Games students have published. Names show a first name and last initial only.</p></div><button class="gbtn" id="publishBtn"><span class="mdi mdi-upload"></span>Publish my game</button></div><div class="cardgrid">' + cards + '</div>';
 }
 function publishGame() {
-  modal({ title: 'Publish your game', message: 'Give your game a title to add it to the Showcase.', input: true, placeholder: 'My Awesome Game', okLabel: 'Publish',
-    onOk: function (name) { if (!name) return; state.published = state.published || []; state.published.unshift({ name: name.trim(), date: Date.now() }); saveState(); toast('Published to the Showcase!'); showPage('showcase'); } });
+  modal({ title: 'Publish your game', message: 'Give your game a title to add it to the Gallery.', input: true, placeholder: 'My Awesome Game', okLabel: 'Publish',
+    onOk: function (name) { if (!name) return; state.published = state.published || []; state.published.unshift({ name: name.trim(), date: Date.now() }); saveState(); toast('Published to the Gallery!'); showPage('gallery'); } });
 }
 
 /* ---------- leaderboards ---------- */
@@ -806,9 +805,8 @@ function resetProgress() {
     onOk: function () { localStorage.removeItem(SKEY); location.reload(); } });
 }
 function wirePage(page) {
-  document.querySelectorAll('#page [data-buy]').forEach(function (b) { b.addEventListener('click', function () { buyExample(b.getAttribute('data-buy')); }); });
-  document.querySelectorAll('#page [data-open]').forEach(function (b) { b.addEventListener('click', function () { openExample(b.getAttribute('data-open')); }); });
-  if (page === 'showcase') { var pb = $('publishBtn'); if (pb) pb.addEventListener('click', publishGame); }
+  document.querySelectorAll('#page [data-buy]').forEach(function (b) { b.addEventListener('click', function () { buyAsset(b.getAttribute('data-buy')); }); });
+  if (page === 'gallery') { var pb = $('publishBtn'); if (pb) pb.addEventListener('click', publishGame); }
   if (page === 'help') { var rb = $('resetBtn'); if (rb) rb.addEventListener('click', resetProgress); }
   if (page === 'docs') { document.querySelectorAll('#page [data-goto]').forEach(function (link) { link.addEventListener('click', function (e) { e.preventDefault(); var el = document.getElementById('doc-' + link.getAttribute('data-goto')); if (el) el.scrollIntoView({ behavior: 'smooth', block: 'start' }); }); }); }
 }
