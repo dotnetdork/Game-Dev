@@ -1,0 +1,8 @@
+Store assets - credits & license
+================================
+
+Source: Kenney (https://kenney.nl) - CC0 1.0 (public domain), commercial-safe, no attribution required.
+  - Platformer Art Deluxe (https://kenney.nl/assets/platformer-art-deluxe)
+  - UI Pack               (https://kenney.nl/assets/ui-pack)
+  - Digital Audio         (https://kenney.nl/assets/digital-audio)
+  - Interface Sounds      (https://kenney.nl/assets/interface-sounds)

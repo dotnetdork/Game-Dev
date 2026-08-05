@@ -1,55 +1,135 @@
 /* LEAGUE Game Dev — front end (prototype). Progress saved in localStorage. */
 
 /* ================= example games (loaded into game.js when opened) ================= */
-const STAR_CODE = `// game.js - Star Catcher
-const CONFIG = { fallSpeed: 160, bombChance: 0.15, paddleWidth: 100, spawnEvery: 750, starPoints: 10 };
-const WIDTH = 800, HEIGHT = 600;
-function drawStar(g, cx, cy, spikes, outer, inner) {
-  let rot = -Math.PI / 2; const step = Math.PI / spikes;
-  g.beginPath(); g.moveTo(cx + Math.cos(rot) * outer, cy + Math.sin(rot) * outer);
-  for (let i = 0; i < spikes; i++) { rot += step; g.lineTo(cx + Math.cos(rot) * inner, cy + Math.sin(rot) * inner); rot += step; g.lineTo(cx + Math.cos(rot) * outer, cy + Math.sin(rot) * outer); }
-  g.closePath(); g.fillPath();
+const STAR_CODE = `// ============================================================
+//  game.js  -  Your Platformer
+//
+//  HOW TO PLAY:
+//    - Press the LEFT and RIGHT arrow keys to walk.
+//    - Press the UP arrow key to jump.
+//    - Try to collect all of the coins!
+//
+//  A Phaser game runs three functions for you:
+//    preload()  -> load pictures/sounds (runs once, first)
+//    create()   -> build the level      (runs once, next)
+//    update()   -> the game loop        (runs ~60 times a second)
+// ============================================================
+
+
+// CONFIG holds numbers you can change to change how the game feels.
+// Tweak these, press Run, and see what happens!
+const CONFIG = {
+  moveSpeed: 220,   // how fast the player walks (bigger = faster)
+  jumpPower: 520    // how high the player jumps  (bigger = higher)
+};
+
+// The size of the game world, in pixels.
+const WIDTH = 800;
+const HEIGHT = 600;
+
+
+// ------------------------------------------------------------
+//  preload()  -  runs ONCE, before anything else.
+//  This loads the pictures and sounds you own from the Store.
+//  (You can see them in the "assets" folder on the Code tab.)
+// ------------------------------------------------------------
+function preload() {
+  if (typeof preloadAssets === 'function') {
+    preloadAssets(this);
+  }
 }
-function buildTextures(scene) {
-  const g = scene.make.graphics({ add: false });
-  g.fillStyle(0x35c2f5, 1); g.fillRoundedRect(0, 0, CONFIG.paddleWidth, 24, 10); g.generateTexture('player', CONFIG.paddleWidth, 24); g.clear();
-  g.fillStyle(0xffd23f, 1); drawStar(g, 17, 17, 5, 16, 8); g.generateTexture('star', 34, 34); g.clear();
-  g.fillStyle(0xe94b4b, 1); g.fillCircle(16, 18, 13); g.generateTexture('bomb', 34, 34); g.destroy();
-}
+
+
+// ------------------------------------------------------------
+//  create()  -  runs ONCE, right after preload.
+//  This is where we build the level.
+// ------------------------------------------------------------
 function create() {
-  const scene = this; buildTextures(scene);
-  scene.score = 0; scene.lives = 3; scene.isOver = false;
-  scene.player = scene.physics.add.sprite(WIDTH / 2, HEIGHT - 40, 'player'); scene.player.setCollideWorldBounds(true);
-  scene.stars = scene.physics.add.group(); scene.bombs = scene.physics.add.group();
-  scene.physics.add.overlap(scene.player, scene.stars, collectStar, null, scene);
-  scene.physics.add.overlap(scene.player, scene.bombs, hitBomb, null, scene);
-  scene.cursors = scene.input.keyboard.createCursorKeys(); scene.keys = scene.input.keyboard.addKeys('A,D');
-  scene.input.on('pointermove', function (p) { if (!scene.isOver) scene.player.x = Phaser.Math.Clamp(p.worldX, CONFIG.paddleWidth / 2, WIDTH - CONFIG.paddleWidth / 2); });
-  scene.input.on('pointerdown', function () { if (scene.isOver) scene.scene.restart(); });
-  scene.scoreText = scene.add.text(16, 14, 'Score: 0', { fontFamily: 'Arial', fontSize: '22px', color: '#eaf1f8' }).setDepth(10);
-  scene.livesText = scene.add.text(WIDTH - 16, 14, 'Lives: 3', { fontFamily: 'Arial', fontSize: '22px', color: '#f5b02e' }).setOrigin(1, 0).setDepth(10);
-  scene.time.addEvent({ delay: CONFIG.spawnEvery, loop: true, callback: function () { if (!scene.isOver) spawnObject(scene); } });
-  postStats(scene);
+  // 1) Draw the sky as a background, in the middle of the screen.
+  this.add.image(WIDTH / 2, HEIGHT / 2, 'sky').setDisplaySize(WIDTH, HEIGHT);
+
+  // 2) Build the ground and some platforms.
+  //    A "static group" is a set of things that never move.
+  const ground = this.physics.add.staticGroup();
+
+  // Lay a row of grass blocks across the bottom to make the floor.
+  for (let x = 0; x <= WIDTH; x += 70) {
+    ground.create(x, HEIGHT - 30, 'grass');
+  }
+
+  // A few floating platforms to jump onto.
+  ground.create(620, 430, 'grass');
+  ground.create(690, 430, 'grass');
+  ground.create(180, 330, 'grass');
+
+  // 3) Add the player. A "sprite" is a picture that can move.
+  this.player = this.physics.add.sprite(120, 200, 'player');
+  this.player.setCollideWorldBounds(true);        // don't walk off-screen
+
+  // Make the player stand ON the ground instead of falling through it.
+  this.physics.add.collider(this.player, ground);
+
+  // 4) Add some coins to collect.
+  this.coins = this.physics.add.group();
+
+  const coinSpots = [[250, 0], [430, 0], [560, 0], [640, 360], [180, 260]];
+  coinSpots.forEach(function (spot) {
+    const coin = this.coins.create(spot[0], spot[1], 'coin-gold');
+    coin.setBounceY(0.3);                          // a little bounce when it lands
+  }, this);
+
+  // Coins should land on the ground too.
+  this.physics.add.collider(this.coins, ground);
+
+  // When the player touches a coin, run collectCoin().
+  this.physics.add.overlap(this.player, this.coins, collectCoin, null, this);
+
+  // 5) Show the score in the top-left corner.
+  this.score = 0;
+  this.scoreText = this.add.text(16, 16, 'Coins: 0', {
+    fontSize: '24px',
+    color: '#ffffff'
+  });
+
+  // 6) Set up the arrow keys so update() can read them.
+  this.cursors = this.input.keyboard.createCursorKeys();
 }
+
+
+// ------------------------------------------------------------
+//  collectCoin()  -  runs whenever the player touches a coin.
+// ------------------------------------------------------------
+function collectCoin(player, coin) {
+  coin.disableBody(true, true);                    // hide the coin we grabbed
+  this.sound.play('sfx-coin');                     // play the coin sound
+
+  this.score += 1;                                 // add one to the score
+  this.scoreText.setText('Coins: ' + this.score);  // update the text
+}
+
+
+// ------------------------------------------------------------
+//  update()  -  the game loop. Runs about 60 times a second.
+//  This is where we read the keyboard and move the player.
+// ------------------------------------------------------------
 function update() {
-  const scene = this; if (scene.isOver) return;
-  scene.player.setVelocityX(0);
-  if (scene.cursors.left.isDown || scene.keys.A.isDown) scene.player.setVelocityX(-520);
-  else if (scene.cursors.right.isDown || scene.keys.D.isDown) scene.player.setVelocityX(520);
-  const clean = function (grp) { grp.children.iterate(function (o) { if (o && o.y > HEIGHT + 40) o.destroy(); }); };
-  clean(scene.stars); clean(scene.bombs);
+  // Walk left or right, or stand still when no key is pressed.
+  if (this.cursors.left.isDown) {
+    this.player.setVelocityX(-CONFIG.moveSpeed);
+  } else if (this.cursors.right.isDown) {
+    this.player.setVelocityX(CONFIG.moveSpeed);
+  } else {
+    this.player.setVelocityX(0);
+  }
+
+  // Only allow a jump when the player is standing on the ground.
+  const onGround = this.player.body.blocked.down;
+
+  if (this.cursors.up.isDown && onGround) {
+    this.player.setVelocityY(-CONFIG.jumpPower);
+    this.sound.play('sfx-jump');                   // play the jump sound
+  }
 }
-function spawnObject(scene) {
-  const x = Phaser.Math.Between(30, WIDTH - 30); const fall = CONFIG.fallSpeed + scene.score * 1.2;
-  if (Math.random() < CONFIG.bombChance) { const b = scene.bombs.create(x, -20, 'bomb'); b.setVelocityY(fall * 0.95); b.setAngularVelocity(120); }
-  else { const s = scene.stars.create(x, -20, 'star'); s.setVelocityY(fall); s.setAngularVelocity(180); }
-}
-function collectStar(player, star) { star.destroy(); this.score += CONFIG.starPoints; this.scoreText.setText('Score: ' + this.score); postStats(this); }
-function hitBomb(player, bomb) {
-  bomb.destroy(); this.lives -= 1; this.livesText.setText('Lives: ' + this.lives); this.cameras.main.shake(160, 0.01); postStats(this);
-  if (this.lives <= 0) { this.isOver = true; this.add.rectangle(WIDTH/2, HEIGHT/2, WIDTH, HEIGHT, 0x0b1a2e, 0.8).setDepth(20); this.add.text(WIDTH/2, HEIGHT/2 - 20, 'Game Over', { fontFamily: 'Arial', fontSize: '52px', color: '#eaf1f8', fontStyle: 'bold' }).setOrigin(0.5).setDepth(21); this.add.text(WIDTH/2, HEIGHT/2 + 40, 'Click to play again', { fontFamily: 'Arial', fontSize: '18px', color: '#7c93ae' }).setOrigin(0.5).setDepth(21); }
-}
-function postStats(scene) { try { if (window.parent) window.parent.postMessage({ type: 'stats', score: scene.score, lives: scene.lives }, '*'); } catch (e) {} }
 `;
 
 const SKY_CODE = `// game.js - Sky Dodge
@@ -182,16 +262,39 @@ if (!studentId) { studentId = 'stu-' + Math.random().toString(36).slice(2, 10); 
    student opens one it is COPIED into this client-side project. All editing,
    saving, and running happen in the browser (localStorage) — nothing the student
    makes is written back to the server. */
-const BOOT_CODE = `// main.js - starts the game (advanced)
+const BOOT_CODE = `// ============================================================
+//  main.js  -  Starts the game engine (Phaser).
+//  You usually don't need to change much in here.
+// ============================================================
+
 const config = {
-  type: Phaser.AUTO,
-  width: WIDTH, height: HEIGHT,
-  parent: 'game',
-  backgroundColor: '#0d2137',
-  scale: { mode: Phaser.Scale.FIT, autoCenter: Phaser.Scale.CENTER_BOTH },
-  physics: { default: 'arcade' },
-  scene: { create: create, update: update }
+  type: Phaser.AUTO,             // let Phaser pick the best way to draw
+  width: WIDTH,                  // game width  (from game.js)
+  height: HEIGHT,                // game height (from game.js)
+  parent: 'game',                // the box on the page to draw into
+  backgroundColor: '#7ec0ee',    // sky blue, shown behind everything
+
+  // Scale the game to fit its box, and keep it centered.
+  scale: {
+    mode: Phaser.Scale.FIT,
+    autoCenter: Phaser.Scale.CENTER_BOTH
+  },
+
+  // Gravity makes things fall. Bigger y = heavier (falls faster).
+  physics: {
+    default: 'arcade',
+    arcade: { gravity: { y: 800 }, debug: false }
+  },
+
+  // Connect our functions from game.js to the engine.
+  scene: {
+    preload: preload,
+    create: create,
+    update: update
+  }
 };
+
+// Start the game!
 new Phaser.Game(config);
 `;
 const PKEY = 'leagueProject';
@@ -241,7 +344,7 @@ function applyOps(code, ops) {
 }
 
 const SKEY = 'leagueProgress';
-function loadState() { try { return Object.assign({ xp: 0, stars: 0, done: {}, modDone: {}, unlocked: { starcatcher: true }, published: [] }, JSON.parse(localStorage.getItem(SKEY) || '{}')); } catch (e) { return { xp: 0, stars: 0, done: {}, modDone: {}, unlocked: { starcatcher: true }, published: [] }; } }
+function loadState() { try { return Object.assign({ xp: 0, stars: 250, done: {}, modDone: {}, unlocked: { starcatcher: true }, published: [] }, JSON.parse(localStorage.getItem(SKEY) || '{}')); } catch (e) { return { xp: 0, stars: 250, done: {}, modDone: {}, unlocked: { starcatcher: true }, published: [] }; } }
 let state = loadState();
 function saveState() { localStorage.setItem(SKEY, JSON.stringify(state)); renderFooter(); }
 function renderFooter() {
@@ -603,8 +706,22 @@ function completeLesson() {
 
 /* ---------- code editor ---------- */
 let currentFile = 'game.js';
-const codeEditor = CodeMirror.fromTextArea($('codeeditor'), { mode: 'javascript', theme: 'material-darker', lineNumbers: true, tabSize: 2, indentUnit: 2 });
+const codeEditor = CodeMirror.fromTextArea($('codeeditor'), {
+  mode: 'javascript', theme: 'material-darker', lineNumbers: true, tabSize: 2, indentUnit: 2,
+  matchBrackets: true, autoCloseBrackets: true, styleActiveLine: true, foldGutter: true,
+  gutters: ['CodeMirror-lint-markers', 'CodeMirror-linenumbers', 'CodeMirror-foldgutter'],
+  lint: { esversion: 2021, asi: true, undef: false, browser: true },
+  extraKeys: {
+    'Ctrl-Space': 'autocomplete',
+    'Ctrl-/': 'toggleComment', 'Cmd-/': 'toggleComment',
+    'Ctrl-S': function () { saveFile(); }, 'Cmd-S': function () { saveFile(); },
+    'Ctrl-Enter': function () { saveFile(function () { switchView('play'); }); },
+    'Ctrl-F': 'findPersistent', 'Cmd-F': 'findPersistent'
+  }
+});
 codeEditor.setSize('100%', '100%');
+codeEditor.on('cursorActivity', function (cm) { const p = cm.getCursor(); const el = $('cmStatus'); if (el) el.textContent = 'Ln ' + (p.line + 1) + ', Col ' + (p.ch + 1); });
+codeEditor.on('inputRead', function (cm, e) { if (e.text && /[\w.]/.test(e.text[0]) && !cm.state.completionActive) cm.showHint({ hint: CodeMirror.hint.anyword, completeSingle: false }); });
 function formatJS(code) { try { return prettier.format(code, { parser: 'babel', plugins: prettierPlugins, printWidth: 100, tabWidth: 2, singleQuote: true }); } catch (e) { return code; } }
 
 /* ---------- tabs + panels ---------- */
@@ -623,6 +740,21 @@ function switchView(view) {
   if (view === 'learn') showConsole(false); else if (view === 'code') showConsole(true, true); else showConsole(true, false); // log: open on Code, closed on Play
 }
 document.querySelectorAll('.vtab').forEach(function (btn) { btn.addEventListener('click', function () { switchView(btn.getAttribute('data-view')); }); });
+/* Owned Store assets → auto-preloaded into every Phaser scene by key (student just uses the name). */
+function ownedAssets() { const A = window.STORE_ASSETS || []; return A.filter(function (a) { return a.free || !!state.unlocked[a.id]; }); }
+function assetInjectScript() {
+  const map = {}; ownedAssets().forEach(function (a) { map[a.key] = { type: a.type, uri: a.uri }; });
+  return '<' + 'script>window.LEAGUE_ASSETS=' + JSON.stringify(map) + ';'
+    + 'window.preloadAssets=function(scene){var A=window.LEAGUE_ASSETS||{};'
+    + 'function toBlob(u){var c=u.indexOf(","),mime=u.slice(5,c).split(";")[0]||"application/octet-stream",b=atob(u.slice(c+1)),n=b.length,arr=new Uint8Array(n);for(var i=0;i<n;i++)arr[i]=b.charCodeAt(i);return URL.createObjectURL(new Blob([arr],{type:mime}));}'
+    + 'try{scene.load.on("loaderror",function(f){console.warn("[league] could not load: "+(f&&f.key));});}catch(e){}'
+    + 'for(var k in A){var a=A[k];try{'
+    + 'if(a.type==="image"){if(!scene.textures.exists(k))scene.load.image(k,a.uri);}'
+    + 'else if(a.type==="audio"){if(!scene.cache||!scene.cache.audio||!scene.cache.audio.exists(k))scene.load.audio(k,toBlob(a.uri));}'
+    + '}catch(e){}}};'
+    + '<' + '/script>\n';
+}
+
 function startGame() { // build a self-contained page from the browser-side project and run it in the iframe (no server)
   conClear();
   const ordered = ['game.js'].concat(fileNames().filter(function (n) { return n !== 'game.js' && n !== 'main.js'; }));
@@ -634,6 +766,7 @@ function startGame() { // build a self-contained page from the browser-side proj
     + '<div id="game"></div>\n'
     + capture
     + '<' + 'script src="https://cdn.jsdelivr.net/npm/phaser@3.80.1/dist/phaser.min.js"><' + '/script>\n'
+    + assetInjectScript()
     + scripts + '\n</body></html>';
   $('gameFrame').removeAttribute('src'); $('gameFrame').srcdoc = html;
 }
@@ -658,6 +791,28 @@ function refreshFiles() {
       row.appendChild(rst);
     }
     list.appendChild(row);
+  });
+  renderAssetFolder(list);
+}
+function renderAssetFolder(list) {
+  const owned = (typeof ownedAssets === 'function') ? ownedAssets() : [];
+  if (!owned.length) return;
+  const head = document.createElement('div'); head.className = 'folderhead';
+  head.innerHTML = '<span class="mdi mdi-folder-image"></span>assets <span class="fcount">' + owned.length + '</span>';
+  list.appendChild(head);
+  owned.slice().sort(function (a, b) { return a.key < b.key ? -1 : 1; }).forEach(function (a) {
+    const r = document.createElement('div'); r.className = 'assetrow'; r.title = a.hint;
+    const fname = a.file.split('/').pop();
+    const thumb = a.type === 'image'
+      ? '<img src="' + a.file + '" alt="">'
+      : '<span class="mdi mdi-music-note"></span>';
+    r.innerHTML = thumb + '<span class="lbl">' + fname + '</span><span class="akey">' + a.key + '</span>';
+    r.addEventListener('click', function () {
+      if (typeof codeEditor !== 'undefined' && !$('view-code').hidden) {
+        codeEditor.replaceSelection("'" + a.key + "'"); codeEditor.focus(); toast('Inserted "' + a.key + '"');
+      } else { toast(a.key + ' — ' + a.hint); }
+    });
+    list.appendChild(r);
   });
 }
 function deleteFile(name) {
@@ -759,7 +914,15 @@ function resetFile(name) {
     if (!$('view-play').hidden) startGame(); if (!$('view-code').hidden) loadCode(); loadSettings();
   } });
 }
-function resetGame() { resetFile('game.js'); }
+function resetGame() {
+  modal({ title: 'Reset the game?', message: 'This restores the original game.js and main.js, replacing your changes to them. Any other files you added are kept.', okLabel: 'Reset it', onOk: function () {
+    project.files['game.js'] = STAR_CODE; project.files['main.js'] = BOOT_CODE;
+    if (project.order.indexOf('game.js') < 0) project.order.push('game.js');
+    if (project.order.indexOf('main.js') < 0) project.order.push('main.js');
+    saveProject(); toast('Game restored.'); refreshFiles();
+    if (!$('view-play').hidden) startGame(); if (!$('view-code').hidden) loadCode(); loadSettings();
+  } });
+}
 if ($('resetGameBtn')) $('resetGameBtn').addEventListener('click', resetGame);
 
 /* ---------- collapsible AI dock ---------- */
@@ -785,48 +948,58 @@ function showPage(page) {
 }
 document.querySelectorAll('.navitem').forEach(function (b) { b.addEventListener('click', function () { showPage(b.getAttribute('data-page')); }); });
 
-/* ---------- asset store (spend Stars on assets that drop into your project as files) ---------- */
-const assets = [
-  { id: 'robot', name: 'Robot sprite', cat: 'Sprite', mdi: 'mdi-robot', col: '#2b6cb0', cost: 120, desc: 'A blocky robot for a player or enemy.', file: 'robot.js',
-    code: "// robot.js — a robot sprite.\n// In create(): makeRobot(this); then use the key 'robot'.\nfunction makeRobot(scene) {\n  const g = scene.make.graphics({ add: false });\n  g.fillStyle(0x9fb3c8, 1); g.fillRoundedRect(2, 6, 24, 20, 4);\n  g.fillStyle(0x35c2f5, 1); g.fillRect(7, 11, 4, 4); g.fillRect(17, 11, 4, 4);\n  g.generateTexture('robot', 28, 28); g.destroy();\n}\n" },
-  { id: 'diamond', name: 'Diamond', cat: 'Sprite', mdi: 'mdi-diamond-stone', col: '#2c7a7b', cost: 120, desc: 'A shiny collectible.', file: 'diamond.js',
-    code: "// diamond.js — a diamond collectible.\n// In create(): makeDiamond(this); then use the key 'diamond'.\nfunction makeDiamond(scene) {\n  const g = scene.make.graphics({ add: false });\n  g.fillStyle(0x59e0ff, 1); g.beginPath();\n  g.moveTo(14, 0); g.lineTo(28, 14); g.lineTo(14, 28); g.lineTo(0, 14); g.closePath(); g.fillPath();\n  g.generateTexture('diamond', 28, 28); g.destroy();\n}\n" },
-  { id: 'heart', name: 'Heart', cat: 'Sprite', mdi: 'mdi-heart', col: '#9b2c2c', cost: 100, desc: 'For lives or health pickups.', file: 'heart.js',
-    code: "// heart.js — a heart sprite.\n// In create(): makeHeart(this); then use the key 'heart'.\nfunction makeHeart(scene) {\n  const g = scene.make.graphics({ add: false });\n  g.fillStyle(0xff5a7a, 1); g.fillCircle(8, 9, 7); g.fillCircle(18, 9, 7);\n  g.fillTriangle(1, 11, 25, 11, 13, 26);\n  g.generateTexture('heart', 26, 26); g.destroy();\n}\n" },
-  { id: 'slime', name: 'Slime enemy', cat: 'Enemy', mdi: 'mdi-emoticon-devil', col: '#276749', cost: 150, desc: 'A bouncy slime to chase the player.', file: 'slime.js',
-    code: "// slime.js — a slime enemy.\n// In create(): makeSlime(this); then use the key 'slime'.\nfunction makeSlime(scene) {\n  const g = scene.make.graphics({ add: false });\n  g.fillStyle(0x3ddc84, 1); g.fillRoundedRect(0, 8, 30, 18, 9);\n  g.fillStyle(0x0b1a2e, 1); g.fillCircle(10, 16, 3); g.fillCircle(20, 16, 3);\n  g.generateTexture('slime', 30, 26); g.destroy();\n}\n" },
-  { id: 'spikeball', name: 'Spike ball', cat: 'Enemy', mdi: 'mdi-alert-octagon', col: '#c05621', cost: 150, desc: 'A spiky hazard to avoid.', file: 'spikeball.js',
-    code: "// spikeball.js — a spiky hazard.\n// In create(): makeSpikeball(this); then use the key 'spikeball'.\nfunction makeSpikeball(scene) {\n  const g = scene.make.graphics({ add: false });\n  g.fillStyle(0xe94b4b, 1); g.fillCircle(14, 14, 10);\n  g.fillStyle(0xffb4b4, 1); for (let a = 0; a < 8; a++) { const r = a * Math.PI / 4; g.fillCircle(14 + Math.cos(r) * 13, 14 + Math.sin(r) * 13, 2); }\n  g.generateTexture('spikeball', 28, 28); g.destroy();\n}\n" },
-  { id: 'space-bg', name: 'Space background', cat: 'Background', mdi: 'mdi-star-shooting', col: '#3730a3', cost: 150, desc: 'A starfield backdrop.', file: 'space-bg.js',
-    code: "// space-bg.js — a starfield background.\n// In create(): makeSpaceBg(this); scene.add.image(400, 300, 'space-bg');\nfunction makeSpaceBg(scene) {\n  const g = scene.make.graphics({ add: false });\n  g.fillStyle(0x0a1330, 1); g.fillRect(0, 0, 800, 600);\n  g.fillStyle(0xffffff, 1); for (let i = 0; i < 120; i++) g.fillCircle(Math.random() * 800, Math.random() * 600, Math.random() * 1.5);\n  g.generateTexture('space-bg', 800, 600); g.destroy();\n}\n" },
-  { id: 'low-gravity', name: 'Low gravity', cat: 'Physics', mdi: 'mdi-feather', col: '#6b46c1', cost: 100, desc: 'Floaty, moon-like gravity.', file: 'low-gravity.js',
-    code: "// low-gravity.js — floaty physics.\n// In create(): applyLowGravity(this);\nfunction applyLowGravity(scene) {\n  scene.physics.world.gravity.y = 120;\n}\n" },
-  { id: 'bouncy', name: 'Bouncy world', cat: 'Physics', mdi: 'mdi-basketball', col: '#b7791f', cost: 100, desc: 'Things bounce off the walls.', file: 'bouncy.js',
-    code: "// bouncy.js — make a sprite bounce.\n// After creating a sprite: makeBouncy(sprite);\nfunction makeBouncy(sprite) {\n  sprite.setBounce(1);\n  sprite.setCollideWorldBounds(true);\n}\n" },
-  { id: 'fast-fall', name: 'Fast fall', cat: 'Physics', mdi: 'mdi-arrow-down-bold', col: '#0e7490', cost: 100, desc: 'Heavier, faster-falling gravity.', file: 'fast-fall.js',
-    code: "// fast-fall.js — heavy gravity.\n// In create(): applyFastFall(this);\nfunction applyFastFall(scene) {\n  scene.physics.world.gravity.y = 700;\n}\n" }
-];
+/* ---------- asset store (spend Stars to unlock real Phaser assets; owned ones auto-preload by key) ---------- */
+const assets = window.STORE_ASSETS || [];
 function avatarStyle(name) { let h = 0; for (let i = 0; i < name.length; i++) h = name.charCodeAt(i) + ((h << 5) - h); return 'background:hsl(' + (Math.abs(h) % 360) + ' 62% 58%)'; }
+const CAT_STYLE = {
+  Characters: { col: '#2b6cb0', mdi: 'mdi-human' },
+  Enemies: { col: '#9b2c2c', mdi: 'mdi-emoticon-devil-outline' },
+  Collectibles: { col: '#2c7a7b', mdi: 'mdi-diamond-stone' },
+  Tiles: { col: '#8a6d3b', mdi: 'mdi-grid' },
+  Backgrounds: { col: '#3730a3', mdi: 'mdi-image-outline' },
+  UI: { col: '#6b46c1', mdi: 'mdi-gesture-tap-button' },
+  Sounds: { col: '#0e7490', mdi: 'mdi-volume-high' }
+};
+let storeFilter = 'All';
+function storeArt(a) {
+  const st = CAT_STYLE[a.cat] || { col: '#2b6cb0', mdi: 'mdi-cube' };
+  const bg = 'background:linear-gradient(135deg,' + st.col + ',#0b1a2e)';
+  if (a.type === 'audio') {
+    return '<div class="art" style="' + bg + '"><span class="mdi ' + st.mdi + '"></span>'
+      + '<button class="playbtn" data-play="' + a.id + '" title="Preview sound"><span class="mdi mdi-play"></span></button></div>';
+  }
+  const pixel = '';  // Kenney art is smooth, not pixel-art
+  return '<div class="art' + pixel + '" style="' + bg + '"><img src="' + a.file + '" alt="' + a.name + '"></div>';
+}
 function renderStore() {
-  const cards = assets.map(function (a) {
-    const owned = !!state.unlocked[a.id];
-    const btn = owned ? '<span class="owned"><span class="mdi mdi-check-decagram"></span>Owned</span>'
-      : '<button class="gbtn" data-buy="' + a.id + '"><span class="mdi mdi-cart-outline"></span>Buy</button>';
-    const price = '<span class="cost"><span class="mdi mdi-star"></span>' + a.cost + '</span>';
-    return '<div class="gcard"><div class="art" style="background:linear-gradient(135deg,' + a.col + ',#0b1a2e)"><span class="mdi ' + a.mdi + '"></span></div>'
-      + '<div class="body"><h3>' + a.name + '</h3><div class="tags"><span class="chip">' + a.cat + '</span></div><p>' + a.desc + '</p><div class="cta">' + price + btn + '</div></div></div>';
+  const cats = ['All', 'Characters', 'Enemies', 'Collectibles', 'Tiles', 'Backgrounds', 'UI', 'Sounds'];
+  const filterBar = cats.map(function (cx) { return '<button data-filter="' + cx + '"' + (cx === storeFilter ? ' class="on"' : '') + '>' + cx + '</button>'; }).join('');
+  const list = assets.filter(function (a) { return storeFilter === 'All' || a.cat === storeFilter; });
+  const cards = list.map(function (a) {
+    const owned = a.free || !!state.unlocked[a.id];
+    const btn = a.free ? '<span class="owned"><span class="mdi mdi-check-decagram"></span>Included</span>'
+      : (owned ? '<span class="owned"><span class="mdi mdi-check-decagram"></span>Owned</span>'
+      : '<button class="gbtn" data-buy="' + a.id + '"><span class="mdi mdi-cart-outline"></span>Buy</button>');
+    const price = a.free ? '<span class="cost" style="color:var(--teal)"><span class="mdi mdi-check"></span>Free</span>'
+      : '<span class="cost"><span class="mdi mdi-star"></span>' + a.cost + '</span>';
+    return '<div class="gcard">' + storeArt(a)
+      + '<div class="body"><h3>' + a.name + '</h3>'
+      + '<div class="tags"><span class="chip">' + a.cat + '</span><span class="chip key">' + a.key + '</span></div>'
+      + '<p class="use">Use: <code>' + a.hint + '</code></p>'
+      + '<div class="cta">' + price + btn + '</div></div></div>';
   }).join('');
-  return '<div class="phead"><div><h2><span class="mdi mdi-cart-outline"></span>Store</h2><p class="sub">Spend ★ Stars on assets. Each one drops a file into your project you can use in your game.</p></div><span class="star-balance"><span class="mdi mdi-star"></span>' + state.stars + '</span></div><div class="cardgrid">' + cards + '</div>';
+  return '<div class="phead"><div><h2><span class="mdi mdi-cart-outline"></span>Store</h2><p class="sub">Spend ★ Stars to unlock art &amp; sounds. Buy one, then use its <b>name</b> (the green key) in your game — it loads automatically.</p></div><span class="star-balance"><span class="mdi mdi-star"></span>' + state.stars + '</span></div>'
+    + '<div class="store-filter">' + filterBar + '</div>'
+    + '<div class="cardgrid">' + cards + '</div>';
 }
 function buyAsset(id) {
   const a = assets.find(function (x) { return x.id === id; });
-  if (!a || state.unlocked[a.id]) return;
+  if (!a || a.free || state.unlocked[a.id]) return;
   if (state.stars < a.cost) { toast('Not enough Stars — you need ★ ' + a.cost + '.'); return; }
-  modal({ title: 'Buy "' + a.name + '"?', message: 'Costs ★ ' + a.cost + ' and adds ' + a.file + ' to your project. You have ★ ' + state.stars + '.', okLabel: 'Buy it',
+  modal({ title: 'Unlock "' + a.name + '"?', message: 'Costs ★ ' + a.cost + '. You can then use it in your game with the name "' + a.key + '". You have ★ ' + state.stars + '.', okLabel: 'Unlock it',
     onOk: function () {
       state.stars -= a.cost; state.unlocked[a.id] = true; saveState();
-      if (project.files[a.file] === undefined) { project.files[a.file] = a.code; project.order.push(a.file); saveProject(); }
-      toast('Bought ' + a.name + ' — added ' + a.file + ' to your Files.'); showPage('store');
+      toast('Unlocked ' + a.name + ' — use "' + a.key + '" in your game.'); showPage('store');
     } });
 }
 
@@ -854,41 +1027,88 @@ function publishGame() {
 }
 
 /* ---------- leaderboards ---------- */
-const sampleBoard = [ // names shown privacy-safe (first name + last initial), like the Gallery
+const sampleBoard = [ // privacy-safe names (first name + last initial), like the Gallery
   { name: 'Ava R.', xp: 4200, week: 620, cls: true },
   { name: 'Leo M.', xp: 3850, week: 410, cls: true },
+  { name: 'Ivy L.', xp: 3100, week: 540, cls: true },
   { name: 'Mia T.', xp: 2600, week: 900, cls: false },
+  { name: 'Eli J.', xp: 2250, week: 480, cls: true },
   { name: 'Sam K.', xp: 1950, week: 300, cls: true },
+  { name: 'Zoe W.', xp: 1500, week: 260, cls: false },
   { name: 'Kai P.', xp: 1200, week: 720, cls: false },
+  { name: 'Max D.', xp: 980, week: 390, cls: true },
   { name: 'Noa B.', xp: 700, week: 150, cls: true }
 ];
 let boardScope = 'class', boardRange = 'all';
+function nfmt(n) { return Number(n).toLocaleString('en-US'); }
 function renderBoard() {
+  const hasXp = state.xp > 0;
   const me = { name: 'You', xp: state.xp, week: state.xp, cls: true, you: true };
-  let rows = sampleBoard.concat([me]);
-  if (boardScope === 'class') rows = rows.filter(function (r) { return r.cls; });
+  let pool = sampleBoard.slice();
+  if (boardScope === 'class') pool = pool.filter(function (r) { return r.cls; });
   const val = function (r) { return boardRange === 'week' ? r.week : r.xp; };
-  rows = rows.slice().sort(function (a, b) { return val(b) - val(a); });
+  let rows = (hasXp ? pool.concat([me]) : pool.slice()).sort(function (a, b) { return val(b) - val(a); });
   const max = val(rows[0]) || 1;
-  const myRank = rows.findIndex(function (r) { return r.you; }) + 1;
-  const body = rows.map(function (r, i) {
+  const myIdx = rows.findIndex(function (r) { return r.you; });
+  const myRank = myIdx + 1;
+
+  const podMeta = [{ i: 1, c: 's', lbl: '2nd place' }, { i: 0, c: 'g p1', lbl: '1st place' }, { i: 2, c: 'b', lbl: '3rd place' }];
+  const podium = '<div class="podium">' + podMeta.map(function (m) {
+    const r = rows[m.i]; if (!r) return '';
+    const lvl = Math.floor(r.xp / 1000) + 1;
+    return '<div class="pod ' + m.c + (r.you ? ' you' : '') + '">'
+      + '<span class="medal" role="img" aria-label="' + m.lbl + '"><span class="mdi mdi-medal"></span></span>'
+      + '<div class="pod-av" style="' + avatarStyle(r.name) + '">' + r.name.charAt(0).toUpperCase() + '</div>'
+      + '<div class="pod-nm">' + r.name + '</div><div class="pod-lv">Level ' + lvl + '</div>'
+      + '<div class="pod-xp">' + nfmt(val(r)) + ' XP</div></div>';
+  }).join('') + '</div>';
+
+  const list = rows.map(function (r, i) {
     const medal = i === 0 ? 'g' : (i === 1 ? 's' : (i === 2 ? 'b' : ''));
     const lvl = Math.floor(r.xp / 1000) + 1;
-    const rankCell = i < 3 ? '<span class="mdi mdi-medal"></span>' : (i + 1);
-    return '<div class="lrow' + (r.you ? ' you' : '') + '"><div class="rank ' + medal + '">' + rankCell + '</div>'
+    const pct = Math.round(val(r) / max * 100);
+    return '<div class="lrow' + (r.you ? ' you' : '') + '">'
+      + '<div class="rank ' + medal + '">' + (i + 1) + '</div>'
       + '<div class="avatar" style="' + avatarStyle(r.name) + '">' + r.name.charAt(0).toUpperCase() + '</div>'
-      + '<div class="who"><div class="nm">' + r.name + '</div><div class="lv">Level ' + lvl + '</div><div class="lbar"><div style="width:' + (val(r) / max * 100) + '%"></div></div></div>'
-      + '<div class="xp">' + val(r) + ' XP</div></div>';
+      + '<div class="who"><div class="nm">' + r.name + '</div><div class="lv">Level ' + lvl + '</div>'
+      + '<div class="lbar" role="progressbar" aria-valuenow="' + pct + '" aria-valuemin="0" aria-valuemax="100"><div style="width:' + pct + '%"></div></div></div>'
+      + '<div class="xp">' + nfmt(val(r)) + ' XP</div></div>';
   }).join('');
-  const seg = function (attr, opts) { return '<span class="seg">' + opts.map(function (o) { return '<button data-' + attr + '="' + o[0] + '"' + ((attr === 'bscope' ? boardScope : boardRange) === o[0] ? ' class="on"' : '') + '>' + o[1] + '</button>'; }).join('') + '</span>'; };
-  const controls = '<div class="board-controls">'
-    + seg('bscope', [['class', 'My class'], ['all', 'Everyone']])
-    + seg('brange', [['all', 'All-time'], ['week', 'This week']])
-    + '<span class="your-rank">Your rank <span class="r">#' + myRank + '</span> &middot; ' + val(me) + ' XP</span>'
-    + '</div>';
-  const empty = (val(me) === 0) ? '<div class="empty">Finish lessons to earn XP and climb the board!</div>' : '';
-  return '<div class="phead"><div><h2><span class="mdi mdi-podium"></span>Leaderboards</h2><p class="sub">' + (boardScope === 'class' ? 'Your class' : 'Everyone') + ' &middot; ' + (boardRange === 'week' ? 'this week' : 'all-time') + '</p></div></div>'
-    + '<div class="board">' + controls + empty + body + '</div>';
+
+  const learners = pool.length + (hasXp ? 1 : 0);
+  const classTotal = pool.reduce(function (s, r) { return s + val(r); }, 0) + (hasXp ? val(me) : 0);
+  let yourCard;
+  if (hasXp) {
+    const lvl = Math.floor(me.xp / 1000) + 1;
+    const into = me.xp % 1000, toNext = 1000 - into, pctL = into / 10;
+    const ahead = myIdx > 0 ? rows[myIdx - 1] : null;
+    const cap = ahead ? '+' + nfmt(val(ahead) - val(me)) + ' XP to pass ' + ahead.name : "You’re in the lead 🎉";
+    yourCard = '<div class="card yourcard">'
+      + '<div class="yc-h"><span class="lbl">Your rank</span><span class="yc-xp">' + nfmt(val(me)) + ' XP</span></div>'
+      + '<div class="yc-rank">#' + myRank + '</div>'
+      + '<div class="yc-sub">Level ' + lvl + ' · ' + nfmt(toNext) + ' XP to Level ' + (lvl + 1) + '</div>'
+      + '<div class="prog" role="progressbar" aria-valuenow="' + Math.round(pctL) + '" aria-valuemin="0" aria-valuemax="100"><div style="width:' + pctL + '%"></div></div>'
+      + '<div class="prog-cap">' + cap + '</div></div>';
+  } else {
+    yourCard = '<div class="card yourcard">'
+      + '<div class="yc-h"><span class="lbl">Your rank</span></div>'
+      + '<div class="yc-sub">You’re not on the board yet. Finish your first lesson to earn XP and claim a spot.</div>'
+      + '<button class="startbtn" data-start="1"><span class="mdi mdi-play-circle"></span>Start a lesson</button></div>';
+  }
+  const stat = function (v, k, cls) { return '<div class="stat"><div class="v' + (cls ? ' ' + cls : '') + '">' + v + '</div><div class="k">' + k + '</div></div>'; };
+  const stats = '<div class="card"><div class="statgrid">'
+    + stat(hasXp ? '#' + myRank : '—', 'Your rank', 'gold')
+    + stat(nfmt(val(me)), 'Your ' + (boardRange === 'week' ? 'weekly ' : '') + 'XP', 'teal')
+    + stat(learners, boardScope === 'class' ? 'In your class' : 'Learners', '')
+    + stat(nfmt(classTotal), (boardScope === 'class' ? 'Class' : 'Total') + ' XP', '')
+    + '</div></div>';
+  const rail = '<div class="rail">' + yourCard + stats + '</div>';
+
+  const seg = function (attr, opts, cur) { return '<span class="seg" role="group">' + opts.map(function (o) { const on = cur === o[0]; return '<button data-' + attr + '="' + o[0] + '" aria-pressed="' + on + '"' + (on ? ' class="on"' : '') + '>' + o[1] + '</button>'; }).join('') + '</span>'; };
+  const controls = '<div class="board-controls">' + seg('bscope', [['class', 'My class'], ['all', 'Everyone']], boardScope) + seg('brange', [['all', 'All-time'], ['week', 'This week']], boardRange) + '</div>';
+
+  return '<div class="phead"><div><h2><span class="mdi mdi-podium"></span>Leaderboards</h2><p class="sub">' + (boardScope === 'class' ? 'Your class' : 'Everyone') + ' · ' + (boardRange === 'week' ? 'this week' : 'all-time') + '</p></div></div>'
+    + '<div class="board">' + controls + podium + '<div class="lb-body"><div class="lb-list">' + list + '</div>' + rail + '</div></div>';
 }
 
 /* ---------- docs / help ---------- */
@@ -929,10 +1149,13 @@ function resetProgress() {
 }
 function wirePage(page) {
   document.querySelectorAll('#page [data-buy]').forEach(function (b) { b.addEventListener('click', function () { buyAsset(b.getAttribute('data-buy')); }); });
+  document.querySelectorAll('#page [data-filter]').forEach(function (b) { b.addEventListener('click', function () { storeFilter = b.getAttribute('data-filter'); showPage('store'); }); });
+  document.querySelectorAll('#page [data-play]').forEach(function (b) { b.addEventListener('click', function () { const a = assets.find(function (x) { return x.id === b.getAttribute('data-play'); }); if (a) { try { new Audio(a.uri).play(); } catch (e) {} } }); });
   if (page === 'gallery') { var pb = $('publishBtn'); if (pb) pb.addEventListener('click', publishGame); }
   if (page === 'leaderboards') {
     document.querySelectorAll('#page [data-bscope]').forEach(function (b) { b.addEventListener('click', function () { boardScope = b.getAttribute('data-bscope'); showPage('leaderboards'); }); });
     document.querySelectorAll('#page [data-brange]').forEach(function (b) { b.addEventListener('click', function () { boardRange = b.getAttribute('data-brange'); showPage('leaderboards'); }); });
+    document.querySelectorAll('#page [data-start]').forEach(function (b) { b.addEventListener('click', function () { showPage('courses'); switchView('learn'); }); });
   }
   if (page === 'help') { var rb = $('resetBtn'); if (rb) rb.addEventListener('click', resetProgress); }
   if (page === 'docs') { document.querySelectorAll('#page [data-goto]').forEach(function (link) { link.addEventListener('click', function (e) { e.preventDefault(); var el = document.getElementById('doc-' + link.getAttribute('data-goto')); if (el) el.scrollIntoView({ behavior: 'smooth', block: 'start' }); }); }); }
