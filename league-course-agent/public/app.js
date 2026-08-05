@@ -778,11 +778,19 @@ function startGame() { // build a self-contained page from the browser-side proj
     + '<' + 'script src="https://cdn.jsdelivr.net/npm/phaser@3.80.1/dist/phaser.min.js"><' + '/script>\n'
     + assetInjectScript()
     + scripts + '\n</body></html>';
+  fitStage();
   const gl = $('gameLoading'); if (gl) gl.classList.remove('hidden');
-  const gf = $('gameFrame'); gf.onload = function () { const g = $('gameLoading'); if (g) g.classList.add('hidden'); if (typeof postGameAudio === 'function') postGameAudio(); };
+  const gf = $('gameFrame'); gf.onload = function () { const g = $('gameLoading'); if (g) g.classList.add('hidden'); fitStage(); try { gf.contentWindow.focus(); } catch (e) {} if (typeof postGameAudio === 'function') postGameAudio(); };
   gf.removeAttribute('src'); gf.srcdoc = html;
 }
 function stopGame() { const f = $('gameFrame'); if (f) { f.removeAttribute('srcdoc'); f.removeAttribute('src'); } }
+function fitStage() {  // size the game frame to the largest true 4:3 box that fits the stage
+  const st = $('gameStage'); if (!st) return; const fr = st.querySelector('.stage-frame'); if (!fr) return;
+  const w = st.clientWidth, h = st.clientHeight; if (!w || !h) return;
+  let fw = w, fh = w * 3 / 4; if (fh > h) { fh = h; fw = h * 4 / 3; }
+  fr.style.width = Math.floor(fw) + 'px'; fr.style.height = Math.floor(fh) + 'px';
+}
+window.addEventListener('resize', function () { const v = $('view-play'); if (v && !v.hidden) fitStage(); });
 
 /* ---------- game audio: mute defaults ON; controls live in the Play viewport ---------- */
 let gameMuted = (localStorage.getItem('leagueMuted') !== 'false');
