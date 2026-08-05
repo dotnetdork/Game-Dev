@@ -209,6 +209,25 @@
   .assetrow .mdi{font-size:15px;color:var(--teal);flex:none;}
   .assetrow .lbl{white-space:nowrap;overflow:hidden;text-overflow:ellipsis;}
   .assetrow .akey{margin-left:auto;color:var(--dim);font-size:10.5px;flex:none;}
+  .folderhead{cursor:pointer;}
+  .folderhead:hover{color:var(--muted);}
+  .folderhead .caret{color:var(--dim);font-size:16px;margin-left:-2px;}
+  #fileList .filerow{padding-left:28px;}
+  .assetrow{padding-left:28px;}
+  .assetrow.empty{color:var(--dim);cursor:default;font-style:italic;}
+  .asset-preview{display:flex;align-items:center;justify-content:center;background:#0c1b2e;border:1px solid var(--line);border-radius:10px;padding:16px;margin:2px 0 14px;min-height:130px;}
+  .asset-preview img{max-width:72%;max-height:150px;filter:drop-shadow(0 4px 10px rgba(0,0,0,.4));}
+  .asset-info .ai-row{display:flex;justify-content:space-between;gap:14px;padding:7px 0;border-bottom:1px solid var(--line);font-size:13px;color:var(--ink);}
+  .asset-info .ai-row span{color:var(--muted);}
+  .asset-info code{background:#0c1b2e;border:1px solid var(--line);border-radius:5px;padding:1px 6px;color:#cfe6ff;font-size:12px;font-family:Consolas,monospace;}
+  .asset-info .ai-desc{margin:12px 0 0;color:var(--muted);font-size:13px;line-height:1.5;}
+  .game-audio{position:absolute;top:14px;right:14px;z-index:6;display:flex;align-items:center;gap:9px;background:rgba(8,18,31,.72);border:1px solid var(--line);border-radius:999px;padding:5px 12px;}
+  .game-audio button{background:none;border:0;color:var(--muted);cursor:pointer;display:flex;align-items:center;padding:2px;}
+  .game-audio button .mdi{font-size:19px;}
+  .game-audio button.on{color:var(--brand);}
+  .game-audio button:hover{color:var(--ink);}
+  .game-audio input[type=range]{width:84px;accent-color:var(--brand);cursor:pointer;}
+  .game-audio input[type=range]:disabled{opacity:.4;cursor:default;}
   .CodeMirror{flex:1;height:100%;font-family:Consolas,"Courier New",monospace;font-size:12.5px;}
   #view-play{background:radial-gradient(120% 120% at 50% 0%,#0c1c31,#06101c);align-items:center;justify-content:center;padding:16px;}
   #gameFrame{flex:none;border:1px solid var(--line);width:100%;max-width:900px;aspect-ratio:4/3;max-height:100%;border-radius:12px;box-shadow:0 12px 44px rgba(0,0,0,.55);background:#06101c;}
@@ -500,7 +519,7 @@
         <div class="viewbody">
           <div class="view" id="view-learn"><div class="lesson" id="lessonBody"></div></div>
           <div class="view" id="view-code" hidden><textarea id="codeeditor"></textarea><div class="cm-statusbar" id="cmStatus">Ln 1, Col 1</div></div>
-          <div class="view" id="view-play" hidden><iframe id="gameFrame" title="Game viewport"></iframe></div>
+          <div class="view" id="view-play" hidden><iframe id="gameFrame" title="Game viewport"></iframe><div class="game-audio" id="gameAudio"><button id="muteBtn" title="Sound is off — click to turn it on"><span class="mdi mdi-volume-off"></span></button><input type="range" id="volSlider" min="0" max="100" value="50" disabled></div></div>
         </div>
         <div class="console" id="console" hidden>
           <div class="console-head">

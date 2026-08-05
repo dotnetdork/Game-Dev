@@ -93,6 +93,7 @@ function create() {
 
   // 6) Set up the arrow keys so update() can read them.
   this.cursors = this.input.keyboard.createCursorKeys();
+  this.keys = this.input.keyboard.addKeys('W,A,S,D');   // WASD works too
 }
 
 
@@ -113,10 +114,14 @@ function collectCoin(player, coin) {
 //  This is where we read the keyboard and move the player.
 // ------------------------------------------------------------
 function update() {
-  // Walk left or right, or stand still when no key is pressed.
-  if (this.cursors.left.isDown) {
+  // Arrow keys OR W / A / S / D both work.
+  const left = this.cursors.left.isDown || this.keys.A.isDown;
+  const right = this.cursors.right.isDown || this.keys.D.isDown;
+  const jump = this.cursors.up.isDown || this.keys.W.isDown;
+
+  if (left) {
     this.player.setVelocityX(-CONFIG.moveSpeed);
-  } else if (this.cursors.right.isDown) {
+  } else if (right) {
     this.player.setVelocityX(CONFIG.moveSpeed);
   } else {
     this.player.setVelocityX(0);
@@ -125,7 +130,7 @@ function update() {
   // Only allow a jump when the player is standing on the ground.
   const onGround = this.player.body.blocked.down;
 
-  if (this.cursors.up.isDown && onGround) {
+  if (jump && onGround) {
     this.player.setVelocityY(-CONFIG.jumpPower);
     this.sound.play('sfx-jump');                   // play the jump sound
   }
@@ -752,9 +757,14 @@ function assetInjectScript() {
     + 'if(a.type==="image"){if(!scene.textures.exists(k))scene.load.image(k,a.uri);}'
     + 'else if(a.type==="audio"){if(!scene.cache||!scene.cache.audio||!scene.cache.audio.exists(k))scene.load.audio(k,toBlob(a.uri));}'
     + '}catch(e){}}};'
+    + 'if(window.__leagueMute===undefined)window.__leagueMute=true;'
+    + '(function(){if(!window.Phaser||!Phaser.Game||Phaser.Game.prototype.__audioHook)return;Phaser.Game.prototype.__audioHook=1;'
+    + 'var bp=Phaser.Game.prototype.boot;Phaser.Game.prototype.boot=function(){var r=bp.apply(this,arguments);var self=this;window.__leagueGame=self;'
+    + 'function ap(){try{self.sound.mute=window.__leagueMute!==false;var v=(typeof window.__leagueVol==="number")?window.__leagueVol:0.5;if(self.sound.setVolume)self.sound.setVolume(v);else self.sound.volume=v;}catch(e){}}'
+    + 'try{self.events.once("ready",ap);}catch(e){}try{ap();}catch(e){}return r;};})();'
+    + 'window.addEventListener("message",function(ev){var d=ev&&ev.data&&ev.data.__leagueAudio;if(!d)return;if("mute" in d)window.__leagueMute=!!d.mute;if(typeof d.volume==="number")window.__leagueVol=d.volume;var g=window.__leagueGame;if(g&&g.sound){try{g.sound.mute=window.__leagueMute;if(g.sound.setVolume)g.sound.setVolume(window.__leagueVol);else g.sound.volume=window.__leagueVol;}catch(e){}}});'
     + '<' + '/script>\n';
 }
-
 function startGame() { // build a self-contained page from the browser-side project and run it in the iframe (no server)
   conClear();
   const ordered = ['game.js'].concat(fileNames().filter(function (n) { return n !== 'game.js' && n !== 'main.js'; }));
@@ -768,52 +778,86 @@ function startGame() { // build a self-contained page from the browser-side proj
     + '<' + 'script src="https://cdn.jsdelivr.net/npm/phaser@3.80.1/dist/phaser.min.js"><' + '/script>\n'
     + assetInjectScript()
     + scripts + '\n</body></html>';
-  $('gameFrame').removeAttribute('src'); $('gameFrame').srcdoc = html;
+  const gf = $('gameFrame'); gf.onload = function () { if (typeof postGameAudio === 'function') postGameAudio(); };
+  gf.removeAttribute('src'); gf.srcdoc = html;
 }
 function stopGame() { const f = $('gameFrame'); if (f) { f.removeAttribute('srcdoc'); f.removeAttribute('src'); } }
 
+/* ---------- game audio: mute defaults ON; controls live in the Play viewport ---------- */
+let gameMuted = (localStorage.getItem('leagueMuted') !== 'false');
+let gameVolume = parseFloat(localStorage.getItem('leagueVol') || '0.5'); if (isNaN(gameVolume)) gameVolume = 0.5;
+function postGameAudio() { const f = $('gameFrame'); if (f && f.contentWindow) { try { f.contentWindow.postMessage({ __leagueAudio: { mute: gameMuted, volume: gameVolume } }, '*'); } catch (e) {} } }
+function updateAudioUI() { const b = $('muteBtn'), s = $('volSlider'); if (!b) return;
+  b.innerHTML = '<span class="mdi ' + (gameMuted ? 'mdi-volume-off' : 'mdi-volume-high') + '"></span>';
+  b.title = gameMuted ? 'Sound is off — click to turn it on' : 'Sound is on — click to mute';
+  b.classList.toggle('on', !gameMuted); if (s) { s.value = Math.round(gameVolume * 100); s.disabled = gameMuted; } }
+if ($('muteBtn')) $('muteBtn').addEventListener('click', function () { gameMuted = !gameMuted; localStorage.setItem('leagueMuted', gameMuted ? 'true' : 'false'); updateAudioUI(); postGameAudio(); });
+if ($('volSlider')) $('volSlider').addEventListener('input', function () { gameVolume = (+this.value) / 100; if (gameMuted) { gameMuted = false; localStorage.setItem('leagueMuted', 'false'); } localStorage.setItem('leagueVol', String(gameVolume)); updateAudioUI(); postGameAudio(); });
+updateAudioUI();
+
+
 /* ---------- files ---------- */
+let folderOpen = { source: true, assets: true };
+function folderHead(id, label, icon, count) {
+  const h = document.createElement('div'); h.className = 'folderhead';
+  h.innerHTML = '<span class="caret mdi ' + (folderOpen[id] ? 'mdi-menu-down' : 'mdi-menu-right') + '"></span>'
+    + '<span class="mdi ' + icon + '"></span>' + label + '<span class="fcount">' + count + '</span>';
+  h.addEventListener('click', function () { folderOpen[id] = !folderOpen[id]; refreshFiles(); });
+  return h;
+}
 function refreshFiles() {
   const list = $('fileList'); list.innerHTML = '';
-  fileNames().forEach(function (name) {
-    const row = document.createElement('div'); row.className = 'filerow' + (name === currentFile ? ' active' : '');
-    const icon = document.createElement('span'); icon.className = 'mdi mdi-language-javascript';
-    const lbl = document.createElement('span'); lbl.className = 'lbl'; lbl.textContent = name;
-    row.appendChild(icon); row.appendChild(lbl);
-    row.addEventListener('click', function () { openFile(name); });
-    if (name !== 'game.js' && name !== 'main.js') { // core files can't be deleted — they get a reset instead
-      const del = document.createElement('button'); del.className = 'del'; del.title = 'Delete ' + name; del.innerHTML = '<span class="mdi mdi-close"></span>';
-      del.addEventListener('click', function (e) { e.stopPropagation(); deleteFile(name); });
-      row.appendChild(del);
-    } else {
-      const rst = document.createElement('button'); rst.className = 'del rst'; rst.title = 'Reset ' + name + ' to the default'; rst.innerHTML = '<span class="mdi mdi-restore"></span>';
-      rst.addEventListener('click', function (e) { e.stopPropagation(); resetFile(name); });
-      row.appendChild(rst);
-    }
-    list.appendChild(row);
-  });
+  const names = fileNames();
+  list.appendChild(folderHead('source', 'source', 'mdi-folder-outline', names.length));
+  if (folderOpen.source) {
+    names.forEach(function (name) {
+      const row = document.createElement('div'); row.className = 'filerow' + (name === currentFile ? ' active' : '');
+      const icon = document.createElement('span'); icon.className = 'mdi mdi-language-javascript';
+      const lbl = document.createElement('span'); lbl.className = 'lbl'; lbl.textContent = name;
+      row.appendChild(icon); row.appendChild(lbl);
+      row.addEventListener('click', function () { openFile(name); });
+      if (name !== 'game.js' && name !== 'main.js') {
+        const del = document.createElement('button'); del.className = 'del'; del.title = 'Delete ' + name; del.innerHTML = '<span class="mdi mdi-close"></span>';
+        del.addEventListener('click', function (e) { e.stopPropagation(); deleteFile(name); });
+        row.appendChild(del);
+      } else {
+        const rst = document.createElement('button'); rst.className = 'del rst'; rst.title = 'Reset ' + name + ' to the default'; rst.innerHTML = '<span class="mdi mdi-restore"></span>';
+        rst.addEventListener('click', function (e) { e.stopPropagation(); resetFile(name); });
+        row.appendChild(rst);
+      }
+      list.appendChild(row);
+    });
+  }
   renderAssetFolder(list);
 }
 function renderAssetFolder(list) {
   const owned = (typeof ownedAssets === 'function') ? ownedAssets() : [];
-  if (!owned.length) return;
-  const head = document.createElement('div'); head.className = 'folderhead';
-  head.innerHTML = '<span class="mdi mdi-folder-image"></span>assets <span class="fcount">' + owned.length + '</span>';
-  list.appendChild(head);
+  list.appendChild(folderHead('assets', 'assets', 'mdi-folder-image', owned.length));
+  if (!folderOpen.assets) return;
+  if (!owned.length) { const em = document.createElement('div'); em.className = 'assetrow empty'; em.textContent = 'Buy assets in the Store'; list.appendChild(em); return; }
   owned.slice().sort(function (a, b) { return a.key < b.key ? -1 : 1; }).forEach(function (a) {
-    const r = document.createElement('div'); r.className = 'assetrow'; r.title = a.hint;
-    const fname = a.file.split('/').pop();
-    const thumb = a.type === 'image'
-      ? '<img src="' + a.file + '" alt="">'
-      : '<span class="mdi mdi-music-note"></span>';
-    r.innerHTML = thumb + '<span class="lbl">' + fname + '</span><span class="akey">' + a.key + '</span>';
-    r.addEventListener('click', function () {
-      if (typeof codeEditor !== 'undefined' && !$('view-code').hidden) {
-        codeEditor.replaceSelection("'" + a.key + "'"); codeEditor.focus(); toast('Inserted "' + a.key + '"');
-      } else { toast(a.key + ' — ' + a.hint); }
-    });
+    const r = document.createElement('div'); r.className = 'assetrow'; r.title = a.name;
+    const thumb = a.type === 'image' ? '<img src="' + a.file + '" alt="">' : '<span class="mdi mdi-music-note"></span>';
+    r.innerHTML = thumb + '<span class="lbl">' + a.key + '</span>';
+    r.addEventListener('click', function () { showAssetInfo(a); });
     list.appendChild(r);
   });
+}
+function showAssetInfo(a) {
+  const media = a.type === 'image'
+    ? '<div class="asset-preview"><img src="' + a.file + '" alt=""></div>'
+    : '<div class="asset-preview snd"><button id="assetPlay" class="gbtn"><span class="mdi mdi-play"></span>Play sound</button></div>';
+  const kind = (a.type === 'image' ? 'Image' : 'Sound') + ' · ' + a.cat;
+  const info = '<div class="asset-info">'
+    + '<div class="ai-row"><span>Type</span><b>' + kind + '</b></div>'
+    + '<div class="ai-row"><span>Name to use</span><code>' + a.key + '</code></div>'
+    + '<div class="ai-row"><span>In your code</span><code>' + a.hint + '</code></div>'
+    + '<p class="ai-desc">' + (a.desc || '') + '</p></div>';
+  modal({ title: a.name, message: media + info, okLabel: 'Insert into code', onOk: function () {
+    if (typeof codeEditor !== 'undefined' && !$('view-code').hidden) { codeEditor.replaceSelection("'" + a.key + "'"); codeEditor.focus(); toast('Inserted "' + a.key + '"'); }
+    else { toast('Open the Code tab, then Insert.'); }
+  } });
+  const pb = $('assetPlay'); if (pb) pb.addEventListener('click', function () { try { new Audio(a.uri).play(); } catch (e) {} });
 }
 function deleteFile(name) {
   modal({ title: 'Delete ' + name + '?', message: 'This removes the file from your project. This cannot be undone.', okLabel: 'Delete', onOk: function () {
