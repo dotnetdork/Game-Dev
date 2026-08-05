@@ -1,49 +1,142 @@
-// game.js - Star Catcher
-const CONFIG = { fallSpeed: 160, bombChance: 0.15, paddleWidth: 100, spawnEvery: 750, starPoints: 10 };
-const WIDTH = 800, HEIGHT = 600;
-function drawStar(g, cx, cy, spikes, outer, inner) {
-  let rot = -Math.PI / 2; const step = Math.PI / spikes;
-  g.beginPath(); g.moveTo(cx + Math.cos(rot) * outer, cy + Math.sin(rot) * outer);
-  for (let i = 0; i < spikes; i++) { rot += step; g.lineTo(cx + Math.cos(rot) * inner, cy + Math.sin(rot) * inner); rot += step; g.lineTo(cx + Math.cos(rot) * outer, cy + Math.sin(rot) * outer); }
-  g.closePath(); g.fillPath();
+// ============================================================
+//  game.js  -  Your Platformer
+//
+//  HOW TO PLAY:
+//    - Press the LEFT and RIGHT arrow keys to walk.
+//    - Press the UP arrow key to jump.
+//    - Try to collect all of the coins!
+//
+//  A Phaser game runs three functions for you:
+//    preload()  -> load pictures/sounds (runs once, first)
+//    create()   -> build the level      (runs once, next)
+//    update()   -> the game loop        (runs ~60 times a second)
+// ============================================================
+
+// CONFIG holds numbers you can change to change how the game feels.
+// Tweak these, press Run, and see what happens!
+const CONFIG = {
+  moveSpeed: 220, // how fast the player walks (bigger = faster)
+  jumpPower: 520, // how high the player jumps  (bigger = higher)
+};
+
+// The size of the game world, in pixels.
+const WIDTH = 800;
+const HEIGHT = 600;
+
+// ------------------------------------------------------------
+//  preload()  -  runs ONCE, before anything else.
+//  This loads the pictures and sounds you own from the Store.
+//  (You can see them in the "assets" folder on the Code tab.)
+// ------------------------------------------------------------
+function preload() {
+  if (typeof preloadAssets === 'function') {
+    preloadAssets(this);
+    console.log();
+  }
 }
-function buildTextures(scene) {
-  const g = scene.make.graphics({ add: false });
-  g.fillStyle(0x35c2f5, 1); g.fillRoundedRect(0, 0, CONFIG.paddleWidth, 24, 10); g.generateTexture('player', CONFIG.paddleWidth, 24); g.clear();
-  g.fillStyle(0xffd23f, 1); drawStar(g, 17, 17, 5, 16, 8); g.generateTexture('star', 34, 34); g.clear();
-  g.fillStyle(0xe94b4b, 1); g.fillCircle(16, 18, 13); g.generateTexture('bomb', 34, 34); g.destroy();
-}
+
+// ------------------------------------------------------------
+//  create()  -  runs ONCE, right after preload.
+//  This is where we build the level.
+// ------------------------------------------------------------
 function create() {
-  const scene = this; buildTextures(scene);
-  scene.score = 0; scene.lives = 3; scene.isOver = false;
-  scene.player = scene.physics.add.sprite(WIDTH / 2, HEIGHT - 40, 'player'); scene.player.setCollideWorldBounds(true);
-  scene.stars = scene.physics.add.group(); scene.bombs = scene.physics.add.group();
-  scene.physics.add.overlap(scene.player, scene.stars, collectStar, null, scene);
-  scene.physics.add.overlap(scene.player, scene.bombs, hitBomb, null, scene);
-  scene.cursors = scene.input.keyboard.createCursorKeys(); scene.keys = scene.input.keyboard.addKeys('A,D');
-  scene.input.on('pointermove', function (p) { if (!scene.isOver) scene.player.x = Phaser.Math.Clamp(p.worldX, CONFIG.paddleWidth / 2, WIDTH - CONFIG.paddleWidth / 2); });
-  scene.input.on('pointerdown', function () { if (scene.isOver) scene.scene.restart(); });
-  scene.scoreText = scene.add.text(16, 14, 'Score: 0', { fontFamily: 'Arial', fontSize: '22px', color: '#eaf1f8' }).setDepth(10);
-  scene.livesText = scene.add.text(WIDTH - 16, 14, 'Lives: 3', { fontFamily: 'Arial', fontSize: '22px', color: '#f5b02e' }).setOrigin(1, 0).setDepth(10);
-  scene.time.addEvent({ delay: CONFIG.spawnEvery, loop: true, callback: function () { if (!scene.isOver) spawnObject(scene); } });
-  postStats(scene);
+  // 1) Draw the sky as a background, in the middle of the screen.
+  this.add.image(WIDTH / 2, HEIGHT / 2, 'sky').setDisplaySize(WIDTH, HEIGHT);
+
+  // 2) Build the ground and some platforms.
+  //    A "static group" is a set of things that never move.
+  const ground = this.physics.add.staticGroup();
+
+  // Lay a row of grass blocks across the bottom to make the floor.
+  for (let x = 0; x <= WIDTH; x += 70) {
+    ground.create(x, HEIGHT - 30, 'grass');
+  }
+
+  // A few floating platforms to jump onto.
+  ground.create(620, 430, 'grass');
+  ground.create(690, 430, 'grass');
+  ground.create(180, 330, 'grass');
+
+  // 3) Add the player. A "sprite" is a picture that can move.
+  this.player = this.physics.add.sprite(120, 200, 'player');
+  this.player.setCollideWorldBounds(true); // don't walk off-screen
+
+  // Make the player stand ON the ground instead of falling through it.
+  this.physics.add.collider(this.player, ground);
+
+  // 4) Add some coins to collect.
+  this.coins = this.physics.add.group();
+
+  const coinSpots = [
+    [250, 0],
+    [430, 0],
+    [560, 0],
+    [640, 360],
+    [180, 260],
+  ];
+  coinSpots.forEach(function (spot) {
+    const coin = this.coins.create(spot[0], spot[1], 'coin-gold');
+    coin.setBounceY(0.3); // a little bounce when it lands
+  }, this);
+
+  // Coins should land on the ground too.
+  this.physics.add.collider(this.coins, ground);
+
+  // When the player touches a coin, run collectCoin().
+  this.physics.add.overlap(this.player, this.coins, collectCoin, null, this);
+
+  // 5) Show the score in the top-left corner.
+  this.score = 0;
+  this.scoreText = this.add.text(16, 16, 'Coins: 0', {
+    fontSize: '24px',
+    color: '#ffffff',
+  });
+
+  // 6) Set up the arrow keys so update() can read them.
+  this.cursors = this.input.keyboard.createCursorKeys();
+  this.keys = this.input.keyboard.addKeys('W,A,S,D'); // WASD works too
+  this.spacebar = this.input.keyboard.addKey(Phaser.Input.Keyboard.KeyCodes.SPACE);
 }
+
+// ------------------------------------------------------------
+//  collectCoin()  -  runs whenever the player touches a coin.
+// ------------------------------------------------------------
+function collectCoin(player, coin) {
+  coin.disableBody(true, true); // hide the coin we grabbed
+  this.sound.play('sfx-confirm'); // play the coin sound
+
+  this.score += 1; // add one to the score
+  this.scoreText.setText('Coins: ' + this.score); // update the text
+}
+
+// ------------------------------------------------------------
+//  update()  -  the game loop. Runs about 60 times a second.
+//  This is where we read the keyboard and move the player.
+// ------------------------------------------------------------
 function update() {
-  const scene = this; if (scene.isOver) return;
-  scene.player.setVelocityX(0);
-  if (scene.cursors.left.isDown || scene.keys.A.isDown) scene.player.setVelocityX(-520);
-  else if (scene.cursors.right.isDown || scene.keys.D.isDown) scene.player.setVelocityX(520);
-  const clean = function (grp) { grp.children.iterate(function (o) { if (o && o.y > HEIGHT + 40) o.destroy(); }); };
-  clean(scene.stars); clean(scene.bombs);
+  // Arrow keys OR W / A / S / D both work.
+  const left = this.cursors.left.isDown || this.keys.A.isDown;
+  const right = this.cursors.right.isDown || this.keys.D.isDown;
+  const jump = this.spacebar.isDown;
+
+  if (left) {
+    this.player.setVelocityX(-CONFIG.moveSpeed);
+    this.player.setTexture('alienGreen_walk1'); // Swap texture for moving left
+    this.player.setFlipX(true); // Flip image to face left
+  } else if (right) {
+    this.player.setVelocityX(CONFIG.moveSpeed);
+    this.player.setTexture('alienGreen_walk1'); // Swap texture for moving right
+    this.player.setFlipX(false); // Reset flip to face right
+  } else {
+    this.player.setVelocityX(0);
+    this.player.setTexture('player'); // Return to default idle texture
+  }
+
+  // Only allow a jump when the player is standing on the ground.
+  const onGround = this.player.body.blocked.down;
+
+  if (jump && onGround) {
+    this.player.setVelocityY(-CONFIG.jumpPower);
+    this.sound.play('sfx-jump'); // play the jump sound
+  }
 }
-function spawnObject(scene) {
-  const x = Phaser.Math.Between(30, WIDTH - 30); const fall = CONFIG.fallSpeed + scene.score * 1.2;
-  if (Math.random() < CONFIG.bombChance) { const b = scene.bombs.create(x, -20, 'bomb'); b.setVelocityY(fall * 0.95); b.setAngularVelocity(120); }
-  else { const s = scene.stars.create(x, -20, 'star'); s.setVelocityY(fall); s.setAngularVelocity(180); }
-}
-function collectStar(player, star) { star.destroy(); this.score += CONFIG.starPoints; this.scoreText.setText('Score: ' + this.score); postStats(this); }
-function hitBomb(player, bomb) {
-  bomb.destroy(); this.lives -= 1; this.livesText.setText('Lives: ' + this.lives); this.cameras.main.shake(160, 0.01); postStats(this);
-  if (this.lives <= 0) { this.isOver = true; this.add.rectangle(WIDTH/2, HEIGHT/2, WIDTH, HEIGHT, 0x0b1a2e, 0.8).setDepth(20); this.add.text(WIDTH/2, HEIGHT/2 - 20, 'Game Over', { fontFamily: 'Arial', fontSize: '52px', color: '#eaf1f8', fontStyle: 'bold' }).setOrigin(0.5).setDepth(21); this.add.text(WIDTH/2, HEIGHT/2 + 40, 'Click to play again', { fontFamily: 'Arial', fontSize: '18px', color: '#7c93ae' }).setOrigin(0.5).setDepth(21); }
-}
-function postStats(scene) { try { if (window.parent) window.parent.postMessage({ type: 'stats', score: scene.score, lives: scene.lives }, '*'); } catch (e) {} }
