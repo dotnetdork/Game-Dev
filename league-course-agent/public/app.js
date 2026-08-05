@@ -778,7 +778,8 @@ function startGame() { // build a self-contained page from the browser-side proj
     + '<' + 'script src="https://cdn.jsdelivr.net/npm/phaser@3.80.1/dist/phaser.min.js"><' + '/script>\n'
     + assetInjectScript()
     + scripts + '\n</body></html>';
-  const gf = $('gameFrame'); gf.onload = function () { if (typeof postGameAudio === 'function') postGameAudio(); };
+  const gl = $('gameLoading'); if (gl) gl.classList.remove('hidden');
+  const gf = $('gameFrame'); gf.onload = function () { const g = $('gameLoading'); if (g) g.classList.add('hidden'); if (typeof postGameAudio === 'function') postGameAudio(); };
   gf.removeAttribute('src'); gf.srcdoc = html;
 }
 function stopGame() { const f = $('gameFrame'); if (f) { f.removeAttribute('srcdoc'); f.removeAttribute('src'); } }
