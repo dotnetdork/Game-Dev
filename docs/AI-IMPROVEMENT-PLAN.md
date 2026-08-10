@@ -21,7 +21,7 @@ Jay is the project lead and an intern learning this stack — explain decisions,
 
 ## Progress tracker
 
-- [ ] Stage 0 — Cleanup & hardening
+- [x] Stage 0 — Cleanup & hardening *(done 2026-08-10 — commits `eb5a369`, `56dd2bf`, `08eb82c`)*
 - [ ] Stage 1 — Context foundations
 - [ ] Stage 2 — Agents & skills as markdown
 - [ ] Stage 3 — Pedagogy loop
@@ -91,6 +91,19 @@ Do, in order:
 5. Split files per F14 (mechanical moves only — no logic changes in the same commit as moves).
 
 **Acceptance:** app runs fully offline except AI calls (verify with DevTools network tab: zero external requests); starter platformer + assets + lessons + quizzes + challenges all work; `wc -l` shows no file over ~400 lines; help page matches the real nav; all existing behavior preserved.
+
+**DONE 2026-08-10** — all acceptance criteria met and the full testing checklist passed
+(cold start, tutor + coder round trip on Ollama, ops applied to game.js, Ollama-down error
+path, audio, Reset, 4:3 stage). `public/styles.css` is 425 lines, marginally over the ~400
+guide; it is one coherent stylesheet and was left intact rather than split arbitrarily.
+
+Two things found during the work that are **not** bugs and were deliberately left alone:
+- The `/* quiz display polish */` CSS block never took effect — it is declared *before* the
+  base `.quiz*` rules that override it, so the Check button renders azure, not brand orange.
+  The duplicate-selector merge preserved the current appearance rather than silently applying
+  a design pass nobody has reviewed. **Decision needed from Jay:** apply that polish pass or drop it.
+- `league-course-agent/workspace/` is now untracked/gitignored but still on disk. Nothing
+  reads it; safe to delete whenever.
 
 ## Stage 1 — Context foundations (~1–2 days)
 
@@ -183,3 +196,7 @@ You are a coding assistant inside a kids game-dev course…
 ## Last updated
 
 - 2026-08-10 · plan v2: added Stage 0 from full-codebase review (security, dead code, structure findings F1–F14), walkthrough protocol + progress tracker, stages renumbered.
+- 2026-08-10 · **Stage 0 complete.** F1–F14 all addressed. The codebase Stage 1 starts from:
+  `server.js` 197 lines, `public/index.html` 166 lines, `public/styles.css`, and eleven
+  modules under `public/js/`. The AI request path Stage 1 must edit is now
+  `public/js/ai.js` (47 lines) on the client and `server.js` `/api/ai` on the server.
