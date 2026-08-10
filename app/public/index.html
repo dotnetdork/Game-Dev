@@ -70,7 +70,16 @@
         </div>
         <div class="viewbody">
           <div class="view" id="view-learn"><div class="lesson" id="lessonBody"></div></div>
-          <div class="view" id="view-code" hidden><textarea id="codeeditor"></textarea><div class="cm-statusbar" id="cmStatus">Ln 1, Col 1</div></div>
+          <div class="view" id="view-code" hidden>
+            <div class="review-bar" id="reviewBar" hidden>
+              <span class="mdi mdi-file-compare"></span>
+              <span class="rv-title">Suggested change</span>
+              <span class="rv-stat" id="reviewStat"></span>
+              <button class="rv-apply" id="reviewApply"><span class="mdi mdi-check"></span>Apply</button>
+              <button class="rv-skip" id="reviewSkip">No thanks</button>
+            </div>
+            <textarea id="codeeditor"></textarea><div class="cm-statusbar" id="cmStatus">Ln 1, Col 1</div>
+          </div>
           <div class="view" id="view-play" hidden>
             <div class="stage" id="gameStage">
               <div class="stage-frame">

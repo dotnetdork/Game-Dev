@@ -69,8 +69,8 @@ function deleteFile(name) {
     saveProject(); refreshFiles(); loadCode(); toast('Deleted ' + name);
   } });
 }
-function openFile(name) { if (!$('view-code').hidden) { project.files[currentFile] = codeEditor.getValue(); saveProject(); } currentFile = name; $('crumb').textContent = name; refreshFiles(); loadCode(); }
-function loadCode() { const t = project.files[currentFile]; codeEditor.setValue(typeof t === 'string' ? formatJS(t) : '// (empty file)'); codeEditor.refresh(); }
+function openFile(name) { if (reviewing) endReview(); if (!$('view-code').hidden) { project.files[currentFile] = codeEditor.getValue(); saveProject(); } currentFile = name; $('crumb').textContent = name; refreshFiles(); loadCode(); }
+function loadCode() { if (reviewing) { showDiffInEditor(reviewing); return; } const t = project.files[currentFile]; codeEditor.setValue(typeof t === 'string' ? formatJS(t) : '// (empty file)'); codeEditor.refresh(); }
 $('newFileBtn').addEventListener('click', function () {
   modal({ title: 'New script', message: 'Name your script (letters, numbers, - or _). ".js" is added automatically.', input: true, placeholder: 'enemy.js', okLabel: 'Create',
     onOk: function (name) { if (!name) return; name = name.trim(); if (!/\.js$/.test(name)) name += '.js';
@@ -79,7 +79,7 @@ $('newFileBtn').addEventListener('click', function () {
       project.files[name] = '// ' + name + '\n// Code you write here runs with the game when you press Run.\n';
       project.order.push(name); saveProject(); refreshFiles(); openFile(name); toast('Created ' + name); } });
 });
-function saveFile(cb) { project.files[currentFile] = codeEditor.getValue(); saveProject(); toast('Saved ✓'); if (cb) cb(); } // saves to the browser only
+function saveFile(cb) { if (reviewing) { toast('Apply or dismiss the suggested change first.'); return; } project.files[currentFile] = codeEditor.getValue(); saveProject(); toast('Saved ✓'); if (cb) cb(); } // saves to the browser only
 $('saveBtn').addEventListener('click', function () { saveFile(); });
 $('runBtn').addEventListener('click', function () { saveFile(function () { switchView('play'); }); });
 document.addEventListener('keydown', function (e) { if ((e.ctrlKey || e.metaKey) && e.key.toLowerCase() === 's' && !$('view-code').hidden) { e.preventDefault(); saveFile(); } });

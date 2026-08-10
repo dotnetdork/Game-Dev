@@ -13,6 +13,10 @@ function showConsole(show, open) {
   c.hidden = !show;
   if (open !== undefined) consoleOpen = open;
   c.classList.toggle('collapsed', !consoleOpen);
+  // Showing or collapsing the console resizes the stage box above it. Re-fit the game or it
+  // keeps its old size and spills over everything — which is what happened when a runtime
+  // error auto-opened the console after an AI edit.
+  if ($('view-play') && !$('view-play').hidden && typeof fitStage === 'function') requestAnimationFrame(fitStage);
 }
 if ($('conToggle')) $('conToggle').addEventListener('click', function () { consoleOpen = !consoleOpen; $('console').classList.toggle('collapsed', !consoleOpen); if (!$('view-play').hidden) requestAnimationFrame(fitStage); });
 if ($('conClear')) $('conClear').addEventListener('click', conClear);

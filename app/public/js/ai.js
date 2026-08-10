@@ -30,37 +30,26 @@ function addProposal(why, ops, before) {
   (chats.coder || (chats.coder = [])).push(entry);
   const card = renderProposal(entry); card.__entry = entry;
   aiMsgs.appendChild(card); aiMsgs.scrollTop = aiMsgs.scrollHeight;
+  startReview(entry);                         // take them to the Code tab to read the diff
   return entry;
 }
+/* The diff itself lives in the Code tab; this card is the record of what was suggested and
+   the way back into the review if the student wanders off. */
 function renderProposal(en) {
   const wrap = document.createElement('div'); wrap.className = 'msg bot proposal';
   const why = document.createElement('div'); why.className = 'prop-why';
   why.textContent = en.why || 'Here is the change.';
   wrap.appendChild(why);
 
-  const rows = en.rows || [];
-  const counts = countChanges(rows);
-  const head = document.createElement('button'); head.className = 'prop-head'; head.type = 'button';
-  const summary = (counts.added ? '+' + counts.added : '') + (counts.added && counts.removed ? ' ' : '') + (counts.removed ? '−' + counts.removed : '');
-  head.innerHTML = '<span class="mdi mdi-chevron-down"></span><span>What changes</span><span class="prop-count">' + (summary || 'no change') + '</span>';
-  const pre = document.createElement('pre'); pre.className = 'prop-diff';
-  diffHunks(rows, 2).forEach(function (r) {
-    const line = document.createElement('div');
-    line.className = 'dl' + (r.t === '+' ? ' add' : r.t === '-' ? ' del' : r.t === '…' ? ' gap' : '');
-    line.textContent = r.t === '…' ? '⋯' : (r.t + ' ' + r.text);
-    pre.appendChild(line);
-  });
-  head.addEventListener('click', function () { wrap.classList.toggle('open'); });
-  wrap.appendChild(head); wrap.appendChild(pre);
+  const counts = countChanges(en.rows || []);
+  const summary = (counts.added ? '+' + counts.added + ' added' : '') +
+    (counts.added && counts.removed ? ', ' : '') + (counts.removed ? '−' + counts.removed + ' removed' : '');
 
   if (en.state === 'pending') {
-    const acts = document.createElement('div'); acts.className = 'prop-acts';
-    const ok = document.createElement('button'); ok.className = 'prop-apply'; ok.innerHTML = '<span class="mdi mdi-check"></span>Apply';
-    const no = document.createElement('button'); no.className = 'prop-skip'; no.textContent = 'No thanks';
-    ok.addEventListener('click', function () { acceptProposal(en); });
-    no.addEventListener('click', function () { en.state = 'declined'; renderChat('coder'); });
-    acts.appendChild(ok); acts.appendChild(no); wrap.appendChild(acts);
-    wrap.classList.add('open');
+    const b = document.createElement('button'); b.className = 'prop-review'; b.type = 'button';
+    b.innerHTML = '<span class="mdi mdi-file-compare"></span>Review the change' + (summary ? ' (' + summary + ')' : '');
+    b.addEventListener('click', function () { startReview(en); });
+    wrap.appendChild(b);
   } else {
     const done = document.createElement('div'); done.className = 'prop-state ' + en.state;
     done.textContent = en.state === 'applied' ? '✓ Applied to your game' : 'Not applied';
@@ -68,10 +57,19 @@ function renderProposal(en) {
   }
   return wrap;
 }
+function declineProposal(en) {
+  if (en.state !== 'pending') return;
+  en.state = 'declined';
+  if (typeof endReview === 'function') endReview();
+  renderChat('coder');
+  toast('Left your game as it was.');
+}
 function acceptProposal(en) {
   if (en.state !== 'pending') return;
   if (!validJS(en.after)) {
-    en.state = 'declined'; renderChat('coder');
+    en.state = 'declined';
+    if (typeof endReview === 'function') endReview();
+    renderChat('coder');
     addMsg('bot', "That change would have broken your game, so I kept it the way it was. Try asking a slightly different way.");
     return;
   }
@@ -81,7 +79,11 @@ function acceptProposal(en) {
   }
   project.files['game.js'] = en.after;
   en.state = 'applied';
-  saveProject(); renderChat('coder'); refreshAfterEdit();
+  saveProject();
+  if (typeof endReview === 'function') endReview();
+  renderChat('coder');
+  refreshFiles();
+  switchView('play');            // straight to seeing the change actually happen
   maybeAskQuiz(en);
 }
 function refreshAfterEdit() { loadSettings(); refreshFiles(); if (!$('view-play').hidden) startGame(); if (!$('view-code').hidden) loadCode(); }

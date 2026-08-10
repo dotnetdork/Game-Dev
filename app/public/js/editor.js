@@ -20,6 +20,7 @@ codeEditor.on('inputRead', function (cm, e) { if (e.text && /[\w.]/.test(e.text[
 /* Click a line number to ask the tutor what that line does — the student's own game is the
    textbook, so reading it should be one click away. */
 codeEditor.on('gutterClick', function (cm, n, gutter) {
+  if (reviewing) return;                                                                    // those line numbers are diff rows, not the file
   if (gutter === 'CodeMirror-foldgutter' || gutter === 'CodeMirror-lint-markers') return;   // those gutters have their own jobs
   const lineText = cm.getLine(n);
   if (!lineText || !lineText.trim()) { toast('That line is empty — click a line with code on it.'); return; }
@@ -29,9 +30,69 @@ codeEditor.on('gutterClick', function (cm, n, gutter) {
 });
 function formatJS(code) { try { return prettier.format(code, { parser: 'babel', plugins: prettierPlugins, printWidth: 100, tabWidth: 2, singleQuote: true }); } catch (e) { return code; } }
 
+/* ---------- reviewing an AI change ----------
+   A proposed code change is shown in the editor itself as a diff — removed lines red with a
+   minus, added lines green with a plus — so the student reads the change where the code lives.
+   While reviewing, the editor holds a PREVIEW and not a real file, so every path that writes
+   the editor's contents back into the project has to be blocked (see saveFile / switchView /
+   openFile). Saving a diff as game.js would destroy the student's game. */
+let reviewing = null;
+const LINT_OPTS = { esversion: 2021, asi: true, undef: false, browser: true };
+
+function showDiffInEditor(entry) {
+  // the whole file, not just the changed hunks — the student should see the change in the
+  // context of their real program. We scroll to the first change instead of hiding the rest.
+  const rows = entry.rows || [];
+  const text = rows.map(function (r) { return (r.t === ' ' ? '  ' : r.t + ' ') + r.text; }).join('\n');
+  codeEditor.setOption('lint', false);                 // a diff is not valid JS; linting it is noise
+  codeEditor.clearGutter('CodeMirror-lint-markers');
+  codeEditor.setOption('readOnly', 'nocursor');
+  codeEditor.setValue(text);
+  let first = -1;
+  rows.forEach(function (r, i) {
+    if (r.t === '+') codeEditor.addLineClass(i, 'background', 'cm-diff-add');
+    else if (r.t === '-') codeEditor.addLineClass(i, 'background', 'cm-diff-del');
+    else return;
+    if (first < 0) first = i;
+  });
+  codeEditor.refresh();
+  if (first < 0) return;
+  // Land on the first change with a little context above it. Run again after layout: when this
+  // is called during the switch into the Code tab the editor has not been measured yet, so the
+  // first charCoords reading is short.
+  const toChange = function () {
+    codeEditor.refresh();
+    const top = codeEditor.charCoords({ line: first, ch: 0 }, 'local').top;
+    codeEditor.scrollTo(null, Math.max(0, top - 70));
+  };
+  toChange();
+  setTimeout(toChange, 0);
+  requestAnimationFrame(toChange);
+}
+function startReview(entry) {
+  // keep any unsaved hand edits before the preview takes over the editor
+  if (!reviewing && !$('view-code').hidden) { project.files[currentFile] = codeEditor.getValue(); saveProject(); }
+  reviewing = entry;
+  const c = countChanges(entry.rows || []);
+  $('reviewStat').innerHTML = '<b class="add">+' + c.added + '</b> <b class="del">−' + c.removed + '</b>';
+  $('reviewBar').hidden = false;
+  switchView('code');                                  // switchView -> loadCode(), which renders the diff
+}
+function endReview() {
+  if (!reviewing) return;
+  reviewing = null;
+  $('reviewBar').hidden = true;
+  codeEditor.setOption('readOnly', false);
+  codeEditor.setOption('lint', LINT_OPTS);
+  loadCode();                                          // back to the real file
+}
+if ($('reviewApply')) $('reviewApply').addEventListener('click', function () { if (reviewing) acceptProposal(reviewing); });
+if ($('reviewSkip')) $('reviewSkip').addEventListener('click', function () { if (reviewing) declineProposal(reviewing); });
+
 /* ---------- tabs + panels ---------- */
 function switchView(view) {
-  if (typeof codeEditor !== 'undefined' && !$('view-code').hidden) { project.files[currentFile] = codeEditor.getValue(); saveProject(); } // keep edits when leaving Code
+  // never write the editor back to the project while it holds a diff preview
+  if (typeof codeEditor !== 'undefined' && !reviewing && !$('view-code').hidden) { project.files[currentFile] = codeEditor.getValue(); saveProject(); } // keep edits when leaving Code
   document.querySelectorAll('.vtab').forEach(function (b) { b.classList.toggle('on', b.getAttribute('data-view') === view); });
   ['learn', 'code', 'play'].forEach(function (v) { $('view-' + v).hidden = (v !== view); });
   const panelFor = { learn: 'panel-outline', code: 'panel-files', play: 'panel-info' };
