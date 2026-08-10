@@ -17,6 +17,16 @@ const codeEditor = CodeMirror.fromTextArea($('codeeditor'), {
 codeEditor.setSize('100%', '100%');
 codeEditor.on('cursorActivity', function (cm) { const p = cm.getCursor(); const el = $('cmStatus'); if (el) el.textContent = 'Ln ' + (p.line + 1) + ', Col ' + (p.ch + 1); });
 codeEditor.on('inputRead', function (cm, e) { if (e.text && /[\w.]/.test(e.text[0]) && !cm.state.completionActive) cm.showHint({ hint: CodeMirror.hint.anyword, completeSingle: false }); });
+/* Click a line number to ask the tutor what that line does — the student's own game is the
+   textbook, so reading it should be one click away. */
+codeEditor.on('gutterClick', function (cm, n, gutter) {
+  if (gutter === 'CodeMirror-foldgutter' || gutter === 'CodeMirror-lint-markers') return;   // those gutters have their own jobs
+  const lineText = cm.getLine(n);
+  if (!lineText || !lineText.trim()) { toast('That line is empty — click a line with code on it.'); return; }
+  const from = Math.max(0, n - 10), to = Math.min(cm.lineCount() - 1, n + 10);
+  const snippet = cm.getRange({ line: from, ch: 0 }, { line: to, ch: cm.getLine(to).length });
+  explainLine(currentFile, n + 1, lineText, snippet);
+});
 function formatJS(code) { try { return prettier.format(code, { parser: 'babel', plugins: prettierPlugins, printWidth: 100, tabWidth: 2, singleQuote: true }); } catch (e) { return code; } }
 
 /* ---------- tabs + panels ---------- */

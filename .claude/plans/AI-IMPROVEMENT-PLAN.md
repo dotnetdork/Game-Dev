@@ -24,7 +24,7 @@ Jay is the project lead and an intern learning this stack — explain decisions,
 - [x] Stage 0 — Cleanup & hardening *(done 2026-08-10 — commits `eb5a369`, `56dd2bf`, `08eb82c`)*
 - [x] Stage 1 — Context foundations *(done 2026-08-10 — commit `f18bc41`)*
 - [x] Stage 2 — Agents & skills as markdown *(done 2026-08-10)*
-- [ ] Stage 3 — Pedagogy loop
+- [x] Stage 3 — Pedagogy loop *(done 2026-08-10)*
 - [ ] Stage 4 — Tool use (Tier 1 validator → Tier 2 tool calling)
 - [ ] Stage 5 — MCP server
 
@@ -187,7 +187,15 @@ Deviations from the plan as written, and why:
 3. **Wire the quiz agent (minimal viable).** After a student *applies* a code-changing proposal, roll ~1-in-3 to show one mcq comprehension question about the change (quiz agent gets the diff + lesson context; reuse the lesson-quiz rendering). Wrong answer → show explain, no penalty; right → small XP; never blocks. This is enough to call quiz/grader "wired" — defer anything fancier.
 4. **Socratic tutor** in `tutor.md`: hint + where-to-look first; full answer if the student asks again or says they're stuck; never writes whole features (that's the coder's job, via proposals).
 
-**Acceptance:** no AI edit reaches `game.js` without the student seeing a diff and clicking Apply; explain-a-line works from the editor; applied code changes sometimes trigger a one-question check; tutor demonstrably hints before answering.
+**Acceptance:** no AI edit reaches  without the student seeing a diff and clicking Apply; explain-a-line works from the editor; applied code changes sometimes trigger a one-question check; tutor demonstrably hints before answering.
+
+**DONE 2026-08-10.** All four verified in the browser against Ollama. Jay's calls on the four open questions:
+- **Apply gate: code changes only.** A CONFIG-only tweak (jumpPower 520->600) still applies instantly — that is the slider-like tinkering loop the course depends on. Anything touching actual code (////, via ) becomes a proposal card. Verified: config tweak applied with no card; "make the coins spin" produced a pending card with the code untouched until Apply.
+- **Quiz: ~1 in 3 applied code changes**, non-blocking, 20 XP for correct, explanation either way.
+- **Tutor: hint then answer.** First ask returns a nudge plus a question back; "I'm stuck, just tell me" returns the full answer with code.
+- **Explain-a-line lands in the chat**, so follow-ups keep working. Clicking the line-number gutter sends the line plus +/-10 lines of context with a per-request  skill that overrides the hint-first stance (you asked what it does, so you get told).
+
+**F4 is now fixed, not just deferred.**  used a naive brace count that miscounted a  inside a string or comment — a unit test proves the old code would have spliced a snippet in the wrong place given . It now skips strings, template literals and comments, and  returns null rather than mis-applying, which the UI turns into "I couldn't work out where to put that change safely". 16 unit cases cover it plus the diff.
 
 ## Stage 4 — Tool use (~2–3 days Tier 1; +2 for Tier 2)
 

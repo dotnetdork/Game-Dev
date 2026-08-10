@@ -5,7 +5,85 @@ const chats = { coder: [], tutor: [] };   // separate conversation per mode
 function renderBubble(who, text) { const m = document.createElement('div'); m.className = 'msg ' + who; if (who === 'bot') { try { m.innerHTML = mdToSafeHTML(text); } catch (e) { m.textContent = String(text); } } else { m.textContent = text; } return m; }
 function addMsg(who, text) { const entry = { who: who, text: text }; (chats[aiMode] || (chats[aiMode] = [])).push(entry); const m = renderBubble(who, text); m.__entry = entry; aiMsgs.appendChild(m); aiMsgs.scrollTop = aiMsgs.scrollHeight; return m; }
 function setMsg(m, who, text) { if (m && m.__entry) { m.__entry.who = who; m.__entry.text = text; } if (who === 'bot') { try { m.innerHTML = mdToSafeHTML(text); } catch (e) { m.textContent = String(text); } } else { m.textContent = text; } aiMsgs.scrollTop = aiMsgs.scrollHeight; }
-function renderChat(mode) { aiMsgs.innerHTML = ''; (chats[mode] || []).forEach(function (en) { const m = renderBubble(en.who, en.text); m.__entry = en; aiMsgs.appendChild(m); }); aiMsgs.scrollTop = aiMsgs.scrollHeight; }
+function renderChat(mode) {
+  aiMsgs.innerHTML = '';
+  (chats[mode] || []).forEach(function (en) {
+    const m = en.kind === 'proposal' ? renderProposal(en) : (en.kind === 'quiz' ? renderQuizCard(en) : renderBubble(en.who, en.text));
+    m.__entry = en; aiMsgs.appendChild(m);
+  });
+  aiMsgs.scrollTop = aiMsgs.scrollHeight;
+}
+
+/* ---------- propose → read → accept ----------
+   A change to the student's actual code is shown as a diff they have to look at and accept.
+   Reading the change is the point of the course, so it is the price of the change. A
+   CONFIG-only tweak is a slider, not a program change, and still applies straight away. */
+function addProposal(why, ops, before) {
+  const after = applyOps(before, ops);
+  if (after === null) {                       // the applier could not place it safely
+    addMsg('bot', "I couldn't work out where to put that change safely, so I left your game alone. Try asking for it a different way.");
+    return null;
+  }
+  const rows = lineDiff(before, after);
+  const entry = { who: 'bot', kind: 'proposal', state: 'pending', why: why, ops: ops, before: before, after: after,
+    rows: rows, text: why };                  // `text` is what the model sees as its own turn in history
+  (chats.coder || (chats.coder = [])).push(entry);
+  const card = renderProposal(entry); card.__entry = entry;
+  aiMsgs.appendChild(card); aiMsgs.scrollTop = aiMsgs.scrollHeight;
+  return entry;
+}
+function renderProposal(en) {
+  const wrap = document.createElement('div'); wrap.className = 'msg bot proposal';
+  const why = document.createElement('div'); why.className = 'prop-why';
+  why.textContent = en.why || 'Here is the change.';
+  wrap.appendChild(why);
+
+  const rows = en.rows || [];
+  const counts = countChanges(rows);
+  const head = document.createElement('button'); head.className = 'prop-head'; head.type = 'button';
+  const summary = (counts.added ? '+' + counts.added : '') + (counts.added && counts.removed ? ' ' : '') + (counts.removed ? '−' + counts.removed : '');
+  head.innerHTML = '<span class="mdi mdi-chevron-down"></span><span>What changes</span><span class="prop-count">' + (summary || 'no change') + '</span>';
+  const pre = document.createElement('pre'); pre.className = 'prop-diff';
+  diffHunks(rows, 2).forEach(function (r) {
+    const line = document.createElement('div');
+    line.className = 'dl' + (r.t === '+' ? ' add' : r.t === '-' ? ' del' : r.t === '…' ? ' gap' : '');
+    line.textContent = r.t === '…' ? '⋯' : (r.t + ' ' + r.text);
+    pre.appendChild(line);
+  });
+  head.addEventListener('click', function () { wrap.classList.toggle('open'); });
+  wrap.appendChild(head); wrap.appendChild(pre);
+
+  if (en.state === 'pending') {
+    const acts = document.createElement('div'); acts.className = 'prop-acts';
+    const ok = document.createElement('button'); ok.className = 'prop-apply'; ok.innerHTML = '<span class="mdi mdi-check"></span>Apply';
+    const no = document.createElement('button'); no.className = 'prop-skip'; no.textContent = 'No thanks';
+    ok.addEventListener('click', function () { acceptProposal(en); });
+    no.addEventListener('click', function () { en.state = 'declined'; renderChat('coder'); });
+    acts.appendChild(ok); acts.appendChild(no); wrap.appendChild(acts);
+    wrap.classList.add('open');
+  } else {
+    const done = document.createElement('div'); done.className = 'prop-state ' + en.state;
+    done.textContent = en.state === 'applied' ? '✓ Applied to your game' : 'Not applied';
+    wrap.appendChild(done);
+  }
+  return wrap;
+}
+function acceptProposal(en) {
+  if (en.state !== 'pending') return;
+  if (!validJS(en.after)) {
+    en.state = 'declined'; renderChat('coder');
+    addMsg('bot', "That change would have broken your game, so I kept it the way it was. Try asking a slightly different way.");
+    return;
+  }
+  if (en.ops.newFile && typeof en.ops.newFile.name === 'string' && typeof en.ops.newFile.code === 'string') {
+    let nm = en.ops.newFile.name.trim(); if (!/\.js$/.test(nm)) nm += '.js';
+    if (/^[A-Za-z0-9_-]+\.js$/.test(nm)) { const existed = project.files[nm] !== undefined; project.files[nm] = en.ops.newFile.code; if (!existed) project.order.push(nm); }
+  }
+  project.files['game.js'] = en.after;
+  en.state = 'applied';
+  saveProject(); renderChat('coder'); refreshAfterEdit();
+  maybeAskQuiz(en);
+}
 function refreshAfterEdit() { loadSettings(); refreshFiles(); if (!$('view-play').hidden) startGame(); if (!$('view-code').hidden) loadCode(); }
 
 /* The last few turns of this panel's chat, so follow-ups like "even faster" or "undo that"
@@ -41,6 +119,62 @@ function aiContext() {
   };
 }
 
+/* ---------- comprehension check after an applied change ----------
+   Roughly one in three applied code changes asks one question about what just happened.
+   It never blocks anything: a wrong answer just explains, a right one is worth a little XP. */
+const QUIZ_CHANCE = 1 / 3, QUIZ_XP = 20;
+function maybeAskQuiz(en) {
+  if (Math.random() >= QUIZ_CHANCE) return;
+  const changed = diffHunks(en.rows || [], 1).filter(function (r) { return r.t === '+' || r.t === '-'; })
+    .map(function (r) { return r.t + ' ' + r.text; }).join('\n').slice(0, 1200);
+  if (!changed) return;
+  const c = aiContext();
+  fetch('/api/ai', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({
+    studentId: studentId, agent: 'quiz',
+    message: 'The student just made this change to their game:\n' + changed + '\n\nWhat it was meant to do: ' + (en.why || '') + '\n\nWrite ONE question checking they understood what this change does.',
+    lessonTitle: c.lessonTitle, lessonContext: c.lessonContext
+  }) })
+    .then(function (r) { return r.json(); }).then(function (d) {
+      const q = d && d.result;
+      if (!q || !q.question || !Array.isArray(q.options) || q.options.length < 2) return;   // bad question: skip silently
+      const entry = { who: 'bot', kind: 'quiz', q: q, picked: -1, text: q.question };
+      (chats.coder || (chats.coder = [])).push(entry);
+      const card = renderQuizCard(entry); card.__entry = entry;
+      aiMsgs.appendChild(card); aiMsgs.scrollTop = aiMsgs.scrollHeight;
+    })
+    .catch(function () { /* a check is a bonus, never an interruption */ });
+}
+function renderQuizCard(en) {
+  const wrap = document.createElement('div'); wrap.className = 'msg bot quizcard';
+  const h = document.createElement('div'); h.className = 'qc-h';
+  h.innerHTML = '<span class="mdi mdi-help-circle-outline"></span>Quick check';
+  const q = document.createElement('div'); q.className = 'qc-q'; q.textContent = en.q.question;
+  wrap.appendChild(h); wrap.appendChild(q);
+  const answered = en.picked >= 0;
+  const correct = Number(en.q.answer);
+  en.q.options.forEach(function (opt, i) {
+    const b = document.createElement('button'); b.className = 'qc-opt'; b.type = 'button'; b.textContent = opt;
+    if (answered) {
+      b.disabled = true;
+      if (i === correct) b.classList.add('right');
+      else if (i === en.picked) b.classList.add('wrong');
+    } else {
+      b.addEventListener('click', function () {
+        en.picked = i;
+        if (i === correct) { state.xp += QUIZ_XP; saveState(); toast('Nice! +' + QUIZ_XP + ' XP'); }
+        renderChat('coder');
+      });
+    }
+    wrap.appendChild(b);
+  });
+  if (answered) {
+    const ex = document.createElement('div'); ex.className = 'qc-explain';
+    ex.textContent = (en.picked === correct ? '' : 'Not quite — ') + (en.q.explain || '');
+    wrap.appendChild(ex);
+  }
+  return wrap;
+}
+
 function askTutor(question, context) {
   const history = chatHistory('tutor');
   addMsg('user', question); const pending = addMsg('bot', 'Thinking…');
@@ -49,6 +183,23 @@ function askTutor(question, context) {
     .then(function (r) { return r.json(); }).then(function (d) { setMsg(pending, 'bot', d.reply || '—'); })
     .catch(function () { setMsg(pending, 'bot', 'Could not reach the tutor.'); });
 }
+/* Clicking a line number in the Code tab asks the tutor about that line. The answer lands in
+   the normal chat, so the student can follow up on it like any other question. */
+function explainLine(fileName, lineNumber, lineText, snippet) {
+  setAIMode('tutor');
+  addMsg('user', 'What does line ' + lineNumber + ' of ' + fileName + ' do?');
+  const pending = addMsg('bot', 'Thinking…');
+  const c = aiContext(), history = chatHistory('tutor');
+  fetch('/api/ai', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({
+    studentId: studentId, agent: 'tutor', skill: 'explain-a-line',
+    message: 'What does line ' + lineNumber + ' do?',
+    code: project.files['game.js'] || '', history: history, lessonTitle: c.lessonTitle,
+    fileName: fileName, lineNumber: String(lineNumber), line: lineText, snippet: snippet
+  }) })
+    .then(function (r) { return r.json(); }).then(function (d) { setMsg(pending, 'bot', d.reply || '—'); })
+    .catch(function () { setMsg(pending, 'bot', 'Could not reach the tutor.'); });
+}
+
 function sendAI() {
   const box = $('aiText'); const text = box.value.trim(); if (!text) return;
   if (aiMode === 'coder' && currentAIMode === 'off') { toast('The AI is off for this challenge — give it a try yourself!'); return; }
@@ -66,12 +217,14 @@ function sendAI() {
     .then(function (r) { return r.json(); }).then(function (data) {
       setMsg(pending, 'bot', data.reply || 'Done.');
       const ops = data.ops; if (!ops) return;
-      if (ops.newFile && typeof ops.newFile.name === 'string' && typeof ops.newFile.code === 'string') {
-        let nm = ops.newFile.name.trim(); if (!/\.js$/.test(nm)) nm += '.js';
-        if (/^[A-Za-z0-9_-]+\.js$/.test(nm)) { const existed = project.files[nm] !== undefined; project.files[nm] = ops.newFile.code; if (!existed) project.order.push(nm); }
-      }
       const before = project.files['game.js'] || '';
+
+      // A change to the code itself is proposed, not applied — the student reads it first.
+      if (opsChangeCode(ops)) { addProposal(data.why || data.reply || 'Here is the change.', ops, before); return; }
+
+      // CONFIG-only tweaks are the tinkering loop; they land straight away.
       const next = applyOps(before, ops);
+      if (next === null) { addMsg('bot', "I couldn't work out where to put that change safely, so I left your game alone."); return; }
       if (next !== before) {
         if (!validJS(next)) { addMsg('bot', "That change caused a code error, so I kept your game the way it was. Try asking a slightly different way."); saveProject(); refreshAfterEdit(); return; }
         project.files['game.js'] = next;

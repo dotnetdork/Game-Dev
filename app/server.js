@@ -318,6 +318,12 @@ app.post('/api/ai', async (req, res) => {
     assets: Array.isArray(b.ownedAssets) ? b.ownedAssets.slice(0, 300).map(function (a) {
       return { key: String((a && a.key) || '').slice(0, 60), type: String((a && a.type) || '').slice(0, 20) };
     }).filter(function (a) { return a.key; }) : [],
+    // a lesson widget or the editor can ask for one extra skill for this request only
+    extraSkills: b.skill ? [String(b.skill).slice(0, 40)] : [],
+    fileName: String(b.fileName || '').slice(0, 60),
+    lineNumber: String(b.lineNumber || '').slice(0, 8),
+    line: String(b.line || '').slice(0, 400),
+    snippet: String(b.snippet || '').slice(0, 2000),
     files: Array.isArray(b.files) ? b.files.slice(0, 10).map(function (f) {
       return { name: String((f && f.name) || '').slice(0, 60), code: String((f && f.code) || '').slice(0, 6000) };
     }).filter(function (f) { return f.name && f.code; }) : []
@@ -374,7 +380,7 @@ app.post('/api/ai', async (req, res) => {
     }
   }
 
-  res.json({ reply: parsed.reply || 'Done.', ops: Object.keys(ops).length ? ops : null });
+  res.json({ reply: parsed.reply || 'Done.', why: parsed.why || '', ops: Object.keys(ops).length ? ops : null });
 });
 
 app.listen(PORT, () => {

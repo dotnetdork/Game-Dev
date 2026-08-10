@@ -14,6 +14,7 @@ CURRENT game.js:
 Make the SMALLEST change that satisfies the request. PREFER ADDING over rewriting.
 Reply with ONLY one JSON object (no prose, no markdown, no code fences) using any of these OPTIONAL fields:
   "reply": a short friendly one-sentence message to the student.
+  "why": one short sentence naming WHAT you changed and WHY, in plain words a 12-year-old reads before accepting the change. Say the thing, not the mechanism: "Coins now bounce when they land, so they feel springy" — not "added a setBounceY call". ALWAYS include this when you change code.
   "config": an object of CONFIG numbers to add or change, e.g. {"shieldTime": 5, "fallSpeed": 120}.
   "functions": an array of COMPLETE new top-level functions to add, each a string.
   "create": a code snippet inserted at the END of create() (the scene is the variable "scene").

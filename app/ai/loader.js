@@ -94,13 +94,23 @@ function fill(text, vars) {
 /* Build an agent's system prompt: the agent body, plus each skill it lists, with
    {{placeholders}} filled in. Returns null when anything is missing so the caller
    can fall back. `ctx` carries the request's lesson / assets / files / aiMode. */
+// Skill names reach here from front-matter and from the request body, so they are never
+// interpolated into a path without this check.
+function safeName(name) { return /^[a-z0-9][a-z0-9-]*$/i.test(String(name)) ? String(name) : null; }
+
 function buildPrompt(agent, ctx) {
   const c = ctx || {};
+  if (!safeName(agent)) return null;
   const doc = readDoc(path.join(DIR, 'agents', agent + '.md'));
   if (!doc) return null;
   const parts = [doc.body];
-  (doc.meta.skills || []).forEach(function (name) {
-    const skill = readDoc(path.join(DIR, 'skills', String(name) + '.md'));
+  // The agent's own skills first, then any the request asked for — later text wins, so a
+  // per-request skill can override the agent's default stance (explain-a-line vs socratic).
+  const names = (doc.meta.skills || []).concat(Array.isArray(c.extraSkills) ? c.extraSkills : []);
+  names.forEach(function (raw) {
+    const name = safeName(raw);
+    if (!name) { warn('ignoring unsafe skill name ' + JSON.stringify(raw)); return; }
+    const skill = readDoc(path.join(DIR, 'skills', name + '.md'));
     if (!skill) return;                                          // warned already; skip it
     const only = skill.meta.when_ai_mode;                        // e.g. guided-mode.md
     if (only && only !== (c.aiMode || 'full')) return;
@@ -113,7 +123,10 @@ function buildPrompt(agent, ctx) {
     ownedAssets: renderAssets(c.assets),
     files: renderFiles(c.files),
     aiMode: c.aiMode || 'full',
-    selection: c.selection || ''
+    fileName: c.fileName || 'game.js',
+    lineNumber: c.lineNumber || '',
+    line: c.line || '',
+    snippet: c.snippet || ''
   });
 }
 
