@@ -120,14 +120,24 @@ Two things found during the work that are **not** bugs and were deliberately lef
 vague requests with concrete options and still acts on specific ones; the coder uses real
 owned keys (`coin-gold`) when the asset exists; no `.env` change needed.
 
-**One acceptance item is only half met, by design of the plan.** When asked for an asset the
-student does *not* own ("add a dragon enemy"), `qwen2.5-coder:7b` still invented the key
-`'dragon'` despite the prompt stating the owned keys are the only ones that exist. Prompt
-instructions alone do not hold a 7B model. This is exactly what **Stage 4 Tier 1** (the
-deterministic post-response validator) exists to fix — scan returned ops for asset keys not
-in the owned list, retry once with the error, then surface a friendly message. Until that
-lands, a student on a local model can still get a broken game by asking for art they have not
-bought. Consider pulling the Tier-1 asset-key check forward if this bites during lesson testing.
+**All acceptance items met.** The asset-key item needed the **Stage 4 Tier 1 validator pulled
+forward** (`9b53f78`, done at Jay's request): prompt instructions alone did not stop
+`qwen2.5-coder:7b` inventing `'dragon'`, so the server now validates the returned ops
+(`unknownAssetKeys`), retries once with the error, then refuses the change with a
+Store-pointing message. 18 unit cases guard it, including the must-never-fire case
+`add.text(x, y, 'Coins: 0')`.
+
+**Two findings worth carrying into later stages:**
+- *Argument parsing must not be regex.* The first validator used `[^,()]*` per argument and
+  missed `sprite(WIDTH + 50, Math.random() * (HEIGHT - 100), 'dragon')` — an argument
+  containing parentheses. Stage 4's remaining checks (`cubicCurveTo`, `new Phaser.Game`, …)
+  should reuse `callArgs()` rather than inventing new regexes.
+- *Context budget is now a live constraint.* Lesson + files + history overflowed the 8192
+  window, and Ollama truncates the **front** of an over-long prompt — silently dropping the
+  ops schema and producing malformed edits. Raised to `num_ctx` 16384 (`OLLAMA_NUM_CTX`) with
+  history/files trimmed to 3000 chars each. **Stage 2 adds skill files to the same prompt and
+  Stage 4 adds tool definitions — re-measure the worst-case prompt before shipping each.**
+  Note this only reproduced against the real 139-line starter; small test stubs hide it.
 
 ## Stage 2 — Agents & skills as markdown (~1–2 days) — boss ask #1
 
@@ -172,7 +182,7 @@ You are a coding assistant inside a kids game-dev course…
 
 **Why:** models guess (asset keys, Phaser APIs, lesson content) because they can't look anything up. Designed around constraint #1 — small local models are unreliable at multi-turn tool calling.
 
-- **Tier 1 — deterministic validation (works on Ollama; build first).** After the coder returns ops, the server scans proposed code for known-bad patterns (`cubicCurveTo`, `bezierCurveTo`, `arcTo`, `new Phaser.Game`) and asset keys not in the student's owned list. On violation: auto-retry once with the error appended to the conversation; if still bad, return a friendly "that change used something that doesn't exist" message. A validator, not model tool-calling — works with any model, and also catches F7-style truncation (unparseable JSON → retry once).
+- **Tier 1 — deterministic validation.** *(asset-key half DONE 2026-08-10 in `9b53f78` — reuse `unknownAssetKeys` / `callArgs` in server.js for the remaining checks.)* After the coder returns ops, the server scans proposed code for known-bad patterns (`cubicCurveTo`, `bezierCurveTo`, `arcTo`, `new Phaser.Game`) and asset keys not in the student's owned list. On violation: auto-retry once with the error appended to the conversation; if still bad, return a friendly "that change used something that doesn't exist" message. A validator, not model tool-calling — works with any model, and also catches F7-style truncation (unparseable JSON → retry once).
 - **Tier 2 — real tool calling (per-provider opt-in via `.env`, e.g. `CODER_TOOLS=1`; default off for Ollama).** Tools: `get_lesson(id)`, `list_owned_assets()`, `read_file(name)`, `search_phaser_docs(query)`. Anthropic tool-use blocks / OpenRouter `tools` param; loop up to ~4 tool rounds server-side. Off → Tier 1 behavior.
 - Implement tools as plain functions in `ai/tools.js` with a name/description/JSON-schema table — **this table is the future MCP surface.**
 - Data sources: lessons from `content/`; asset catalog moved to a JSON file that `assets-manifest.js` wraps (one source of truth for browser + server); Phaser reference = grow `phaser-rules.md` into a curated mini-reference of the ~40 APIs the course uses. No live fetches of phaser.io.
