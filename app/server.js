@@ -364,7 +364,9 @@ app.post('/api/ai', async (req, res) => {
 
   // Check the answer instead of trusting it: one corrective retry, then refuse the change.
   if (ctx.hasAssetList) {
-    let bad = unknownAssetKeys(ops, gameCode, ctx.assets);
+    // keys defined anywhere in the project count as real, not just those in game.js
+    const allCode = gameCode + '\n' + ctx.files.map(function (f) { return f.code; }).join('\n');
+    let bad = unknownAssetKeys(ops, allCode, ctx.assets);
     if (bad.length) {
       const retry = message + '\n\nIMPORTANT: your previous answer used the asset key(s) '
         + bad.map(function (k) { return '"' + k + '"'; }).join(', ')

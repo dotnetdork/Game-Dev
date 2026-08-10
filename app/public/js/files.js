@@ -19,7 +19,7 @@ function refreshFiles() {
       const lbl = document.createElement('span'); lbl.className = 'lbl'; lbl.textContent = name;
       row.appendChild(icon); row.appendChild(lbl);
       row.addEventListener('click', function () { openFile(name); });
-      if (name !== 'game.js' && name !== 'main.js') {
+      if (STARTER[name] === undefined) {
         const del = document.createElement('button'); del.className = 'del'; del.title = 'Delete ' + name; del.innerHTML = '<span class="mdi mdi-close"></span>';
         del.addEventListener('click', function (e) { e.stopPropagation(); deleteFile(name); });
         row.appendChild(del);
@@ -85,4 +85,4 @@ $('runBtn').addEventListener('click', function () { saveFile(function () { switc
 document.addEventListener('keydown', function (e) { if ((e.ctrlKey || e.metaKey) && e.key.toLowerCase() === 's' && !$('view-code').hidden) { e.preventDefault(); saveFile(); } });
 
 /* ---------- game info ---------- */
-function loadSettings() { const cfg = parseConfig(project.files['game.js'] || ''); const box = $('infoSettings'); box.innerHTML = ''; Object.keys(cfg).forEach(function (k) { const row = document.createElement('div'); row.className = 'setrow'; row.innerHTML = '<span>' + k + '</span><b>' + cfg[k] + '</b>'; box.appendChild(row); }); }
+function loadSettings() { const cfg = parseConfig(project.files[configFile()] || ''); const box = $('infoSettings'); box.innerHTML = ''; Object.keys(cfg).forEach(function (k) { const row = document.createElement('div'); row.className = 'setrow'; row.innerHTML = '<span>' + k + '</span><b>' + cfg[k] + '</b>'; box.appendChild(row); }); }

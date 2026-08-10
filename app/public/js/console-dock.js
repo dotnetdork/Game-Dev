@@ -23,7 +23,8 @@ if ($('conClear')) $('conClear').addEventListener('click', conClear);
 window.addEventListener('message', function (e) { const d = e && e.data; if (d && d.__gamelog) { conLine(d.level || 'log', d.text || ''); if (d.level === 'error' && $('view-play') && !$('view-play').hidden) showConsole(true, true); } });
 conClear();
 function resetFile(name) {
-  const def = name === 'main.js' ? BOOT_CODE : STAR_CODE;
+  const def = STARTER[name];
+  if (def === undefined) { toast('That file has no original to go back to.'); return; }
   modal({ title: 'Reset ' + name + '?', message: 'This restores the original ' + name + ', replacing your changes. Your other files are kept.', okLabel: 'Reset it', onOk: function () {
     project.files[name] = def; if (project.order.indexOf(name) < 0) project.order.push(name);
     saveProject(); toast(name + ' restored.');
@@ -31,10 +32,11 @@ function resetFile(name) {
   } });
 }
 function resetGame() {
-  modal({ title: 'Reset the game?', message: 'This restores the original game.js and main.js, replacing your changes to them. Any other files you added are kept.', okLabel: 'Reset it', onOk: function () {
-    project.files['game.js'] = STAR_CODE; project.files['main.js'] = BOOT_CODE;
-    if (project.order.indexOf('game.js') < 0) project.order.push('game.js');
-    if (project.order.indexOf('main.js') < 0) project.order.push('main.js');
+  modal({ title: 'Reset the game?', message: 'This restores all of the original game files, replacing your changes to them. Any other files you added are kept.', okLabel: 'Reset it', onOk: function () {
+    STARTER_ORDER.forEach(function (n) {
+      project.files[n] = STARTER[n];
+      if (project.order.indexOf(n) < 0) project.order.push(n);
+    });
     saveProject(); toast('Game restored.'); refreshFiles();
     if (!$('view-play').hidden) startGame(); if (!$('view-code').hidden) loadCode(); loadSettings();
   } });

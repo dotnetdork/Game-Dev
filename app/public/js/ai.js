@@ -18,15 +18,29 @@ function renderChat(mode) {
    A change to the student's actual code is shown as a diff they have to look at and accept.
    Reading the change is the point of the course, so it is the price of the change. A
    CONFIG-only tweak is a slider, not a program change, and still applies straight away. */
-function addProposal(why, ops, before) {
+/* Small models routinely skip the `why` field and answer "Done.", which tells the student
+   nothing at the exact moment they are supposed to be reading the change. Fall back to
+   describing the change itself rather than showing them a useless sentence. */
+function proposalWhy(why, reply, rows) {
+  const useful = function (s) { return s && !/^(done|ok|okay|sure)\.?$/i.test(String(s).trim()); };
+  if (useful(why)) return String(why).trim();
+  if (useful(reply)) return String(reply).trim();
+  const c = countChanges(rows || []), bits = [];
+  if (c.added) bits.push(c.added + (c.added === 1 ? ' line' : ' lines') + ' added');
+  if (c.removed) bits.push(c.removed + (c.removed === 1 ? ' line' : ' lines') + ' removed');
+  return bits.length ? 'A change to game.js — ' + bits.join(', ') + '. Have a read before you accept it.'
+                     : 'A change to game.js. Have a read before you accept it.';
+}
+function addProposal(why, ops, before, reply) {
   const after = applyOps(before, ops);
   if (after === null) {                       // the applier could not place it safely
     addMsg('bot', "I couldn't work out where to put that change safely, so I left your game alone. Try asking for it a different way.");
     return null;
   }
   const rows = lineDiff(before, after);
-  const entry = { who: 'bot', kind: 'proposal', state: 'pending', why: why, ops: ops, before: before, after: after,
-    rows: rows, text: why };                  // `text` is what the model sees as its own turn in history
+  const entry = { who: 'bot', kind: 'proposal', state: 'pending', why: proposalWhy(why, reply, rows), ops: ops, before: before, after: after,
+    rows: rows };
+  entry.text = entry.why;                  // `text` is what the model sees as its own turn in history
   (chats.coder || (chats.coder = [])).push(entry);
   const card = renderProposal(entry); card.__entry = entry;
   aiMsgs.appendChild(card); aiMsgs.scrollTop = aiMsgs.scrollHeight;
@@ -219,19 +233,18 @@ function sendAI() {
     .then(function (r) { return r.json(); }).then(function (data) {
       setMsg(pending, 'bot', data.reply || 'Done.');
       const ops = data.ops; if (!ops) return;
-      const before = project.files['game.js'] || '';
+
+      // Numbers live in config.js and are the tinkering loop — they land straight away.
+      if (ops.config && typeof ops.config === 'object') {
+        const cf = configFile(), cfgBefore = project.files[cf] || '';
+        const cfgAfter = mergeConfig(cfgBefore, ops.config);
+        if (cfgAfter !== cfgBefore && validJS(cfgAfter)) { project.files[cf] = cfgAfter; saveProject(); }
+      }
 
       // A change to the code itself is proposed, not applied — the student reads it first.
-      if (opsChangeCode(ops)) { addProposal(data.why || data.reply || 'Here is the change.', ops, before); return; }
-
-      // CONFIG-only tweaks are the tinkering loop; they land straight away.
-      const next = applyOps(before, ops);
-      if (next === null) { addMsg('bot', "I couldn't work out where to put that change safely, so I left your game alone."); return; }
-      if (next !== before) {
-        if (!validJS(next)) { addMsg('bot', "That change caused a code error, so I kept your game the way it was. Try asking a slightly different way."); saveProject(); refreshAfterEdit(); return; }
-        project.files['game.js'] = next;
-      }
-      saveProject(); refreshAfterEdit();
+      const before = project.files['game.js'] || '';
+      if (opsChangeCode(ops)) { addProposal(data.why, ops, before, data.reply); return; }
+      refreshAfterEdit();
     })
     .catch(function () { pending.textContent = 'Could not reach the server.'; });
 }

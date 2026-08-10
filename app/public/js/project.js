@@ -20,43 +20,12 @@ if (!studentId) { studentId = 'stu-' + Math.random().toString(36).slice(2, 10); 
    student opens one it is COPIED into this client-side project. All editing,
    saving, and running happen in the browser (localStorage) — nothing the student
    makes is written back to the server. */
-const BOOT_CODE = `// ============================================================
-//  main.js  -  Starts the game engine (Phaser).
-//  You usually don't need to change much in here.
-// ============================================================
-
-const config = {
-  type: Phaser.AUTO,             // let Phaser pick the best way to draw
-  width: WIDTH,                  // game width  (from game.js)
-  height: HEIGHT,                // game height (from game.js)
-  parent: 'game',                // the box on the page to draw into
-  backgroundColor: '#7ec0ee',    // sky blue, shown behind everything
-
-  // Scale the game to fit its box, and keep it centered.
-  scale: {
-    mode: Phaser.Scale.FIT,
-    autoCenter: Phaser.Scale.CENTER_BOTH
-  },
-
-  // Gravity makes things fall. Bigger y = heavier (falls faster).
-  physics: {
-    default: 'arcade',
-    arcade: { gravity: { y: 800 }, debug: false }
-  },
-
-  // Connect our functions from game.js to the engine.
-  scene: {
-    preload: preload,
-    create: create,
-    update: update
-  }
-};
-
-// Start the game!
-new Phaser.Game(config);
-`;
 const PKEY = 'leagueProject';
-function defaultProject() { return { files: { 'game.js': STAR_CODE, 'main.js': BOOT_CODE }, order: ['game.js', 'main.js'] }; }
+function defaultProject() {
+  const files = {};
+  STARTER_ORDER.forEach(function (n) { files[n] = STARTER[n]; });
+  return { files: files, order: STARTER_ORDER.slice() };
+}
 function loadProject() {
   try { const p = JSON.parse(localStorage.getItem(PKEY) || 'null'); if (p && p.files && typeof p.files['game.js'] === 'string') { if (!Array.isArray(p.order)) p.order = Object.keys(p.files); return p; } } catch (e) {}
   return defaultProject();
@@ -64,6 +33,9 @@ function loadProject() {
 let project = loadProject();
 function saveProject() { localStorage.setItem(PKEY, JSON.stringify(project)); }
 function fileNames() { const out = project.order.filter(function (n) { return project.files[n] !== undefined; }); Object.keys(project.files).forEach(function (n) { if (out.indexOf(n) < 0) out.push(n); }); return out; }
+const CONFIG_FILE = 'config.js';
+// Projects saved before the starter was split still keep CONFIG inside game.js.
+function configFile() { return typeof project.files[CONFIG_FILE] === 'string' ? CONFIG_FILE : 'game.js'; }
 function validJS(code) { try { new Function(code); return true; } catch (e) { return false; } } // parse-check only, never runs
 
 /* read the CONFIG object's numeric keys (client-side) */
@@ -159,7 +131,6 @@ function mergeConfig(code, obj) {
    splicing a snippet into the wrong place and handing the student a broken game. */
 function applyOps(code, ops) {
   if (typeof ops.replaceFile === 'string' && ops.replaceFile.trim()) return ops.replaceFile;
-  if (ops.config && typeof ops.config === 'object') code = mergeConfig(code, ops.config);
   if (Array.isArray(ops.functions)) ops.functions.forEach(function (f) { if (typeof f === 'string' && f.trim()) code += '\n\n' + f.trim() + '\n'; });
   if (typeof ops.create === 'string' && ops.create.trim()) {
     code = insertIntoFn(code, 'create', ops.create.trim());
