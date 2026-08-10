@@ -468,3 +468,5 @@ body{background:var(--bg);color:var(--ink);font-family:var(--font);font-size:14p
 .cm-diff-del{background:rgba(255,107,107,.14);}
 .cm-diff-gap{background:rgba(255,255,255,.03);}
 .CodeMirror-linebackground.cm-diff-add + .CodeMirror-line span{color:inherit;}
+.review-bar .rv-files{font-family:Consolas,monospace;color:#cfe6ff;margin-right:8px;}
+.cm-diff-file{background:rgba(62,143,214,.18);}

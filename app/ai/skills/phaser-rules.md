@@ -8,3 +8,6 @@ PHASER RULES (breaking these crashes the game):
 - Inside create() and update() the scene is the variable `scene`. In a top-level function you add, take the scene as a parameter or use `this` the way the surrounding code already does.
 - Load nothing over the network. No URLs, no CDN links: every image and sound is already loaded by key.
 - Physics bodies come from `scene.physics.add.*`. A plain `scene.add.*` object has no body and will not collide.
+- Keys: `scene.input.keyboard.isDown(...)` does NOT exist.
+  - **Shift is already available: use `scene.cursors.shift.isDown`.** `createCursorKeys()` returns `up`, `down`, `left`, `right`, `space` and `shift`. Do NOT put SHIFT in `addKeys` and do NOT read `scene.keys.SHIFT` — that is undefined and crashes on the first frame.
+  - Any other key must be registered before it is read: add it to the `addKeys('W,A,S,D')` call in `createPlayer`, then read `scene.keys.<LETTER>.isDown`. Reading a key you never registered is the most common way to break this game.

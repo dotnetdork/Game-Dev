@@ -82,7 +82,11 @@ function renderAssets(assets) {
 }
 function renderFiles(files) {
   if (!files || !files.length) return '(none — game.js is the only file)';
-  return files.map(function (f) { return '--- ' + f.name + ' ---\n' + f.code; }).join('\n');
+  return files.map(function (f) {
+    // A file whose contents did not fit is still listed: the coder must know it exists.
+    if (!f.code) return '--- ' + f.name + ' ---\n(this file exists but is not shown here — ask the student to tell you what is in it before editing it)';
+    return '--- ' + f.name + ' ---\n' + f.code;
+  }).join('\n');
 }
 function fill(text, vars) {
   return text.replace(/\{\{(\w+)\}\}/g, function (m, key) {

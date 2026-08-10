@@ -145,12 +145,59 @@ function applyOps(code, ops) {
 /* A change the student should read before it lands: anything beyond CONFIG numbers.
    Tweaking jumpPower is a slider; adding a function is a change to their program. */
 function opsChangeCode(ops) {
-  return ['functions', 'create', 'update', 'newFile', 'replaceFile'].some(function (k) {
+  return ['functions', 'create', 'update', 'newFile', 'editFile', 'replaceFile'].some(function (k) {
     const v = ops[k];
     if (k === 'functions') return Array.isArray(v) && v.some(function (f) { return typeof f === 'string' && f.trim(); });
-    if (k === 'newFile') return v && typeof v.code === 'string' && v.code.trim();
+    if (k === 'newFile' || k === 'editFile') return v && typeof v.code === 'string' && v.code.trim();
     return typeof v === 'string' && v.trim();
   });
+}
+
+/* Does a rewritten file still declare everything the old one did? Guards against a model that
+   describes a file instead of reproducing it, which would silently delete working code. */
+function topLevelNames(code) {
+  return (String(code).match(/^(?:function\s+|const\s+|let\s+|var\s+)([A-Za-z_$][\w$]*)/gm) || [])
+    .map(function (d) { return d.split(/\s+/)[1]; });
+}
+function keepsTopLevelFunctions(before, after) {
+  const had = topLevelNames(before), has = topLevelNames(after);
+  return had.every(function (n) { return has.indexOf(n) >= 0; });
+}
+
+/* Every file a set of ops would touch, as {name, before, after}. The game is split across
+   several files now, so a change to how the player moves lands in player.js, not game.js.
+   Returns null if any part could not be applied cleanly. */
+function opsToChanges(ops) {
+  const changes = [];
+  const push = function (name, after) {
+    const before = project.files[name] === undefined ? '' : project.files[name];
+    if (after !== before) changes.push({ name: name, before: before, after: after });
+  };
+  // game.js: the surgical ops
+  const gameOps = {};
+  ['functions', 'create', 'update', 'replaceFile'].forEach(function (k) { if (ops[k] !== undefined) gameOps[k] = ops[k]; });
+  if (Object.keys(gameOps).length) {
+    const after = applyOps(project.files['game.js'] || '', gameOps);
+    if (after === null) return null;
+    push('game.js', after);
+  }
+  // any other existing file, sent back whole
+  if (ops.editFile && typeof ops.editFile.name === 'string' && typeof ops.editFile.code === 'string') {
+    const nm = ops.editFile.name.trim();
+    if (/^[A-Za-z0-9_-]+\.js$/.test(nm) && project.files[nm] !== undefined) {
+      // Rewriting a whole file must not quietly lose what was in it. A model that summarises
+      // the file instead of copying it out ("// the rest of player.js here") would delete the
+      // student's functions and break the game, so refuse rather than show that as a change.
+      if (!keepsTopLevelFunctions(project.files[nm], ops.editFile.code)) return null;
+      push(nm, ops.editFile.code);
+    }
+  }
+  // a brand new file
+  if (ops.newFile && typeof ops.newFile.name === 'string' && typeof ops.newFile.code === 'string') {
+    let nm = ops.newFile.name.trim(); if (!/\.js$/.test(nm)) nm += '.js';
+    if (/^[A-Za-z0-9_-]+\.js$/.test(nm)) push(nm, ops.newFile.code);
+  }
+  return changes;
 }
 
 const SKEY = 'leagueProgress';

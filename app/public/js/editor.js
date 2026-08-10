@@ -43,7 +43,10 @@ function showDiffInEditor(entry) {
   // the whole file, not just the changed hunks — the student should see the change in the
   // context of their real program. We scroll to the first change instead of hiding the rest.
   const rows = entry.rows || [];
-  const text = rows.map(function (r) { return (r.t === ' ' ? '  ' : r.t + ' ') + r.text; }).join('\n');
+  const text = rows.map(function (r) {
+    if (r.t === 'h') return '===== ' + r.text + ' =====';   // a change can span several files
+    return (r.t === ' ' ? '  ' : r.t + ' ') + r.text;
+  }).join('\n');
   codeEditor.setOption('lint', false);                 // a diff is not valid JS; linting it is noise
   codeEditor.clearGutter('CodeMirror-lint-markers');
   codeEditor.setOption('readOnly', 'nocursor');
@@ -52,7 +55,7 @@ function showDiffInEditor(entry) {
   rows.forEach(function (r, i) {
     if (r.t === '+') codeEditor.addLineClass(i, 'background', 'cm-diff-add');
     else if (r.t === '-') codeEditor.addLineClass(i, 'background', 'cm-diff-del');
-    else return;
+    else { if (r.t === 'h') codeEditor.addLineClass(i, 'background', 'cm-diff-file'); return; }
     if (first < 0) first = i;
   });
   codeEditor.refresh();
@@ -74,7 +77,9 @@ function startReview(entry) {
   if (!reviewing && !$('view-code').hidden) { project.files[currentFile] = codeEditor.getValue(); saveProject(); }
   reviewing = entry;
   const c = countChanges(entry.rows || []);
-  $('reviewStat').innerHTML = '<b class="add">+' + c.added + '</b> <b class="del">−' + c.removed + '</b>';
+  const names = (entry.changes || []).map(function (x) { return x.name; }).join(', ');
+  $('reviewStat').innerHTML = (names ? '<span class="rv-files">' + names + '</span> ' : '')
+    + '<b class="add">+' + c.added + '</b> <b class="del">−' + c.removed + '</b>';
   $('reviewBar').hidden = false;
   switchView('code');                                  // switchView -> loadCode(), which renders the diff
 }

@@ -19,12 +19,36 @@ function assetInjectScript() {
     + 'window.addEventListener("message",function(ev){var d=ev&&ev.data&&ev.data.__leagueAudio;if(!d)return;if("mute" in d)window.__leagueMute=!!d.mute;if(typeof d.volume==="number")window.__leagueVol=d.volume;var g=window.__leagueGame;if(g&&g.sound){try{g.sound.mute=window.__leagueMute;if(g.sound.setVolume)g.sound.setVolume(window.__leagueVol);else g.sound.volume=window.__leagueVol;}catch(e){}}});'
     + '<' + '/script>\n';
 }
+/* An error thrown inside create() or update() dies inside Phaser's own step, which leaves the
+   student with a frozen game and an EMPTY console — the worst possible way to fail. Wrapping
+   their functions puts the real message in the log instead, once rather than sixty times a
+   second, and lets the rest of the frame carry on so the game keeps drawing. This has to be
+   injected after the game files (so the functions exist) and before main.js (which hands them
+   to Phaser). */
+function errorReporterScript() {
+  return '<' + 'script>(function(){' +
+    'var seen = {};' +
+    '["preload","create","update"].forEach(function(name){' +
+    '  var fn = window[name];' +
+    '  if (typeof fn !== "function") return;' +
+    '  window[name] = function(){' +
+    '    try { return fn.apply(this, arguments); }' +
+    '    catch (e) {' +
+    '      var msg = e && e.message ? e.message : String(e);' +
+    '      if (!seen[msg]) { seen[msg] = 1; console.error("Your " + name + "() stopped: " + msg); }' +
+    '    }' +
+    '  };' +
+    '});' +
+    '})();<' + '/script>\n';
+}
+
 function startGame() { // build a self-contained page from the browser-side project and run it in the iframe (no server)
   conClear();
   // load order is the file order in the tree; main.js runs last because it starts the engine
   const ordered = fileNames().filter(function (n) { return n !== 'main.js'; });
-  if (typeof project.files['main.js'] === 'string') ordered.push('main.js');
-  const scripts = ordered.map(function (n) { return '<' + 'script>\n' + (project.files[n] || '') + '\n<' + '/script>'; }).join('\n');
+  const scripts = ordered.map(function (n) { return '<' + 'script>\n' + (project.files[n] || '') + '\n<' + '/script>'; }).join('\n')
+    + '\n' + errorReporterScript()                                  // must sit between the game files and main.js
+    + (typeof project.files['main.js'] === 'string' ? '<' + 'script>\n' + project.files['main.js'] + '\n<' + '/script>' : '');
   const capture = '<' + 'script>(function(){function f(a){a=[].slice.call(a);if(typeof a[0]==="string"&&/%[csdfoO]/.test(a[0])){var i=1;var o=a[0].replace(/%[csdfoO]/g,function(m){if(m==="%c"){i++;return "";}return String(a[i++]);});return (o+" "+a.slice(i).join(" ")).replace(/\\s+/g," ").trim();}return a.map(String).join(" ");}function s(l,a){try{parent.postMessage({__gamelog:true,level:l,text:f(a)},"*");}catch(e){}}var c=console,lg=c.log.bind(c);c.log=function(){lg.apply(c,arguments);s("log",arguments);};var wn=c.warn.bind(c);c.warn=function(){wn.apply(c,arguments);s("warn",arguments);};var er=c.error.bind(c);c.error=function(){er.apply(c,arguments);s("error",arguments);};window.onerror=function(m){s("error",[m]);return false;};})();<' + '/script>\n';
   const html = '<!doctype html><html><head><meta charset="utf-8">'
     + '<style>html,body{margin:0;height:100%;background:#06101c;overflow:hidden}#game{width:100%;height:100vh}</style></head><body>'

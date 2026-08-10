@@ -204,6 +204,39 @@ function assetApology(bad, owned) {
     + 'Buy more art and sounds in the Store, or ask me for something using what you have.';
 }
 
+// ---- keyboard keys must be registered before they are read ----
+// `scene.keys.SHIFT.isDown` when only 'W,A,S,D' were registered throws on the very first frame
+// and freezes the game. The model gets this right about half the time however plainly the rule
+// is written, so it is checked rather than trusted.
+function unregisteredKeys(code) {
+  const registered = {}; let m, re;
+  re = /addKeys\s*\(\s*['"]([^'"]+)['"]/g;
+  while ((m = re.exec(code))) m[1].split(',').forEach(function (k) { registered[k.trim().toUpperCase()] = true; });
+  re = /addKey\s*\(\s*(?:Phaser\.Input\.Keyboard\.KeyCodes\.([A-Za-z_]+)|['"]([^'"]+)['"])/g;
+  while ((m = re.exec(code))) registered[String(m[1] || m[2]).trim().toUpperCase()] = true;
+  const used = {};
+  re = /\bkeys\.([A-Za-z_]\w*)\b/g;
+  while ((m = re.exec(code))) used[m[1].toUpperCase()] = true;
+  return Object.keys(used).filter(function (k) { return !registered[k]; });
+}
+function badKeysIn(ops, gameCode) {
+  const bad = {};
+  if (ops.editFile && typeof ops.editFile.code === 'string') {
+    unregisteredKeys(ops.editFile.code).forEach(function (k) { bad[k] = true; });
+  }
+  const inGame = opsCode(ops).replace(ops.editFile && ops.editFile.code ? ops.editFile.code : ' ', '');
+  if (inGame.trim()) unregisteredKeys(gameCode + '\n' + inGame).forEach(function (k) { bad[k] = true; });
+  return Object.keys(bad);
+}
+
+// ---- "I added it!" with no ops is a lie the student acts on ----
+// A reply is not a change: unless the JSON carries an op field, nothing happens to the game.
+// Small models will happily claim success anyway, so the claim is checked against the ops.
+const CLAIMS_A_CHANGE = /\b(i(?:'ve| have)? (?:added|changed|updated|set|made|created|implemented|fixed|adjusted)|now (?:sprints?|jumps?|runs?|moves?|has|can|will)|will now|you can now|is now)\b/i;
+function claimsChangeWithoutOps(reply, ops) {
+  return !Object.keys(ops || {}).length && CLAIMS_A_CHANGE.test(String(reply || ''));
+}
+
 // Lessons set `ai: guided` when the student is meant to make the design call themselves.
 const GUIDED_RULES = '\n\nGUIDED MODE IS ON for this lesson — the student is supposed to decide what changes.\n'
   + '- If the request is vague ("make it cooler", "make it better", "add something", "surprise me"), change NOTHING. '
@@ -324,9 +357,9 @@ app.post('/api/ai', async (req, res) => {
     lineNumber: String(b.lineNumber || '').slice(0, 8),
     line: String(b.line || '').slice(0, 400),
     snippet: String(b.snippet || '').slice(0, 2000),
-    files: Array.isArray(b.files) ? b.files.slice(0, 10).map(function (f) {
-      return { name: String((f && f.name) || '').slice(0, 60), code: String((f && f.code) || '').slice(0, 6000) };
-    }).filter(function (f) { return f.name && f.code; }) : []
+    files: Array.isArray(b.files) ? b.files.slice(0, 30).map(function (f) {
+      return { name: String((f && f.name) || '').slice(0, 60), code: String((f && f.code) || '').slice(0, 12000) };
+    }).filter(function (f) { return f.name; }) : []   // a file with no contents still tells the coder it exists
   };
 
   // TUTOR: plain-language explanation, no code edits.
@@ -351,7 +384,7 @@ app.post('/api/ai', async (req, res) => {
   const system = ai.buildPrompt('coder', Object.assign({ gameCode: gameCode }, ctx)) || fallbackCoderSystem(gameCode, ctx);
   function toOps(parsed) {
     const ops = {};
-    ['config', 'functions', 'create', 'update', 'newFile', 'replaceFile'].forEach(function (k) {
+    ['config', 'functions', 'create', 'update', 'newFile', 'editFile', 'replaceFile'].forEach(function (k) {
       if (parsed[k] !== undefined && parsed[k] !== null) ops[k] = parsed[k];
     });
     return ops;
@@ -361,6 +394,41 @@ app.post('/api/ai', async (req, res) => {
   catch (e) { return res.status(502).json({ reply: 'The AI service is not reachable right now (' + e.message + ').' }); }
   let parsed = extractJSON(raw) || { reply: (raw || '').trim() || 'Done.' };
   let ops = toOps(parsed);
+
+  // Claimed a change but sent nothing that makes one: ask again for the actual fields.
+  if (claimsChangeWithoutOps(parsed.reply, ops)) {
+    const retry = message + '\n\nIMPORTANT: your previous answer said you had made a change, but it contained no '
+      + '"config", "functions", "create", "update", "editFile", "newFile" or "replaceFile" field, so NOTHING happened '
+      + 'to the game and the student saw no difference. Send the change for real this time. Remember that logic living '
+      + 'in another file (movement in player.js, coins in coins.js, platforms in world.js) is changed with "editFile", '
+      + 'passing that whole file back with your edit made. If you genuinely cannot do it, say so plainly and ask for '
+      + 'what you need instead of claiming it is done.';
+    try { raw = await callAI(spec, system, retry, true, history); }
+    catch (e) { return res.status(502).json({ reply: 'The AI service is not reachable right now (' + e.message + ').' }); }
+    parsed = extractJSON(raw) || { reply: (raw || '').trim() || '' };
+    ops = toOps(parsed);
+    if (claimsChangeWithoutOps(parsed.reply, ops)) {
+      return res.json({ reply: "I couldn't work out how to make that change — can you tell me a bit more about what you want to happen?", ops: null });
+    }
+  }
+
+  // Reading a key that was never registered crashes on frame one: correct it once, then refuse.
+  let badKeys = badKeysIn(ops, gameCode);
+  if (badKeys.length) {
+    const retry = message + '\n\nIMPORTANT: your previous answer read '
+      + badKeys.map(function (k) { return 'scene.keys.' + k; }).join(' and ')
+      + ', but those keys are never registered, so the game crashes on the first frame. '
+      + 'For SHIFT use scene.cursors.shift.isDown (it already exists). For any other key, add it to the '
+      + "addKeys('W,A,S,D') call in createPlayer first. Send the corrected change.";
+    try { raw = await callAI(spec, system, retry, true, history); }
+    catch (e) { return res.status(502).json({ reply: 'The AI service is not reachable right now (' + e.message + ').' }); }
+    parsed = extractJSON(raw) || { reply: '' };
+    ops = toOps(parsed);
+    badKeys = badKeysIn(ops, gameCode);
+    if (badKeys.length) {
+      return res.json({ reply: "I couldn't get that working without breaking your controls, so I left your game alone. Try asking for it a slightly different way.", ops: null });
+    }
+  }
 
   // Check the answer instead of trusting it: one corrective retry, then refuse the change.
   if (ctx.hasAssetList) {

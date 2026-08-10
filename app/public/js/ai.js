@@ -44,12 +44,18 @@ function proposalWhy(why, reply, rows) {
   return bits.length ? 'A change to game.js — ' + bits.join(', ') + '. Have a read before you accept it.'
                      : 'A change to game.js. Have a read before you accept it.';
 }
-function addProposal(why, ops, before, reply) {
-  const after = applyOps(before, ops);
-  if (after === null) return null;            // couldn't place it safely; caller tells the student
-  const rows = lineDiff(before, after);
-  const entry = { who: 'bot', kind: 'proposal', state: 'pending', why: proposalWhy(why, reply, rows), ops: ops, before: before, after: after,
-    rows: rows };
+function addProposal(why, ops, reply) {
+  const changes = opsToChanges(ops);
+  if (changes === null || !changes.length) return null;   // couldn't place it; caller tells the student
+  // One review can span several files — a sprint key changes player.js, not game.js.
+  const rows = [];
+  changes.forEach(function (c) {
+    c.rows = lineDiff(c.before, c.after) || [];
+    if (changes.length > 1 || c.name !== 'game.js') rows.push({ t: 'h', text: c.name });
+    c.rows.forEach(function (r) { rows.push(r); });
+  });
+  const entry = { who: 'bot', kind: 'proposal', state: 'pending', why: proposalWhy(why, reply, rows), ops: ops,
+    changes: changes, rows: rows };
   entry.text = entry.why;                  // `text` is what the model sees as its own turn in history
   (chats.coder || (chats.coder = [])).push(entry);
   const card = renderProposal(entry); card.__entry = entry;
@@ -68,7 +74,8 @@ function renderProposal(en) {
 
   if (en.state === 'pending') {
     const b = document.createElement('button'); b.className = 'prop-review'; b.type = 'button';
-    b.innerHTML = '<span class="mdi mdi-file-compare"></span>Review the change' + (summary ? ' (' + summary + ')' : '');
+    const names = (en.changes || []).map(function (c) { return c.name; }).join(', ');
+    b.innerHTML = '<span class="mdi mdi-file-compare"></span>Review the change' + (names ? ' in ' + names : '') + (summary ? ' (' + summary + ')' : '');
     b.addEventListener('click', function () { startReview(en); });
     wrap.appendChild(b);
   } else {
@@ -87,18 +94,18 @@ function declineProposal(en) {
 }
 function acceptProposal(en) {
   if (en.state !== 'pending') return;
-  if (!validJS(en.after)) {
+  const broken = (en.changes || []).filter(function (c) { return !validJS(c.after); });
+  if (broken.length) {
     en.state = 'declined';
     if (typeof endReview === 'function') endReview();
     renderChat('coder');
-    addMsg('bot', "That change would have broken your game, so I kept it the way it was. Try asking a slightly different way.");
+    addMsg('bot', 'That change would have broken ' + broken[0].name + ', so I kept your game the way it was. Try asking a slightly different way.');
     return;
   }
-  if (en.ops.newFile && typeof en.ops.newFile.name === 'string' && typeof en.ops.newFile.code === 'string') {
-    let nm = en.ops.newFile.name.trim(); if (!/\.js$/.test(nm)) nm += '.js';
-    if (/^[A-Za-z0-9_-]+\.js$/.test(nm)) { const existed = project.files[nm] !== undefined; project.files[nm] = en.ops.newFile.code; if (!existed) project.order.push(nm); }
-  }
-  project.files['game.js'] = en.after;
+  (en.changes || []).forEach(function (c) {
+    if (project.files[c.name] === undefined) project.order.push(c.name);   // a file the AI created
+    project.files[c.name] = c.after;
+  });
   en.state = 'applied';
   saveProject();
   if (typeof endReview === 'function') endReview();
@@ -128,11 +135,17 @@ function chatHistory(mode) {
    `code`, so it is excluded here rather than sent twice. */
 function aiContext() {
   const f = (typeof flat !== 'undefined' && flat[curIdx]) ? flat[curIdx] : null;
-  const others = fileNames().filter(function (n) { return n !== 'game.js'; })
-    .map(function (n) { return { name: n, code: project.files[n] || '' }; })
-    .sort(function (a, b) { return a.code.length - b.code.length; });   // keep the small ones if we run out of room
-  let budget = 3000; const files = [];
-  others.forEach(function (o) { if (o.code.length <= budget) { budget -= o.code.length; files.push(o); } });
+  // Every file the student has, in tree order, including any they added themselves. Contents
+  // are included while there is room, but a file is NEVER dropped silently — the name always
+  // goes over, so the coder knows it exists and can edit it by name. (A 3000-char budget here
+  // used to drop player.js and coins.js, so the coder was asked to change movement while
+  // unable to see movePlayer, and answered by claiming changes it had not made.)
+  let budget = 12000;
+  const files = fileNames().filter(function (n) { return n !== 'game.js'; }).map(function (n) {
+    const code = project.files[n] || '';
+    if (code.length <= budget) { budget -= code.length; return { name: n, code: code }; }
+    return { name: n, code: '', omitted: true };
+  });
   return {
     lessonTitle: f ? f.l.t : '',
     lessonContext: currentLessonText || '',
@@ -250,9 +263,8 @@ function sendAI() {
       }
 
       // A change to the code itself is proposed, not applied — the student reads it first.
-      const before = project.files['game.js'] || '';
       if (opsChangeCode(ops)) {
-        const en = addProposal(data.why, ops, before, data.reply);
+        const en = addProposal(data.why, ops, data.reply);
         // the card carries the action; this bubble is the sentence explaining it
         setMsg(pending, 'bot', en ? en.why
           : "I couldn't work out where to put that change safely, so I left your game alone. Try asking for it a different way.");
