@@ -174,6 +174,8 @@ Deviations from the plan as written, and why:
 - **No `{{history}}` placeholder.** Recent turns are passed as real conversation messages (Stage 1), which models handle better than interpolated text. The other placeholders are as specified.
 - **Conditional skills added.** A skill may declare `when_ai_mode: guided` and is only included when the lesson matches — that is how `guided-mode.md` replaces the old `GUIDED_RULES` constant without the loader hard-coding a skill name.
 
+**Live check on Ollama** found and fixed a real prompt bug, which is the workflow working as intended: the grader returned `pass: true` while its own hint said the student had changed the wrong thing. Fixed by editing `grader.md` (pass and hint must agree) and re-tested **against the running server with no restart**. One nuance left for whenever the grader is actually wired to the UI: the 7B is stricter than intended about *how* a goal is met — lowering gravity to make the player jump higher is marked fail. Not tuned further, since nothing calls the grader yet.
+
 **Context budget after Stage 2:** worst case (full starter, 3000-char lesson, 3000-char files, a student owning all 265 assets, guided mode, plus history) is ~6,700 tokens against ~13,300 available — fits with room. The asset list is the biggest variable chunk at ~5,900 chars when everything is owned; if Stage 4's tool definitions push the total up, replacing that inline list with a `list_owned_assets()` tool is the natural fix.
 
 ## Stage 3 — Pedagogy loop (~3–4 days) — the actual point
