@@ -4,20 +4,21 @@
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <title>LEAGUE Game Dev</title>
-<!-- League branding assets. To self-host, download these into public/img/ and change every
-     https://images.jointheleague.org/logos/ below (and in manifest.webmanifest) to img/ -->
-<link rel="icon" type="image/png" sizes="32x32" href="https://images.jointheleague.org/logos/favicon-32x32.png">
-<link rel="icon" type="image/png" sizes="16x16" href="https://images.jointheleague.org/logos/favicon-16x16.png">
-<link rel="apple-touch-icon" href="https://images.jointheleague.org/logos/apple-touch-icon.png">
+<!-- League branding assets, self-hosted under public/img/. -->
+<link rel="icon" type="image/png" sizes="32x32" href="img/favicon-32x32.png">
+<link rel="icon" type="image/png" sizes="16x16" href="img/favicon-16x16.png">
+<link rel="apple-touch-icon" href="img/apple-touch-icon.png">
 <link rel="manifest" href="manifest.webmanifest">
 <meta name="theme-color" content="#102a49">
-<link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/codemirror/5.65.16/codemirror.min.css">
-<link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/codemirror/5.65.16/theme/material-darker.min.css">
-<link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/codemirror/5.65.16/addon/hint/show-hint.min.css">
-<link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/codemirror/5.65.16/addon/lint/lint.min.css">
-<link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/codemirror/5.65.16/addon/fold/foldgutter.min.css">
-<link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/codemirror/5.65.16/addon/dialog/dialog.min.css">
-<link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/@mdi/font@7.4.47/css/materialdesignicons.min.css">
+<!-- Libraries are vendored under public/vendor/ so the app keeps working on filtered
+     school networks with no CDN access. See public/vendor/README.md to refresh them. -->
+<link rel="stylesheet" href="vendor/codemirror/lib/codemirror.css">
+<link rel="stylesheet" href="vendor/codemirror/theme/material-darker.css">
+<link rel="stylesheet" href="vendor/codemirror/addon/hint/show-hint.css">
+<link rel="stylesheet" href="vendor/codemirror/addon/lint/lint.css">
+<link rel="stylesheet" href="vendor/codemirror/addon/fold/foldgutter.css">
+<link rel="stylesheet" href="vendor/codemirror/addon/dialog/dialog.css">
+<link rel="stylesheet" href="vendor/mdi/css/materialdesignicons.min.css">
 <style>
   :root{--bg:#0a1728;--panel:#0f2440;--panel2:#13304f;--head:#102a49;--line:#223a58;
     --ink:#eaf1f8;--muted:#9fb2cc;--dim:#5f758f;--azure:#3e8fd6;--gold:#f5b02e;--teal:#2fd0b6;--green:#3ddc84;--sel:#1b4b78;
@@ -447,7 +448,7 @@
 </head>
 <body>
   <div class="topbar">
-    <div class="brand"><img class="brand-logo" src="https://images.jointheleague.org/logos/wordmark.png" alt="The League of Amazing Programmers"><span class="brand-tag">Game Dev</span></div>
+    <div class="brand"><img class="brand-logo" src="img/wordmark.png" alt="The League of Amazing Programmers"><span class="brand-tag">Game Dev</span></div>
     <div class="topnav">
       <button class="navitem on" data-page="courses"><span class="mdi mdi-school"></span>Courses</button>
       <button class="navitem" data-page="store"><span class="mdi mdi-cart-outline"></span>Store</button>
@@ -519,7 +520,7 @@
       <div class="dock right">
         <div class="res l" id="resRight"></div>
         <div class="dock-head">
-          <span class="ai-title"><img class="ai-ava" src="https://images.jointheleague.org/logos/clearRobotRing4.png" alt="">AI Assistant</span>
+          <span class="ai-title"><img class="ai-ava" src="img/clearRobotRing4.png" alt="">AI Assistant</span>
           <button class="ai-toggle coder" id="modeToggle" title="Build mode — click to switch to Tutor"><span class="mdi mdi-code-tags"></span></button>
           <span class="tag" id="aiModelTag">model…</span>
           <button class="ai-collapse" id="aiCollapse" title="Hide the assistant"><span class="mdi mdi-chevron-right"></span></button>
@@ -542,7 +543,7 @@
     <div class="sb-mid">
       <span><span class="mdi mdi-star st"></span> <b id="starVal">0</b></span>
       <div class="progress" title="XP to next level"><div id="xpBar"></div></div>
-      <span class="xp"><img class="xp-bolt" src="https://images.jointheleague.org/logos/bolt.png" alt="XP"> <b id="xpVal">0</b> XP</span>
+      <span class="xp"><img class="xp-bolt" src="img/bolt.png" alt="XP"> <b id="xpVal">0</b> XP</span>
       <span>Lvl <b id="lvlVal">1</b></span>
     </div>
     <span class="sb-right">© The League of Amazing Programmers</span>
@@ -551,29 +552,30 @@
   <div class="toast" id="toast"></div>
   <div class="modal-backdrop" id="modalBack" hidden></div>
 
-<script src="https://cdnjs.cloudflare.com/ajax/libs/codemirror/5.65.16/codemirror.min.js"></script>
-<script src="https://cdnjs.cloudflare.com/ajax/libs/codemirror/5.65.16/mode/javascript/javascript.min.js"></script>
-<script src="https://cdnjs.cloudflare.com/ajax/libs/codemirror/5.65.16/addon/edit/matchbrackets.min.js"></script>
-<script src="https://cdnjs.cloudflare.com/ajax/libs/codemirror/5.65.16/addon/edit/closebrackets.min.js"></script>
-<script src="https://cdnjs.cloudflare.com/ajax/libs/codemirror/5.65.16/addon/selection/active-line.min.js"></script>
-<script src="https://cdnjs.cloudflare.com/ajax/libs/codemirror/5.65.16/addon/comment/comment.min.js"></script>
-<script src="https://cdnjs.cloudflare.com/ajax/libs/codemirror/5.65.16/addon/hint/show-hint.min.js"></script>
-<script src="https://cdnjs.cloudflare.com/ajax/libs/codemirror/5.65.16/addon/hint/anyword-hint.min.js"></script>
-<script src="https://cdnjs.cloudflare.com/ajax/libs/codemirror/5.65.16/addon/hint/javascript-hint.min.js"></script>
-<script src="https://cdnjs.cloudflare.com/ajax/libs/codemirror/5.65.16/addon/fold/foldcode.min.js"></script>
-<script src="https://cdnjs.cloudflare.com/ajax/libs/codemirror/5.65.16/addon/fold/foldgutter.min.js"></script>
-<script src="https://cdnjs.cloudflare.com/ajax/libs/codemirror/5.65.16/addon/fold/brace-fold.min.js"></script>
-<script src="https://cdnjs.cloudflare.com/ajax/libs/codemirror/5.65.16/addon/search/searchcursor.min.js"></script>
-<script src="https://cdnjs.cloudflare.com/ajax/libs/codemirror/5.65.16/addon/search/search.min.js"></script>
-<script src="https://cdnjs.cloudflare.com/ajax/libs/codemirror/5.65.16/addon/dialog/dialog.min.js"></script>
-<script src="https://cdnjs.cloudflare.com/ajax/libs/codemirror/5.65.16/addon/search/jump-to-line.min.js"></script>
-<script src="https://cdnjs.cloudflare.com/ajax/libs/jshint/2.13.6/jshint.min.js"></script>
-<script src="https://cdnjs.cloudflare.com/ajax/libs/codemirror/5.65.16/addon/lint/lint.min.js"></script>
-<script src="https://cdnjs.cloudflare.com/ajax/libs/codemirror/5.65.16/addon/lint/javascript-lint.min.js"></script>
-<script src="https://unpkg.com/prettier@2.8.8/standalone.js"></script>
-<script src="https://unpkg.com/prettier@2.8.8/parser-babel.js"></script>
-<script src="https://cdnjs.cloudflare.com/ajax/libs/js-yaml/4.1.0/js-yaml.min.js"></script>
-<script src="https://cdnjs.cloudflare.com/ajax/libs/marked/12.0.2/marked.min.js"></script>
+<script src="vendor/codemirror/lib/codemirror.js"></script>
+<script src="vendor/codemirror/mode/javascript/javascript.js"></script>
+<script src="vendor/codemirror/addon/edit/matchbrackets.js"></script>
+<script src="vendor/codemirror/addon/edit/closebrackets.js"></script>
+<script src="vendor/codemirror/addon/selection/active-line.js"></script>
+<script src="vendor/codemirror/addon/comment/comment.js"></script>
+<script src="vendor/codemirror/addon/hint/show-hint.js"></script>
+<script src="vendor/codemirror/addon/hint/anyword-hint.js"></script>
+<script src="vendor/codemirror/addon/hint/javascript-hint.js"></script>
+<script src="vendor/codemirror/addon/fold/foldcode.js"></script>
+<script src="vendor/codemirror/addon/fold/foldgutter.js"></script>
+<script src="vendor/codemirror/addon/fold/brace-fold.js"></script>
+<script src="vendor/codemirror/addon/search/searchcursor.js"></script>
+<script src="vendor/codemirror/addon/search/search.js"></script>
+<script src="vendor/codemirror/addon/dialog/dialog.js"></script>
+<script src="vendor/codemirror/addon/search/jump-to-line.js"></script>
+<script src="vendor/jshint/jshint.js"></script>
+<script src="vendor/codemirror/addon/lint/lint.js"></script>
+<script src="vendor/codemirror/addon/lint/javascript-lint.js"></script>
+<script src="vendor/prettier/standalone.js"></script>
+<script src="vendor/prettier/parser-babel.js"></script>
+<script src="vendor/js-yaml/js-yaml.min.js"></script>
+<script src="vendor/marked/marked.min.js"></script>
+<script src="vendor/dompurify/purify.min.js"></script>
 <script src="assets-manifest.js"></script>
 <script src="app.js"></script>
 </body>

@@ -139,6 +139,17 @@ function update() {
 
 /* ================= app ================= */
 const $ = function (id) { return document.getElementById(id); };
+
+/* Every Markdown -> HTML conversion goes through here. marked's output is assigned to
+   innerHTML, and AI replies are Markdown written by a model, so something like
+   <img src=x onerror=...> in a reply would otherwise execute script in the app's origin.
+   DOMPurify strips that and leaves normal lesson/chat formatting alone. If DOMPurify is
+   somehow missing we show escaped text rather than inject unchecked HTML. */
+function mdToSafeHTML(src) {
+  const text = String(src == null ? '' : src);
+  if (typeof DOMPurify === 'undefined' || typeof marked === 'undefined') return esc(text);
+  return DOMPurify.sanitize(marked.parse(text));
+}
 let studentId = localStorage.getItem('leagueStudentId');
 if (!studentId) { studentId = 'stu-' + Math.random().toString(36).slice(2, 10); localStorage.setItem('leagueStudentId', studentId); }
 
@@ -269,7 +280,7 @@ function loadCourse() {
           lesson.xp = (fm.meta && fm.meta.xp) || 0;
           lesson.d = (fm.meta && fm.meta.summary) || '';
           lesson.ai = (fm.meta && fm.meta.ai) || 'full';
-          lesson.body = marked.parse(fm.body || '');
+          lesson.body = mdToSafeHTML(fm.body || '');
         }).catch(function () { lesson.body = '<p>(Could not load this lesson.)</p>'; }));
       });
     });
@@ -651,7 +662,7 @@ function startGame() { // build a self-contained page from the browser-side proj
     + '<style>html,body{margin:0;height:100%;background:#06101c;overflow:hidden}#game{width:100%;height:100vh}</style></head><body>'
     + '<div id="game"></div>\n'
     + capture
-    + '<' + 'script src="https://cdn.jsdelivr.net/npm/phaser@3.80.1/dist/phaser.min.js"><' + '/script>\n'
+    + '<' + 'script src="/vendor/phaser/phaser.min.js"><' + '/script>\n'   // vendored: no CDN, works on filtered networks
     + assetInjectScript()
     + scripts + '\n</body></html>';
   fitStage();
@@ -772,9 +783,9 @@ function loadSettings() { const cfg = parseConfig(project.files['game.js'] || ''
 /* ---------- AI ---------- */
 const aiMsgs = $('aiMsgs');
 const chats = { coder: [], tutor: [] };   // separate conversation per mode
-function renderBubble(who, text) { const m = document.createElement('div'); m.className = 'msg ' + who; if (who === 'bot') { try { m.innerHTML = marked.parse(String(text)); } catch (e) { m.textContent = String(text); } } else { m.textContent = text; } return m; }
+function renderBubble(who, text) { const m = document.createElement('div'); m.className = 'msg ' + who; if (who === 'bot') { try { m.innerHTML = mdToSafeHTML(text); } catch (e) { m.textContent = String(text); } } else { m.textContent = text; } return m; }
 function addMsg(who, text) { const entry = { who: who, text: text }; (chats[aiMode] || (chats[aiMode] = [])).push(entry); const m = renderBubble(who, text); m.__entry = entry; aiMsgs.appendChild(m); aiMsgs.scrollTop = aiMsgs.scrollHeight; return m; }
-function setMsg(m, who, text) { if (m && m.__entry) { m.__entry.who = who; m.__entry.text = text; } if (who === 'bot') { try { m.innerHTML = marked.parse(String(text)); } catch (e) { m.textContent = String(text); } } else { m.textContent = text; } aiMsgs.scrollTop = aiMsgs.scrollHeight; }
+function setMsg(m, who, text) { if (m && m.__entry) { m.__entry.who = who; m.__entry.text = text; } if (who === 'bot') { try { m.innerHTML = mdToSafeHTML(text); } catch (e) { m.textContent = String(text); } } else { m.textContent = text; } aiMsgs.scrollTop = aiMsgs.scrollHeight; }
 function renderChat(mode) { aiMsgs.innerHTML = ''; (chats[mode] || []).forEach(function (en) { const m = renderBubble(en.who, en.text); m.__entry = en; aiMsgs.appendChild(m); }); aiMsgs.scrollTop = aiMsgs.scrollHeight; }
 function refreshAfterEdit() { loadSettings(); refreshFiles(); if (!$('view-play').hidden) startGame(); if (!$('view-code').hidden) loadCode(); }
 function askTutor(question, context) {
@@ -944,8 +955,8 @@ function renderGallery() {
   const all = mine.concat(sampleGallery);
   const cards = all.map(function (g) {
     return '<div class="scard"><div class="art" style="background:linear-gradient(135deg,' + g.col + ',#0b1a2e)"><span class="mdi ' + g.mdi + '"></span><div class="play"><span class="mdi mdi-play-circle"></span></div></div>'
-      + '<div class="body"><div class="avatar" style="' + avatarStyle(g.author) + '">' + g.author.charAt(0).toUpperCase() + '</div>'
-      + '<div class="meta"><h3>' + g.name + '</h3><div class="by">by ' + g.author + '</div></div>'
+      + '<div class="body"><div class="avatar" style="' + avatarStyle(g.author) + '">' + esc(g.author.charAt(0).toUpperCase()) + '</div>'
+      + '<div class="meta"><h3>' + esc(g.name) + '</h3><div class="by">by ' + esc(g.author) + '</div></div>'
       + '<span class="stat"><span class="mdi mdi-play"></span>' + g.plays + '</span></div></div>';
   }).join('');
   return '<div class="phead"><div><h2><span class="mdi mdi-view-grid"></span>Gallery</h2><p class="sub">Games students have published. Names show a first name and last initial only.</p></div><button class="gbtn" id="publishBtn"><span class="mdi mdi-upload"></span>Publish my game</button></div><div class="cardgrid">' + cards + '</div>';
@@ -1041,7 +1052,7 @@ function renderBoard() {
 }
 
 /* ---------- docs / help ---------- */
-function esc(s) { return s.replace(/&/g, '&amp;').replace(/</g, '&lt;'); }
+function esc(s) { return String(s == null ? '' : s).replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;').replace(/'/g, '&#39;'); }
 const docSections = [
   { id: 'start', title: 'Getting started', mdi: 'mdi-flag-checkered', text: 'A Phaser game is built from a config object that sets the size, physics, and which scene runs.', code: 'const config = {\n  type: Phaser.AUTO,\n  width: 800, height: 600,\n  physics: { default: "arcade" },\n  scene: { create: create, update: update }\n};\nnew Phaser.Game(config);' },
   { id: 'scenes', title: 'Scenes: create & update', mdi: 'mdi-layers', text: 'create() runs once when the scene starts, so build your world there. update() runs every frame (about 60x a second) for movement and checks.', code: 'function create() {\n  // build the world once\n}\nfunction update() {\n  // runs every frame\n}' },
