@@ -7,9 +7,45 @@ function addMsg(who, text) { const entry = { who: who, text: text }; (chats[aiMo
 function setMsg(m, who, text) { if (m && m.__entry) { m.__entry.who = who; m.__entry.text = text; } if (who === 'bot') { try { m.innerHTML = mdToSafeHTML(text); } catch (e) { m.textContent = String(text); } } else { m.textContent = text; } aiMsgs.scrollTop = aiMsgs.scrollHeight; }
 function renderChat(mode) { aiMsgs.innerHTML = ''; (chats[mode] || []).forEach(function (en) { const m = renderBubble(en.who, en.text); m.__entry = en; aiMsgs.appendChild(m); }); aiMsgs.scrollTop = aiMsgs.scrollHeight; }
 function refreshAfterEdit() { loadSettings(); refreshFiles(); if (!$('view-play').hidden) startGame(); if (!$('view-code').hidden) loadCode(); }
+
+/* The last few turns of this panel's chat, so follow-ups like "even faster" or "undo that"
+   make sense to the model. Call this BEFORE adding the new message. Kept small on purpose —
+   Ollama runs an 8k context and game.js already takes a big slice of it. */
+function chatHistory(mode) {
+  const turns = (chats[mode] || []).filter(function (en) { return en.text && en.text !== 'Thinking…'; });
+  const out = []; let budget = 6000;
+  for (let i = turns.length - 1; i >= 0 && out.length < 6; i--) {
+    const content = String(turns[i].text).slice(0, 1000);
+    if (content.length > budget) break;
+    budget -= content.length;
+    out.unshift({ role: turns[i].who === 'user' ? 'user' : 'assistant', content: content });
+  }
+  return out;
+}
+
+/* Where the student is and what actually exists in their project. game.js goes over as
+   `code`, so it is excluded here rather than sent twice. */
+function aiContext() {
+  const f = (typeof flat !== 'undefined' && flat[curIdx]) ? flat[curIdx] : null;
+  const others = fileNames().filter(function (n) { return n !== 'game.js'; })
+    .map(function (n) { return { name: n, code: project.files[n] || '' }; })
+    .sort(function (a, b) { return a.code.length - b.code.length; });   // keep the small ones if we run out of room
+  let budget = 8000; const files = [];
+  others.forEach(function (o) { if (o.code.length <= budget) { budget -= o.code.length; files.push(o); } });
+  return {
+    lessonTitle: f ? f.l.t : '',
+    lessonContext: currentLessonText || '',
+    aiMode: currentAIMode,
+    ownedAssets: (typeof ownedAssets === 'function' ? ownedAssets() : []).map(function (a) { return { key: a.key, type: a.type }; }),
+    files: files
+  };
+}
+
 function askTutor(question, context) {
+  const history = chatHistory('tutor');
   addMsg('user', question); const pending = addMsg('bot', 'Thinking…');
-  fetch('/api/ai', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ studentId: studentId, agent: 'tutor', message: question, context: context || '', code: project.files['game.js'] || '' }) })
+  const c = aiContext();
+  fetch('/api/ai', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ studentId: studentId, agent: 'tutor', message: question, context: context || '', code: project.files['game.js'] || '', history: history, lessonTitle: c.lessonTitle }) })
     .then(function (r) { return r.json(); }).then(function (d) { setMsg(pending, 'bot', d.reply || '—'); })
     .catch(function () { setMsg(pending, 'bot', 'Could not reach the tutor.'); });
 }
@@ -18,9 +54,15 @@ function sendAI() {
   if (aiMode === 'coder' && currentAIMode === 'off') { toast('The AI is off for this challenge — give it a try yourself!'); return; }
   box.value = '';
   if (aiMode === 'tutor') { askTutor(text, currentLessonText); return; }
+  const history = chatHistory('coder'), c = aiContext();
   addMsg('user', text); const pending = addMsg('bot', 'Thinking…');
-  // the code lives in the browser; we send it along, the server relays the AI, and we apply the change here
-  fetch('/api/ai', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ studentId: studentId, agent: 'coder', message: text, code: project.files['game.js'] || '' }) })
+  // the code lives in the browser; we send it along with the lesson, the other files and the
+  // asset keys that exist, the server relays the AI, and we apply the change here
+  fetch('/api/ai', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({
+    studentId: studentId, agent: 'coder', message: text, code: project.files['game.js'] || '',
+    history: history, lessonTitle: c.lessonTitle, lessonContext: c.lessonContext,
+    aiMode: c.aiMode, ownedAssets: c.ownedAssets, files: c.files
+  }) })
     .then(function (r) { return r.json(); }).then(function (data) {
       setMsg(pending, 'bot', data.reply || 'Done.');
       const ops = data.ops; if (!ops) return;

@@ -75,7 +75,60 @@ function extractJSON(s) {
   if (a < 0 || b < 0 || b < a) return null;
   try { return JSON.parse(s.slice(a, b + 1)); } catch (e) { return null; }
 }
-function buildSystem(gameCode) {
+// The browser sends prior turns so follow-ups like "even faster" or "undo that" make sense.
+// Never trusted as-is: roles, per-message length, turn count and total size are all capped here.
+function sanitizeHistory(raw) {
+  if (!Array.isArray(raw)) return [];
+  const out = []; let budget = 6000;
+  for (let i = raw.length - 1; i >= 0 && out.length < 12; i--) {
+    const m = raw[i]; if (!m) continue;
+    const role = m.role === 'assistant' ? 'assistant' : (m.role === 'user' ? 'user' : null);
+    if (!role) continue;
+    const content = String(m.content == null ? '' : m.content).slice(0, 1000);
+    if (!content.trim()) continue;
+    if (content.length > budget) break;                 // oldest turns fall off first
+    budget -= content.length;
+    out.unshift({ role: role, content: content });
+  }
+  return out;
+}
+
+// What the coder can see besides game.js: the lesson being worked on, the other project
+// files, and the asset keys that actually exist. Without this it guesses, and a guessed
+// asset key crashes the student's game.
+function buildContextBlock(ctx) {
+  let s = '';
+  if (ctx.lessonTitle || ctx.lessonContext) {
+    s += '\n\nWHAT THE STUDENT IS LEARNING RIGHT NOW';
+    if (ctx.lessonTitle) s += ' — lesson: "' + ctx.lessonTitle + '"';
+    s += '\n';
+    if (ctx.lessonContext) s += '"""\n' + ctx.lessonContext + '\n"""\n';
+    s += 'Stay close to what this lesson covers. If the student asks for something far beyond it, '
+      + 'do the simplest version that works and mention that in "reply".';
+  }
+  if (ctx.assets && ctx.assets.length) {
+    s += '\n\nASSETS THE STUDENT OWNS — these are the ONLY asset keys that exist:\n'
+      + ctx.assets.map(function (a) { return '  ' + a.key + '  (' + a.type + ')'; }).join('\n')
+      + '\nUse ONLY these keys. NEVER invent an asset key: a key that is not on this list fails to load and breaks the game. '
+      + 'If the student wants art or a sound they do not own, say so in "reply" and tell them to buy it in the Store.';
+  } else {
+    s += '\n\nThe student owns no assets yet — do not reference any asset keys.';
+  }
+  if (ctx.files && ctx.files.length) {
+    s += '\n\nOTHER FILES IN THIS PROJECT (game.js is already shown above — do not repeat it):\n'
+      + ctx.files.map(function (f) { return '--- ' + f.name + ' ---\n' + f.code; }).join('\n');
+  }
+  return s;
+}
+
+// Lessons set `ai: guided` when the student is meant to make the design call themselves.
+const GUIDED_RULES = '\n\nGUIDED MODE IS ON for this lesson — the student is supposed to decide what changes.\n'
+  + '- If the request is vague ("make it cooler", "make it better", "add something", "surprise me"), change NOTHING. '
+  + 'Reply with only {"reply":"..."} asking which specific thing to change, offering two or three concrete options.\n'
+  + '- Only act when the request names what to change and roughly how ("make the player jump higher", "put a coin above the left platform").\n'
+  + '- Make the smallest change that does it, and say in one short sentence what you changed.';
+
+function buildSystem(gameCode, ctx) {
   return 'You are a coding assistant inside a kids game-dev course (ages 11-15). '
     + 'The student is building a 2D Phaser 3 game. game.js defines a CONFIG object and functions '
     + '(create, update, spawnObject, buildTextures, postStats, etc.); create() and update() both start with '
@@ -97,13 +150,18 @@ function buildSystem(gameCode) {
     + '- Use only Phaser 3 APIs and the patterns already in the file. Never write a new Phaser.Game.\n'
     + '- For drawing, use only real Phaser 3 Graphics methods (fillRect, fillRoundedRect, fillCircle, fillTriangle, beginPath/moveTo/lineTo/closePath/fillPath, generateTexture). Do NOT use HTML-canvas methods like cubicCurveTo, bezierCurveTo, or arcTo — they do not exist on Phaser Graphics and crash the game.\n'
     + '- If it is just a question, reply with only {"reply":"..."} and no other fields.\n'
-    + '- Output nothing but the single JSON object.';
+    + '- Output nothing but the single JSON object.'
+    + buildContextBlock(ctx || {})
+    + ((ctx && ctx.aiMode === 'guided') ? GUIDED_RULES : '');
 }
-function buildTutorSystem(gameCode, context) {
+function buildTutorSystem(gameCode, context, ctx) {
+  const c = ctx || {};
   return 'You are a friendly coding tutor for kids aged 11-15 in a game-dev course. '
     + 'Explain clearly and help them UNDERSTAND rather than doing their work for them. '
     + 'ALWAYS answer in the context of JavaScript and the Phaser game library — NEVER use Python or any other language. '
     + 'Keep answers to about 2-4 short sentences; include a tiny JavaScript snippet only if it truly helps; never dump large code.\n'
+    + 'Earlier turns of this conversation are included — when the student says "that" or "it", they mean what you were just talking about.\n'
+    + (c.lessonTitle ? '\nThey are on the lesson "' + c.lessonTitle + '".\n' : '')
     + (context ? '\nThe student is asking about this part of the lesson:\n"""\n' + context + '\n"""\n' : '')
     + (gameCode ? '\nCurrent game.js for reference:\n```javascript\n' + gameCode + '\n```' : '');
 }
@@ -111,15 +169,16 @@ const AGENT_SYSTEMS = {
   quiz: 'You write short comprehension questions for kids (11-15) learning to code. Output ONLY a JSON object.',
   grader: 'You check a student\'s answer or code change for a kids coding course. Output ONLY a JSON object with {"pass": true/false, "hint": "..."}.'
 };
-async function callAI(spec, system, user, wantJSON) {
+async function callAI(spec, system, user, wantJSON, history) {
   const provider = spec.provider, model = spec.model;
   if (!model) throw new Error('No model set for ' + provider + ' — set it in .env');
+  const hist = history || [];   // earlier turns, oldest first; sits between the system prompt and the new message
   if (provider === 'anthropic') {
     if (!ANTHROPIC_KEY) throw new Error('ANTHROPIC_API_KEY not set');
     const r = await fetch('https://api.anthropic.com/v1/messages', {
       method: 'POST',
       headers: { 'x-api-key': ANTHROPIC_KEY, 'anthropic-version': '2023-06-01', 'content-type': 'application/json' },
-      body: JSON.stringify({ model: model, max_tokens: 4000, system: system, messages: [{ role: 'user', content: user }] })
+      body: JSON.stringify({ model: model, max_tokens: 4000, system: system, messages: hist.concat([{ role: 'user', content: user }]) })
     });
     if (!r.ok) throw new Error('Anthropic HTTP ' + r.status);
     const d = await r.json();
@@ -127,7 +186,7 @@ async function callAI(spec, system, user, wantJSON) {
   }
   if (provider === 'openrouter') {
     if (!OPENROUTER_KEY) throw new Error('OPENROUTER_API_KEY not set');
-    const body = { model: model, messages: [{ role: 'system', content: system }, { role: 'user', content: user }] };
+    const body = { model: model, messages: [{ role: 'system', content: system }].concat(hist, [{ role: 'user', content: user }]) };
     if (wantJSON) body.response_format = { type: 'json_object' };
     const r = await fetch(OPENROUTER_URL, {
       method: 'POST', headers: { 'Authorization': 'Bearer ' + OPENROUTER_KEY, 'content-type': 'application/json' },
@@ -141,7 +200,7 @@ async function callAI(spec, system, user, wantJSON) {
   // num_predict must be generous: a "replaceFile" reply is a whole game.js, and a truncated
   // reply is unparseable JSON that would surface to the student as garbage.
   const body = { model: model, stream: false, options: { num_ctx: 8192, num_predict: 4096, temperature: 0.3 },
-    messages: [{ role: 'system', content: system }, { role: 'user', content: user }] };
+    messages: [{ role: 'system', content: system }].concat(hist, [{ role: 'user', content: user }]) };
   if (wantJSON) body.format = 'json';
   const r = await fetch(OLLAMA_URL, { method: 'POST', headers: { 'content-type': 'application/json' }, body: JSON.stringify(body) });
   if (!r.ok) throw new Error('Ollama HTTP ' + r.status);
@@ -159,14 +218,29 @@ app.post('/api/ai', async (req, res) => {
   if (!message) return res.status(400).json({ reply: 'Please type a message.' });
   const gameCode = ((req.body && req.body.code) || '').toString().slice(0, 100000);
   const context = ((req.body && req.body.context) || '').toString().slice(0, 4000);
+  const history = sanitizeHistory(req.body && req.body.history);
   let agent = (req.body && req.body.agent) || 'coder';
   if (['coder', 'tutor', 'quiz', 'grader'].indexOf(agent) < 0) agent = 'coder';   // controller: keep to known agents
   const spec = resolveModel(agent);
 
+  // Context the browser sends about where the student is and what exists in their project.
+  const b = req.body || {};
+  const ctx = {
+    lessonTitle: (b.lessonTitle || '').toString().slice(0, 120),
+    lessonContext: (b.lessonContext || '').toString().slice(0, 3000),
+    aiMode: ['full', 'guided', 'off'].indexOf(b.aiMode) >= 0 ? b.aiMode : 'full',
+    assets: Array.isArray(b.ownedAssets) ? b.ownedAssets.slice(0, 300).map(function (a) {
+      return { key: String((a && a.key) || '').slice(0, 60), type: String((a && a.type) || '').slice(0, 20) };
+    }).filter(function (a) { return a.key; }) : [],
+    files: Array.isArray(b.files) ? b.files.slice(0, 10).map(function (f) {
+      return { name: String((f && f.name) || '').slice(0, 60), code: String((f && f.code) || '').slice(0, 6000) };
+    }).filter(function (f) { return f.name && f.code; }) : []
+  };
+
   // TUTOR: plain-language explanation, no code edits.
   if (agent === 'tutor') {
     let raw;
-    try { raw = await callAI(spec, buildTutorSystem(gameCode, context), message, false); }
+    try { raw = await callAI(spec, buildTutorSystem(gameCode, context, ctx), message, false, history); }
     catch (e) { return res.status(502).json({ reply: 'The tutor is not reachable right now (' + e.message + ').' }); }
     return res.json({ reply: (raw || '').trim() || 'Hmm, I am not sure — try rephrasing.' });
   }
@@ -181,7 +255,7 @@ app.post('/api/ai', async (req, res) => {
 
   // CODER (default): return ops the browser applies to game.js.
   let raw;
-  try { raw = await callAI(spec, buildSystem(gameCode), message, true); }
+  try { raw = await callAI(spec, buildSystem(gameCode, ctx), message, true, history); }
   catch (e) { return res.status(502).json({ reply: 'The AI service is not reachable right now (' + e.message + ').' }); }
   const parsed = extractJSON(raw) || { reply: (raw || '').trim() || 'Done.' };
   const ops = {};
