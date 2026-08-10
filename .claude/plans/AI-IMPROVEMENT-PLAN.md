@@ -22,7 +22,7 @@ Jay is the project lead and an intern learning this stack — explain decisions,
 ## Progress tracker
 
 - [x] Stage 0 — Cleanup & hardening *(done 2026-08-10 — commits `eb5a369`, `56dd2bf`, `08eb82c`)*
-- [ ] Stage 1 — Context foundations
+- [x] Stage 1 — Context foundations *(done 2026-08-10 — commit `f18bc41`)*
 - [ ] Stage 2 — Agents & skills as markdown
 - [ ] Stage 3 — Pedagogy loop
 - [ ] Stage 4 — Tool use (Tier 1 validator → Tier 2 tool calling)
@@ -114,6 +114,20 @@ Two things found during the work that are **not** bugs and were deliberately lef
 3. **Make `ai: full|guided|off` real:** send the mode with each coder request; server appends a guided-mode prompt section (refuse vague requests, demand specifics, minimal edits, one-sentence explanation). `off` keeps the existing client-side block.
 
 **Acceptance:** follow-ups work ("make it faster" → "even faster" → "undo that"); coder references real owned asset keys; guided mode observably refuses "make it cooler"; zero `.env` changes needed on Ollama.
+
+**DONE 2026-08-10** (`f18bc41`) — follow-ups verified end to end in the UI (jumpPower
+600→700→800 from "make the player jump higher" then "even higher"); guided mode refuses
+vague requests with concrete options and still acts on specific ones; the coder uses real
+owned keys (`coin-gold`) when the asset exists; no `.env` change needed.
+
+**One acceptance item is only half met, by design of the plan.** When asked for an asset the
+student does *not* own ("add a dragon enemy"), `qwen2.5-coder:7b` still invented the key
+`'dragon'` despite the prompt stating the owned keys are the only ones that exist. Prompt
+instructions alone do not hold a 7B model. This is exactly what **Stage 4 Tier 1** (the
+deterministic post-response validator) exists to fix — scan returned ops for asset keys not
+in the owned list, retry once with the error, then surface a friendly message. Until that
+lands, a student on a local model can still get a broken game by asking for art they have not
+bought. Consider pulling the Tier-1 asset-key check forward if this bites during lesson testing.
 
 ## Stage 2 — Agents & skills as markdown (~1–2 days) — boss ask #1
 
