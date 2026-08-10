@@ -10,10 +10,10 @@ function refreshAfterEdit() { loadSettings(); refreshFiles(); if (!$('view-play'
 
 /* The last few turns of this panel's chat, so follow-ups like "even faster" or "undo that"
    make sense to the model. Call this BEFORE adding the new message. Kept small on purpose —
-   Ollama runs an 8k context and game.js already takes a big slice of it. */
+   game.js, main.js and the lesson already take a big slice of the model's context window. */
 function chatHistory(mode) {
   const turns = (chats[mode] || []).filter(function (en) { return en.text && en.text !== 'Thinking…'; });
-  const out = []; let budget = 6000;
+  const out = []; let budget = 3000;
   for (let i = turns.length - 1; i >= 0 && out.length < 6; i--) {
     const content = String(turns[i].text).slice(0, 1000);
     if (content.length > budget) break;
@@ -30,7 +30,7 @@ function aiContext() {
   const others = fileNames().filter(function (n) { return n !== 'game.js'; })
     .map(function (n) { return { name: n, code: project.files[n] || '' }; })
     .sort(function (a, b) { return a.code.length - b.code.length; });   // keep the small ones if we run out of room
-  let budget = 8000; const files = [];
+  let budget = 3000; const files = [];
   others.forEach(function (o) { if (o.code.length <= budget) { budget -= o.code.length; files.push(o); } });
   return {
     lessonTitle: f ? f.l.t : '',

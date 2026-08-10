@@ -24,6 +24,12 @@ const ROOT = __dirname;
 const DEFAULT_PROVIDER = process.env.AI_PROVIDER || 'ollama';
 const OLLAMA_URL = process.env.OLLAMA_URL || 'http://localhost:11434/api/chat';
 const OLLAMA_MODEL = process.env.OLLAMA_MODEL || 'qwen2.5-coder:7b';
+// num_ctx is the WHOLE window: prompt + reply. The prompt now carries game.js, the other
+// files, the lesson and recent turns, so 8192 was not enough — Ollama silently truncates the
+// front of an over-long prompt, which drops the ops schema and produces malformed edits.
+// 16384 fits a 7B model on a 16 GB GPU; lower it here if VRAM is tight.
+const OLLAMA_NUM_CTX = Number(process.env.OLLAMA_NUM_CTX || 16384);
+const OLLAMA_NUM_PREDICT = Number(process.env.OLLAMA_NUM_PREDICT || 3072);
 const ANTHROPIC_KEY = process.env.ANTHROPIC_API_KEY || '';
 const ANTHROPIC_MODEL = process.env.ANTHROPIC_MODEL || 'claude-3-5-sonnet-latest';
 const OPENROUTER_KEY = process.env.OPENROUTER_API_KEY || '';
@@ -79,7 +85,7 @@ function extractJSON(s) {
 // Never trusted as-is: roles, per-message length, turn count and total size are all capped here.
 function sanitizeHistory(raw) {
   if (!Array.isArray(raw)) return [];
-  const out = []; let budget = 6000;
+  const out = []; let budget = 3000;
   for (let i = raw.length - 1; i >= 0 && out.length < 12; i--) {
     const m = raw[i]; if (!m) continue;
     const role = m.role === 'assistant' ? 'assistant' : (m.role === 'user' ? 'user' : null);
@@ -119,6 +125,80 @@ function buildContextBlock(ctx) {
       + ctx.files.map(function (f) { return '--- ' + f.name + ' ---\n' + f.code; }).join('\n');
   }
   return s;
+}
+
+// ---- asset-key validation (Stage 4 Tier 1, pulled forward) ----
+// Telling a 7B model "these are the only keys that exist" is not enough — it still invents
+// them, and a key that was never loaded fails silently and leaves the student with a broken
+// game. So we check its answer instead of trusting it. Deterministic: works with any model.
+//
+// Where the key sits in each call. `add.text(x, y, 'hi')` is deliberately absent — its third
+// argument is text to display, not a key.
+const ASSET_USES = [
+  { re: /\b(?:add|physics\.add|make)\.(?:sprite|image)\s*\(/g, arg: 2 },
+  { re: /\b(?:add|make)\.tileSprite\s*\(/g, arg: 4 },
+  { re: /\.create\s*\(/g, arg: 2 },                       // group.create(x, y, key)
+  { re: /\bsound\.(?:play|add)\s*\(/g, arg: 0 },
+  { re: /\.setTexture\s*\(/g, arg: 0 }
+];
+// A key can also be legitimately created at runtime rather than bought.
+const ASSET_DEFS = [
+  { re: /\bgenerateTexture\s*\(/g, arg: 0 },
+  { re: /\bload\.(?:image|audio|spritesheet|atlas|bitmapFont)\s*\(/g, arg: 0 }
+];
+// Split a call's arguments at top level. Needed because arguments are real expressions —
+// `Math.random() * (HEIGHT - 100)` has parens in it, which no flat regex survives.
+function callArgs(text, open) {
+  let depth = 0, start = open + 1, quote = null; const args = [];
+  for (let i = open; i < text.length; i++) {
+    const c = text[i];
+    if (quote) { if (c === '\\') i++; else if (c === quote) quote = null; continue; }
+    if (c === '"' || c === "'" || c === '`') { quote = c; continue; }
+    if (c === '(' || c === '[' || c === '{') { depth++; continue; }
+    if (c === ')' || c === ']' || c === '}') {
+      depth--;
+      if (depth === 0) { args.push(text.slice(start, i)); return args; }
+      continue;
+    }
+    if (c === ',' && depth === 1) { args.push(text.slice(start, i)); start = i + 1; }
+  }
+  return args;   // unbalanced (truncated reply) — treat as no usable args
+}
+function stringArg(s) { const m = String(s).trim().match(/^(['"])([^'"]*)\1$/); return m ? m[2] : null; }
+function opsCode(ops) {
+  const out = [];
+  ['create', 'update', 'replaceFile'].forEach(function (k) { if (typeof ops[k] === 'string') out.push(ops[k]); });
+  if (Array.isArray(ops.functions)) ops.functions.forEach(function (f) { if (typeof f === 'string') out.push(f); });
+  if (ops.newFile && typeof ops.newFile.code === 'string') out.push(ops.newFile.code);
+  return out.join('\n');
+}
+function matchAll(text, specs) {
+  const found = {};
+  specs.forEach(function (spec) {
+    spec.re.lastIndex = 0; let m;
+    while ((m = spec.re.exec(text))) {
+      const key = stringArg(callArgs(text, m.index + m[0].length - 1)[spec.arg]);
+      if (key) found[key] = true;      // a non-literal (variable) argument is unknowable, so skip it
+    }
+  });
+  return found;
+}
+// Keys the proposed change uses that the student does not own and nothing defines.
+function unknownAssetKeys(ops, gameCode, owned) {
+  const code = opsCode(ops);
+  if (!code.trim()) return [];
+  const defined = matchAll(gameCode + '\n' + code, ASSET_DEFS);   // existing code counts
+  const ownedSet = {};
+  (owned || []).forEach(function (a) { ownedSet[a.key] = true; });
+  return Object.keys(matchAll(code, ASSET_USES))
+    .filter(function (k) { return !ownedSet[k] && !defined[k]; });
+}
+function assetApology(bad, owned) {
+  const names = bad.map(function (k) { return '"' + k + '"'; }).join(' and ');
+  const have = (owned || []).slice(0, 6).map(function (a) { return a.key; }).join(', ');
+  return 'I wanted to use ' + names + ', but you don’t own ' + (bad.length > 1 ? 'those' : 'that') + ' yet, so I left your game alone. '
+    + (have ? 'You can use: ' + have + '. ' : '')
+    + 'Buy more art and sounds in the Store, or ask me for something using what you have.';
 }
 
 // Lessons set `ai: guided` when the student is meant to make the design call themselves.
@@ -199,7 +279,7 @@ async function callAI(spec, system, user, wantJSON, history) {
   // default: local Ollama (free). format:json nudges clean JSON out of small models.
   // num_predict must be generous: a "replaceFile" reply is a whole game.js, and a truncated
   // reply is unparseable JSON that would surface to the student as garbage.
-  const body = { model: model, stream: false, options: { num_ctx: 8192, num_predict: 4096, temperature: 0.3 },
+  const body = { model: model, stream: false, options: { num_ctx: OLLAMA_NUM_CTX, num_predict: OLLAMA_NUM_PREDICT, temperature: 0.3 },
     messages: [{ role: 'system', content: system }].concat(hist, [{ role: 'user', content: user }]) };
   if (wantJSON) body.format = 'json';
   const r = await fetch(OLLAMA_URL, { method: 'POST', headers: { 'content-type': 'application/json' }, body: JSON.stringify(body) });
@@ -229,6 +309,7 @@ app.post('/api/ai', async (req, res) => {
     lessonTitle: (b.lessonTitle || '').toString().slice(0, 120),
     lessonContext: (b.lessonContext || '').toString().slice(0, 3000),
     aiMode: ['full', 'guided', 'off'].indexOf(b.aiMode) >= 0 ? b.aiMode : 'full',
+    hasAssetList: Array.isArray(b.ownedAssets),   // only validate keys when the client actually told us what it owns
     assets: Array.isArray(b.ownedAssets) ? b.ownedAssets.slice(0, 300).map(function (a) {
       return { key: String((a && a.key) || '').slice(0, 60), type: String((a && a.type) || '').slice(0, 20) };
     }).filter(function (a) { return a.key; }) : [],
@@ -254,14 +335,38 @@ app.post('/api/ai', async (req, res) => {
   }
 
   // CODER (default): return ops the browser applies to game.js.
+  const system = buildSystem(gameCode, ctx);
+  function toOps(parsed) {
+    const ops = {};
+    ['config', 'functions', 'create', 'update', 'newFile', 'replaceFile'].forEach(function (k) {
+      if (parsed[k] !== undefined && parsed[k] !== null) ops[k] = parsed[k];
+    });
+    return ops;
+  }
   let raw;
-  try { raw = await callAI(spec, buildSystem(gameCode, ctx), message, true, history); }
+  try { raw = await callAI(spec, system, message, true, history); }
   catch (e) { return res.status(502).json({ reply: 'The AI service is not reachable right now (' + e.message + ').' }); }
-  const parsed = extractJSON(raw) || { reply: (raw || '').trim() || 'Done.' };
-  const ops = {};
-  ['config', 'functions', 'create', 'update', 'newFile', 'replaceFile'].forEach(function (k) {
-    if (parsed[k] !== undefined && parsed[k] !== null) ops[k] = parsed[k];
-  });
+  let parsed = extractJSON(raw) || { reply: (raw || '').trim() || 'Done.' };
+  let ops = toOps(parsed);
+
+  // Check the answer instead of trusting it: one corrective retry, then refuse the change.
+  if (ctx.hasAssetList) {
+    let bad = unknownAssetKeys(ops, gameCode, ctx.assets);
+    if (bad.length) {
+      const retry = message + '\n\nIMPORTANT: your previous answer used the asset key(s) '
+        + bad.map(function (k) { return '"' + k + '"'; }).join(', ')
+        + ', which do not exist and would break the game. '
+        + 'Redo it using ONLY the owned asset keys listed above, or — if this cannot be done with those — '
+        + 'change nothing and reply with only {"reply":"..."} explaining which asset they would need to buy.';
+      try { raw = await callAI(spec, system, retry, true, history); }
+      catch (e) { return res.status(502).json({ reply: 'The AI service is not reachable right now (' + e.message + ').' }); }
+      parsed = extractJSON(raw) || { reply: (raw || '').trim() || 'Done.' };
+      ops = toOps(parsed);
+      bad = unknownAssetKeys(ops, gameCode, ctx.assets);
+      if (bad.length) return res.json({ reply: assetApology(bad, ctx.assets), ops: null });
+    }
+  }
+
   res.json({ reply: parsed.reply || 'Done.', ops: Object.keys(ops).length ? ops : null });
 });
 
