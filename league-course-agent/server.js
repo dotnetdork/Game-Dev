@@ -1,12 +1,13 @@
 try { require('dotenv').config(); } catch (e) { /* optional */ }
 // ============================================================
-//  LEAGUE Game Dev - course backend + SANDBOXED AI agent
+//  LEAGUE Game Dev - course backend
 //  Runs the same on a plain server or inside GitHub Codespaces.
-//  The AI can ONLY: (1) change allowlisted numeric settings in
-//  game.js, or (2) answer questions. Nothing else.
+//  Serves the app (public/) and the authored course (content/),
+//  and relays the AI agents. The student's project lives in the
+//  BROWSER: code is sent along with a request for context, used
+//  to build the prompt, and never stored or run on the server.
 // ============================================================
 const express = require('express');
-const fs = require('fs');
 const path = require('path');
 
 const app = express();
@@ -14,8 +15,6 @@ app.use(express.json({ limit: '256kb' }));
 
 const PORT = process.env.PORT || 3000;
 const ROOT = __dirname;
-const WORKSPACE = path.join(ROOT, 'workspace');
-const GAME_FILE = path.join(WORKSPACE, 'game.js');
 
 // ---- AI providers (keys stay server-side, never sent to the browser) ----
 // Multiple agents (coder / tutor / quiz / grader) each get their own model, set in .env.
@@ -28,6 +27,7 @@ const OLLAMA_MODEL = process.env.OLLAMA_MODEL || 'qwen2.5-coder:7b';
 const ANTHROPIC_KEY = process.env.ANTHROPIC_API_KEY || '';
 const ANTHROPIC_MODEL = process.env.ANTHROPIC_MODEL || 'claude-3-5-sonnet-latest';
 const OPENROUTER_KEY = process.env.OPENROUTER_API_KEY || '';
+const OPENROUTER_MODEL = process.env.OPENROUTER_MODEL || '';
 const OPENROUTER_URL = 'https://openrouter.ai/api/v1/chat/completions';
 
 const AGENT_MODELS = {
@@ -37,49 +37,30 @@ const AGENT_MODELS = {
   grader: process.env.GRADER_MODEL || ''    // (scaffold) checks work
 };
 const KNOWN_PROVIDERS = ['ollama', 'openrouter', 'anthropic'];
+// Fallback model per provider, used when an agent has no model set in .env.
+const PROVIDER_DEFAULT_MODEL = { ollama: OLLAMA_MODEL, anthropic: ANTHROPIC_MODEL, openrouter: OPENROUTER_MODEL };
 function resolveModel(agent) {
   let spec = AGENT_MODELS[agent] || '';
-  if (!spec) spec = DEFAULT_PROVIDER + ':' + (DEFAULT_PROVIDER === 'anthropic' ? ANTHROPIC_MODEL : OLLAMA_MODEL);
+  if (!spec) spec = DEFAULT_PROVIDER + ':' + (PROVIDER_DEFAULT_MODEL[DEFAULT_PROVIDER] || '');
   const i = spec.indexOf(':');
   if (i > 0 && KNOWN_PROVIDERS.indexOf(spec.slice(0, i)) >= 0) return { provider: spec.slice(0, i), model: spec.slice(i + 1) };
   return { provider: DEFAULT_PROVIDER, model: spec };
 }
 
-// ---- SANDBOX: the only fields the agent may change, with safe ranges ----
-const TUNABLES = {
-  fallSpeed:   { min: 60,  max: 600 },
-  bombChance:  { min: 0,   max: 0.6 },
-  paddleWidth: { min: 40,  max: 260 },
-  spawnEvery:  { min: 250, max: 1500 },
-  starPoints:  { min: 1,   max: 100 }
-};
-const ALLOWED_KEYS = Object.keys(TUNABLES);
-
 // ---- simple per-student rate limit ----
 const RATE = { windowMs: 10 * 60 * 1000, max: 40 };
 const hits = new Map();
 function rateLimited(id) {
-  const now = Date.now(); const e = hits.get(id);
+  const now = Date.now();
+  if (hits.size > 500) hits.forEach(function (v, k) { if (now - v.start > RATE.windowMs) hits.delete(k); }); // drop stale entries
+  const e = hits.get(id);
   if (!e || now - e.start > RATE.windowMs) { hits.set(id, { start: now, count: 1 }); return false; }
   e.count++; return e.count > RATE.max;
 }
 
 // ---- static hosting ----
 app.use(express.static(path.join(ROOT, 'public')));
-app.use('/workspace', express.static(WORKSPACE, { etag: false, lastModified: false, cacheControl: false }));
 app.use('/content', express.static(path.join(ROOT, 'content'), { etag: false, lastModified: false, cacheControl: false })); // authored course: YAML structure + Markdown lessons (read-only)
-
-// ---- file access: safe .js names inside the workspace only ----
-const SAFE_NAME = /^[A-Za-z0-9_-]+\.js$/;
-function safeScriptPath(name) { return SAFE_NAME.test(name) ? path.join(WORKSPACE, name) : null; } // no traversal, .js only
-function listScripts() { return fs.readdirSync(WORKSPACE).filter(f => f.endsWith('.js')).sort(); }
-app.get('/api/files', (req, res) => res.json(listScripts()));            // list the student's scripts
-app.get('/api/files/:name', (req, res) => {                               // read one script
-  const p = safeScriptPath(req.params.name);
-  if (!p || !fs.existsSync(p)) return res.status(404).type('text/plain').send('// file not available');
-  res.type('text/plain').send(fs.readFileSync(p, 'utf8'));
-});
-app.get('/api/config', (req, res) => res.json(currentConfig(fs.readFileSync(GAME_FILE, 'utf8')))); // current game settings
 
 // ---- which models are running (per agent) ----
 app.get('/api/info', (req, res) => {
@@ -88,46 +69,7 @@ app.get('/api/info', (req, res) => {
   res.json({ agents: agents, provider: DEFAULT_PROVIDER, model: resolveModel('coder').model });
 });
 
-// ---- WRITE access: students may edit/create only safe .js files in the workspace ----
-app.post('/api/save-file', (req, res) => {
-  const p = safeScriptPath((req.body && req.body.name) || '');
-  const content = req.body && req.body.content;
-  if (!p) return res.status(403).json({ ok: false, error: 'That file name is not allowed.' });                        // name/path allowlist
-  if (typeof content !== 'string' || content.length > 100000) return res.status(400).json({ ok: false, error: 'Content missing or too large.' }); // size cap
-  try { new Function(content); } catch (e) { return res.status(400).json({ ok: false, error: 'Syntax error: ' + e.message }); } // PARSE only - never executes
-  fs.writeFileSync(p, content);
-  res.json({ ok: true });
-});
-app.post('/api/new-file', (req, res) => {
-  const name = (req.body && req.body.name) || '';
-  const p = safeScriptPath(name);
-  if (!p) return res.status(400).json({ ok: false, error: 'Use letters, numbers, - or _ and end with .js' });
-  if (fs.existsSync(p)) return res.status(409).json({ ok: false, error: 'A file with that name already exists.' });
-  fs.writeFileSync(p, '// ' + name + '\n// Code you write here runs with the game when you press Run.\n');
-  res.json({ ok: true, files: listScripts() });
-});
-
 // ---- helpers ----
-function currentConfig(text) {
-  const cfg = {};
-  const block = text.match(/CONFIG\s*=\s*\{([\s\S]*?)\}/);   // read every numeric key in the CONFIG object
-  if (block) {
-    const re = /([A-Za-z_$][\w$]*)\s*:\s*(-?[0-9.]+)/g; let m;
-    while ((m = re.exec(block[1]))) cfg[m[1]] = Number(m[2]);
-  }
-  return cfg;
-}
-function applyEdits(text, edits) {
-  const applied = {};
-  Object.keys(edits || {}).forEach(k => {
-    if (!ALLOWED_KEYS.includes(k)) return;                 // ignore anything not on the allowlist
-    let v = Number(edits[k]); if (!isFinite(v)) return;
-    v = Math.max(TUNABLES[k].min, Math.min(TUNABLES[k].max, v)); // clamp to a safe range
-    text = text.replace(new RegExp('(' + k + '\\s*:\\s*)(-?[0-9.]+)'), '$1' + v);
-    applied[k] = v;
-  });
-  return { text, applied };
-}
 function extractJSON(s) {
   const a = s.indexOf('{'), b = s.lastIndexOf('}');
   if (a < 0 || b < 0 || b < a) return null;
@@ -169,19 +111,15 @@ const AGENT_SYSTEMS = {
   quiz: 'You write short comprehension questions for kids (11-15) learning to code. Output ONLY a JSON object.',
   grader: 'You check a student\'s answer or code change for a kids coding course. Output ONLY a JSON object with {"pass": true/false, "hint": "..."}.'
 };
-function extractCode(raw) {
-  const m = raw.match(/```(?:javascript|js)?\s*([\s\S]*?)```/i);
-  return m ? m[1].trim() : null;
-}
-function stripCode(raw) { return raw.replace(/```[\s\S]*?```/, '').trim(); }
 async function callAI(spec, system, user, wantJSON) {
   const provider = spec.provider, model = spec.model;
+  if (!model) throw new Error('No model set for ' + provider + ' — set it in .env');
   if (provider === 'anthropic') {
     if (!ANTHROPIC_KEY) throw new Error('ANTHROPIC_API_KEY not set');
     const r = await fetch('https://api.anthropic.com/v1/messages', {
       method: 'POST',
       headers: { 'x-api-key': ANTHROPIC_KEY, 'anthropic-version': '2023-06-01', 'content-type': 'application/json' },
-      body: JSON.stringify({ model: model, max_tokens: 2000, system: system, messages: [{ role: 'user', content: user }] })
+      body: JSON.stringify({ model: model, max_tokens: 4000, system: system, messages: [{ role: 'user', content: user }] })
     });
     if (!r.ok) throw new Error('Anthropic HTTP ' + r.status);
     const d = await r.json();
@@ -200,7 +138,9 @@ async function callAI(spec, system, user, wantJSON) {
     return (d.choices && d.choices[0] && d.choices[0].message && d.choices[0].message.content) || '';
   }
   // default: local Ollama (free). format:json nudges clean JSON out of small models.
-  const body = { model: model, stream: false, options: { num_ctx: 8192, num_predict: 2048, temperature: 0.3 },
+  // num_predict must be generous: a "replaceFile" reply is a whole game.js, and a truncated
+  // reply is unparseable JSON that would surface to the student as garbage.
+  const body = { model: model, stream: false, options: { num_ctx: 8192, num_predict: 4096, temperature: 0.3 },
     messages: [{ role: 'system', content: system }, { role: 'user', content: user }] };
   if (wantJSON) body.format = 'json';
   const r = await fetch(OLLAMA_URL, { method: 'POST', headers: { 'content-type': 'application/json' }, body: JSON.stringify(body) });

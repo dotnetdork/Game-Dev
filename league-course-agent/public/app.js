@@ -137,126 +137,6 @@ function update() {
 }
 `;
 
-const SKY_CODE = `// game.js - Sky Dodge
-const CONFIG = { fallSpeed: 180, spawnEvery: 600, paddleWidth: 90, blockSize: 30 };
-const WIDTH = 800, HEIGHT = 600;
-function buildTextures(scene) {
-  const g = scene.make.graphics({ add: false });
-  g.fillStyle(0x2fd0b6, 1); g.fillRoundedRect(0, 0, CONFIG.paddleWidth, 22, 8); g.generateTexture('ship', CONFIG.paddleWidth, 22); g.clear();
-  g.fillStyle(0x3e8fd6, 1); g.fillRoundedRect(0, 0, CONFIG.blockSize, CONFIG.blockSize, 5); g.generateTexture('block', CONFIG.blockSize, CONFIG.blockSize); g.destroy();
-}
-function create() {
-  const scene = this; buildTextures(scene);
-  scene.score = 0; scene.lives = 3; scene.isOver = false;
-  scene.player = scene.physics.add.sprite(WIDTH / 2, HEIGHT - 36, 'ship'); scene.player.setCollideWorldBounds(true);
-  scene.blocks = scene.physics.add.group();
-  scene.physics.add.overlap(scene.player, scene.blocks, hitBlock, null, scene);
-  scene.cursors = scene.input.keyboard.createCursorKeys(); scene.keys = scene.input.keyboard.addKeys('A,D');
-  scene.input.on('pointermove', function (p) { if (!scene.isOver) scene.player.x = Phaser.Math.Clamp(p.worldX, CONFIG.paddleWidth / 2, WIDTH - CONFIG.paddleWidth / 2); });
-  scene.input.on('pointerdown', function () { if (scene.isOver) scene.scene.restart(); });
-  scene.scoreText = scene.add.text(16, 14, 'Dodged: 0', { fontFamily: 'Arial', fontSize: '22px', color: '#eaf1f8' }).setDepth(10);
-  scene.livesText = scene.add.text(WIDTH - 16, 14, 'Lives: 3', { fontFamily: 'Arial', fontSize: '22px', color: '#f5b02e' }).setOrigin(1, 0).setDepth(10);
-  scene.time.addEvent({ delay: CONFIG.spawnEvery, loop: true, callback: function () { if (!scene.isOver) spawnBlock(scene); } });
-  postStats(scene);
-}
-function update() {
-  const scene = this; if (scene.isOver) return;
-  scene.player.setVelocityX(0);
-  if (scene.cursors.left.isDown || scene.keys.A.isDown) scene.player.setVelocityX(-520);
-  else if (scene.cursors.right.isDown || scene.keys.D.isDown) scene.player.setVelocityX(520);
-  scene.blocks.children.iterate(function (b) { if (b && b.y > HEIGHT + 30) { b.destroy(); scene.score += 1; scene.scoreText.setText('Dodged: ' + scene.score); postStats(scene); } });
-}
-function spawnBlock(scene) {
-  const x = Phaser.Math.Between(20, WIDTH - 20); const b = scene.blocks.create(x, -20, 'block');
-  b.setVelocityY(CONFIG.fallSpeed + scene.score * 2); b.setAngularVelocity(60);
-}
-function hitBlock(player, block) {
-  block.destroy(); this.lives -= 1; this.livesText.setText('Lives: ' + this.lives); this.cameras.main.shake(160, 0.01); postStats(this);
-  if (this.lives <= 0) { this.isOver = true; this.add.rectangle(WIDTH/2, HEIGHT/2, WIDTH, HEIGHT, 0x0b1a2e, 0.8).setDepth(20); this.add.text(WIDTH/2, HEIGHT/2 - 20, 'Game Over', { fontFamily: 'Arial', fontSize: '52px', color: '#eaf1f8', fontStyle: 'bold' }).setOrigin(0.5).setDepth(21); this.add.text(WIDTH/2, HEIGHT/2 + 40, 'Click to play again', { fontFamily: 'Arial', fontSize: '18px', color: '#7c93ae' }).setOrigin(0.5).setDepth(21); }
-}
-function postStats(scene) { try { if (window.parent) window.parent.postMessage({ type: 'stats', score: scene.score, lives: scene.lives }, '*'); } catch (e) {} }
-`;
-
-const COIN_CODE = `// game.js - Coin Rush
-const CONFIG = { speed: 300, coins: 6, seconds: 30 };
-const WIDTH = 800, HEIGHT = 600;
-function buildTextures(scene) {
-  const g = scene.make.graphics({ add: false });
-  g.fillStyle(0x35c2f5, 1); g.fillCircle(16, 16, 15); g.generateTexture('hero', 32, 32); g.clear();
-  g.fillStyle(0xffd23f, 1); g.fillCircle(11, 11, 10); g.generateTexture('coin', 22, 22); g.destroy();
-}
-function placeCoin(c) { c.setPosition(Phaser.Math.Between(30, WIDTH - 30), Phaser.Math.Between(70, HEIGHT - 30)); }
-function create() {
-  const scene = this; buildTextures(scene);
-  scene.score = 0; scene.timeLeft = CONFIG.seconds; scene.isOver = false;
-  scene.hero = scene.physics.add.sprite(WIDTH / 2, HEIGHT / 2, 'hero'); scene.hero.setCollideWorldBounds(true);
-  scene.coins = scene.physics.add.group();
-  for (let i = 0; i < CONFIG.coins; i++) { const c = scene.coins.create(0, 0, 'coin'); placeCoin(c); }
-  scene.physics.add.overlap(scene.hero, scene.coins, function (h, c) { placeCoin(c); scene.score += 1; scene.scoreText.setText('Coins: ' + scene.score); postStats(scene); }, null, scene);
-  scene.cursors = scene.input.keyboard.createCursorKeys(); scene.keys = scene.input.keyboard.addKeys('W,A,S,D');
-  scene.input.on('pointerdown', function () { if (scene.isOver) scene.scene.restart(); });
-  scene.scoreText = scene.add.text(16, 14, 'Coins: 0', { fontFamily: 'Arial', fontSize: '22px', color: '#eaf1f8' }).setDepth(10);
-  scene.timeText = scene.add.text(WIDTH - 16, 14, 'Time: ' + scene.timeLeft, { fontFamily: 'Arial', fontSize: '22px', color: '#f5b02e' }).setOrigin(1, 0).setDepth(10);
-  scene.time.addEvent({ delay: 1000, loop: true, callback: function () { if (scene.isOver) return; scene.timeLeft -= 1; scene.timeText.setText('Time: ' + Math.max(0, scene.timeLeft)); postStats(scene); if (scene.timeLeft <= 0) endGame(scene); } });
-  postStats(scene);
-}
-function update() {
-  const scene = this; if (scene.isOver) return; const s = CONFIG.speed; let vx = 0, vy = 0;
-  if (scene.cursors.left.isDown || scene.keys.A.isDown) vx = -s; else if (scene.cursors.right.isDown || scene.keys.D.isDown) vx = s;
-  if (scene.cursors.up.isDown || scene.keys.W.isDown) vy = -s; else if (scene.cursors.down.isDown || scene.keys.S.isDown) vy = s;
-  scene.hero.setVelocity(vx, vy);
-}
-function endGame(scene) {
-  scene.isOver = true; scene.hero.setVelocity(0, 0);
-  scene.add.rectangle(WIDTH/2, HEIGHT/2, WIDTH, HEIGHT, 0x0b1a2e, 0.8).setDepth(20);
-  scene.add.text(WIDTH/2, HEIGHT/2 - 20, 'Time!  ' + scene.score + ' coins', { fontFamily: 'Arial', fontSize: '46px', color: '#eaf1f8', fontStyle: 'bold' }).setOrigin(0.5).setDepth(21);
-  scene.add.text(WIDTH/2, HEIGHT/2 + 36, 'Click to play again', { fontFamily: 'Arial', fontSize: '18px', color: '#7c93ae' }).setOrigin(0.5).setDepth(21);
-}
-function postStats(scene) { try { if (window.parent) window.parent.postMessage({ type: 'stats', score: scene.score, lives: Math.max(0, scene.timeLeft) }, '*'); } catch (e) {} }
-`;
-
-const PADDLE_CODE = `// game.js - Paddle Bounce
-const CONFIG = { paddleWidth: 110, ballSpeed: 300 };
-const WIDTH = 800, HEIGHT = 600;
-function buildTextures(scene) {
-  const g = scene.make.graphics({ add: false });
-  g.fillStyle(0x2fd0b6, 1); g.fillRoundedRect(0, 0, CONFIG.paddleWidth, 18, 8); g.generateTexture('paddle', CONFIG.paddleWidth, 18); g.clear();
-  g.fillStyle(0xf5b02e, 1); g.fillCircle(11, 11, 10); g.generateTexture('ball', 22, 22); g.destroy();
-}
-function resetBall(scene) { scene.ball.setPosition(WIDTH / 2, HEIGHT / 2); scene.ball.setVelocity(Phaser.Math.Between(-160, 160), CONFIG.ballSpeed); }
-function create() {
-  const scene = this; buildTextures(scene);
-  scene.score = 0; scene.lives = 3; scene.isOver = false;
-  scene.physics.world.setBoundsCollision(true, true, true, false);
-  scene.paddle = scene.physics.add.sprite(WIDTH / 2, HEIGHT - 28, 'paddle'); scene.paddle.setImmovable(true); scene.paddle.body.allowGravity = false; scene.paddle.setCollideWorldBounds(true);
-  scene.ball = scene.physics.add.sprite(WIDTH / 2, HEIGHT / 2, 'ball'); scene.ball.setCollideWorldBounds(true); scene.ball.setBounce(1);
-  resetBall(scene);
-  scene.physics.add.collider(scene.ball, scene.paddle, function () { scene.score += 1; scene.scoreText.setText('Score: ' + scene.score); postStats(scene); }, null, scene);
-  scene.cursors = scene.input.keyboard.createCursorKeys(); scene.keys = scene.input.keyboard.addKeys('A,D');
-  scene.input.on('pointermove', function (p) { if (!scene.isOver) scene.paddle.x = Phaser.Math.Clamp(p.worldX, CONFIG.paddleWidth / 2, WIDTH - CONFIG.paddleWidth / 2); });
-  scene.input.on('pointerdown', function () { if (scene.isOver) scene.scene.restart(); });
-  scene.scoreText = scene.add.text(16, 14, 'Score: 0', { fontFamily: 'Arial', fontSize: '22px', color: '#eaf1f8' }).setDepth(10);
-  scene.livesText = scene.add.text(WIDTH - 16, 14, 'Lives: 3', { fontFamily: 'Arial', fontSize: '22px', color: '#f5b02e' }).setOrigin(1, 0).setDepth(10);
-  postStats(scene);
-}
-function update() {
-  const scene = this; if (scene.isOver) return;
-  scene.paddle.setVelocityX(0);
-  if (scene.cursors.left.isDown || scene.keys.A.isDown) scene.paddle.setVelocityX(-520);
-  else if (scene.cursors.right.isDown || scene.keys.D.isDown) scene.paddle.setVelocityX(520);
-  if (scene.ball.y > HEIGHT + 30) loseLife(scene);
-}
-function loseLife(scene) {
-  scene.lives -= 1; scene.livesText.setText('Lives: ' + scene.lives); scene.cameras.main.shake(140, 0.008); postStats(scene);
-  if (scene.lives <= 0) { scene.isOver = true; scene.ball.setVelocity(0, 0); scene.ball.setVisible(false);
-    scene.add.rectangle(WIDTH/2, HEIGHT/2, WIDTH, HEIGHT, 0x0b1a2e, 0.8).setDepth(20);
-    scene.add.text(WIDTH/2, HEIGHT/2 - 20, 'Game Over', { fontFamily: 'Arial', fontSize: '52px', color: '#eaf1f8', fontStyle: 'bold' }).setOrigin(0.5).setDepth(21);
-    scene.add.text(WIDTH/2, HEIGHT/2 + 40, 'Click to play again', { fontFamily: 'Arial', fontSize: '18px', color: '#7c93ae' }).setOrigin(0.5).setDepth(21);
-  } else { resetBall(scene); }
-}
-function postStats(scene) { try { if (window.parent) window.parent.postMessage({ type: 'stats', score: scene.score, lives: scene.lives }, '*'); } catch (e) {} }
-`;
-
 /* ================= app ================= */
 const $ = function (id) { return document.getElementById(id); };
 let studentId = localStorage.getItem('leagueStudentId');
@@ -349,7 +229,7 @@ function applyOps(code, ops) {
 }
 
 const SKEY = 'leagueProgress';
-function loadState() { try { return Object.assign({ xp: 0, stars: 250, done: {}, modDone: {}, unlocked: { starcatcher: true }, published: [] }, JSON.parse(localStorage.getItem(SKEY) || '{}')); } catch (e) { return { xp: 0, stars: 250, done: {}, modDone: {}, unlocked: { starcatcher: true }, published: [] }; } }
+function loadState() { try { return Object.assign({ xp: 0, stars: 250, done: {}, modDone: {}, unlocked: {}, published: [] }, JSON.parse(localStorage.getItem(SKEY) || '{}')); } catch (e) { return { xp: 0, stars: 250, done: {}, modDone: {}, unlocked: {}, published: [] }; } }
 let state = loadState();
 function saveState() { localStorage.setItem(SKEY, JSON.stringify(state)); renderFooter(); }
 function renderFooter() {
@@ -472,6 +352,17 @@ function setAIMode(mode) {
   else { applyAIMode(currentAIMode); }
   if (typeof renderChat === 'function') renderChat(aiMode);
 }
+/* Lesson widgets (run cells, challenge minigames) each run in their own sandboxed iframe and
+   post results back by token. ONE delegating listener serves them all: a cell registers a
+   handler under its token, and re-rendering a lesson clears the registry — otherwise every
+   lesson render would leave another permanent window listener behind. */
+const widgetHandlers = {};
+window.addEventListener('message', function (e) {
+  const d = e && e.data; if (!d || !d.tok) return;
+  const fn = widgetHandlers[d.tok]; if (fn) fn(d);
+});
+function resetWidgetHandlers() { Object.keys(widgetHandlers).forEach(function (k) { delete widgetHandlers[k]; }); }
+
 /* ```run — editable JS cell. Directives (as // @lines): @goal: <text>, @expect: <substring>, @slider: name min max step value */
 function renderRunCells(root) {
   root.querySelectorAll('pre > code.language-run').forEach(function (code) {
@@ -513,11 +404,11 @@ function renderRunCells(root) {
     }
     function run() { out.style.display = 'block'; out.srcdoc = buildDoc(ta.value); }
     if (expect) {
-      window.addEventListener('message', function (e) {
-        const d = e && e.data; if (!d || !d.__runcell || d.tok !== tok) return;
+      widgetHandlers[tok] = function (d) {
+        if (!d.__runcell) return;
         const met = (d.text || '').indexOf(expect) >= 0;
         status.className = 'run-status ' + (met ? 'ok' : 'no'); status.textContent = met ? 'Goal met!' : 'Not yet — check the output.';
-      });
+      };
     }
     btn.addEventListener('click', run);
     bar.appendChild(btn); bar.appendChild(status);
@@ -656,11 +547,11 @@ function renderChallengeCells(root) {
       const safe = userCode.replace(/<\/(script)/gi, '<\\/$1');
       return '<!doctype html><body style="margin:0;background:#08121f;display:flex;align-items:center;justify-content:center;height:100vh"><canvas id="c" width="300" height="200" style="background:#0d2137;border-radius:8px"></canvas><scr' + 'ipt>var canvas=document.getElementById("c"),ctx=canvas.getContext("2d"),__w=false;function win(){if(__w)return;__w=true;try{parent.postMessage({__cm:true,tok:"' + tok + '",win:true},"*");}catch(e){}}window.onerror=function(m){try{parent.postMessage({__cm:true,tok:"' + tok + '",err:String(m)},"*");}catch(e){}};try{\n' + safe + '\n}catch(e){window.onerror(e.message);}<\/scr' + 'ipt></body>';
     }
-    window.addEventListener('message', function (e) {
-      const d = e && e.data; if (!d || !d.__cm || d.tok !== tok) return;
+    widgetHandlers[tok] = function (d) {
+      if (!d.__cm) return;
       if (d.win) { status.className = 'cm-status ok'; status.textContent = 'Challenge complete!'; if (flat[curIdx] && !state.done[flat[curIdx].id]) completeLesson(); }
       else if (d.err) { status.className = 'cm-status no'; status.textContent = 'Error: ' + d.err; }
-    });
+    };
     run.addEventListener('click', function () { status.className = 'cm-status'; status.textContent = 'Running…'; stage.srcdoc = build(ta.value); });
     bar.appendChild(run); bar.appendChild(status);
     cell.appendChild(ta); cell.appendChild(stage); cell.appendChild(bar);
@@ -671,29 +562,13 @@ const MODULE_HERO = ['#143561', '#2f2a6b', '#1f5b63', '#5b3320', '#1f6b45', '#6b
 const MODULE_ACCENT = ['#3e8fd6', '#8b7cff', '#2fd0b6', '#f5820a', '#3ddc84', '#ff6b9d', '#59a5ff', '#a3d94a', '#f5b02e', '#7c9cff'];
 function moduleHero(mi) { return MODULE_HERO[mi % MODULE_HERO.length]; }
 function moduleAccent(mi) { return MODULE_ACCENT[mi % MODULE_ACCENT.length]; }
-function railHTML(f) {
-  const mod = course.modules[f.mi];
-  const total = mod.lessons.length;
-  const doneCount = mod.lessons.filter(function (l, li) { return state.done[f.mi + '.' + li]; }).length;
-  const pct = Math.round(doneCount / total * 100);
-  const items = mod.lessons.map(function (l, li) {
-    const gi = flat.findIndex(function (x) { return x.mi === f.mi && x.li === li; });
-    const done = !!state.done[f.mi + '.' + li], locked = !lessonUnlocked(gi), cur = gi === curIdx;
-    const icon = done ? 'mdi-check-circle' : (locked ? 'mdi-lock' : 'mdi-circle-small');
-    return '<div class="rail-item' + (cur ? ' cur' : '') + (done ? ' done' : '') + (locked ? ' locked' : '') + '" data-goto-lesson="' + gi + '"><span class="mdi ' + icon + '"></span>' + l.t + '</div>';
-  }).join('');
-  const prevOk = curIdx > 0, nextOk = (curIdx + 1) < flat.length && lessonUnlocked(curIdx + 1);
-  return '<button class="rail-jump" id="railJump"><span class="mdi mdi-flag-checkered"></span>Jump to challenge</button>'
-    + '<div class="rail-prog"><h4>Module progress</h4><div class="pct">' + doneCount + ' of ' + total + ' lessons</div><div class="bar"><div style="width:' + pct + '%"></div></div></div>'
-    + '<div><h4>In this module</h4><div class="rail-list">' + items + '</div></div>'
-    + '<div class="rail-nav"><button id="railPrev"' + (prevOk ? '' : ' disabled') + '><span class="mdi mdi-arrow-left"></span>Prev</button><button id="railNext"' + (nextOk ? '' : ' disabled') + '>Next<span class="mdi mdi-arrow-right"></span></button></div>';
-}
 function selectLesson(idx) {
   curIdx = idx; const f = flat[idx];
   $('crumb').dataset.lesson = f.m.name + ': ' + f.l.t;
   $('lessonBody').innerHTML = lessonBodyHTML(f);
   $('lessonBody').style.setProperty('--mod', moduleHero(f.mi));
   currentLessonText = ($('lessonBody').textContent || '').replace(/\s+/g, ' ').trim().slice(0, 3000);
+  resetWidgetHandlers();   // the previous lesson's widget iframes are gone with the innerHTML
   renderRunCells($('lessonBody'));
   renderQuizCells($('lessonBody'));
   renderChallengeCells($('lessonBody'));
@@ -1189,16 +1064,16 @@ function renderDocs() {
 }
 function renderHelp() {
   return '<div class="phead"><div><h2><span class="mdi mdi-help-circle-outline"></span>Help — How this app works</h2><p class="sub">A quick guide to everything on screen.</p></div></div><div class="help-body">'
-    + '<h3><span class="mdi mdi-navigation-variant"></span>The top bar</h3><p><b>Courses</b> is where you learn and build. <b>Gallery</b> has example games you can unlock with ★ Stars and edit. <b>Showcase</b> shows games students published. <b>Leaderboards</b> ranks everyone by XP. <b>Docs</b> opens the game library\'s reference, and <b>Help</b> is this page.</p>'
-    + '<h3><span class="mdi mdi-school"></span>Learning (Courses)</h3><p>Work through lessons in order in the left outline. Finishing a lesson\'s challenge earns <b>XP</b>; finishing a whole module earns <b>★ Stars</b>. Locked lessons unlock as you go, and your XP fills the bar in the footer toward the next level.</p>'
-    + '<h3><span class="mdi mdi-view-split-vertical"></span>The three tabs</h3><p><b>Learn</b> is the lesson. <b>Code</b> is your game\'s code, with a file list on the left — <b>Save</b> keeps changes and <b>Run</b> plays them. <b>Play</b> runs your game and shows live score and settings.</p>'
-    + '<h3><span class="mdi mdi-robot"></span>The AI Assistant</h3><p>On the right, ask the AI to change or add features to your game (it edits your code), or ask questions like "what does this function do?"</p>'
-    + '<h3><span class="mdi mdi-star"></span>Stars & the Gallery</h3><p>Spend ★ Stars in the Gallery to unlock new example games, then <b>Open</b> one to make it your own.</p>'
-    + '<h3><span class="mdi mdi-restart"></span>Testing</h3><p>Reset all saved progress (XP, Stars, unlocks, completed lessons) to try the app from scratch.</p>'
+    + '<h3><span class="mdi mdi-navigation-variant"></span>The top bar</h3><p><b>Courses</b> is where you learn and build. <b>Store</b> sells art and sounds for ★ Stars. <b>Gallery</b> shows games students have published. <b>Leaderboards</b> ranks everyone by XP. <b>Docs</b> is a quick ' + course.library + ' reference, and <b>Help</b> is this page.</p>'
+    + '<h3><span class="mdi mdi-school"></span>Learning (Courses)</h3><p>Work through lessons in order in the left outline. Finishing a lesson earns <b>XP</b>; finishing a whole module earns <b>★ Stars</b>. Locked lessons unlock as you go, and your XP fills the bar in the footer toward the next level.</p>'
+    + '<h3><span class="mdi mdi-view-split-vertical"></span>The three tabs</h3><p><b>Learn</b> is the lesson. <b>Code</b> is your game\'s code — the <b>source</b> folder holds your scripts and the <b>assets</b> folder holds the art and sounds you own (click one to see how to use it). <b>Save</b> keeps your changes and <b>Run</b> plays them. <b>Play</b> runs your game, with the console and sound controls underneath.</p>'
+    + '<h3><span class="mdi mdi-robot"></span>The AI Assistant</h3><p>The panel on the right has two modes — click the icon in its header to switch. <b>Tutor</b> explains things and never touches your code, so ask it "what does this line do?". <b>Build</b> edits your game when you tell it what to change. Some lessons turn Build off on purpose so you try it yourself.</p>'
+    + '<h3><span class="mdi mdi-star"></span>Stars & the Store</h3><p>Earn ★ Stars by finishing modules, then spend them in the <b>Store</b> to unlock art and sounds. Anything you own loads into your game automatically — just use its <b>name</b> (the green key) in your code.</p>'
+    + '<h3><span class="mdi mdi-restart"></span>Testing</h3><p>Reset all saved progress (XP, Stars, unlocked assets, completed lessons) to try the app from scratch.</p>'
     + '<button class="gbtn" id="resetBtn"><span class="mdi mdi-delete-outline"></span>Reset my progress</button></div>';
 }
 function resetProgress() {
-  modal({ title: 'Reset progress?', message: 'This clears all XP, Stars, unlocked games, and completed lessons on this browser. This cannot be undone.', okLabel: 'Reset everything',
+  modal({ title: 'Reset progress?', message: 'This clears all XP, Stars, unlocked assets, and completed lessons on this browser. This cannot be undone.', okLabel: 'Reset everything',
     onOk: function () { localStorage.removeItem(SKEY); location.reload(); } });
 }
 function wirePage(page) {
