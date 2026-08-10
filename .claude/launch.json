@@ -2,9 +2,9 @@
   "version": "0.0.1",
   "configurations": [
     {
-      "name": "league-course-agent",
+      "name": "app",
       "runtimeExecutable": "npm",
-      "runtimeArgs": ["start", "--prefix", "league-course-agent"],
+      "runtimeArgs": ["start", "--prefix", "app"],
       "port": 3000
     }
   ]

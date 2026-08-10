@@ -1,5 +1,21 @@
+# dependencies
 node_modules/
+
+# secrets — .env holds AI provider keys; only .env.example is tracked
 .env
-*.bak
+.env.local
+.env.*.local
+
+# logs
+*.log
+npm-debug.log*
+
+# editor / tool state
+.impeccable/
+
+# OS junk
 .DS_Store
-league-course-agent/workspace/
+Thumbs.db
+
+# scratch
+*.bak

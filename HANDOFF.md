@@ -15,7 +15,7 @@ Pedagogy (set by the client, Jed + Eric): **fun first**, coding as literacy, the
 ## 2. Run it
 
 ```bash
-cd league-course-agent
+cd app
 npm install
 cp .env.example .env      # then fill in as needed
 npm start                 # → http://localhost:3000
@@ -32,7 +32,7 @@ Game Development/
 ├─ HANDOFF.md                 ← this file
 ├─ .ua/                       ← UA Framework docs (status, positioning, analysis, spec)
 ├─ docs/                      ← child-privacy brief, curriculum outline
-└─ league-course-agent/       ← the actual app
+└─ app/       ← the actual app
    ├─ server.js               ← Node/Express: static serving + /api/ai (+ file APIs)
    ├─ .env.example            ← AI provider + per-agent model config
    ├─ content/                ← the course (authored, read-only at runtime)
@@ -90,7 +90,7 @@ Game Development/
 - **`fitStage()`** sizes the game frame to a true 4:3 box; it must run *after* the console collapses (it's called on `switchView('play')` via rAF, on console toggle, on resize, and on `gf.onload`).
 - **Reset game** restores BOTH `game.js` and `main.js` (the starter needs `main.js`'s `scene.preload` wired).
 - **Security constraints (preserve):** `.env` holds keys and stays gitignored; AI keys never reach the browser; never send student PII to model providers; the game runs sandboxed. Child-privacy: pseudonymous handles by default, parental opt-in for first name + last initial, per-game private toggle, teacher/admin takedown — League staff own consent collection (see `docs/child-privacy-brief.md`).
-- **Server-side vs client-side storage mismatch (reconcile later):** `server.js` still exposes `/api/files`, `/api/save-file`, `/api/new-file`, `/workspace`, and a `GAME_FILE` under `league-course-agent/workspace/`. The current UI does **not** use these — it stores the project in `localStorage`. The tracked file `league-course-agent/workspace/game.js` is a leftover server-side scratch copy that keeps showing as modified; **add it to `.gitignore`** (or remove the server file APIs) when you touch this area.
+- **Server-side vs client-side storage mismatch (reconcile later):** `server.js` still exposes `/api/files`, `/api/save-file`, `/api/new-file`, `/workspace`, and a `GAME_FILE` under `app/workspace/`. The current UI does **not** use these — it stores the project in `localStorage`. The tracked file `app/workspace/game.js` is a leftover server-side scratch copy that keeps showing as modified; **add it to `.gitignore`** (or remove the server file APIs) when you touch this area.
 
 ## 8. UA Framework docs
 

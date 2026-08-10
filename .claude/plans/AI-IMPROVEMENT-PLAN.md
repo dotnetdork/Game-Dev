@@ -1,7 +1,7 @@
 # AI System Improvement Plan
 
 **Written:** 2026-08-10 · **Owner:** Jay Sausa
-**Scope:** `league-course-agent/` — `server.js`, `public/app.js`, `public/index.html`, plus a new `ai/` content directory.
+**Scope:** `app/` — `server.js`, `public/app.js`, `public/index.html`, plus a new `ai/` content directory.
 **Goal:** turn the one-shot relay AI into a teaching system for 11–14-year-olds learning to **read and understand** JavaScript/Phaser, delivering the boss asks (agents/skills as markdown files; MCP integration) in an order where each stage works on its own.
 
 ---
@@ -33,7 +33,7 @@ Jay is the project lead and an intern learning this stack — explain decisions,
 ## Hard constraints (do not violate)
 
 1. **Must work on local Ollama today.** Current models: `qwen2.5-coder:7b` (coder), `qwen2.5:7b` (tutor/quiz/grader), sized for a 16 GB GPU. No cloud key exists yet. Every stage must degrade gracefully to these models.
-2. **Provider switch is env-only.** The boss will likely provide an **OpenRouter** key with **Sonnet 5** — NOT confirmed. Never hardcode a provider or model; keep the `provider:model` per-agent spec in `.env` ([server.js:33-46](../league-course-agent/server.js)). When the key arrives, the only change should be editing `.env`.
+2. **Provider switch is env-only.** The boss will likely provide an **OpenRouter** key with **Sonnet 5** — NOT confirmed. Never hardcode a provider or model; keep the `provider:model` per-agent spec in `.env` ([server.js:33-46](../../app/server.js)). When the key arrives, the only change should be editing `.env`.
 3. **Keys stay server-side.** Never send keys or student PII to the browser or to model providers. Student code lives in `localStorage`; the server never stores it.
 4. **Preserve the ops protocol.** The coder returns JSON "ops" (`config`/`functions`/`create`/`update`/`newFile`/`replaceFile`) applied browser-side by `applyOps()` with a `validJS()` parse-check + revert. Extend it, don't replace it.
 5. **Jay edits content, not code.** Anything a teacher might tune (prompts, personas, teaching rules) belongs in editable markdown/YAML, same as lessons.
@@ -42,10 +42,10 @@ Jay is the project lead and an intern learning this stack — explain decisions,
 
 ## Current state (verified against code 2026-08-10)
 
-- `POST /api/ai` ([server.js:215](../league-course-agent/server.js)) routes by `agent` (coder/tutor/quiz/grader) → one **stateless** model call → response. No conversation history is ever sent; the `chats` object in app.js is display-only.
+- `POST /api/ai` ([server.js:215](../../app/server.js)) routes by `agent` (coder/tutor/quiz/grader) → one **stateless** model call → response. No conversation history is ever sent; the `chats` object in app.js is display-only.
 - Coder gets `{message, code}` only — no lesson context, no file list, no owned-asset keys. Tutor gets lesson text (`currentLessonText`) but coder doesn't. The coder can't see `main.js` or student-created files, and invents asset keys because it doesn't know which of the 265 Store assets the student owns.
-- System prompts are hardcoded strings: `buildSystem()` ([server.js:136](../league-course-agent/server.js)), `buildTutorSystem()` (:160), `AGENT_SYSTEMS` (:168).
-- Lesson front-matter `ai: full|guided|off` only changes the input placeholder (`applyAIMode`, [app.js:453](../league-course-agent/public/app.js)) — the prompt sent to the model is identical in all modes.
+- System prompts are hardcoded strings: `buildSystem()` ([server.js:136](../../app/server.js)), `buildTutorSystem()` (:160), `AGENT_SYSTEMS` (:168).
+- Lesson front-matter `ai: full|guided|off` only changes the input placeholder (`applyAIMode`, [app.js:453](../../app/public/app.js)) — the prompt sent to the model is identical in all modes.
 - Coder edits apply silently ("Done.") — the student never reads the change, which inverts the course's read-the-code pedagogy.
 - Quiz/grader endpoints exist but nothing in the UI calls them.
 
@@ -54,17 +54,17 @@ Jay is the project lead and an intern learning this stack — explain decisions,
 Verified 2026-08-10; "dead" means the symbol appears only at its definition.
 
 **Security / robustness**
-- **F1 — HTML injection from AI output:** bot replies render via `marked.parse()` → `innerHTML` ([app.js:900-902](../league-course-agent/public/app.js)). `<img onerror=...>` in model output executes in the app origin. Sanitize all marked output (bot replies and lesson bodies) with a **vendored** DOMPurify.
+- **F1 — HTML injection from AI output:** bot replies render via `marked.parse()` → `innerHTML` ([app.js:900-902](../../app/public/app.js)). `<img onerror=...>` in model output executes in the app origin. Sanitize all marked output (bot replies and lesson bodies) with a **vendored** DOMPurify.
 - **F2 — CDN single point of failure:** 20+ external `<script>`/`<link>` tags (cdnjs, jsdelivr, unpkg) plus Phaser-from-CDN inside every game iframe and League-hosted logo images. Blocked CDNs on school networks kill the app. Vendor everything into `public/vendor/` and switch the iframe builders (`startGame`, run cells, challenge cells) to the local Phaser.
-- **F3 — Unescaped user text in innerHTML:** published game titles render raw in `renderGallery` ([app.js:1071](../league-course-agent/public/app.js)). Escape all interpolated dynamic strings with the existing `esc()` helper (currently used once).
+- **F3 — Unescaped user text in innerHTML:** published game titles render raw in `renderGallery` ([app.js:1071](../../app/public/app.js)). Escape all interpolated dynamic strings with the existing `esc()` helper (currently used once).
 - **F4 — Regex code-manipulation limits:** `insertIntoFn` miscounts braces inside string literals; `mergeConfig`/`parseConfig` non-greedy `\{...\}` breaks on nested CONFIG objects. Harden when Stage 3 touches this code; at minimum detect-and-refuse rather than mis-apply.
 
 **Bugs / staleness**
-- **F5 — Help page describes the old app:** still says Gallery = unlock example games, mentions "Showcase" ([app.js:1190-1199](../league-course-agent/public/app.js)). Rewrite for Store/Gallery reality.
-- **F6 — Listener leak:** every `@expect` run cell and every challenge cell adds a permanent `window` message listener on each lesson render ([app.js:516](../league-course-agent/public/app.js), :659). Use one delegating listener installed once, keyed by token.
+- **F5 — Help page describes the old app:** still says Gallery = unlock example games, mentions "Showcase" ([app.js:1190-1199](../../app/public/app.js)). Rewrite for Store/Gallery reality.
+- **F6 — Listener leak:** every `@expect` run cell and every challenge cell adds a permanent `window` message listener on each lesson render ([app.js:516](../../app/public/app.js), :659). Use one delegating listener installed once, keyed by token.
 - **F7 — Ollama `num_predict: 2048`** can truncate a `replaceFile` response → broken JSON shown to the student. Raise for coder calls and/or handle truncation gracefully.
-- **F8 — `resolveModel` edge:** default provider `openrouter` + blank agent spec sends the Ollama model name to OpenRouter ([server.js:40-46](../league-course-agent/server.js)).
-- **F9 — rate-limit `hits` map never prunes** old entries ([server.js:59-65](../league-course-agent/server.js)).
+- **F8 — `resolveModel` edge:** default provider `openrouter` + blank agent spec sends the Ollama model name to OpenRouter ([server.js:40-46](../../app/server.js)).
+- **F9 — rate-limit `hits` map never prunes** old entries ([server.js:59-65](../../app/server.js)).
 
 **Dead code**
 - **F10 — app.js:** `SKY_CODE`, `COIN_CODE`, `PADDLE_CODE` (~120 lines), stale `starcatcher` default in `loadState`.
@@ -102,7 +102,7 @@ Two things found during the work that are **not** bugs and were deliberately lef
   base `.quiz*` rules that override it, so the Check button renders azure, not brand orange.
   The duplicate-selector merge preserved the current appearance rather than silently applying
   a design pass nobody has reviewed. **Decision needed from Jay:** apply that polish pass or drop it.
-- `league-course-agent/workspace/` is now untracked/gitignored but still on disk. Nothing
+- `app/workspace/` is now untracked/gitignored but still on disk. Nothing
   reads it; safe to delete whenever.
 
 ## Stage 1 — Context foundations (~1–2 days)
@@ -121,7 +121,7 @@ Two things found during the work that are **not** bugs and were deliberately lef
 
 Layout:
 ```
-league-course-agent/ai/
+app/ai/
 ├─ agents/   coder.md · tutor.md · quiz.md · grader.md
 └─ skills/   phaser-rules.md · guided-mode.md · explain-a-line.md · kid-communication.md
 ```
@@ -180,13 +180,13 @@ You are a coding assistant inside a kids game-dev course…
 ## Provider notes (for the .env switch when the key arrives)
 
 - Expected: OpenRouter key, coder → Sonnet 5. **Verify the exact OpenRouter model id at that time; don't guess ids in code.** Tutor/quiz can stay local or move — per-agent choice already works.
-- OpenRouter path already supports `response_format: {type:'json_object'}` ([server.js:193](../league-course-agent/server.js)); add `tools` there in Stage 4.
+- OpenRouter path already supports `response_format: {type:'json_object'}` ([server.js:193](../../app/server.js)); add `tools` there in Stage 4.
 - Keep Ollama defaults working forever — offline/demo/no-budget fallback; the classroom may need it.
 - Rate limiting matters more with a paid key: keep it, consider a lower `max` for the coder agent. Note `studentId` is client-generated and spoofable — acceptable until the auth lane lands.
 
 ## Testing checklist (run per stage)
 
-1. `cd league-course-agent && npm start` with Ollama running → full chat + edit + apply loop works.
+1. `cd app && npm start` with Ollama running → full chat + edit + apply loop works.
 2. Same with `.env` pointing at a cloud provider (when available) — no code changes needed.
 3. Kill Ollama mid-session → friendly error, no crash, UI still usable.
 4. Fresh browser profile (empty localStorage) → starter platformer + free assets work end-to-end.

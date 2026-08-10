@@ -25,7 +25,7 @@ network access at all — only `/api/ai` talks to anything outside the server.
 ## Refreshing
 
 Install the pinned versions somewhere outside the project, then copy the files in. They are
-deliberately **not** dependencies of `league-course-agent` — the app's own dependency list
+deliberately **not** dependencies of `the app package` — the app's own dependency list
 stays just `express` + `dotenv`.
 
 ```bash

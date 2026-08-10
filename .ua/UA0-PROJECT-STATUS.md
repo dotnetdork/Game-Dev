@@ -26,7 +26,7 @@ Refreshed to match the pivot (Pass-4-style revision driven by the second client 
 - 2026-07-18 Discovery, landscape research, client conversation (Jed), positioning draft + research refinement.
 - 2026-07-21 Engine research (Godot/GDevelop/PlayCanvas), GitHub-Pages/self-host analysis; boss deck (later retired).
 - 2026-07-28 Pivot to browser-only + design-first + AI-assisted; **Phaser** chosen for the game.
-- 2026-07-28 Built prototypes + a working **sandboxed AI agent app** (`../league-course-agent/`): Node/Express backend, engine-style shell, Code (game.js/main.js) / Learn / Play tabs, AI panel wired to local Ollama, model name shown in header. Sandbox verified (range-clamp, allowlist, rate limit, read-only files).
+- 2026-07-28 Built prototypes + a working **sandboxed AI agent app** (`../app/`): Node/Express backend, engine-style shell, Code (game.js/main.js) / Learn / Play tabs, AI panel wired to local Ollama, model name shown in header. Sandbox verified (range-clamp, allowlist, rate limit, read-only files).
 - 2026-07-28 Second client meeting (Jed + Eric): prototype approved; direction firmed (fun-first, read/understand/direct-the-AI pedagogy, minigames→one big game, stars→assets, League code server = repos under one League GitHub account, client-side + git storage, itch-style showcase). Child-privacy brief captured (`../docs/child-privacy-brief.md`).
 - 2026-07-28 **Positioning statement revised** (Pass-4-style) from the meeting + approved prototype; key-benefit & differentiation reframed. Product name still open.
 
@@ -45,7 +45,7 @@ Refreshed to match the pivot (Pass-4-style revision driven by the second client 
 
 ## Completed (this stretch)
 - **UA docs:** Stage 1 positioning revised for the pivot; Stage 2 Analysis (`ua5`); Stage 3 spec (`ua6`); child-privacy/COPPA brief (`../docs/child-privacy-brief.md`); curriculum outline (`../docs/curriculum-outline.md`).
-- **Course restructured** to 10 modules / 47 lessons (engines & languages, team roles, systems/architecture, sprites/collisions/rules, juice, capstone). Authored in **YAML + Markdown front-matter** so Jay edits content, not code (`../league-course-agent/content/`).
+- **Course restructured** to 10 modules / 47 lessons (engines & languages, team roles, systems/architecture, sprites/collisions/rules, juice, capstone). Authored in **YAML + Markdown front-matter** so Jay edits content, not code (`../app/content/`).
 - **Multi-agent AI:** coder + tutor (+ quiz/grader scaffolds) behind a controller; models set **per-agent in `.env`**; Ollama + OpenRouter + Anthropic parity. Separate Tutor/Build chats, one-panel icon toggle, collapsible dock + FAB.
 - **Lesson widgets:** goal-checked runnable cells, live sliders, quizzes (mcq / predict-output / Parsons+distractors / fill-in-blank / find-the-bug), and **in-lesson challenge minigames** (edit an embedded game → `win()` completes the lesson, replacing the tick-box).
 - **Client-side model:** student project in localStorage; games run via `iframe.srcdoc`; no student code/PII stored server-side. Coder AI applies surgical/additive ops in the browser; Reset-to-starter safety net.
@@ -53,7 +53,7 @@ Refreshed to match the pivot (Pass-4-style revision driven by the second client 
 - **Leaderboards** reworked (privacy-safe names, anchored "Your rank", class + timeframe filters, medals, "you" highlight) after an Impeccable critique pass; also ran Impeccable critiques on the lesson reading layout.
 
 ## Completed (2026-08-05 stretch — final Cowork session)
-- **Real asset library:** replaced placeholder art with **265 Kenney CC0 assets** (Characters/Enemies/Collectibles/Tiles/Backgrounds/UI/Sounds), sourced from Platformer Art Deluxe + UI Pack + Digital/Interface audio; CC0/public-domain, credited in `../league-course-agent/public/assets/CREDITS.txt`. Store buys **unlock** assets (a small core set is free); owned assets **auto-preload by key** (`preloadAssets`, audio via Blob URL to avoid a sandbox data-URI hang).
+- **Real asset library:** replaced placeholder art with **265 Kenney CC0 assets** (Characters/Enemies/Collectibles/Tiles/Backgrounds/UI/Sounds), sourced from Platformer Art Deluxe + UI Pack + Digital/Interface audio; CC0/public-domain, credited in `../app/public/assets/CREDITS.txt`. Store buys **unlock** assets (a small core set is free); owned assets **auto-preload by key** (`preloadAssets`, audio via Blob URL to avoid a sandbox data-URI hang).
 - **Code editor → IDE:** CodeMirror upgraded with inline JSHint linting, autocomplete/hints, bracket match + auto-close, active-line, code folding, find, comment toggle, Ln/Col status bar, and Ctrl-S/Ctrl-Enter shortcuts.
 - **Starter game:** the default is now a **Mario-style platformer** (gravity, platforms, coins, score) using free Kenney assets, fully commented, with **WASD + arrow** controls and coin/jump sounds.
 - **File tree:** code files under a collapsible **source** folder, owned assets under a collapsible **assets** folder; clicking an asset opens a **detail popup** (preview, type/category, key, usage snippet, Insert).
@@ -66,7 +66,7 @@ Refreshed to match the pivot (Pass-4-style revision driven by the second client 
 - **Content:** Jay authors the real lessons (47-lesson scaffold in place); capstone "build" lessons not yet converted to challenge minigames.
 - **quiz/grader agents** scaffolded but not wired to the UI; **accessibility (WCAG) audit** pending (Parsons drag has no keyboard path).
 - No **student/instructor interviews** yet — evidence is research + two client conversations.
-- Housekeeping: `../league-course-agent/workspace/game.js` is a runtime scratch file still tracked in git — consider gitignoring it.
+- Housekeeping: `../app/workspace/game.js` is a runtime scratch file still tracked in git — consider gitignoring it.
 
 ## Last updated
 - 2026-08-05 · by ua-orchestrator (final Cowork build refresh; continuing in Claude Code)

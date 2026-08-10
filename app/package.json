@@ -1,9 +1,9 @@
 {
-  "name": "league-course-agent",
+  "name": "league-gamedev-app",
   "version": "0.1.0",
   "private": true,
   "type": "commonjs",
-  "description": "LEAGUE Game Dev course shell + sandboxed AI agent (runs on a server or in Codespaces).",
+  "description": "LEAGUE Game Dev course app: engine-style shell (Learn/Code/Play), authored lessons, asset store, and multi-agent AI relay.",
   "scripts": {
     "start": "node server.js"
   },
