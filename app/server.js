@@ -9,6 +9,7 @@ try { require('dotenv').config(); } catch (e) { /* optional */ }
 // ============================================================
 const express = require('express');
 const path = require('path');
+const ai = require('./ai/loader');   // agent + skill prompts, authored as Markdown in ai/
 
 const app = express();
 app.use(express.json({ limit: '256kb' }));
@@ -45,8 +46,10 @@ const AGENT_MODELS = {
 const KNOWN_PROVIDERS = ['ollama', 'openrouter', 'anthropic'];
 // Fallback model per provider, used when an agent has no model set in .env.
 const PROVIDER_DEFAULT_MODEL = { ollama: OLLAMA_MODEL, anthropic: ANTHROPIC_MODEL, openrouter: OPENROUTER_MODEL };
+// Precedence: .env per-agent spec > the agent file's `model:` > default provider.
 function resolveModel(agent) {
   let spec = AGENT_MODELS[agent] || '';
+  if (!spec) spec = ai.agentModel(agent) || '';
   if (!spec) spec = DEFAULT_PROVIDER + ':' + (PROVIDER_DEFAULT_MODEL[DEFAULT_PROVIDER] || '');
   const i = spec.indexOf(':');
   if (i > 0 && KNOWN_PROVIDERS.indexOf(spec.slice(0, i)) >= 0) return { provider: spec.slice(0, i), model: spec.slice(i + 1) };
@@ -208,7 +211,9 @@ const GUIDED_RULES = '\n\nGUIDED MODE IS ON for this lesson — the student is s
   + '- Only act when the request names what to change and roughly how ("make the player jump higher", "put a coin above the left platform").\n'
   + '- Make the smallest change that does it, and say in one short sentence what you changed.';
 
-function buildSystem(gameCode, ctx) {
+// Built-in fallbacks. Used only when ai/agents/*.md is missing or malformed, so a typo
+// while authoring a prompt degrades to the previous behaviour instead of breaking the app.
+function fallbackCoderSystem(gameCode, ctx) {
   return 'You are a coding assistant inside a kids game-dev course (ages 11-15). '
     + 'The student is building a 2D Phaser 3 game. game.js defines a CONFIG object and functions '
     + '(create, update, spawnObject, buildTextures, postStats, etc.); create() and update() both start with '
@@ -234,7 +239,7 @@ function buildSystem(gameCode, ctx) {
     + buildContextBlock(ctx || {})
     + ((ctx && ctx.aiMode === 'guided') ? GUIDED_RULES : '');
 }
-function buildTutorSystem(gameCode, context, ctx) {
+function fallbackTutorSystem(gameCode, context, ctx) {
   const c = ctx || {};
   return 'You are a friendly coding tutor for kids aged 11-15 in a game-dev course. '
     + 'Explain clearly and help them UNDERSTAND rather than doing their work for them. '
@@ -245,7 +250,7 @@ function buildTutorSystem(gameCode, context, ctx) {
     + (context ? '\nThe student is asking about this part of the lesson:\n"""\n' + context + '\n"""\n' : '')
     + (gameCode ? '\nCurrent game.js for reference:\n```javascript\n' + gameCode + '\n```' : '');
 }
-const AGENT_SYSTEMS = {
+const FALLBACK_AGENT_SYSTEMS = {
   quiz: 'You write short comprehension questions for kids (11-15) learning to code. Output ONLY a JSON object.',
   grader: 'You check a student\'s answer or code change for a kids coding course. Output ONLY a JSON object with {"pass": true/false, "hint": "..."}.'
 };
@@ -321,7 +326,8 @@ app.post('/api/ai', async (req, res) => {
   // TUTOR: plain-language explanation, no code edits.
   if (agent === 'tutor') {
     let raw;
-    try { raw = await callAI(spec, buildTutorSystem(gameCode, context, ctx), message, false, history); }
+    const tutorSystem = ai.buildPrompt('tutor', Object.assign({ gameCode: gameCode }, ctx)) || fallbackTutorSystem(gameCode, context, ctx);
+    try { raw = await callAI(spec, tutorSystem, message, false, history); }
     catch (e) { return res.status(502).json({ reply: 'The tutor is not reachable right now (' + e.message + ').' }); }
     return res.json({ reply: (raw || '').trim() || 'Hmm, I am not sure — try rephrasing.' });
   }
@@ -329,13 +335,14 @@ app.post('/api/ai', async (req, res) => {
   // QUIZ / GRADER (scaffold): return whatever JSON the model produced.
   if (agent === 'quiz' || agent === 'grader') {
     let raw;
-    try { raw = await callAI(spec, AGENT_SYSTEMS[agent], message, true); }
+    const agentSystem = ai.buildPrompt(agent, ctx) || FALLBACK_AGENT_SYSTEMS[agent];
+    try { raw = await callAI(spec, agentSystem, message, true); }
     catch (e) { return res.status(502).json({ error: 'The ' + agent + ' agent is not reachable (' + e.message + ').' }); }
     return res.json({ result: extractJSON(raw) || {} });
   }
 
   // CODER (default): return ops the browser applies to game.js.
-  const system = buildSystem(gameCode, ctx);
+  const system = ai.buildPrompt('coder', Object.assign({ gameCode: gameCode }, ctx)) || fallbackCoderSystem(gameCode, ctx);
   function toOps(parsed) {
     const ops = {};
     ['config', 'functions', 'create', 'update', 'newFile', 'replaceFile'].forEach(function (k) {

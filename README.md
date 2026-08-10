@@ -34,6 +34,7 @@ stay server-side.
 |---|---|
 | `server.js` | Express: static hosting + `/api/ai` (multi-agent relay) + `/api/info` |
 | `content/` | the authored course — `course.yaml` (modules→lessons) + `lessons/*.md`. Authoring syntax: [`content/AUTHORING.md`](app/content/AUTHORING.md) |
+| `ai/` | how the AI behaves — one Markdown file per agent + reusable skills, hot-reloaded. Editing guide: [`ai/AUTHORING.md`](app/ai/AUTHORING.md) |
 | `public/index.html` | page shell (markup only) |
 | `public/styles.css` | all app CSS |
 | `public/js/` | the client, split into ordered plain scripts — no build step; each file has a header comment saying what it owns |

@@ -1,0 +1,126 @@
+// ============================================================
+//  Loads the agent + skill prompts from the Markdown files next
+//  to this one, so how the AI teaches is content a teacher edits
+//  rather than string literals in server.js.
+//
+//  Files are re-read when they change on disk (no restart), and if
+//  one is missing or malformed the caller falls back to the built-in
+//  prompt — a typo in a lesson-authoring file must never 500.
+//
+//  Deliberately dependency-free: the front-matter here is a handful
+//  of simple keys, so a ~30-line parser beats adding a YAML library
+//  to a server that otherwise needs only express + dotenv.
+//  Supported front-matter is documented in AUTHORING.md.
+// ============================================================
+const fs = require('fs');
+const path = require('path');
+
+const DIR = __dirname;
+const cache = new Map();      // file path -> { mtimeMs, doc }
+const warned = new Set();     // warn once per problem, not once per request
+
+function warn(msg) {
+  if (warned.has(msg)) return;
+  warned.add(msg);
+  console.warn('[ai] ' + msg + ' — falling back to the built-in prompt');
+}
+
+// "value"  |  'value'  |  bare value with an optional trailing # comment
+function scalar(raw) {
+  const s = String(raw).trim();
+  const quoted = s.match(/^(['"])([\s\S]*?)\1/);
+  if (quoted) return quoted[2];
+  return s.replace(/\s+#.*$/, '').trim();
+}
+
+function parseFrontMatter(src) {
+  const meta = {};
+  let listKey = null;
+  src.split(/\r?\n/).forEach(function (line) {
+    if (!line.trim() || /^\s*#/.test(line)) return;
+    const item = line.match(/^\s*-\s+(.*)$/);            // block list item
+    if (item && listKey) { meta[listKey].push(scalar(item[1])); return; }
+    const kv = line.match(/^([A-Za-z_][\w-]*)\s*:\s*(.*)$/);
+    if (!kv) return;
+    listKey = null;
+    const key = kv[1];
+    const raw = kv[2].replace(/\s+#.*$/, '').trim();
+    if (raw === '') { meta[key] = []; listKey = key; return; }   // a block list may follow
+    const inline = raw.match(/^\[(.*)\]$/);                      // [a, b, c]
+    if (inline) {
+      meta[key] = inline[1].split(',').map(function (s) { return scalar(s); }).filter(Boolean);
+      return;
+    }
+    meta[key] = scalar(raw);
+  });
+  return meta;
+}
+
+function parseDoc(text) {
+  const m = text.match(/^---\s*\r?\n([\s\S]*?)\r?\n---\s*\r?\n?([\s\S]*)$/);
+  if (!m) return { meta: {}, body: text.trim() };
+  return { meta: parseFrontMatter(m[1]), body: m[2].trim() };
+}
+
+function readDoc(file) {
+  let st;
+  try { st = fs.statSync(file); } catch (e) { warn('missing ' + path.relative(DIR, file)); return null; }
+  const hit = cache.get(file);
+  if (hit && hit.mtimeMs === st.mtimeMs) return hit.doc;         // unchanged since last read
+  let doc;
+  try { doc = parseDoc(fs.readFileSync(file, 'utf8')); }
+  catch (e) { warn('could not read ' + path.relative(DIR, file) + ': ' + e.message); return null; }
+  if (!doc.body) { warn(path.relative(DIR, file) + ' has no body'); return null; }
+  cache.set(file, { mtimeMs: st.mtimeMs, doc: doc });
+  return doc;
+}
+
+// ---- rendering the values the prompts ask for ----
+function renderAssets(assets) {
+  if (!assets || !assets.length) return '(none yet — do not use any asset keys)';
+  return assets.map(function (a) { return '  ' + a.key + '  (' + a.type + ')'; }).join('\n');
+}
+function renderFiles(files) {
+  if (!files || !files.length) return '(none — game.js is the only file)';
+  return files.map(function (f) { return '--- ' + f.name + ' ---\n' + f.code; }).join('\n');
+}
+function fill(text, vars) {
+  return text.replace(/\{\{(\w+)\}\}/g, function (m, key) {
+    const v = vars[key];
+    return (v === undefined || v === null) ? '' : String(v);
+  });
+}
+
+/* Build an agent's system prompt: the agent body, plus each skill it lists, with
+   {{placeholders}} filled in. Returns null when anything is missing so the caller
+   can fall back. `ctx` carries the request's lesson / assets / files / aiMode. */
+function buildPrompt(agent, ctx) {
+  const c = ctx || {};
+  const doc = readDoc(path.join(DIR, 'agents', agent + '.md'));
+  if (!doc) return null;
+  const parts = [doc.body];
+  (doc.meta.skills || []).forEach(function (name) {
+    const skill = readDoc(path.join(DIR, 'skills', String(name) + '.md'));
+    if (!skill) return;                                          // warned already; skip it
+    const only = skill.meta.when_ai_mode;                        // e.g. guided-mode.md
+    if (only && only !== (c.aiMode || 'full')) return;
+    parts.push(skill.body);
+  });
+  return fill(parts.join('\n\n'), {
+    gameCode: c.gameCode || '',
+    lessonTitle: c.lessonTitle || '(not in a lesson)',
+    lessonContext: c.lessonContext || '(no lesson text)',
+    ownedAssets: renderAssets(c.assets),
+    files: renderFiles(c.files),
+    aiMode: c.aiMode || 'full',
+    selection: c.selection || ''
+  });
+}
+
+/* Optional `model:` in an agent's front-matter. Lower priority than .env. */
+function agentModel(agent) {
+  const doc = readDoc(path.join(DIR, 'agents', agent + '.md'));
+  return (doc && doc.meta && doc.meta.model) ? String(doc.meta.model) : '';
+}
+
+module.exports = { buildPrompt: buildPrompt, agentModel: agentModel };

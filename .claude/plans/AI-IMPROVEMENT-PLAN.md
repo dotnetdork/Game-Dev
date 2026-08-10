@@ -23,7 +23,7 @@ Jay is the project lead and an intern learning this stack — explain decisions,
 
 - [x] Stage 0 — Cleanup & hardening *(done 2026-08-10 — commits `eb5a369`, `56dd2bf`, `08eb82c`)*
 - [x] Stage 1 — Context foundations *(done 2026-08-10 — commit `f18bc41`)*
-- [ ] Stage 2 — Agents & skills as markdown
+- [x] Stage 2 — Agents & skills as markdown *(done 2026-08-10)*
 - [ ] Stage 3 — Pedagogy loop
 - [ ] Stage 4 — Tool use (Tier 1 validator → Tier 2 tool calling)
 - [ ] Stage 5 — MCP server
@@ -166,6 +166,15 @@ You are a coding assistant inside a kids game-dev course…
 - Port the hard-won rules from `buildSystem()` into `coder.md`/`phaser-rules.md` (smallest-change-first, no `Phaser.Game`, no HTML-canvas Graphics methods, config-for-tunables, JSON-only output).
 
 **Acceptance:** editing `tutor.md` changes behavior on the next request without restart; broken front-matter falls back cleanly; stock files reproduce today's behavior.
+
+**DONE 2026-08-10.** Hot reload verified (edit picked up on the next call, no restart); malformed front-matter and an empty body both return null so the server uses the built-in prompt and logs a warning; a 15/15 instruction-parity check confirms every load-bearing rule from the old hard-coded prompt survives in `coder.md` + skills.
+
+Deviations from the plan as written, and why:
+- **No js-yaml dependency.** The front-matter here is four simple keys, so `ai/loader.js` parses it in ~30 lines and the server keeps its two-dependency footprint. Supported syntax (`key: value`, quotes, `[a, b]`, `- item`, `#` comments) is documented in `app/ai/AUTHORING.md`; nested YAML is not supported.
+- **No `{{history}}` placeholder.** Recent turns are passed as real conversation messages (Stage 1), which models handle better than interpolated text. The other placeholders are as specified.
+- **Conditional skills added.** A skill may declare `when_ai_mode: guided` and is only included when the lesson matches — that is how `guided-mode.md` replaces the old `GUIDED_RULES` constant without the loader hard-coding a skill name.
+
+**Context budget after Stage 2:** worst case (full starter, 3000-char lesson, 3000-char files, a student owning all 265 assets, guided mode, plus history) is ~6,700 tokens against ~13,300 available — fits with room. The asset list is the biggest variable chunk at ~5,900 chars when everything is owned; if Stage 4's tool definitions push the total up, replacing that inline list with a `list_owned_assets()` tool is the natural fix.
 
 ## Stage 3 — Pedagogy loop (~3–4 days) — the actual point
 
