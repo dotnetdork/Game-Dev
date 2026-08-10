@@ -21,8 +21,21 @@ function renderChat(mode) {
 /* Small models routinely skip the `why` field and answer "Done.", which tells the student
    nothing at the exact moment they are supposed to be reading the change. Fall back to
    describing the change itself rather than showing them a useless sentence. */
+function saysSomething(s) {
+  return s && !/^(done|ok|okay|sure|here you go|i've made the change|i have made the change)[.!]?$/i.test(String(s).trim());
+}
+/* The chat bubble after an edit. "Done." tells the student nothing, so when that is all the
+   model managed, describe the change from the ops instead. */
+function describeEdit(reply, ops) {
+  if (saysSomething(reply)) return String(reply).trim();
+  if (ops && ops.config && typeof ops.config === 'object' && !opsChangeCode(ops)) {
+    const bits = Object.keys(ops.config).map(function (k) { return k + ' to ' + ops.config[k]; });
+    if (bits.length) return 'Changed ' + bits.join(', ') + '.';
+  }
+  return 'I made that change for you — take a look.';
+}
 function proposalWhy(why, reply, rows) {
-  const useful = function (s) { return s && !/^(done|ok|okay|sure)\.?$/i.test(String(s).trim()); };
+  const useful = saysSomething;
   if (useful(why)) return String(why).trim();
   if (useful(reply)) return String(reply).trim();
   const c = countChanges(rows || []), bits = [];
@@ -33,10 +46,7 @@ function proposalWhy(why, reply, rows) {
 }
 function addProposal(why, ops, before, reply) {
   const after = applyOps(before, ops);
-  if (after === null) {                       // the applier could not place it safely
-    addMsg('bot', "I couldn't work out where to put that change safely, so I left your game alone. Try asking for it a different way.");
-    return null;
-  }
+  if (after === null) return null;            // couldn't place it safely; caller tells the student
   const rows = lineDiff(before, after);
   const entry = { who: 'bot', kind: 'proposal', state: 'pending', why: proposalWhy(why, reply, rows), ops: ops, before: before, after: after,
     rows: rows };
@@ -50,11 +60,8 @@ function addProposal(why, ops, before, reply) {
 /* The diff itself lives in the Code tab; this card is the record of what was suggested and
    the way back into the review if the student wanders off. */
 function renderProposal(en) {
+  // the explanation is the chat bubble just above this card; the card is the action
   const wrap = document.createElement('div'); wrap.className = 'msg bot proposal';
-  const why = document.createElement('div'); why.className = 'prop-why';
-  why.textContent = en.why || 'Here is the change.';
-  wrap.appendChild(why);
-
   const counts = countChanges(en.rows || []);
   const summary = (counts.added ? '+' + counts.added + ' added' : '') +
     (counts.added && counts.removed ? ', ' : '') + (counts.removed ? '−' + counts.removed + ' removed' : '');
@@ -231,8 +238,9 @@ function sendAI() {
     aiMode: c.aiMode, ownedAssets: c.ownedAssets, files: c.files
   }) })
     .then(function (r) { return r.json(); }).then(function (data) {
-      setMsg(pending, 'bot', data.reply || 'Done.');
-      const ops = data.ops; if (!ops) return;
+      const ops = data.ops;
+      if (!ops) { setMsg(pending, 'bot', data.reply || 'I am not sure how to do that one — can you say it a different way?'); return; }
+      setMsg(pending, 'bot', describeEdit(data.reply, ops));
 
       // Numbers live in config.js and are the tinkering loop — they land straight away.
       if (ops.config && typeof ops.config === 'object') {
@@ -243,7 +251,13 @@ function sendAI() {
 
       // A change to the code itself is proposed, not applied — the student reads it first.
       const before = project.files['game.js'] || '';
-      if (opsChangeCode(ops)) { addProposal(data.why, ops, before, data.reply); return; }
+      if (opsChangeCode(ops)) {
+        const en = addProposal(data.why, ops, before, data.reply);
+        // the card carries the action; this bubble is the sentence explaining it
+        setMsg(pending, 'bot', en ? en.why
+          : "I couldn't work out where to put that change safely, so I left your game alone. Try asking for it a different way.");
+        return;
+      }
       refreshAfterEdit();
     })
     .catch(function () { pending.textContent = 'Could not reach the server.'; });
