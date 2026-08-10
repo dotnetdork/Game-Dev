@@ -1,9 +1,10 @@
 # LEAGUE Game Development Course
 
 A browser-based game-development course for The League of Amazing Programmers
-(students ~11–14, on school-managed Chromebooks). The app is a web-based studio
-styled like a game engine: students read and modify a real Phaser game, direct
-an AI to make changes, and build one shareable 2D game across the course.
+(students ~11–14, on school-managed Chromebooks). The app is a studio styled like
+a game engine — a course outline on the left, a Learn / Code / Play viewport in the
+center, an AI assistant on the right. Students read and modify a real Phaser game,
+direct an AI to make changes, and build one shareable 2D game across the course.
 
 ## Run it
 
@@ -12,23 +13,49 @@ npm --prefix app install
 npm --prefix app start        # → http://localhost:3000
 ```
 
-Node ≥ 18. The UI runs without any AI configured; to enable the AI panel, copy
-`app/.env.example` to `app/.env` and either run [Ollama](https://ollama.com)
-locally or set an OpenRouter/Anthropic key. Keys stay server-side.
+Node ≥ 18. The UI runs without any AI configured. To enable the AI panel, copy
+`app/.env.example` to `app/.env` and either run [Ollama](https://ollama.com) locally
+or set an OpenRouter / Anthropic key. Per-agent models are set there too, and keys
+stay server-side.
 
 ## Repo map
 
 | Path | What it is |
 |---|---|
-| [`app/`](app/) | the application — Node/Express server, client, authored course content ([details](app/README.md)) |
-| [`docs/`](docs/) | human-facing docs: child-privacy brief, curriculum outline |
-| [`HANDOFF.md`](HANDOFF.md) | orientation snapshot for whoever (or whatever) picks the project up next |
+| `app/` | the application (below) |
+| `docs/` | human-facing docs: child-privacy brief, curriculum outline |
 | `.ua/` | UA Framework project docs — status, positioning, analysis, specification |
-| `.claude/` | AI working material: `plans/` (the improvement roadmap), `design-reviews/`, launch config |
-| `.devcontainer/` | GitHub Codespaces / devcontainer setup |
+| `.claude/` | AI working material: [`HANDOFF.md`](.claude/HANDOFF.md), `plans/`, `design-reviews/`, launch config |
+| `.devcontainer/` | GitHub Codespaces setup |
+
+### Inside `app/`
+
+| Path | What it is |
+|---|---|
+| `server.js` | Express: static hosting + `/api/ai` (multi-agent relay) + `/api/info` |
+| `content/` | the authored course — `course.yaml` (modules→lessons) + `lessons/*.md`. Authoring syntax: [`content/AUTHORING.md`](app/content/AUTHORING.md) |
+| `public/index.html` | page shell (markup only) |
+| `public/styles.css` | all app CSS |
+| `public/js/` | the client, split into ordered plain scripts — no build step; each file has a header comment saying what it owns |
+| `public/vendor/` | pinned third-party libs, self-hosted so the app works on filtered school networks ([`VENDORED.md`](app/public/vendor/VENDORED.md)) |
+| `public/assets/` + `assets-manifest.js` | the 265 Kenney CC0 store assets + their catalog |
+| `public/img/` | League branding images |
+
+## How it holds together
+
+- **The student's project lives in the browser** (`localStorage`): `game.js`, `main.js`,
+  any extra scripts, plus XP / Stars / unlocks. The server never stores or runs student code.
+- **Games run sandboxed.** `startGame()` assembles a self-contained document (vendored
+  Phaser + console shim + owned-asset injector + the student's scripts) into an `<iframe srcdoc>`.
+- **The AI is a relay.** `POST /api/ai` routes by agent (coder / tutor / quiz / grader), each
+  with its own `provider:model` spec from `.env`. The coder returns JSON "ops"; the client
+  applies them with a parse-check and reverts on error. Keys never reach the browser.
+- **Teachers edit content, not code.** Lessons, quizzes, and challenges are Markdown + YAML
+  under `app/content/`.
 
 ## Where things stand
 
-The living status is [`.ua/UA0-PROJECT-STATUS.md`](.ua/UA0-PROJECT-STATUS.md).
-The AI system roadmap (stages, findings, walkthrough protocol) is
+Living status: [`.ua/UA0-PROJECT-STATUS.md`](.ua/UA0-PROJECT-STATUS.md).
+Orientation for a new session: [`.claude/HANDOFF.md`](.claude/HANDOFF.md).
+AI system roadmap (stages, findings, walkthrough protocol):
 [`.claude/plans/AI-IMPROVEMENT-PLAN.md`](.claude/plans/AI-IMPROVEMENT-PLAN.md).

@@ -1,6 +1,6 @@
 # HANDOFF — LEAGUE Game Development Course
 
-A fuller snapshot for whoever picks this up next (e.g. a fresh Claude Code session). The short, living status is in [`.ua/UA0-PROJECT-STATUS.md`](.ua/UA0-PROJECT-STATUS.md); this file is the orientation doc.
+A fuller snapshot for whoever picks this up next (e.g. a fresh Claude Code session). The short, living status is in [`.ua/UA0-PROJECT-STATUS.md`](../.ua/UA0-PROJECT-STATUS.md); this file is the orientation doc.
 
 Last updated: 2026-08-05 · Repo: https://github.com/dotnetdork/LEAGUE-GameDev · branch `main`
 
@@ -57,7 +57,7 @@ Game Development/
 
 **Assets.** The Store (`window.STORE_ASSETS` from `assets-manifest.js`) sells Kenney CC0 assets. Buying **unlocks** an asset (a small core set — `player`, `grass`, `sky`, `coin-gold`, `sfx-coin`, `sfx-jump` — is free). Owned assets are exposed to the game via `window.preloadAssets(scene)`, which the starter calls in `preload()`. Images load from data URIs; **audio loads via a Blob URL** (a data-URI audio XHR hangs the loader in the sandbox — do not revert this).
 
-**Content pipeline.** `content/course.yaml` defines modules→lessons; each lesson is `content/lessons/<id>.md` with YAML front-matter (title, xp, ai mode, summary) + a Markdown body. Fenced blocks render as widgets: ` ```run ` (goal/expect/slider), ` ```quiz ` (mcq / predict / parsons+distractors / fillblank / findbug), ` ```challenge ` (edit an embedded game, call `win()`). Authoring syntax is in `content/README.md`. **Jay edits content, not code.**
+**Content pipeline.** `content/course.yaml` defines modules→lessons; each lesson is `content/lessons/<id>.md` with YAML front-matter (title, xp, ai mode, summary) + a Markdown body. Fenced blocks render as widgets: ` ```run ` (goal/expect/slider), ` ```quiz ` (mcq / predict / parsons+distractors / fillblank / findbug), ` ```challenge ` (edit an embedded game, call `win()`). Authoring syntax is in `content/AUTHORING.md`. **Jay edits content, not code.**
 
 **AI (multi-agent).** `POST /api/ai` routes by `agent` (coder / tutor / quiz / grader) through a controller. Models are set **per-agent in `.env`** as `provider:model` (`ollama:` / `openrouter:` / `anthropic:`). The **coder** returns surgical edit "ops" applied in the browser; the **tutor** returns plain markdown. quiz/grader are scaffolded but not wired to the UI yet.
 
@@ -94,15 +94,15 @@ Game Development/
 
 ## 8. UA Framework docs
 
-- [`.ua/UA0-PROJECT-STATUS.md`](.ua/UA0-PROJECT-STATUS.md) — living status (stage, gaps, next action).
-- [`.ua/ua2-positioning-statement.md`](.ua/ua2-positioning-statement.md) — positioning (product name is the one open clause).
-- [`.ua/ua5-stage-2-analysis.md`](.ua/ua5-stage-2-analysis.md) — landscape, stakeholders, jobs/scenarios.
-- [`.ua/ua6-specification.md`](.ua/ua6-specification.md) — screen inventory + build status (the implementation checklist).
-- [`docs/child-privacy-brief.md`](docs/child-privacy-brief.md), [`docs/curriculum-outline.md`](docs/curriculum-outline.md).
+- [`.ua/UA0-PROJECT-STATUS.md`](../.ua/UA0-PROJECT-STATUS.md) — living status (stage, gaps, next action).
+- [`.ua/ua2-positioning-statement.md`](../.ua/ua2-positioning-statement.md) — positioning (product name is the one open clause).
+- [`.ua/ua5-stage-2-analysis.md`](../.ua/ua5-stage-2-analysis.md) — landscape, stakeholders, jobs/scenarios.
+- [`.ua/ua6-specification.md`](../.ua/ua6-specification.md) — screen inventory + build status (the implementation checklist).
+- [`docs/child-privacy-brief.md`](../docs/child-privacy-brief.md), [`docs/curriculum-outline.md`](../docs/curriculum-outline.md).
 
 ## 9. Where to look first
 
 - Client behavior: `public/app.js` — start at `startGame()`, `assetInjectScript()`, `switchView()`, `renderStore()`, `refreshFiles()`.
 - Styling/markup: `public/index.html`.
 - Server + AI routing: `server.js` (`/api/ai`, `buildSystem`, `resolveModel`, `callAI`).
-- The course: `content/course.yaml` + `content/lessons/*.md` (syntax in `content/README.md`).
+- The course: `content/course.yaml` + `content/lessons/*.md` (syntax in `content/AUTHORING.md`).
