@@ -6,7 +6,7 @@ Maintained by the agent. Records where the LEAGUE Game Development course projec
 ## Project header
 - **Project:** LEAGUE Game Development Course — Level 1
 - **Path:** client (The League; Jay = intern / project lead; Jed Stumpf = stakeholder)
-- **Started:** 2026-07-18 · **Updated:** 2026-07-28
+- **Started:** 2026-07-18 · **Updated:** 2026-08-05 · **Continuing in:** Claude Code (moved from Cowork)
 
 ## Current stage
 **Stage 3 — Specification & build.** `ua6` spec drafted; per Jay, wireframes are replaced by **building the real app** (each spec screen carries a build status). Implementation is well underway — much of the app is built and running locally.
@@ -41,7 +41,7 @@ Refreshed to match the pivot (Pass-4-style revision driven by the second client 
 - Confirm with League: Codespaces required? hardware? exact Chromebook models? Wordmark logo may show on a white background on the dark bar (verify).
 
 ## Current stage / activity
-**Stage 3 — Specification (`ua6`) done; building the app per spec** (wireframes replaced by real app edits). Substantial implementation is complete and running locally; iterating on UX with Jay. Repo: https://github.com/dotnetdork/LEAGUE-GameDev (single repo: app + `.ua/` + `docs/`).
+**Stage 3 — Specification (`ua6`) done; building the app per spec** (wireframes replaced by real app edits). Substantial implementation complete and running locally; iterating on UX. **Work is continuing in Claude Code** from here (this was the last Cowork session). Repo: https://github.com/dotnetdork/LEAGUE-GameDev (single repo: app + `.ua/` + `docs/`); latest local commit `bc9a785`.
 
 ## Completed (this stretch)
 - **UA docs:** Stage 1 positioning revised for the pivot; Stage 2 Analysis (`ua5`); Stage 3 spec (`ua6`); child-privacy/COPPA brief (`../docs/child-privacy-brief.md`); curriculum outline (`../docs/curriculum-outline.md`).
@@ -52,5 +52,21 @@ Refreshed to match the pivot (Pass-4-style revision driven by the second client 
 - **UI:** Gallery→**Store** (buy assets with Stars → files) and Showcase→**Gallery** (student games); console/log panel; League-orange brand + per-module accent colors; full-width lesson hero + centered reading layout + larger body font; framed Play viewport; focus states; hover-to-delete/reset files; wordmark logo top-left.
 - **Leaderboards** reworked (privacy-safe names, anchored "Your rank", class + timeframe filters, medals, "you" highlight) after an Impeccable critique pass; also ran Impeccable critiques on the lesson reading layout.
 
+## Completed (2026-08-05 stretch — final Cowork session)
+- **Real asset library:** replaced placeholder art with **265 Kenney CC0 assets** (Characters/Enemies/Collectibles/Tiles/Backgrounds/UI/Sounds), sourced from Platformer Art Deluxe + UI Pack + Digital/Interface audio; CC0/public-domain, credited in `../league-course-agent/public/assets/CREDITS.txt`. Store buys **unlock** assets (a small core set is free); owned assets **auto-preload by key** (`preloadAssets`, audio via Blob URL to avoid a sandbox data-URI hang).
+- **Code editor → IDE:** CodeMirror upgraded with inline JSHint linting, autocomplete/hints, bracket match + auto-close, active-line, code folding, find, comment toggle, Ln/Col status bar, and Ctrl-S/Ctrl-Enter shortcuts.
+- **Starter game:** the default is now a **Mario-style platformer** (gravity, platforms, coins, score) using free Kenney assets, fully commented, with **WASD + arrow** controls and coin/jump sounds.
+- **File tree:** code files under a collapsible **source** folder, owned assets under a collapsible **assets** folder; clicking an asset opens a **detail popup** (preview, type/category, key, usage snippet, Insert).
+- **Play view / game viewer:** hero-viewport pass — game fills a true 4:3 stage; **mute (default on) + volume** control now in the console bar; game frame gets focus on load; "Building your game…" loading state; neutral frame (orange trim removed per Jay).
+- **Design reviews:** ran Impeccable `critique` on the leaderboards and twice on the Play view (26→27/40), applying the layout/placement fixes.
+
+## Known gaps / open items (carried forward)
+- **Auth still not built:** GitHub OAuth + League **code-server** lane (repos under one League GitHub account) — needs Eric's code-server API/base URL/auth scheme. Highest-value next lane.
+- **Product name** still open (course + Store name; "Gallery" confirmed for student games).
+- **Content:** Jay authors the real lessons (47-lesson scaffold in place); capstone "build" lessons not yet converted to challenge minigames.
+- **quiz/grader agents** scaffolded but not wired to the UI; **accessibility (WCAG) audit** pending (Parsons drag has no keyboard path).
+- No **student/instructor interviews** yet — evidence is research + two client conversations.
+- Housekeeping: `../league-course-agent/workspace/game.js` is a runtime scratch file still tracked in git — consider gitignoring it.
+
 ## Last updated
-- 2026-08-04 · by ua-orchestrator (Stage 3 build refresh)
+- 2026-08-05 · by ua-orchestrator (final Cowork build refresh; continuing in Claude Code)
