@@ -31,6 +31,12 @@ const OLLAMA_MODEL = process.env.OLLAMA_MODEL || 'qwen2.5-coder:7b';
 // 16384 fits a 7B model on a 16 GB GPU; lower it here if VRAM is tight.
 const OLLAMA_NUM_CTX = Number(process.env.OLLAMA_NUM_CTX || 16384);
 const OLLAMA_NUM_PREDICT = Number(process.env.OLLAMA_NUM_PREDICT || 3072);
+// Reasoning models (Qwen3.x and friends) think before answering. That thinking competes with
+// num_predict, and on a short strict-JSON job it can eat the whole budget and return EMPTY
+// content — the grader did exactly that. Every agent here wants a short structured answer, and
+// a child is waiting, so thinking is off by default: measured 15s -> 1s on the grader with no
+// loss of answer quality. Set OLLAMA_THINK=1 to turn it back on.
+const OLLAMA_THINK = /^(1|true|yes|on)$/i.test(process.env.OLLAMA_THINK || '');
 const ANTHROPIC_KEY = process.env.ANTHROPIC_API_KEY || '';
 const ANTHROPIC_MODEL = process.env.ANTHROPIC_MODEL || 'claude-3-5-sonnet-latest';
 const OPENROUTER_KEY = process.env.OPENROUTER_API_KEY || '';
@@ -320,7 +326,12 @@ async function callAI(spec, system, user, wantJSON, history) {
   const body = { model: model, stream: false, options: { num_ctx: OLLAMA_NUM_CTX, num_predict: OLLAMA_NUM_PREDICT, temperature: 0.3 },
     messages: [{ role: 'system', content: system }].concat(hist, [{ role: 'user', content: user }]) };
   if (wantJSON) body.format = 'json';
-  const r = await fetch(OLLAMA_URL, { method: 'POST', headers: { 'content-type': 'application/json' }, body: JSON.stringify(body) });
+  if (!OLLAMA_THINK) body.think = false;
+  let r = await fetch(OLLAMA_URL, { method: 'POST', headers: { 'content-type': 'application/json' }, body: JSON.stringify(body) });
+  if (!r.ok && body.think === false) {           // older models reject the flag rather than ignoring it
+    delete body.think;
+    r = await fetch(OLLAMA_URL, { method: 'POST', headers: { 'content-type': 'application/json' }, body: JSON.stringify(body) });
+  }
   if (!r.ok) throw new Error('Ollama HTTP ' + r.status);
   const d = await r.json();
   return (d.message && d.message.content) || d.response || '';
