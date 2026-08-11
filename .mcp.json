@@ -1,0 +1,8 @@
+{
+  "mcpServers": {
+    "league-gamedev": {
+      "command": "node",
+      "args": ["app/ai/mcp-server.js"]
+    }
+  }
+}

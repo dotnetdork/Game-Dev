@@ -26,7 +26,7 @@ Jay is the project lead and an intern learning this stack — explain decisions,
 - [x] Stage 2 — Agents & skills as markdown *(done 2026-08-10)*
 - [x] Stage 3 — Pedagogy loop *(done 2026-08-10)*
 - [x] Stage 4 — Tool use (Tier 1 validators + Tier 2 tool calling) *(done 2026-08-10)*
-- [ ] Stage 5 — MCP server *(the tool table in `app/ai/tools.js` is the surface to expose)*
+- [x] Stage 5 — MCP server *(done 2026-08-11 — `app/ai/mcp-server.js`, `.mcp.json`, verified by `app/tools/check-mcp.js`)*
 
 ## Built after Stage 3, outside the plan
 

@@ -79,3 +79,28 @@ conversation messages, which models handle better than pasted-in text.
   A local 7B degrades noticeably on a long prompt. Cut before you add.
 - **Test both models.** A rule a big cloud model follows happily is often ignored by the
   local 7B. If a behaviour matters, verify it on Ollama.
+
+## The MCP server (`ai/mcp-server.js`)
+
+MCP (Model Context Protocol) is a standard way for an AI client to discover and use what a
+server offers. Ours exposes, read-only:
+
+- **tools** — the same five in `tools.js` the coder and tutor already use
+- **resources** — every lesson (`lesson://<id>`), the course outline, the 265-asset store
+  catalogue, and the Phaser reference
+- **prompts** — the agent and skill markdown in this folder, as the course uses them
+
+It is a thin wrapper on purpose: the tools come straight from `tools.js`, so there is one
+definition of what a tool does, not two that can drift apart.
+
+Two of the five tools (`list_owned_assets`, `read_file`) answer questions about a specific
+student's session. Over MCP there is no student, so they say so rather than returning an empty
+list that reads like "this student owns nothing."
+
+```bash
+node app/tools/check-mcp.js
+```
+
+Claude Code picks it up automatically in this repo via `.mcp.json` at the root, which is what
+makes it useful today: a session authoring lessons can query the real asset catalogue and read
+real lesson text instead of guessing.
