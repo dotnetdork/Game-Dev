@@ -168,24 +168,58 @@ read the real lesson text and the real asset list instead of inventing them.
 
 **The ask: an API key for a hosted model, ideally OpenRouter.**
 
-**Why OpenRouter:** one key gives access to most major models — Claude, GPT, Gemini, open models.
-I could test which one is actually best for this instead of committing to a guess. If you'd
-rather go direct to Anthropic or OpenAI, that works too; it's a one-line config change either way.
+**Why OpenRouter:** one key gives access to every model below, so I can measure which is actually
+best for this instead of committing to a guess. Going direct to a single provider also works —
+it's a one-line config change either way.
+
+### The models I'd start with
+
+Prices are per million tokens, taken from OpenRouter on 11 August 2026. "Cost per request" is
+calculated for our actual usage: a code request sends about 5,000 tokens and gets back about 700.
+
+| Model | OpenRouter ID | In / Out per 1M | Cost per request |
+|---|---|---|---|
+| Claude Sonnet 5 | `anthropic/claude-sonnet-5` | $2 / $10 | $0.017 |
+| GPT-5.6 Terra | `openai/gpt-5.6-terra` | $1 / $6 | $0.009 |
+| Gemini 3.6 Flash | `google/gemini-3.6-flash` | $1.50 / $7.50 | $0.013 |
+| Gemini 3.5 Flash Lite | `google/gemini-3.5-flash-lite` | $0.30 / $2.50 | $0.003 |
+
+The four assistants don't have to use the same model, and shouldn't. My proposed starting point —
+this is the entire configuration change, in one file:
+
+```
+CODER_MODEL=openrouter:anthropic/claude-sonnet-5
+TUTOR_MODEL=openrouter:anthropic/claude-sonnet-5
+QUIZ_MODEL=openrouter:google/gemini-3.5-flash-lite
+GRADER_MODEL=openrouter:google/gemini-3.5-flash-lite
+```
+
+**Sonnet 5 for the coder**, because it reliably produces the strict format our code-editing
+contract depends on, and the coder is the one assistant whose mistakes a student sees.
+**Sonnet 5 for the tutor too, initially** — its hard job is *refusing* to write code when a
+student pushes for it, and that's worth over-spending on until I've read real transcripts.
+**Flash Lite for the quiz and grader**, which are short, low-stakes jobs where the cheap model is
+genuinely fine. I'd also test **GPT-5.6 Terra** as the coder, at roughly half the cost.
+
+### What it costs to run
+
+| | Per request | Per student-hour (20 requests) | Per class-hour (25 students) |
+|---|---|---|---|
+| Sonnet 5 coder | $0.017 | $0.34 | **$8.50** |
+| GPT-5.6 Terra coder | $0.009 | $0.18 | $4.60 |
+| Quiz + grader | $0.003 | $0.06 | $1.50 |
+
+**The ask is a capped $20–50 to test.** At Sonnet 5 pricing, $30 buys about 1,750 code requests —
+far more than an evaluation needs. The app already rate-limits each student, and I'd lower the cap
+on the expensive assistant before testing.
 
 **What I'd do with it, in order:**
 
-1. Test the same requests against the local model and a hosted one, side by side, and measure the
-   difference in success rate and speed.
-2. Estimate real cost per student per hour, with numbers instead of guesses.
-3. Check that the safety checks still behave with a much stronger model.
-4. Decide which model each of the four agents should use — they don't have to be the same, and the
-   cheap ones may be fine for the tutor and grader.
-
-**What it will roughly cost.** A coder request sends about 4,000–5,000 tokens and gets back a few
-hundred. At current mid-tier hosted pricing that's on the order of a cent or two per request. A
-student in a one-hour class might make 10–30. **I'd want a small capped budget — $20–50 — to
-measure this properly rather than argue about estimates.** The app already has rate limiting, and
-I'd lower the cap for the expensive agent before testing.
+1. Run the same set of real student requests against the local model and each candidate, and score
+   them on success rate and speed — a table, not an opinion.
+2. Confirm the automatic safety checks still behave with a much stronger model.
+3. Settle the per-assistant model choice with those measurements.
+4. Report back actual cost per student-hour instead of the estimate above.
 
 **The risk if we don't:** I can keep polishing against a local model, but I'd be guessing about
 the thing that matters — whether this actually helps a real student in a real classroom.
@@ -198,28 +232,21 @@ permanent free fallback, which also means a demo never depends on the internet.
 
 ## Questions I have for you
 
-**On budget and access**
-1. Do we have an existing account with any AI provider, or am I creating one?
-2. What spending cap are you comfortable with for testing? Who owns the bill going forward?
-3. Is there a procurement or vendor-approval process I should start now rather than later?
-
-**On privacy and policy — the one I most need answered**
-4. Student code and questions would be sent to a third-party company's servers. **What's our
-   position on that, and what have parents been told?** Right now nothing leaves my machine.
-   That changes the day we switch, and I don't want to be the one who decided it quietly.
-5. Do we need a data-processing agreement, or a provider that guarantees no training on our data?
-6. Is there a school-district IT policy on AI services I should be reading?
+**On the key**
+1. What spending cap should I work within for testing?
+2. Do you want the key restricted to the four models above, or open so I can compare more?
 
 **On the classroom**
-7. What's an acceptable wait for a reply? That decides which models are usable at all.
-8. Should the AI be available in every lesson, or off during assessments?
-9. How many students at once, and are they all on it simultaneously? That sets the rate limits.
+3. What's an acceptable wait for a reply? That decides which models are usable at all — the
+   cheaper ones are generally faster, so this trades off against quality.
+4. Should the AI be available in every lesson, or off during assessments?
+5. How many students would be on it at once? That sets the rate limits I configure.
 
 **On what happens next**
-10. Can I get this in front of a few real students, and how do I arrange that? It's the only
-    remaining way to learn anything important.
-11. Who owns the curriculum content long-term? The system is built so a non-developer can edit
-    the teaching behaviour — that only pays off if someone actually does.
+6. Can I get this in front of a few real students, and how do I arrange that? It's the only
+   remaining way to learn anything important about it.
+7. Who owns the curriculum content long-term? The system is built so a non-developer can edit the
+   teaching behaviour — that only pays off if someone actually does.
 
 ---
 
