@@ -201,8 +201,29 @@ function opsToChanges(ops) {
 }
 
 const SKEY = 'leagueProgress';
-function loadState() { try { return Object.assign({ xp: 0, stars: 250, done: {}, modDone: {}, unlocked: {}, published: [] }, JSON.parse(localStorage.getItem(SKEY) || '{}')); } catch (e) { return { xp: 0, stars: 250, done: {}, modDone: {}, unlocked: {}, published: [] }; } }
+const DEFAULT_STATE = { xp: 0, stars: 250, done: {}, modDone: {}, unlocked: {}, published: [], activities: {} };
+function loadState() { try { return Object.assign({}, DEFAULT_STATE, JSON.parse(localStorage.getItem(SKEY) || '{}')); } catch (e) { return Object.assign({}, DEFAULT_STATE); } }
 let state = loadState();
+
+/* ---------- per-lesson activity ledger ----------
+   Which in-lesson activities the student has resolved, keyed lesson id -> widget key
+   ("q0", "r1", "c0"). Widget keys come from document order, not Math.random(), so an answer
+   survives navigating away, completing the lesson, and closing the browser. This is what
+   completion is gated on — a 50-minute class period gets interrupted, and re-answering four
+   questions to re-earn something you already earned is how you lose an 11-year-old. */
+function lessonActivities(lessonId) {
+  return (state.activities && state.activities[lessonId]) || {};
+}
+function activityDone(lessonId, key) { return !!lessonActivities(lessonId)[key]; }
+function markActivity(lessonId, key) {
+  if (!lessonId || !key) return false;
+  if (!state.activities) state.activities = {};
+  if (!state.activities[lessonId]) state.activities[lessonId] = {};
+  if (state.activities[lessonId][key]) return false;        // already recorded
+  state.activities[lessonId][key] = true;
+  saveState();
+  return true;
+}
 function saveState() { localStorage.setItem(SKEY, JSON.stringify(state)); renderFooter(); }
 function renderFooter() {
   const lvl = Math.floor(state.xp / 1000) + 1; const into = state.xp % 1000;

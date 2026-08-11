@@ -37,35 +37,76 @@ function loadCourse() {
     return Promise.all(jobs).then(buildFlat);
   });
 }
-function lessonUnlocked(idx) { return idx === 0 || !!state.done[flat[idx - 1].id]; }
+// Guard the -1: an empty `lessons:` list in course.yaml would otherwise index flat[-2] and throw.
+function lessonUnlocked(idx) { return idx <= 0 ? idx === 0 : !!(flat[idx - 1] && state.done[flat[idx - 1].id]); }
 
-/* ---------- outline ---------- */
+/* ---------- outline ----------
+   Rows are real buttons in a tree, not divs with click listeners. Before this the panel had zero
+   focusable elements and zero ARIA roles across every lesson and module, so a child using a
+   keyboard or a screen reader could not reach a single lesson — not "with difficulty", at all. */
 const tree = $('tree'); let curIdx = 0;
 function renderOutline() {
   tree.innerHTML = '';
+  tree.setAttribute('role', 'tree');
+  tree.setAttribute('aria-label', 'Course outline');
   course.modules.forEach(function (m, mi) {
     const firstIdx = flat.findIndex(function (f) { return f.mi === mi; });
     const modLocked = !lessonUnlocked(firstIdx);
     const sec = document.createElement('div'); sec.className = 'sec';
-    const head = document.createElement('div'); head.className = 'sec-head' + (modLocked ? ' locked' : '');
-    head.innerHTML = '<span class="tri">' + (modLocked ? '▸' : '▾') + '</span><span class="mdi ' + (modLocked ? 'mdi-lock' : 'mdi-folder') + '"' + (modLocked ? '' : ' style="color:' + moduleAccent(mi) + '"') + '></span><span class="lbl">' + m.name + '</span>';
+    const head = document.createElement('button'); head.type = 'button';
+    head.className = 'sec-head' + (modLocked ? ' locked' : '');
+    head.setAttribute('role', 'treeitem');
+    head.setAttribute('aria-expanded', modLocked ? 'false' : 'true');
+    if (modLocked) head.setAttribute('aria-disabled', 'true');
+    head.innerHTML = '<span class="tri" aria-hidden="true">' + (modLocked ? '▸' : '▾') + '</span><span class="mdi ' + (modLocked ? 'mdi-lock' : 'mdi-folder') + '" aria-hidden="true"' + (modLocked ? '' : ' style="color:' + moduleAccent(mi) + '"') + '></span><span class="lbl">' + esc(m.name) + '</span>';
     if (modLocked) sec.classList.add('collapsed');
     head.addEventListener('click', function () {
       if (modLocked) { toast('Finish the previous module to unlock this one.'); return; }
-      sec.classList.toggle('collapsed'); head.querySelector('.tri').textContent = sec.classList.contains('collapsed') ? '▸' : '▾';
+      const nowCollapsed = sec.classList.toggle('collapsed');
+      head.querySelector('.tri').textContent = nowCollapsed ? '▸' : '▾';
+      head.setAttribute('aria-expanded', nowCollapsed ? 'false' : 'true');
     });
-    const kids = document.createElement('div'); kids.className = 'kids';
+    const kids = document.createElement('div'); kids.className = 'kids'; kids.setAttribute('role', 'group');
     m.lessons.forEach(function (l, li) {
       const idx = flat.findIndex(function (f) { return f.mi === mi && f.li === li; });
       const locked = !lessonUnlocked(idx), done = !!state.done[mi + '.' + li];
       const icon = done ? 'mdi-check-circle' : (locked ? 'mdi-lock' : 'mdi-file-document-outline');
-      const row = document.createElement('div');
-      row.className = 'page' + (idx === curIdx ? ' active' : '') + (done ? ' done' : '') + (locked ? ' locked' : '');
-      row.innerHTML = '<span class="mdi ' + icon + '"></span><span class="lbl">' + l.t + '</span>';
+      const row = document.createElement('button'); row.type = 'button';
+      // `lesson-row`, not `page`: `.page` is the full-screen Store/Gallery layout rule, and it was
+      // leaking height:100% and overflow:auto onto every row in this sidebar.
+      row.className = 'lesson-row' + (idx === curIdx ? ' active' : '') + (done ? ' done' : '') + (locked ? ' locked' : '');
+      row.setAttribute('role', 'treeitem');
+      if (idx === curIdx) row.setAttribute('aria-current', 'true');
+      if (locked) row.setAttribute('aria-disabled', 'true');
+      row.innerHTML = '<span class="mdi ' + icon + '" aria-hidden="true"></span><span class="lbl">' + esc(l.t) + '</span>'
+        + (done ? '<span class="sr-only"> (completed)</span>' : locked ? '<span class="sr-only"> (locked)</span>' : '');
       row.addEventListener('click', function () { if (locked) { toast('Complete the previous lesson first.'); return; } selectLesson(idx); });
       kids.appendChild(row);
     });
     sec.appendChild(head); sec.appendChild(kids); tree.appendChild(sec);
+  });
+  wireTreeKeys();
+}
+
+/* Roving tabindex: one stop for the whole tree, arrows to move within it. */
+function wireTreeKeys() {
+  const items = [].slice.call(tree.querySelectorAll('.sec-head, .lesson-row'));
+  if (!items.length) return;
+  const current = tree.querySelector('.lesson-row.active') || items[0];
+  items.forEach(function (el) { el.tabIndex = el === current ? 0 : -1; });
+  if (tree.__keysWired) return;
+  tree.__keysWired = true;
+  tree.addEventListener('keydown', function (e) {
+    if (e.key !== 'ArrowDown' && e.key !== 'ArrowUp' && e.key !== 'Home' && e.key !== 'End') return;
+    const list = [].slice.call(tree.querySelectorAll('.sec-head, .lesson-row'))
+      .filter(function (el) { return el.offsetParent !== null; });
+    const i = list.indexOf(document.activeElement);
+    let next = i;
+    if (e.key === 'ArrowDown') next = Math.min(list.length - 1, i + 1);
+    else if (e.key === 'ArrowUp') next = Math.max(0, i - 1);
+    else if (e.key === 'Home') next = 0;
+    else next = list.length - 1;
+    if (list[next]) { list.forEach(function (el) { el.tabIndex = -1; }); list[next].tabIndex = 0; list[next].focus(); e.preventDefault(); }
   });
 }
 
@@ -78,14 +119,38 @@ function lessonBodyHTML(f) {
     + '<span class="lchip"><span class="mdi mdi-lightning-bolt"></span>+' + f.l.xp + ' XP</span>'
     + (done ? '<span class="lchip"><span class="mdi mdi-check-circle"></span>Completed</span>' : '')
     + '</div>';
-  const hasChallenge = /language-challenge/.test(f.l.body || '');   // lessons with a minigame complete via winning it
-  const completeBox = hasChallenge ? '' :
-    '<div class="challenge"><div class="ch-h"><span class="mdi mdi-check-circle-outline"></span> Finish this lesson</div>'
-    + '<div style="color:var(--muted);margin-bottom:6px;">Mark it complete to earn XP and unlock the next lesson.</div>'
-    + '<button class="btn-primary" id="completeBtn"' + (done ? ' disabled' : '') + '><span class="mdi mdi-' + (done ? 'check' : 'arrow-right') + '"></span>' + (done ? 'Completed  (+' + f.l.xp + ' XP)' : 'Complete lesson  (+' + f.l.xp + ' XP)') + '</button></div>';
+  // No "Complete lesson" button: the lesson completes itself when the work is done. This strip
+  // is what tells the student that completion is a thing and how close they are to it.
+  const strip = '<div class="lesson-progress" id="lessonProgress" aria-live="polite"></div>';
   return '<div class="lesson-hero"><div class="hero-inner"><h1>' + f.l.t + '</h1>'
     + (f.l.d ? '<p class="lead">' + f.l.d + '</p>' : '') + meta + '</div></div>'
-    + '<div class="lesson-content">' + f.l.body + completeBox + '</div>';
+    + '<div class="lesson-content">' + f.l.body + strip + '</div>';
+}
+
+/* The strip under the lesson. Three states: how much is left, keep-reading, and the reward. */
+function renderLessonProgress(f, dwellFrac) {
+  const el = $('lessonProgress'); if (!el) return;
+  const complete = !!state.done[f.id];
+  if (complete) {
+    el.className = 'lesson-progress done';
+    el.innerHTML = '<span class="mdi mdi-check-circle"></span><b>Lesson complete</b>'
+      + '<span class="lp-xp">+' + f.l.xp + ' XP</span>';
+    return;
+  }
+  if (!lessonPlan.total) {
+    const pct = Math.round((dwellFrac || 0) * 100);
+    el.className = 'lesson-progress reading';
+    el.innerHTML = '<span class="mdi mdi-book-open-page-variant"></span>'
+      + '<span class="lp-label">Read to the end to finish this lesson</span>'
+      + '<span class="lp-bar"><i style="width:' + pct + '%"></i></span>';
+    return;
+  }
+  const n = activityProgress();
+  el.className = 'lesson-progress';
+  el.innerHTML = '<span class="mdi mdi-target"></span>'
+    + '<span class="lp-label">' + n + ' of ' + lessonPlan.total + ' done</span>'
+    + '<span class="lp-bar"><i style="width:' + Math.round(n / lessonPlan.total * 100) + '%"></i></span>'
+    + '<span class="lp-xp">+' + f.l.xp + ' XP</span>';
 }
 let currentAIMode = 'full';   // the current lesson's coder policy: full | guided | off
 let aiMode = 'coder';         // which agent the panel talks to: tutor | coder

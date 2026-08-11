@@ -10,6 +10,18 @@ window.addEventListener('message', function (e) {
 });
 function resetWidgetHandlers() { Object.keys(widgetHandlers).forEach(function (k) { delete widgetHandlers[k]; }); }
 
+/* ---------- stable widget keys ----------
+   Widgets used to identify themselves with Math.random(), which meant nothing about a lesson
+   could be remembered: a new id every render. Keys are now the widget's position in the lesson
+   by kind — q0, q1, r0, c0 — which is the same on every render and after a reload, so the
+   activity ledger in project.js has something durable to hang answers on. */
+let lessonWidgetId = '';
+let widgetSeq = { q: 0, r: 0, c: 0 };
+let goalRunKeys = [];        // run cells that declare @expect — the only ones that can be "finished"
+function beginLessonWidgets(lessonId) { lessonWidgetId = lessonId || ''; widgetSeq = { q: 0, r: 0, c: 0 }; goalRunKeys = []; }
+function nextWidgetKey(kind) { return kind + (widgetSeq[kind]++); }
+function widgetToken(key) { return (lessonWidgetId || 'l') + ':' + key; }
+
 /* ```run — editable JS cell. Directives (as // @lines): @goal: <text>, @expect: <substring>, @slider: name min max step value */
 function renderRunCells(root) {
   root.querySelectorAll('pre > code.language-run').forEach(function (code) {
@@ -23,7 +35,7 @@ function renderRunCells(root) {
       else bodyLines.push(ln);
     });
     const src = bodyLines.join('\n').replace(/^\n+/, '');
-    const tok = 'rc' + Math.random().toString(36).slice(2, 9);
+    const key = nextWidgetKey('r'), tok = widgetToken(key);
     const cell = document.createElement('div'); cell.className = 'runcell';
     if (goal) { const g = document.createElement('div'); g.className = 'run-goal'; g.innerHTML = '<span class="mdi mdi-target"></span>'; g.appendChild(document.createTextNode(goal)); cell.appendChild(g); }
     const sEls = {};
@@ -51,10 +63,15 @@ function renderRunCells(root) {
     }
     function run() { out.style.display = 'block'; out.srcdoc = buildDoc(ta.value); }
     if (expect) {
+      // A goal-checked run cell counts toward finishing the lesson; one without a goal cannot,
+      // because neither the student nor the app can tell whether anything was achieved.
+      goalRunKeys.push(key);
+      if (activityDone(lessonWidgetId, key)) { status.className = 'run-status ok'; status.textContent = 'Goal met!'; }
       widgetHandlers[tok] = function (d) {
         if (!d.__runcell) return;
         const met = (d.text || '').indexOf(expect) >= 0;
         status.className = 'run-status ' + (met ? 'ok' : 'no'); status.textContent = met ? 'Goal met!' : 'Not yet — check the output.';
+        if (met) resolveActivity(key);
       };
     }
     btn.addEventListener('click', run);
@@ -73,57 +90,188 @@ function shuffleOrder(n) {
 }
 /* ```quiz  (provisional syntax) — types: mcq | predict | parsons | fillblank | findbug. All checked locally. */
 function renderQuizCells(root) {
-  root.querySelectorAll('pre > code.language-quiz').forEach(function (code) {
+  const codes = [].slice.call(root.querySelectorAll('pre > code.language-quiz'));
+  const total = codes.length;
+  codes.forEach(function (code, idx) {
     let q; try { q = jsyaml.load(code.textContent) || {}; } catch (e) { q = {}; }
     const pre = code.parentNode;
-    const cell = document.createElement('div'); cell.className = 'quizcell';
-    const head = document.createElement('div'); head.className = 'quiz-h'; head.innerHTML = '<span class="mdi mdi-help-circle-outline"></span>'; head.appendChild(document.createTextNode(q.prompt || 'Quick check')); cell.appendChild(head);
+    const key = nextWidgetKey('q');
+
+    const cell = document.createElement('div'); cell.className = 'quizcell'; cell.setAttribute('role', 'group');
+
+    // Header: the question is the strongest thing in the card, with its place in the lesson.
+    const head = document.createElement('div'); head.className = 'quiz-h';
+    const qText = document.createElement('div'); qText.className = 'quiz-q';
+    qText.innerHTML = '<span class="mdi mdi-help-circle-outline"></span>';
+    qText.appendChild(document.createTextNode(q.prompt || 'Quick check'));
+    head.appendChild(qText);
+    const badge = document.createElement('span'); badge.className = 'quiz-count';
+    badge.textContent = total > 1 ? (idx + 1) + ' of ' + total : '';
+    if (total > 1) head.appendChild(badge);
+    cell.appendChild(head);
+
     const body = document.createElement('div'); body.className = 'quiz-body'; cell.appendChild(body);
+
+    // Footer: verdict on the left, the action on the right. Both live INSIDE .quiz-body so one
+    // formatting context owns the card — the old split put the button in the flex column and the
+    // result outside it, which is where the dead space under Check came from.
+    const foot = document.createElement('div'); foot.className = 'quiz-foot';
     const result = document.createElement('div'); result.className = 'quiz-result';
-    const check = document.createElement('button'); check.className = 'quiz-check'; check.textContent = 'Check';
-    const say = function (ok, msg) { result.className = 'quiz-result ' + (ok ? 'ok' : 'no'); result.textContent = msg; };
+    result.setAttribute('aria-live', 'polite');
+    const check = document.createElement('button'); check.type = 'button'; check.className = 'btn btn-secondary quiz-check'; check.textContent = 'Check';
+
+    const ctx = { q: q, key: key, cell: cell, head: head, body: body, check: check, attempts: 0, resolved: false };
+    ctx.say = function (kind, msg) { result.className = 'quiz-result' + (kind ? ' ' + kind : ''); result.textContent = msg || ''; };
+
     const type = q.type || 'mcq';
-    if (type === 'parsons') buildParsons(q, body, check, say);
-    else if (type === 'fillblank') buildFill(q, body, check, say);
-    else if (type === 'findbug') buildFindBug(q, body, check, say);
-    else buildMCQ(q, body, check, say, type === 'predict');
-    body.appendChild(check); cell.appendChild(result);
+    if (type === 'parsons') buildParsons(q, body, ctx);
+    else if (type === 'fillblank') buildFill(q, body, ctx);
+    else if (type === 'findbug') buildFindBug(q, body, ctx);
+    else buildMCQ(q, body, ctx, type === 'predict');
+
+    foot.appendChild(result); foot.appendChild(check);
+    body.appendChild(foot);
     pre.parentNode.replaceChild(cell, pre);
+
+    if (activityDone(lessonWidgetId, key)) markQuizDone(ctx, true);
   });
 }
-function buildMCQ(q, body, check, say, isPredict) {
+
+/* ---------- one retry model for all five quiz types ----------
+   They used to disagree: mcq/predict/findbug revealed the answer on the FIRST wrong attempt and
+   ended there, while fillblank/parsons allowed unlimited tries and never revealed. Same-looking
+   card, opposite rules, so a child could not tell what guessing costs — and being shown the
+   answer the instant you are wrong, with no second try, is the shape of feeling stupid.
+   Now: first wrong explains and invites another go; second wrong teaches the answer. */
+function quizVerdict(ctx, correct, wrongHint, reveal) {
+  if (ctx.resolved) return;
+  if (correct) { ctx.say('ok', 'Correct!'); markQuizDone(ctx); return; }
+  ctx.attempts++;
+  if (ctx.attempts < 2) {
+    ctx.say('no', wrongHint || 'Not quite — take another look.');
+    ctx.check.textContent = 'Try again';
+    return;
+  }
+  if (typeof reveal === 'function') reveal();
+  ctx.say('no', ctx.q.explain ? "Here's the answer — " + ctx.q.explain : 'Here is the answer, highlighted above.');
+  markQuizDone(ctx);
+}
+
+/* Resolved for good: lock the card, tick the header, and record it so the lesson can complete
+   and so the answer survives a reload. */
+function markQuizDone(ctx, restoring) {
+  ctx.resolved = true;
+  ctx.check.disabled = true;
+  ctx.check.textContent = 'Answered';
+  ctx.cell.classList.add('answered');
+  if (!ctx.head.querySelector('.quiz-tick')) {
+    const tick = document.createElement('span'); tick.className = 'quiz-tick mdi mdi-check-circle';
+    tick.title = 'Answered';
+    ctx.head.appendChild(tick);
+  }
+  if (restoring) { ctx.say('', ''); if (typeof ctx.restore === 'function') ctx.restore(); return; }
+  resolveActivity(ctx.key);
+}
+function buildMCQ(q, body, ctx, isPredict) {
   if (isPredict && q.code) { const pc = document.createElement('pre'); pc.className = 'quiz-code'; pc.textContent = q.code; body.appendChild(pc); }
-  const opts = q.options || []; const fb = q.feedback || []; let chosen = -1; const nm = 'q' + Math.random().toString(36).slice(2, 8); const rows = [];
+  const opts = q.options || [], fb = q.feedback || [], rows = [];
+  let chosen = -1;
+
+  const list = document.createElement('div'); list.className = 'mcq-list';
+  list.setAttribute('role', 'radiogroup');
+  list.setAttribute('aria-label', q.prompt || 'Answer options');
+
   opts.forEach(function (opt, i) {
-    const row = document.createElement('label'); row.className = 'mcq-opt'; rows.push(row);
-    const radio = document.createElement('input'); radio.type = 'radio'; radio.name = nm;
-    radio.addEventListener('change', function () { chosen = i; });
-    const span = document.createElement('span'); span.textContent = opt;
-    row.appendChild(radio); row.appendChild(span); body.appendChild(row);
+    // A real button, not a label wrapping a radio: the whole row is the target, and it is
+    // reachable and pressable from the keyboard without any extra work.
+    const row = document.createElement('button'); row.type = 'button'; row.className = 'mcq-opt';
+    row.setAttribute('role', 'radio'); row.setAttribute('aria-checked', 'false');
+    const text = document.createElement('span'); text.className = 'mcq-text'; text.textContent = opt;
+    const num = document.createElement('span'); num.className = 'mcq-num'; num.textContent = String(i + 1);
+    row.appendChild(text); row.appendChild(num);
+    row.addEventListener('click', function () { if (!ctx.resolved) select(i); });
+    rows.push(row); list.appendChild(row);
   });
-  check.addEventListener('click', function () {
-    if (chosen < 0) { say(false, 'Pick an answer first.'); return; }
-    const ans = Number(q.answer); const ok = chosen === ans;
-    rows.forEach(function (r, i) { r.classList.remove('correct', 'wrong'); if (i === ans) r.classList.add('correct'); else if (i === chosen) r.classList.add('wrong'); });
-    if (ok) say(true, 'Correct!');
-    else say(false, fb[chosen] ? 'Not quite — ' + fb[chosen] : (q.explain ? 'Not quite — ' + q.explain : 'Not quite — the highlighted answer is correct.'));
+  body.appendChild(list);
+
+  function select(i) {
+    chosen = i;
+    rows.forEach(function (r, n) { r.classList.toggle('sel', n === i); r.setAttribute('aria-checked', n === i ? 'true' : 'false'); });
+    ctx.say('', '');
+  }
+  // Number keys pick an answer, Enter checks it — the shortcut the badge is advertising.
+  ctx.cell.addEventListener('keydown', function (e) {
+    if (ctx.resolved || e.altKey || e.ctrlKey || e.metaKey) return;
+    const n = parseInt(e.key, 10);
+    if (n >= 1 && n <= rows.length) { select(n - 1); rows[n - 1].focus(); e.preventDefault(); }
+    else if (e.key === 'Enter' && document.activeElement !== ctx.check && chosen >= 0) { ctx.check.click(); e.preventDefault(); }
+  });
+
+  /* The content authors per-option feedback that only ever appeared as one line at the bottom of
+     the card. It belongs against the option it explains. */
+  function explainRow(i) {
+    const row = rows[i]; if (!row || row.querySelector('.mcq-why') || !fb[i]) return;
+    const why = document.createElement('span'); why.className = 'mcq-why'; why.textContent = fb[i];
+    row.querySelector('.mcq-text').appendChild(why);
+  }
+  const answer = Number(q.answer);
+  ctx.restore = function () { rows.forEach(function (r, i) { r.disabled = true; if (i === answer) r.classList.add('correct'); }); };
+
+  ctx.check.addEventListener('click', function () {
+    if (ctx.resolved) return;
+    if (chosen < 0) { ctx.say('no', 'Pick an answer first.'); return; }
+    const ok = chosen === answer;
+    if (ok) { rows[chosen].classList.remove('sel'); rows[chosen].classList.add('correct'); }
+    else { rows[chosen].classList.add('wrong'); rows[chosen].classList.remove('sel'); explainRow(chosen); }
+    quizVerdict(ctx, ok, fb[chosen] || 'Not quite — read that one again.', function () {
+      rows[answer].classList.add('correct');
+    });
+    if (ctx.resolved) rows.forEach(function (r) { r.disabled = true; });
   });
 }
-function buildParsons(q, body, check, say) {
+function buildParsons(q, body, ctx) {
   const items = (q.lines || []).map(function (t) { return { text: t, distractor: false, why: '' }; })
     .concat((q.distractors || []).map(function (d) { return { text: (typeof d === 'string' ? d : d.text), distractor: true, why: (typeof d === 'string' ? '' : (d.why || '')) }; }));
   const correct = (q.lines || []); const hasDist = (q.distractors || []).length > 0;
   let order = shuffleOrder(items.length); const used = {}; items.forEach(function (_, i) { used[i] = true; }); let dragFrom = null;
+  let focusPos = 0;
   const list = document.createElement('div'); list.className = 'parsons';
+  list.setAttribute('role', 'listbox'); list.setAttribute('aria-label', 'Put the lines in order');
+  const live = document.createElement('div'); live.className = 'sr-only'; live.setAttribute('aria-live', 'polite');
+
+  /* Reordering was mouse-only: draggable plus three drag listeners and nothing else, so five
+     lessons were simply unreachable without a mouse. Alt+Up/Down moves the focused line and
+     announces where it landed. */
+  function move(from, to) {
+    if (to < 0 || to >= order.length) return;
+    const mv = order.splice(from, 1)[0]; order.splice(to, 0, mv);
+    focusPos = to; draw();
+    const row = list.children[to]; if (row) row.focus();
+    live.textContent = 'Moved to position ' + (to + 1) + ' of ' + order.length;
+  }
   function draw() {
     list.innerHTML = '';
     order.forEach(function (idx, pos) {
       const it = items[idx];
-      const row = document.createElement('div'); row.className = 'parsons-row' + (used[idx] ? '' : ' unused'); row.draggable = true;
+      const row = document.createElement('div'); row.className = 'parsons-row' + (used[idx] ? '' : ' unused');
+      row.draggable = !ctx.resolved;
+      row.tabIndex = pos === focusPos ? 0 : -1;
+      row.setAttribute('role', 'option');
+      row.setAttribute('aria-selected', 'false');
+      row.setAttribute('aria-label', it.text + ', position ' + (pos + 1) + ' of ' + order.length);
       const handle = document.createElement('span'); handle.className = 'drag-handle'; handle.innerHTML = '<span class="mdi mdi-drag-horizontal-variant"></span>';
       row.appendChild(handle);
-      if (hasDist) { const cb = document.createElement('input'); cb.type = 'checkbox'; cb.className = 'p-use'; cb.checked = used[idx]; cb.addEventListener('change', function () { used[idx] = cb.checked; row.classList.toggle('unused', !cb.checked); }); row.appendChild(cb); }
+      if (hasDist) { const cb = document.createElement('input'); cb.type = 'checkbox'; cb.className = 'p-use'; cb.checked = used[idx]; cb.disabled = ctx.resolved; cb.setAttribute('aria-label', 'Include this line'); cb.addEventListener('change', function () { used[idx] = cb.checked; row.classList.toggle('unused', !cb.checked); }); row.appendChild(cb); }
       const c = document.createElement('code'); c.textContent = it.text; row.appendChild(c);
+      row.addEventListener('focus', function () { focusPos = pos; });
+      row.addEventListener('keydown', function (e) {
+        if (ctx.resolved) return;
+        if (e.altKey && e.key === 'ArrowUp') { move(pos, pos - 1); e.preventDefault(); }
+        else if (e.altKey && e.key === 'ArrowDown') { move(pos, pos + 1); e.preventDefault(); }
+        else if (e.key === 'ArrowUp') { const p = list.children[pos - 1]; if (p) { focusPos = pos - 1; p.tabIndex = 0; p.focus(); } e.preventDefault(); }
+        else if (e.key === 'ArrowDown') { const n = list.children[pos + 1]; if (n) { focusPos = pos + 1; n.tabIndex = 0; n.focus(); } e.preventDefault(); }
+        else if (hasDist && (e.key === ' ' || e.key === 'Enter')) { const cb = row.querySelector('.p-use'); if (cb) { cb.checked = !cb.checked; used[idx] = cb.checked; row.classList.toggle('unused', !cb.checked); } e.preventDefault(); }
+      });
       row.addEventListener('dragstart', function () { dragFrom = pos; row.classList.add('dragging'); });
       row.addEventListener('dragend', function () { row.classList.remove('dragging'); });
       row.addEventListener('dragover', function (e) { e.preventDefault(); row.classList.add('over'); });
@@ -132,48 +280,87 @@ function buildParsons(q, body, check, say) {
       list.appendChild(row);
     });
   }
-  draw(); body.appendChild(list);
-  const hint = document.createElement('div'); hint.className = 'parsons-hint'; hint.textContent = hasDist ? 'Drag into order — and uncheck any lines that don’t belong.' : 'Drag the lines into the right order.'; body.appendChild(hint);
-  check.addEventListener('click', function () {
+  draw(); body.appendChild(list); body.appendChild(live);
+  const hint = document.createElement('div'); hint.className = 'parsons-hint';
+  hint.textContent = (hasDist ? 'Drag into order, and uncheck any lines that don’t belong. ' : 'Drag the lines into the right order. ')
+    + 'Keyboard: arrow keys to move between lines, Alt + arrows to reorder.';
+  body.appendChild(hint);
+
+  ctx.restore = function () { draw(); };
+  ctx.check.addEventListener('click', function () {
+    if (ctx.resolved) return;
     const kept = order.filter(function (idx) { return used[idx]; }).map(function (idx) { return items[idx]; });
     const badDist = kept.filter(function (it) { return it.distractor; });
-    if (badDist.length) { say(false, badDist[0].why ? 'Not quite — ' + badDist[0].why : 'Not quite — one of the lines you kept doesn’t belong.'); return; }
     const texts = kept.map(function (it) { return it.text; });
-    const ok = texts.length === correct.length && texts.every(function (t, i) { return t === correct[i]; });
-    say(ok, ok ? 'Correct — nice ordering!' : 'Not yet — check the order (and which lines you kept).');
+    const ok = !badDist.length && texts.length === correct.length && texts.every(function (t, i) { return t === correct[i]; });
+    const hintMsg = badDist.length
+      ? (badDist[0].why ? 'Not quite — ' + badDist[0].why : 'Not quite — one of the lines you kept doesn’t belong.')
+      : 'Not yet — check the order (and which lines you kept).';
+    quizVerdict(ctx, ok, hintMsg, function () {
+      order = items.map(function (_, i) { return i; }).filter(function (i) { return !items[i].distractor; });
+      items.forEach(function (it, i) { used[i] = !it.distractor; });
+      draw();
+    });
+    if (ctx.resolved) draw();
   });
 }
-function buildFill(q, body, check, say) {
+function buildFill(q, body, ctx) {
   const tpl = String(q.code || q.template || ''); const parts = tpl.split('___');
   const wrap = document.createElement('div'); wrap.className = 'fill-code';
   const input = document.createElement('input'); input.type = 'text'; input.className = 'fill-input'; input.spellcheck = false; input.placeholder = '?';
+  input.setAttribute('aria-label', q.prompt || 'Fill in the blank');
   if (parts.length >= 2) { wrap.appendChild(document.createTextNode(parts[0])); wrap.appendChild(input); wrap.appendChild(document.createTextNode(parts.slice(1).join('___'))); }
   else { wrap.appendChild(input); }
   body.appendChild(wrap);
   const answers = (Array.isArray(q.answer) ? q.answer : [q.answer]).map(function (a) { return String(a).trim(); });
-  check.addEventListener('click', function () {
+  input.addEventListener('keydown', function (e) { if (e.key === 'Enter' && !ctx.resolved) { ctx.check.click(); e.preventDefault(); } });
+
+  ctx.restore = function () { input.value = answers[0] || ''; input.disabled = true; input.classList.add('correct'); };
+  ctx.check.addEventListener('click', function () {
+    if (ctx.resolved) return;
     const v = input.value.trim();
+    if (!v) { ctx.say('no', 'Type your answer in the box first.'); return; }
     const ok = answers.some(function (a) { return a === v || a.toLowerCase() === v.toLowerCase(); });
-    say(ok, ok ? 'Correct!' : (q.explain ? 'Not quite — ' + q.explain : 'Not quite — try again.'));
+    input.classList.toggle('correct', ok); input.classList.toggle('wrong', !ok);
+    quizVerdict(ctx, ok, q.explain ? 'Not quite — ' + q.explain : 'Not quite — check the spelling and try again.', function () {
+      input.value = answers[0] || ''; input.classList.remove('wrong'); input.classList.add('correct');
+    });
+    if (ctx.resolved) input.disabled = true;
   });
 }
-function buildFindBug(q, body, check, say) {
+function buildFindBug(q, body, ctx) {
   const lines = q.code || q.lines || []; let chosen = -1; const rows = [];
   const wrap = document.createElement('div'); wrap.className = 'findbug';
+  wrap.setAttribute('role', 'radiogroup'); wrap.setAttribute('aria-label', q.prompt || 'Which line has the bug?');
   lines.forEach(function (ln, i) {
-    const row = document.createElement('div'); row.className = 'fb-row'; rows.push(row);
+    // A button, so the line is reachable and pressable without a mouse.
+    const row = document.createElement('button'); row.type = 'button'; row.className = 'fb-row'; rows.push(row);
+    row.setAttribute('role', 'radio'); row.setAttribute('aria-checked', 'false');
     const num = document.createElement('span'); num.className = 'fb-num'; num.textContent = (i + 1);
     const c = document.createElement('code'); c.textContent = ln;
     row.appendChild(num); row.appendChild(c);
-    row.addEventListener('click', function () { chosen = i; rows.forEach(function (r) { r.classList.remove('sel'); }); row.classList.add('sel'); });
+    row.addEventListener('click', function () {
+      if (ctx.resolved) return;
+      chosen = i;
+      rows.forEach(function (r, n) { r.classList.toggle('sel', n === i); r.setAttribute('aria-checked', n === i ? 'true' : 'false'); });
+      ctx.say('', '');
+    });
     wrap.appendChild(row);
   });
   body.appendChild(wrap);
-  check.addEventListener('click', function () {
-    if (chosen < 0) { say(false, 'Click the line you think has the bug.'); return; }
-    const ans = Number(q.answer); const ok = chosen === ans;
-    rows.forEach(function (r, i) { r.classList.remove('correct', 'wrong'); if (i === ans) r.classList.add('correct'); else if (i === chosen) r.classList.add('wrong'); });
-    say(ok, ok ? 'Correct — that’s the bug!' : (q.explain ? 'Not quite — ' + q.explain : 'Not quite — the highlighted line has the bug.'));
+  const answer = Number(q.answer);
+  ctx.restore = function () { rows.forEach(function (r, i) { r.disabled = true; if (i === answer) r.classList.add('correct'); }); };
+
+  ctx.check.addEventListener('click', function () {
+    if (ctx.resolved) return;
+    if (chosen < 0) { ctx.say('no', 'Pick the line you think has the bug.'); return; }
+    const ok = chosen === answer;
+    if (ok) { rows[chosen].classList.remove('sel'); rows[chosen].classList.add('correct'); }
+    else { rows[chosen].classList.add('wrong'); rows[chosen].classList.remove('sel'); }
+    quizVerdict(ctx, ok, q.explain ? 'Not quite — ' + q.explain : 'Not quite — look at that line again.', function () {
+      rows[answer].classList.add('correct');
+    });
+    if (ctx.resolved) rows.forEach(function (r) { r.disabled = true; });
   });
 }
 /* ```challenge — an editable mini-game embedded in the lesson. YAML: task, code. The student's code
@@ -181,22 +368,24 @@ function buildFindBug(q, body, check, say) {
 function renderChallengeCells(root) {
   root.querySelectorAll('pre > code.language-challenge').forEach(function (code) {
     let c; try { c = jsyaml.load(code.textContent) || {}; } catch (e) { c = {}; }
-    const pre = code.parentNode; const tok = 'cm' + Math.random().toString(36).slice(2, 9);
+    const pre = code.parentNode;
+    const key = nextWidgetKey('c'), tok = widgetToken(key);
     const cell = document.createElement('div'); cell.className = 'challenge-mini';
     cell.innerHTML = '<div class="cm-h"><span class="mdi mdi-flag-checkered"></span>Challenge</div>';
     if (c.task) { const t = document.createElement('div'); t.className = 'cm-task'; t.textContent = c.task; cell.appendChild(t); }
     const ta = document.createElement('textarea'); ta.className = 'cm-code'; ta.value = c.code || ''; ta.spellcheck = false; ta.rows = Math.min(18, Math.max(4, (c.code || '').split('\n').length));
     const stage = document.createElement('iframe'); stage.className = 'cm-stage'; stage.setAttribute('sandbox', 'allow-scripts');
     const bar = document.createElement('div'); bar.className = 'cm-bar';
-    const run = document.createElement('button'); run.className = 'cm-run'; run.innerHTML = '<span class="mdi mdi-play"></span>Run &amp; check';
+    const run = document.createElement('button'); run.className = 'btn cm-run'; run.innerHTML = '<span class="mdi mdi-play"></span>Run &amp; check';
     const status = document.createElement('div'); status.className = 'cm-status';
     function build(userCode) {
       const safe = userCode.replace(/<\/(script)/gi, '<\\/$1');
       return '<!doctype html><body style="margin:0;background:#08121f;display:flex;align-items:center;justify-content:center;height:100vh"><canvas id="c" width="300" height="200" style="background:#0d2137;border-radius:8px"></canvas><scr' + 'ipt>var canvas=document.getElementById("c"),ctx=canvas.getContext("2d"),__w=false;function win(){if(__w)return;__w=true;try{parent.postMessage({__cm:true,tok:"' + tok + '",win:true},"*");}catch(e){}}window.onerror=function(m){try{parent.postMessage({__cm:true,tok:"' + tok + '",err:String(m)},"*");}catch(e){}};try{\n' + safe + '\n}catch(e){window.onerror(e.message);}<\/scr' + 'ipt></body>';
     }
+    if (activityDone(lessonWidgetId, key)) { status.className = 'cm-status ok'; status.textContent = 'Challenge complete!'; }
     widgetHandlers[tok] = function (d) {
       if (!d.__cm) return;
-      if (d.win) { status.className = 'cm-status ok'; status.textContent = 'Challenge complete!'; if (flat[curIdx] && !state.done[flat[curIdx].id]) completeLesson(); }
+      if (d.win) { status.className = 'cm-status ok'; status.textContent = 'Challenge complete!'; resolveActivity(key); }
       else if (d.err) { status.className = 'cm-status no'; status.textContent = 'Error: ' + d.err; }
     };
     run.addEventListener('click', function () { status.className = 'cm-status'; status.textContent = 'Running…'; stage.srcdoc = build(ta.value); });
@@ -216,17 +405,91 @@ function selectLesson(idx) {
   $('lessonBody').style.setProperty('--mod', moduleHero(f.mi));
   currentLessonText = ($('lessonBody').textContent || '').replace(/\s+/g, ' ').trim().slice(0, 3000);
   resetWidgetHandlers();   // the previous lesson's widget iframes are gone with the innerHTML
+  beginLessonWidgets(f.id);
   renderRunCells($('lessonBody'));
   renderQuizCells($('lessonBody'));
   renderChallengeCells($('lessonBody'));
+  paintLesson($('lessonBody'));
   applyAIMode(f.l.ai);
-  const btn = $('completeBtn'); if (btn) btn.addEventListener('click', function () { completeLesson(); });
+  startLessonProgress(f);
   renderOutline(); switchView('learn');
 }
+
+/* ---------- finishing a lesson ----------
+   There is no "Complete lesson" button any more. A lesson finishes when its work is finished:
+   every quiz answered, every goal-checked run cell met, every challenge won. A lesson with none
+   of those to offer finishes once the student has actually reached the end of it and stayed a
+   while. The button was always clickable from the moment the page loaded, which taught a child
+   in lesson one that the questions were decoration. */
+let lessonPlan = { keys: [], total: 0, dwellTimer: null, dwellSeen: false };
+const DWELL_MS = 20000;
+
+function lessonActivityKeys() {
+  const keys = [];
+  for (let i = 0; i < widgetSeq.q; i++) keys.push('q' + i);
+  for (let i = 0; i < widgetSeq.c; i++) keys.push('c' + i);
+  // only run cells with an @expect goal can be "finished"; the rest are for tinkering
+  goalRunKeys.forEach(function (k) { keys.push(k); });
+  return keys;
+}
+function startLessonProgress(f) {
+  clearInterval(lessonPlan.dwellTimer);
+  lessonPlan = { keys: lessonActivityKeys(), total: 0, dwellTimer: null, dwellSeen: false };
+  lessonPlan.total = lessonPlan.keys.length;
+  renderLessonProgress(f);
+  if (!lessonPlan.total && !state.done[f.id]) watchDwell(f);
+}
+function activityProgress() {
+  const done = lessonActivities(flat[curIdx] ? flat[curIdx].id : '');
+  let n = 0; lessonPlan.keys.forEach(function (k) { if (done[k]) n++; });
+  return n;
+}
+/* Called by every widget the moment its work is genuinely finished. */
+function resolveActivity(key) {
+  const f = flat[curIdx]; if (!f) return;
+  markActivity(f.id, key);
+  renderLessonProgress(f);
+  if (lessonPlan.total && activityProgress() >= lessonPlan.total) completeLesson();
+}
+/* Reading lessons: finish on reaching the end and staying there. The timer only runs while the
+   tab is actually visible, so parking the lesson in a background tab does not count. */
+function watchDwell(f) {
+  const content = $('lessonBody').querySelector('.lesson-content');
+  if (!content) return;
+  const end = document.createElement('div'); end.className = 'lesson-end-sentinel';
+  content.appendChild(end);
+  let elapsed = 0, last = 0;
+  // The tick outlives a lesson switch by up to half a second, and would otherwise write this
+  // lesson's reading progress into the next lesson's strip.
+  const stillHere = function () { return flat[curIdx] === f; };
+  /* Measured directly rather than with an IntersectionObserver. IO callbacks are delivered as
+     part of the rendering steps, so a client that isn't painting never gets one — and with the
+     Complete button gone, a reading lesson whose observer stays silent can never be finished at
+     all. A rect read on a timer that is already running has no such dependency. */
+  const atEnd = function () {
+    const r = end.getBoundingClientRect();
+    return r.bottom > 0 && r.top < (window.innerHeight || 0);
+  };
+  const tick = function () {
+    if (!stillHere()) return;
+    const seen = atEnd();
+    if (seen !== lessonPlan.dwellSeen) { lessonPlan.dwellSeen = seen; if (!seen) last = 0; }
+    if (document.visibilityState !== 'visible' || !seen) { last = 0; return; }
+    const now = Date.now(); if (last) elapsed += now - last; last = now;
+    if (elapsed >= DWELL_MS) { clearInterval(lessonPlan.dwellTimer); completeLesson(); return; }
+    renderLessonProgress(f, Math.min(1, elapsed / DWELL_MS));
+  };
+  lessonPlan.dwellTimer = setInterval(tick, 500);
+}
 function completeLesson() {
-  const f = flat[curIdx]; if (state.done[f.id]) return;
+  const f = flat[curIdx]; if (!f || state.done[f.id]) return;
+  clearInterval(lessonPlan.dwellTimer);
   state.done[f.id] = true; state.xp += f.l.xp; toast('Lesson complete!  +' + f.l.xp + ' XP');
   const allDone = course.modules[f.mi].lessons.every(function (l, li) { return state.done[f.mi + '.' + li]; });
   if (allDone && !state.modDone[f.mi]) { state.modDone[f.mi] = true; state.stars += course.modules[f.mi].stars; setTimeout(function () { toast('Module complete: ' + course.modules[f.mi].name + '!  +' + course.modules[f.mi].stars + ' ★'); }, 900); }
-  saveState(); selectLesson(curIdx);
+  saveState();
+  // Update in place. This used to call selectLesson(), which re-rendered from innerHTML and wiped
+  // every answer and run-cell edit at the exact moment the student earned the reward.
+  renderLessonProgress(f);
+  renderOutline();
 }
