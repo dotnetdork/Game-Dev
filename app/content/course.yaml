@@ -1,7 +1,7 @@
 # Course structure. Edit to add/reorder modules and lessons.
 # Each lesson id maps to content/lessons/<id>.md
 id: course1
-name: "Game Development — Level 1"   # course name TBD
+name: "CodeQuest — Level 1"   # course name TBD
 library: Phaser
 modules:
   - id: welcome
