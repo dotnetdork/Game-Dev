@@ -71,16 +71,22 @@ function renderRunCells(root) {
     const bar = document.createElement('div'); bar.className = 'runbar';
     const btn = document.createElement('button'); btn.type = 'button'; btn.className = 'runbtn'; btn.innerHTML = '<span class="mdi mdi-play"></span>Run';
     const status = document.createElement('span'); status.className = 'run-status';
-    const out = document.createElement('iframe'); out.className = 'runout'; out.setAttribute('sandbox', 'allow-scripts');
-    out.setAttribute('title', 'Output');
+    /* The iframe is here to RUN the code safely, not to show it. A run cell only ever produces
+       console text, and that text already comes back over postMessage — so it is rendered in the
+       page, where it fits its content exactly. Sizing an iframe to its contents means guessing a
+       height for a box that scrolls independently, and the guess was wrong whenever the output
+       wrapped or the panel was resized. The sandbox stays, at zero size. */
+    const out = document.createElement('iframe'); out.className = 'runsandbox'; out.setAttribute('sandbox', 'allow-scripts');
+    out.setAttribute('title', 'Code sandbox'); out.setAttribute('aria-hidden', 'true');
+    const outText = document.createElement('pre'); outText.className = 'runout'; outText.setAttribute('aria-live', 'polite');
     function buildDoc(userCode) {
       const prefix = sliders.map(function (s) { return 'const ' + s.name + ' = ' + sEls[s.name].value + ';'; }).join('\n');
       const safe = (prefix + '\n' + userCode).replace(/<\/(script)/gi, '<\\/$1');
       // The document reports its own height back so the output box can fit the output instead of
       // reserving a fixed 120px and leaving a hole under a single line of text.
-      return '<!doctype html><body style="margin:0;font:13px Consolas,monospace;color:#cfe0f2;background:#08121f;padding:8px"><pre id="o" style="margin:0;white-space:pre-wrap"></pre><scr' + 'ipt>var o=document.getElementById("o");function w(){o.textContent+=[].slice.call(arguments).join(" ")+"\\n";}console.log=w;console.info=w;console.warn=w;console.error=function(){o.textContent+="\\u26a0 "+[].slice.call(arguments).join(" ")+"\\n";};try{\n' + safe + '\n}catch(e){o.textContent+="\\u26a0 "+e.message+"\\n";}try{parent.postMessage({__runcell:true,tok:"' + tok + '",text:o.textContent,h:document.body.scrollHeight},"*");}catch(e){}</scr' + 'ipt></body>';
+      return '<!doctype html><body><pre id="o"></pre><scr' + 'ipt>var o=document.getElementById("o");function w(){o.textContent+=[].slice.call(arguments).join(" ")+"\\n";}console.log=w;console.info=w;console.warn=w;console.error=function(){o.textContent+="\\u26a0 "+[].slice.call(arguments).join(" ")+"\\n";};try{\n' + safe + '\n}catch(e){o.textContent+="\\u26a0 "+e.message+"\\n";}try{parent.postMessage({__runcell:true,tok:"' + tok + '",text:o.textContent},"*");}catch(e){}</scr' + 'ipt></body>';
     }
-    function run() { out.style.display = 'block'; out.srcdoc = buildDoc(readCode()); }
+    function run() { out.srcdoc = buildDoc(readCode()); }
 
     if (expect) {
       // A goal-checked run cell counts toward finishing the lesson; one without a goal cannot,
@@ -90,7 +96,8 @@ function renderRunCells(root) {
     }
     widgetHandlers[tok] = function (d) {
       if (!d.__runcell) return;
-      if (d.h) out.style.height = Math.max(34, Math.min(240, d.h)) + 'px';
+      // textContent, never innerHTML: this string is whatever the student's code printed.
+      outText.textContent = (d.text || '').replace(/\n+$/, '');
       if (!expect) return;
       const met = (d.text || '').indexOf(expect) >= 0;
       status.className = 'run-status ' + (met ? 'ok' : 'no'); status.textContent = met ? 'Goal met!' : 'Not yet — check the output.';
@@ -103,7 +110,8 @@ function renderRunCells(root) {
     const liveSliders = sliders.length > 0 && !expect;
     if (!liveSliders) { btn.addEventListener('click', run); bar.appendChild(btn); }
     bar.appendChild(status);
-    cell.appendChild(host); if (!liveSliders) cell.appendChild(bar); cell.appendChild(out);
+    cell.appendChild(host); if (!liveSliders) cell.appendChild(bar);
+    cell.appendChild(outText); cell.appendChild(out);
     pre.parentNode.replaceChild(cell, pre);
     if (editor) editor.refresh();       // only now does it have a box to measure
     if (liveSliders) run();
