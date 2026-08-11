@@ -16,6 +16,7 @@ try {
 const express = require('express');
 const path = require('path');
 const ai = require('./ai/loader');   // agent + skill prompts, authored as Markdown in ai/
+const usage = require('./ai/usage'); // token + cost meter for paid providers
 const tools = require('./ai/tools'); // read-only lookups an agent can call (Stage 4 Tier 2)
 
 const app = express();
@@ -77,8 +78,10 @@ function resolveModel(agent) {
   if (!spec) spec = ai.agentModel(agent) || '';
   if (!spec) spec = DEFAULT_PROVIDER + ':' + (PROVIDER_DEFAULT_MODEL[DEFAULT_PROVIDER] || '');
   const i = spec.indexOf(':');
-  if (i > 0 && KNOWN_PROVIDERS.indexOf(spec.slice(0, i)) >= 0) return { provider: spec.slice(0, i), model: spec.slice(i + 1) };
-  return { provider: DEFAULT_PROVIDER, model: spec };
+  // `agent` rides along so the usage meter can attribute a call without threading an extra
+  // argument through every layer.
+  if (i > 0 && KNOWN_PROVIDERS.indexOf(spec.slice(0, i)) >= 0) return { provider: spec.slice(0, i), model: spec.slice(i + 1), agent: agent };
+  return { provider: DEFAULT_PROVIDER, model: spec, agent: agent };
 }
 
 // ---- simple per-student rate limit ----
@@ -102,6 +105,12 @@ app.get('/api/info', (req, res) => {
   ['coder', 'tutor', 'quiz', 'grader'].forEach(function (a) { const m = resolveModel(a); agents[a] = m.provider + ':' + m.model; });
   res.json({ agents: agents, provider: DEFAULT_PROVIDER, model: resolveModel('coder').model });
 });
+
+/* ---- what this session has spent ----
+   Token counts are the provider's own, from the response to each call; the dollar figure is
+   ours, from the price table in ai/usage.js. Counts reset when the server restarts. */
+app.get('/api/usage', (req, res) => res.json(usage.summary()));
+app.post('/api/usage/reset', (req, res) => { usage.reset(); res.json(usage.summary()); });
 
 // ---- helpers ----
 function extractJSON(s) {
@@ -395,6 +404,7 @@ async function chatOnce(spec, system, msgs, wantJSON, withTools) {
     });
     if (!r.ok) throw new Error('Anthropic HTTP ' + r.status);
     const d = await r.json();
+    usage.record(spec.agent || 'unknown', provider, model, d);
     const blocks = d.content || [];
     return {
       content: blocks.filter(function (b) { return b.type === 'text'; }).map(function (b) { return b.text; }).join(''),
@@ -414,6 +424,7 @@ async function chatOnce(spec, system, msgs, wantJSON, withTools) {
     });
     if (!r.ok) throw new Error('OpenRouter HTTP ' + r.status);
     const d = await r.json();
+    usage.record(spec.agent || 'unknown', provider, model, d);
     const m = (d.choices && d.choices[0] && d.choices[0].message) || {};
     return {
       content: m.content || '',
