@@ -385,10 +385,18 @@ body{background:var(--bg);color:var(--ink);font-family:var(--font);font-size:14p
 .lesson blockquote{margin:14px 0;padding:10px 14px;border-left:3px solid var(--teal);background:#0d2440;border-radius:0 8px 8px 0;color:#c3d3e6;}
 .lesson blockquote p{margin:0;}
 .runcell{margin:14px 0;border:1px solid var(--line);border-radius:10px;overflow:hidden;background:#0d2440;}
-.runcell textarea{width:100%;border:0;background:#08121f;color:#cfe0f2;font-family:Consolas,monospace;font-size:12.5px;line-height:1.5;padding:10px 12px;resize:vertical;min-height:64px;display:block;}
+/* No min-height: the editor sizes to its code, so a one-line example stops reserving four
+   lines of empty box above the Run bar. */
+.runcell .run-editor{background:#08121f;}
+.runcell .run-editor .CodeMirror{height:auto;font-family:Consolas,monospace;font-size:13px;line-height:1.6;padding:6px 2px;}
+.runcell .run-editor .CodeMirror-scroll{min-height:0;}
+.runcell .run-editor .CodeMirror-lines{padding:2px 0;}
+.runcell textarea{width:100%;border:0;background:#08121f;color:#cfe0f2;font-family:Consolas,monospace;font-size:13px;line-height:1.6;padding:10px 12px;resize:vertical;display:block;}
 .runcell .runbar{display:flex;justify-content:flex-end;padding:6px 8px;background:var(--panel2);}
 .runcell .runbtn{background:var(--teal);color:#04231d;border:0;border-radius:6px;padding:5px 12px;font-weight:600;cursor:pointer;display:inline-flex;align-items:center;gap:6px;}
-.runcell iframe.runout{width:100%;height:120px;border:0;border-top:1px solid var(--line);display:none;background:#08121f;}
+/* Height is set from the output document's own scrollHeight — a fixed 120px left a hole under
+   a single line of output. */
+.runcell iframe.runout{width:100%;height:34px;border:0;border-top:1px solid var(--line);display:none;background:#08121f;transition:height .12s ease;}
 .quizcell{margin:20px 0;border:1px solid var(--line);border-radius:12px;background:var(--panel);overflow:hidden;}
 .quiz-h{display:flex;align-items:center;gap:10px;padding:12px 16px;border-bottom:1px solid var(--line);background:#0d2440;}
 .quiz-q{display:flex;align-items:center;gap:9px;font-size:16px;font-weight:600;line-height:1.45;color:var(--ink);}
@@ -429,7 +437,9 @@ body{background:var(--bg);color:var(--ink);font-family:var(--font);font-size:14p
 .parsons-row.unused .p-pos{visibility:hidden;}
 .quiz-foot{display:flex;align-items:center;gap:12px;margin-top:2px;}
 .quiz-check{flex:none;margin-left:auto;}
-.quiz-result{font-size:13.5px;font-weight:600;line-height:1.45;}
+/* flex + gap, not a trailing space inside content: CSS collapses that space, so the tick sat
+   flush against the word. */
+.quiz-result{display:flex;align-items:baseline;gap:7px;font-size:13.5px;font-weight:600;line-height:1.45;}
 .quiz-result:empty{display:none;}
 .quiz-result.ok,.quiz-result.no{animation:quizsay .18s ease-out;}
 @keyframes quizsay{from{opacity:0;transform:translateY(-2px);}to{opacity:1;transform:none;}}
@@ -458,7 +468,8 @@ body{background:var(--bg);color:var(--ink);font-family:var(--font);font-size:14p
 .mcq-opt.wrong::after{content:"\2717";margin-left:auto;color:var(--gold);font-weight:700;font-size:15px;}
 .fb-row.correct::after{content:"\2713";margin-left:auto;color:var(--green);font-weight:700;}
 .fb-row.wrong::after{content:"\2717";margin-left:auto;color:var(--gold);font-weight:700;}
-.quiz-result.ok::before{content:"\2713 ";} .quiz-result.no::before{content:"\2717 ";}
+.quiz-result.ok::before{content:"\2713";} .quiz-result.no::before{content:"\2717";}
+.quiz-result::before{flex:none;font-size:15px;}
 
 /* ---------- AI proposal card: read the change, then accept it ---------- */
 .msg.proposal{max-width:100%;width:100%;background:var(--panel2);padding:10px 12px;}

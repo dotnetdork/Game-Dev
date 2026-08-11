@@ -34,7 +34,9 @@ function renderRunCells(root) {
       else if (m = ln.match(/^\s*\/\/\s*@slider:\s*([A-Za-z_$][\w$]*)\s+(-?[\d.]+)\s+(-?[\d.]+)\s+(-?[\d.]+)\s+(-?[\d.]+)\s*$/)) sliders.push({ name: m[1], min: +m[2], max: +m[3], step: +m[4], value: +m[5] });
       else bodyLines.push(ln);
     });
-    const src = bodyLines.join('\n').replace(/^\n+/, '');
+    // Trailing blank lines too, not just leading: a fence's closing newline was showing up as an
+    // extra empty line in the editor, which is most of the "gap under the code".
+    const src = bodyLines.join('\n').replace(/^\s*\n/, '').replace(/\s+$/, '');
     const key = nextWidgetKey('r'), tok = widgetToken(key);
     const cell = document.createElement('div'); cell.className = 'runcell';
     if (goal) { const g = document.createElement('div'); g.className = 'run-goal'; g.innerHTML = '<span class="mdi mdi-target"></span>'; g.appendChild(document.createTextNode(goal)); cell.appendChild(g); }
@@ -51,33 +53,60 @@ function renderRunCells(root) {
       });
       cell.appendChild(sw);
     }
-    const ta = document.createElement('textarea'); ta.value = src; ta.spellcheck = false; ta.rows = Math.min(16, Math.max(3, src.split('\n').length));
+    /* A real editor rather than a <textarea>: the run cell is where a lesson first shows a child
+       actual JavaScript, and it was the one code surface with no colouring at all. It also sizes
+       itself to the code, which is what removes the empty box under a one-line example. */
+    const host = document.createElement('div'); host.className = 'run-editor';
+    const ta = document.createElement('textarea'); ta.value = src; ta.spellcheck = false;
+    let editor = null;
+    if (typeof CodeMirror === 'function') {
+      editor = CodeMirror(host, {
+        value: src, mode: 'javascript', theme: 'material-darker',
+        tabSize: 2, indentUnit: 2, matchBrackets: true, autoCloseBrackets: true,
+        viewportMargin: Infinity
+      });
+    } else { ta.rows = Math.max(1, src.split('\n').length); host.appendChild(ta); }
+    const readCode = function () { return editor ? editor.getValue() : ta.value; };
+
     const bar = document.createElement('div'); bar.className = 'runbar';
-    const btn = document.createElement('button'); btn.className = 'runbtn'; btn.innerHTML = '<span class="mdi mdi-play"></span>Run';
+    const btn = document.createElement('button'); btn.type = 'button'; btn.className = 'runbtn'; btn.innerHTML = '<span class="mdi mdi-play"></span>Run';
     const status = document.createElement('span'); status.className = 'run-status';
     const out = document.createElement('iframe'); out.className = 'runout'; out.setAttribute('sandbox', 'allow-scripts');
+    out.setAttribute('title', 'Output');
     function buildDoc(userCode) {
       const prefix = sliders.map(function (s) { return 'const ' + s.name + ' = ' + sEls[s.name].value + ';'; }).join('\n');
       const safe = (prefix + '\n' + userCode).replace(/<\/(script)/gi, '<\\/$1');
-      return '<!doctype html><body style="margin:0;font:12.5px Consolas,monospace;color:#cfe0f2;background:#08121f;padding:8px"><pre id="o" style="margin:0;white-space:pre-wrap"></pre><scr' + 'ipt>var o=document.getElementById("o");function w(){o.textContent+=[].slice.call(arguments).join(" ")+"\\n";}console.log=w;console.info=w;console.warn=w;console.error=function(){o.textContent+="\\u26a0 "+[].slice.call(arguments).join(" ")+"\\n";};try{\n' + safe + '\n}catch(e){o.textContent+="\\u26a0 "+e.message+"\\n";}try{parent.postMessage({__runcell:true,tok:"' + tok + '",text:o.textContent},"*");}catch(e){}</scr' + 'ipt></body>';
+      // The document reports its own height back so the output box can fit the output instead of
+      // reserving a fixed 120px and leaving a hole under a single line of text.
+      return '<!doctype html><body style="margin:0;font:13px Consolas,monospace;color:#cfe0f2;background:#08121f;padding:8px"><pre id="o" style="margin:0;white-space:pre-wrap"></pre><scr' + 'ipt>var o=document.getElementById("o");function w(){o.textContent+=[].slice.call(arguments).join(" ")+"\\n";}console.log=w;console.info=w;console.warn=w;console.error=function(){o.textContent+="\\u26a0 "+[].slice.call(arguments).join(" ")+"\\n";};try{\n' + safe + '\n}catch(e){o.textContent+="\\u26a0 "+e.message+"\\n";}try{parent.postMessage({__runcell:true,tok:"' + tok + '",text:o.textContent,h:document.body.scrollHeight},"*");}catch(e){}</scr' + 'ipt></body>';
     }
-    function run() { out.style.display = 'block'; out.srcdoc = buildDoc(ta.value); }
+    function run() { out.style.display = 'block'; out.srcdoc = buildDoc(readCode()); }
+
     if (expect) {
       // A goal-checked run cell counts toward finishing the lesson; one without a goal cannot,
       // because neither the student nor the app can tell whether anything was achieved.
       goalRunKeys.push(key);
       if (activityDone(lessonWidgetId, key)) { status.className = 'run-status ok'; status.textContent = 'Goal met!'; }
-      widgetHandlers[tok] = function (d) {
-        if (!d.__runcell) return;
-        const met = (d.text || '').indexOf(expect) >= 0;
-        status.className = 'run-status ' + (met ? 'ok' : 'no'); status.textContent = met ? 'Goal met!' : 'Not yet — check the output.';
-        if (met) resolveActivity(key);
-      };
     }
-    btn.addEventListener('click', run);
-    bar.appendChild(btn); bar.appendChild(status);
-    cell.appendChild(ta); cell.appendChild(bar); cell.appendChild(out);
+    widgetHandlers[tok] = function (d) {
+      if (!d.__runcell) return;
+      if (d.h) out.style.height = Math.max(34, Math.min(240, d.h)) + 'px';
+      if (!expect) return;
+      const met = (d.text || '').indexOf(expect) >= 0;
+      status.className = 'run-status ' + (met ? 'ok' : 'no'); status.textContent = met ? 'Goal met!' : 'Not yet — check the output.';
+      if (met) resolveActivity(key);
+    };
+
+    /* A cell whose whole point is "drag this and watch the number change" should not also make you
+       press Run. Sliders re-run on input, so the button is noise — and the cell starts already
+       run, so there is something to watch change. */
+    const liveSliders = sliders.length > 0 && !expect;
+    if (!liveSliders) { btn.addEventListener('click', run); bar.appendChild(btn); }
+    bar.appendChild(status);
+    cell.appendChild(host); if (!liveSliders) cell.appendChild(bar); cell.appendChild(out);
     pre.parentNode.replaceChild(cell, pre);
+    if (editor) editor.refresh();       // only now does it have a box to measure
+    if (liveSliders) run();
   });
 }
 function shuffleOrder(n) {
@@ -555,7 +584,7 @@ function watchDwell(f) {
    the sidebar. It is announced and cancellable: silently navigating away from what someone just
    earned is worse than making them click. */
 let advanceTimer = null;
-const ADVANCE_MS = 10000;
+const ADVANCE_MS = 3000;
 function cancelAdvance() { clearInterval(advanceTimer); advanceTimer = null; }
 function startAdvance(f) {
   cancelAdvance();
