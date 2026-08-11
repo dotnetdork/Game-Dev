@@ -36,6 +36,14 @@ const PRICES = {
 
 const state = { since: Date.now(), calls: 0, inTokens: 0, outTokens: 0, cost: 0, priced: 0, unpriced: 0, byAgent: {} };
 
+/* Anyone watching live. Used by the /api/usage/stream endpoint so a terminal can show a call the
+   moment it lands instead of polling for a change that only happens when someone prompts. */
+const listeners = new Set();
+function onRecord(fn) { listeners.add(fn); return function () { listeners.delete(fn); }; }
+function emit(entry) {
+  listeners.forEach(function (fn) { try { fn(entry, summary()); } catch (e) { /* a broken watcher must not break a request */ } });
+}
+
 /* Providers name the same two numbers differently. Anthropic also reports cache traffic, which
    is billed at other rates — counted as input here, so a cached run reads slightly high rather
    than silently omitting tokens. */
