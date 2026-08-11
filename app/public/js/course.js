@@ -128,13 +128,24 @@ function lessonBodyHTML(f) {
 }
 
 /* The strip under the lesson. Three states: how much is left, keep-reading, and the reward. */
-function renderLessonProgress(f, dwellFrac) {
+function renderLessonProgress(f, dwellFrac, advanceSecs) {
   const el = $('lessonProgress'); if (!el) return;
   const complete = !!state.done[f.id];
   if (complete) {
     el.className = 'lesson-progress done';
     el.innerHTML = '<span class="mdi mdi-check-circle"></span><b>Lesson complete</b>'
       + '<span class="lp-xp">+' + f.l.xp + ' XP</span>';
+    // Moving on is offered, with a way out. A page that navigates itself while a student is still
+    // looking at what they just got right is a page that took the reward away from them.
+    const next = flat[curIdx + 1];
+    if (next && advanceSecs > 0) {
+      const go = document.createElement('span'); go.className = 'lp-next';
+      go.innerHTML = '<span class="lp-next-label">Next: ' + esc(next.l.t) + ' in <b>' + advanceSecs + 's</b></span>';
+      const stay = document.createElement('button'); stay.type = 'button'; stay.className = 'btn btn-secondary lp-stay';
+      stay.textContent = 'Stay here';
+      stay.addEventListener('click', function () { cancelAdvance(); renderLessonProgress(f); });
+      go.appendChild(stay); el.appendChild(go);
+    }
     return;
   }
   if (!lessonPlan.total) {

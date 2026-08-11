@@ -58,6 +58,28 @@ All five types follow the same retry rule, so write for it:
   explanation you would give a student who has already missed it twice, not as a restatement.
 - Getting it right at any point resolves the question.
 
+## Challenges (```challenge)
+A small sandboxed canvas the student edits and runs. Every module should have one — by convention
+it goes at the end of the module's last lesson under a `## Your challenge` heading.
+
+    ```challenge
+    title: Be the engine          # optional, shown in the card header
+    task: What the student has to do.
+    code: |
+      // starter code, deliberately incomplete
+      if (somethingIsTrue) win();
+    ```
+
+Inside the sandbox the code gets `canvas` (300x200), `ctx` (its 2D context), and `win()` — call
+`win()` and the challenge is complete. Nothing else is available; there is no Phaser here, so a
+challenge works in any module, including the ones before Phaser is introduced.
+
+Two rules that are easy to get wrong:
+- **The starter code must not already win**, or the challenge completes itself on first Run.
+- **Bound any loop.** A `setTimeout`/`requestAnimationFrame` loop whose exit condition depends on
+  the value the student is supposed to change will spin forever while it is still 0. Count ticks
+  and stop with a hint (see `why-javascript-phaser.md`).
+
 ## Prose
 Standard Markdown (headings, lists, **bold**, images, > quotes) renders normally. Plain code
 blocks are syntax-highlighted with the same theme as the Code tab.

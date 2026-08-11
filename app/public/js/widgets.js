@@ -259,10 +259,37 @@ function buildParsons(q, body, ctx) {
       row.setAttribute('role', 'option');
       row.setAttribute('aria-selected', 'false');
       row.setAttribute('aria-label', it.text + ', position ' + (pos + 1) + ' of ' + order.length);
-      const handle = document.createElement('span'); handle.className = 'drag-handle'; handle.innerHTML = '<span class="mdi mdi-drag-horizontal-variant"></span>';
-      row.appendChild(handle);
-      if (hasDist) { const cb = document.createElement('input'); cb.type = 'checkbox'; cb.className = 'p-use'; cb.checked = used[idx]; cb.disabled = ctx.resolved; cb.setAttribute('aria-label', 'Include this line'); cb.addEventListener('change', function () { used[idx] = cb.checked; row.classList.toggle('unused', !cb.checked); }); row.appendChild(cb); }
-      const c = document.createElement('code'); c.textContent = it.text; row.appendChild(c);
+      // The position number is the answer, so it leads the row instead of hiding behind a handle.
+      const num = document.createElement('span'); num.className = 'p-pos'; num.textContent = String(pos + 1);
+      row.appendChild(num);
+      // Prose steps get prose type; code lines get the monospace + colouring they deserve.
+      const isCode = typeof looksLikeCode === 'function' && looksLikeCode(it.text);
+      const c = document.createElement(isCode ? 'code' : 'span');
+      c.className = 'p-text'; c.textContent = it.text;
+      if (isCode && typeof paintCode === 'function') paintCode(c);
+      row.appendChild(c);
+
+      /* Buttons, not drag-only. This shipped as draggable + three drag listeners, which asks a
+         child on a Chromebook touchscreen to do a precise drag; these work by tapping. */
+      const tools = document.createElement('span'); tools.className = 'p-tools';
+      [['up', 'mdi-chevron-up', 'Move up', -1], ['down', 'mdi-chevron-down', 'Move down', 1]].forEach(function (b) {
+        const mb = document.createElement('button'); mb.type = 'button'; mb.className = 'p-move';
+        mb.innerHTML = '<span class="mdi ' + b[1] + '"></span>';
+        mb.title = b[2]; mb.setAttribute('aria-label', b[2] + ': ' + it.text);
+        mb.disabled = ctx.resolved || (b[3] < 0 ? pos === 0 : pos === order.length - 1);
+        mb.addEventListener('click', function (e) { e.stopPropagation(); move(pos, pos + b[3]); });
+        tools.appendChild(mb);
+      });
+      if (hasDist) {
+        const drop = document.createElement('button'); drop.type = 'button'; drop.className = 'p-use';
+        drop.setAttribute('aria-pressed', used[idx] ? 'false' : 'true');
+        drop.title = used[idx] ? 'This line does not belong — leave it out' : 'Put this line back in';
+        drop.innerHTML = '<span class="mdi ' + (used[idx] ? 'mdi-close' : 'mdi-plus') + '"></span>';
+        drop.disabled = ctx.resolved;
+        drop.addEventListener('click', function (e) { e.stopPropagation(); used[idx] = !used[idx]; draw(); const r = list.children[pos]; if (r) r.focus(); });
+        tools.appendChild(drop);
+      }
+      row.appendChild(tools);
       row.addEventListener('focus', function () { focusPos = pos; });
       row.addEventListener('keydown', function (e) {
         if (ctx.resolved) return;
@@ -270,7 +297,7 @@ function buildParsons(q, body, ctx) {
         else if (e.altKey && e.key === 'ArrowDown') { move(pos, pos + 1); e.preventDefault(); }
         else if (e.key === 'ArrowUp') { const p = list.children[pos - 1]; if (p) { focusPos = pos - 1; p.tabIndex = 0; p.focus(); } e.preventDefault(); }
         else if (e.key === 'ArrowDown') { const n = list.children[pos + 1]; if (n) { focusPos = pos + 1; n.tabIndex = 0; n.focus(); } e.preventDefault(); }
-        else if (hasDist && (e.key === ' ' || e.key === 'Enter')) { const cb = row.querySelector('.p-use'); if (cb) { cb.checked = !cb.checked; used[idx] = cb.checked; row.classList.toggle('unused', !cb.checked); } e.preventDefault(); }
+        else if (hasDist && (e.key === ' ' || e.key === 'Enter')) { used[idx] = !used[idx]; draw(); const r = list.children[pos]; if (r) r.focus(); live.textContent = used[idx] ? 'Line kept' : 'Line left out'; e.preventDefault(); }
       });
       row.addEventListener('dragstart', function () { dragFrom = pos; row.classList.add('dragging'); });
       row.addEventListener('dragend', function () { row.classList.remove('dragging'); });
@@ -282,8 +309,8 @@ function buildParsons(q, body, ctx) {
   }
   draw(); body.appendChild(list); body.appendChild(live);
   const hint = document.createElement('div'); hint.className = 'parsons-hint';
-  hint.textContent = (hasDist ? 'Drag into order, and uncheck any lines that don’t belong. ' : 'Drag the lines into the right order. ')
-    + 'Keyboard: arrow keys to move between lines, Alt + arrows to reorder.';
+  hint.textContent = (hasDist ? 'Put the lines in order with the arrows, and use ✕ to leave out any that don’t belong. ' : 'Put the lines in the right order using the arrows (or drag them). ')
+    + 'Keyboard: ↑ ↓ to move between lines, Alt + ↑ ↓ to reorder.';
   body.appendChild(hint);
 
   ctx.restore = function () { draw(); };
@@ -306,16 +333,21 @@ function buildParsons(q, body, ctx) {
 }
 function buildFill(q, body, ctx) {
   const tpl = String(q.code || q.template || ''); const parts = tpl.split('___');
-  const wrap = document.createElement('div'); wrap.className = 'fill-code';
-  const input = document.createElement('input'); input.type = 'text'; input.className = 'fill-input'; input.spellcheck = false; input.placeholder = '?';
+  // A prose template ("We write our game in ___") should not be dressed as a code block.
+  const isCode = typeof looksLikeCode === 'function' && looksLikeCode(tpl);
+  const wrap = document.createElement('div'); wrap.className = 'fill-code' + (isCode ? '' : ' prose');
+  const input = document.createElement('input'); input.type = 'text'; input.className = 'fill-input'; input.spellcheck = false; input.placeholder = 'type your answer';
   input.setAttribute('aria-label', q.prompt || 'Fill in the blank');
   if (parts.length >= 2) { wrap.appendChild(document.createTextNode(parts[0])); wrap.appendChild(input); wrap.appendChild(document.createTextNode(parts.slice(1).join('___'))); }
   else { wrap.appendChild(input); }
   body.appendChild(wrap);
+  // Grow with what's typed, so the answer isn't cramped in a fixed 130px slot.
+  const sizeInput = function () { input.style.width = Math.max(120, Math.min(340, (input.value.length || 12) * 8.6 + 26)) + 'px'; };
+  input.addEventListener('input', sizeInput); sizeInput();
   const answers = (Array.isArray(q.answer) ? q.answer : [q.answer]).map(function (a) { return String(a).trim(); });
   input.addEventListener('keydown', function (e) { if (e.key === 'Enter' && !ctx.resolved) { ctx.check.click(); e.preventDefault(); } });
 
-  ctx.restore = function () { input.value = answers[0] || ''; input.disabled = true; input.classList.add('correct'); };
+  ctx.restore = function () { input.value = answers[0] || ''; sizeInput(); input.disabled = true; input.classList.add('correct'); };
   ctx.check.addEventListener('click', function () {
     if (ctx.resolved) return;
     const v = input.value.trim();
@@ -323,7 +355,7 @@ function buildFill(q, body, ctx) {
     const ok = answers.some(function (a) { return a === v || a.toLowerCase() === v.toLowerCase(); });
     input.classList.toggle('correct', ok); input.classList.toggle('wrong', !ok);
     quizVerdict(ctx, ok, q.explain ? 'Not quite — ' + q.explain : 'Not quite — check the spelling and try again.', function () {
-      input.value = answers[0] || ''; input.classList.remove('wrong'); input.classList.add('correct');
+      input.value = answers[0] || ''; sizeInput(); input.classList.remove('wrong'); input.classList.add('correct');
     });
     if (ctx.resolved) input.disabled = true;
   });
@@ -332,12 +364,19 @@ function buildFindBug(q, body, ctx) {
   const lines = q.code || q.lines || []; let chosen = -1; const rows = [];
   const wrap = document.createElement('div'); wrap.className = 'findbug';
   wrap.setAttribute('role', 'radiogroup'); wrap.setAttribute('aria-label', q.prompt || 'Which line has the bug?');
+  // Say what to do. The card showed a block of code and a Check button and left the child to
+  // infer that the lines were clickable at all.
+  const lead = document.createElement('div'); lead.className = 'fb-lead';
+  lead.textContent = 'Click the line you think has the bug.';
+  wrap.appendChild(lead);
   lines.forEach(function (ln, i) {
     // A button, so the line is reachable and pressable without a mouse.
     const row = document.createElement('button'); row.type = 'button'; row.className = 'fb-row'; rows.push(row);
     row.setAttribute('role', 'radio'); row.setAttribute('aria-checked', 'false');
+    row.setAttribute('aria-label', 'Line ' + (i + 1) + ': ' + ln);
     const num = document.createElement('span'); num.className = 'fb-num'; num.textContent = (i + 1);
     const c = document.createElement('code'); c.textContent = ln;
+    if (typeof paintCode === 'function') paintCode(c);
     row.appendChild(num); row.appendChild(c);
     row.addEventListener('click', function () {
       if (ctx.resolved) return;
@@ -370,28 +409,57 @@ function renderChallengeCells(root) {
     let c; try { c = jsyaml.load(code.textContent) || {}; } catch (e) { c = {}; }
     const pre = code.parentNode;
     const key = nextWidgetKey('c'), tok = widgetToken(key);
+    /* Classes are ch-*, not cm-*: the lesson root now carries CodeMirror's `cm-s-material-darker`
+       theme class, and a widget that names its own parts cm-anything is one rename away from
+       colliding with a token class. */
     const cell = document.createElement('div'); cell.className = 'challenge-mini';
-    cell.innerHTML = '<div class="cm-h"><span class="mdi mdi-flag-checkered"></span>Challenge</div>';
-    if (c.task) { const t = document.createElement('div'); t.className = 'cm-task'; t.textContent = c.task; cell.appendChild(t); }
-    const ta = document.createElement('textarea'); ta.className = 'cm-code'; ta.value = c.code || ''; ta.spellcheck = false; ta.rows = Math.min(18, Math.max(4, (c.code || '').split('\n').length));
-    const stage = document.createElement('iframe'); stage.className = 'cm-stage'; stage.setAttribute('sandbox', 'allow-scripts');
-    const bar = document.createElement('div'); bar.className = 'cm-bar';
-    const run = document.createElement('button'); run.className = 'btn cm-run'; run.innerHTML = '<span class="mdi mdi-play"></span>Run &amp; check';
-    const status = document.createElement('div'); status.className = 'cm-status';
+    const head = document.createElement('div'); head.className = 'ch-head';
+    head.innerHTML = '<span class="mdi mdi-flag-checkered" aria-hidden="true"></span>'
+      + '<span class="ch-title">' + esc(c.title || 'Challenge') + '</span>';
+    cell.appendChild(head);
+    const bodyEl = document.createElement('div'); bodyEl.className = 'ch-body'; cell.appendChild(bodyEl);
+    if (c.task) { const t = document.createElement('div'); t.className = 'ch-task'; t.textContent = c.task; bodyEl.appendChild(t); }
+
+    /* A real editor, not a bare <textarea>. CodeMirror is already loaded for the Code tab, so the
+       challenge — the one place a student writes the most code inside a lesson — stops being the
+       one place with no line numbers, no bracket matching and no colour. */
+    const host = document.createElement('div'); host.className = 'ch-editor'; bodyEl.appendChild(host);
+    const ta = document.createElement('textarea'); ta.value = c.code || ''; ta.spellcheck = false;
+    let editor = null;
+    if (typeof CodeMirror === 'function') {
+      editor = CodeMirror(host, {
+        value: c.code || '', mode: 'javascript', theme: 'material-darker',
+        lineNumbers: true, tabSize: 2, indentUnit: 2, matchBrackets: true,
+        autoCloseBrackets: true, viewportMargin: Infinity
+      });
+      // Refreshed below, once the cell is actually in the document — see replaceChild.
+    } else { ta.className = 'ch-code'; host.appendChild(ta); }
+    const readCode = function () { return editor ? editor.getValue() : ta.value; };
+
+    const stage = document.createElement('iframe'); stage.className = 'ch-stage'; stage.setAttribute('sandbox', 'allow-scripts');
+    stage.setAttribute('title', 'Challenge output');
+    const bar = document.createElement('div'); bar.className = 'ch-foot';
+    const run = document.createElement('button'); run.type = 'button'; run.className = 'btn btn-primary-role ch-run';
+    run.innerHTML = '<span class="mdi mdi-play"></span>Run &amp; check';
+    const status = document.createElement('div'); status.className = 'ch-status'; status.setAttribute('aria-live', 'polite');
     function build(userCode) {
       const safe = userCode.replace(/<\/(script)/gi, '<\\/$1');
       return '<!doctype html><body style="margin:0;background:#08121f;display:flex;align-items:center;justify-content:center;height:100vh"><canvas id="c" width="300" height="200" style="background:#0d2137;border-radius:8px"></canvas><scr' + 'ipt>var canvas=document.getElementById("c"),ctx=canvas.getContext("2d"),__w=false;function win(){if(__w)return;__w=true;try{parent.postMessage({__cm:true,tok:"' + tok + '",win:true},"*");}catch(e){}}window.onerror=function(m){try{parent.postMessage({__cm:true,tok:"' + tok + '",err:String(m)},"*");}catch(e){}};try{\n' + safe + '\n}catch(e){window.onerror(e.message);}<\/scr' + 'ipt></body>';
     }
-    if (activityDone(lessonWidgetId, key)) { status.className = 'cm-status ok'; status.textContent = 'Challenge complete!'; }
+    if (activityDone(lessonWidgetId, key)) { status.className = 'ch-status ok'; status.innerHTML = '<span class="mdi mdi-check-circle"></span>Challenge complete!'; }
     widgetHandlers[tok] = function (d) {
       if (!d.__cm) return;
-      if (d.win) { status.className = 'cm-status ok'; status.textContent = 'Challenge complete!'; resolveActivity(key); }
-      else if (d.err) { status.className = 'cm-status no'; status.textContent = 'Error: ' + d.err; }
+      if (d.win) { status.className = 'ch-status ok'; status.innerHTML = '<span class="mdi mdi-check-circle"></span>Challenge complete!'; resolveActivity(key); }
+      else if (d.err) { status.className = 'ch-status no'; status.textContent = 'Error: ' + d.err; }
     };
-    run.addEventListener('click', function () { status.className = 'cm-status'; status.textContent = 'Running…'; stage.srcdoc = build(ta.value); });
-    bar.appendChild(run); bar.appendChild(status);
-    cell.appendChild(ta); cell.appendChild(stage); cell.appendChild(bar);
+    run.addEventListener('click', function () { status.className = 'ch-status'; status.textContent = 'Running…'; stage.srcdoc = build(readCode()); });
+    bar.appendChild(status); bar.appendChild(run);
+    bodyEl.appendChild(stage); cell.appendChild(bar);
     pre.parentNode.replaceChild(cell, pre);
+    /* Only now does the editor have a box to measure. CodeMirror mounts into a detached cell, so
+       refreshing any earlier renders it as an empty frame — and a deferred refresh is no good
+       either, since it would depend on the page painting. */
+    if (editor) editor.refresh();
   });
 }
 const MODULE_HERO = ['#143561', '#2f2a6b', '#1f5b63', '#5b3320', '#1f6b45', '#6b2a52', '#26456b', '#4a6b26', '#6b5320', '#33305b'];
@@ -433,6 +501,7 @@ function lessonActivityKeys() {
   return keys;
 }
 function startLessonProgress(f) {
+  cancelAdvance();
   clearInterval(lessonPlan.dwellTimer);
   lessonPlan = { keys: lessonActivityKeys(), total: 0, dwellTimer: null, dwellSeen: false };
   lessonPlan.total = lessonPlan.keys.length;
@@ -481,6 +550,30 @@ function watchDwell(f) {
   };
   lessonPlan.dwellTimer = setInterval(tick, 500);
 }
+/* ---------- moving on ----------
+   After a lesson lands, the next one comes to the student rather than making them go find it in
+   the sidebar. It is announced and cancellable: silently navigating away from what someone just
+   earned is worse than making them click. */
+let advanceTimer = null;
+const ADVANCE_MS = 10000;
+function cancelAdvance() { clearInterval(advanceTimer); advanceTimer = null; }
+function startAdvance(f) {
+  cancelAdvance();
+  const nextIdx = curIdx + 1;
+  if (!flat[nextIdx]) return;                 // last lesson in the course — nowhere to go
+  /* Measured against the clock, not by counting ticks: setInterval is throttled in a background
+     or unpainted tab, and a countdown that says 4s while 13s have passed is just wrong. */
+  let elapsed = 0, last = 0;
+  renderLessonProgress(f, 0, Math.ceil(ADVANCE_MS / 1000));
+  advanceTimer = setInterval(function () {
+    if (flat[curIdx] !== f) { cancelAdvance(); return; }        // they navigated themselves
+    if (document.visibilityState !== 'visible') { last = 0; return; }   // not behind their back
+    const now = Date.now(); if (last) elapsed += now - last; last = now;
+    if (elapsed >= ADVANCE_MS) { cancelAdvance(); selectLesson(nextIdx); return; }
+    renderLessonProgress(f, 0, Math.ceil((ADVANCE_MS - elapsed) / 1000));
+  }, 250);
+}
+
 function completeLesson() {
   const f = flat[curIdx]; if (!f || state.done[f.id]) return;
   clearInterval(lessonPlan.dwellTimer);
@@ -492,4 +585,5 @@ function completeLesson() {
   // every answer and run-cell edit at the exact moment the student earned the reward.
   renderLessonProgress(f);
   renderOutline();
+  startAdvance(f);
 }

@@ -21,3 +21,39 @@ feedback:
   - "Exactly — browser-based means it just works here."
   - "We're building 2D games with it."
 ```
+
+## Your challenge
+
+```challenge
+title: Be the engine
+task: An engine calls your `update()` about 60 times a second — that is most of what an engine does for you. Add one line inside `update()` that moves the box 4 pixels right each time it runs, and it will reach the flag on its own.
+code: |
+  let x = 10;
+  let ticks = 0;
+
+  function update() {
+    // add one line here: move x right by 4
+
+    draw();
+    ticks = ticks + 1;
+    if (x >= 250) { win(); return; }
+    if (ticks > 300) { stuck(); return; }
+    setTimeout(update, 16);
+  }
+
+  function draw() {
+    ctx.clearRect(0, 0, 300, 200);
+    ctx.fillStyle = "#f5b02e";
+    ctx.fillRect(262, 70, 6, 60);
+    ctx.fillStyle = "#2fd0b6";
+    ctx.fillRect(x, 85, 30, 30);
+  }
+
+  function stuck() {
+    ctx.fillStyle = "#f5b02e";
+    ctx.font = "14px Consolas";
+    ctx.fillText("The box isn't moving yet.", 20, 40);
+  }
+
+  update();
+```

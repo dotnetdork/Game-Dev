@@ -18,3 +18,24 @@ feedback:
   - "Right — you direct, the AI assists."
   - "Someone has to make the calls — that's you!"
 ```
+
+## Your challenge
+
+```challenge
+title: You're on QA today
+task: A tester filed this bug — "the scoreboard always reads 0, even after you score." One line is wrong. Find it and fix it so the score reads 7.
+code: |
+  let score = 0;
+
+  function addPoints(points) {
+    score + points;          // a tester says this line is the problem
+  }
+
+  addPoints(7);
+
+  ctx.fillStyle = "#eaf1f8";
+  ctx.font = "18px Consolas";
+  ctx.fillText("Score: " + score, 20, 100);
+
+  if (score === 7) win();
+```

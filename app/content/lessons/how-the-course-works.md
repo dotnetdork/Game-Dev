@@ -18,3 +18,23 @@ feedback:
   - "Right — Stars unlock art and effects for your game."
   - "Lessons unlock by finishing the one before."
 ```
+
+## Your challenge
+
+```challenge
+title: Fill the bar
+task: Every lesson you finish pays out XP. This bar is stuck at zero — set `xp` to 100 and watch it fill.
+code: |
+  let xp = 0;               // change this
+
+  ctx.fillStyle = "#eaf1f8";
+  ctx.font = "15px Consolas";
+  ctx.fillText("XP: " + xp + " / 100", 20, 70);
+
+  ctx.fillStyle = "#0d2440";
+  ctx.fillRect(20, 85, 260, 30);
+  ctx.fillStyle = "#3ddc84";
+  ctx.fillRect(20, 85, 260 * Math.min(xp, 100) / 100, 30);
+
+  if (xp >= 100) win();
+```

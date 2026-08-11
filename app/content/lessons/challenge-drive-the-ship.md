@@ -22,7 +22,7 @@ feedback:
   - "The AI can't tell what 'good' means."
 ```
 
-When it works, press **Complete challenge** to earn your XP.
+Then finish the challenge below to earn your XP.
 
 ## Your challenge
 

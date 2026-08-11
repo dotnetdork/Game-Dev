@@ -43,9 +43,24 @@ function highlightCode(text) {
   return ok ? frag : null;
 }
 
+/* Parsons steps and fill-in-the-blank templates are sometimes real code and sometimes an English
+   sentence ("You move to catch it"). Running a JavaScript tokenizer over the sentence coloured
+   `catch` as a keyword and every other word as a variable, which is worse than leaving it plain —
+   it tells a child that English words are code. So: only paint text that shows actual syntax.
+
+   Calibrated against the whole corpus: every Parsons line in it is an English sentence, and three
+   of the four fill-in templates are real statements. Crucially, "create() runs one time to build
+   the world" is prose, so call syntax and member access cannot be the test — only a statement
+   terminator or an assignment is. A code line that gets read as prose merely renders plain, which
+   is a far cheaper mistake than colouring a sentence. */
+function looksLikeCode(text) {
+  return /[;{}]|[^=!<>]=[^=]/.test(String(text));
+}
+
 /* Colour an element that already holds plain code text, in place. */
 function paintCode(el) {
   if (!el || el.dataset.painted) return;
+  if (!looksLikeCode(el.textContent)) { el.dataset.painted = '1'; return; }
   const frag = highlightCode(el.textContent);
   if (!frag) return;
   el.textContent = '';
@@ -57,12 +72,15 @@ function paintCode(el) {
    wholesale — each text run around the input is coloured on its own. */
 function paintTextNodes(el) {
   if (!el || el.dataset.painted) return;
+  el.dataset.painted = '1';
+  // Judged on the whole template, not fragment by fragment: the text either side of the blank is
+  // usually too short to look like anything on its own.
+  if (!looksLikeCode(el.textContent)) return;
   [].slice.call(el.childNodes).forEach(function (node) {
     if (node.nodeType !== 3 || !node.nodeValue.trim()) return;
     const frag = highlightCode(node.nodeValue);
     if (frag) el.replaceChild(frag, node);
   });
-  el.dataset.painted = '1';
 }
 
 /* Every code surface in a rendered lesson. Called after the widget renderers have run, so the

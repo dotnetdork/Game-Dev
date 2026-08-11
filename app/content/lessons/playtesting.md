@@ -18,3 +18,29 @@ feedback:
   - "Exactly — quiet observation shows you the real problems."
   - "Then you learn nothing about how *they* experience it."
 ```
+
+## Your challenge
+
+```challenge
+title: Close the loop
+task: A core loop without a reward stops being fun. Catching a star currently gives you nothing — set `pointsPerStar` so that catching 5 stars adds up to exactly 10 points.
+code: |
+  const pointsPerStar = 0;  // change this
+  let score = 0;
+
+  for (let star = 1; star <= 5; star++) {
+    score = score + pointsPerStar;
+  }
+
+  ctx.fillStyle = "#eaf1f8";
+  ctx.font = "16px Consolas";
+  ctx.fillText("Stars caught: 5", 20, 80);
+  ctx.fillText("Score: " + score, 20, 112);
+
+  if (score === 10) {
+    win();
+  } else {
+    ctx.fillStyle = "#f5b02e";
+    ctx.fillText("Needs to be 10", 20, 144);
+  }
+```

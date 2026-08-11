@@ -55,7 +55,6 @@ body{background:var(--bg);color:var(--ink);font-family:var(--font);font-size:14p
 .parsons-row{cursor:grab;user-select:none;}
 .parsons-row.dragging{opacity:.45;}
 .parsons-row.over{border-color:var(--azure);box-shadow:inset 0 0 0 1px var(--azure);}
-.parsons-row .drag-handle{color:var(--dim);display:flex;align-items:center;}
 .run-goal{display:flex;align-items:center;gap:8px;padding:8px 12px;background:#0d2440;border-bottom:1px solid var(--line);font-size:13px;color:#c3d3e6;}
 .run-goal .mdi{color:var(--gold);}
 .run-sliders{padding:8px 12px;border-bottom:1px solid var(--line);display:flex;flex-direction:column;gap:8px;background:#0d2440;}
@@ -64,18 +63,21 @@ body{background:var(--bg);color:var(--ink);font-family:var(--font);font-size:14p
 .run-slider input[type=range]{flex:1;}
 .run-status{font-size:12.5px;margin-left:8px;align-self:center;} .run-status.ok{color:var(--green);} .run-status.no{color:var(--gold);}
 .quiz-code{background:#08121f;border:1px solid var(--line);border-radius:8px;padding:10px 12px;font-family:Consolas,monospace;font-size:13px;color:#cfe0f2;white-space:pre-wrap;margin:0 0 4px;overflow-x:auto;}
-.parsons-row .p-use{margin:0 2px;}
-.parsons-row.unused{opacity:.5;} .parsons-row.unused code{text-decoration:line-through;}
-.parsons-hint{font-size:12px;color:var(--dim);margin-top:2px;}
+.parsons-hint{font-size:12.5px;color:var(--dim);margin-top:6px;line-height:1.5;}
 .fill-code{background:#08121f;border:1px solid var(--line);border-radius:8px;padding:10px 12px;font-family:Consolas,monospace;font-size:13px;color:#cfe0f2;white-space:pre-wrap;}
-.fill-input{background:#0d2440;border:1px solid var(--azure);border-radius:5px;color:var(--ink);font-family:Consolas,monospace;font-size:13px;padding:3px 8px;width:130px;}
+.fill-input{background:#08121f;border:1px solid var(--azure);border-radius:6px;color:var(--ink);font-family:Consolas,monospace;font-size:13px;padding:4px 9px;transition:border-color .12s,box-shadow .12s;}
+.fill-input:focus{outline:none;border-color:var(--azure);box-shadow:0 0 0 3px rgba(124,196,255,.18);}
+.fill-input::placeholder{color:var(--dim);font-style:italic;}
+.fill-code.prose{background:transparent;border:0;padding:0;font-family:var(--font);font-size:15px;color:var(--ink);line-height:2.1;}
+.fill-code.prose .fill-input{font-family:var(--font);font-size:14px;}
 .fill-input.correct{border-color:var(--green);}
 .fill-input.wrong{border-color:var(--gold);}
-.findbug{display:flex;flex-direction:column;gap:2px;}
-.fb-row{display:flex;gap:10px;align-items:flex-start;padding:5px 9px;border:1px solid transparent;border-radius:6px;cursor:pointer;font-family:Consolas,monospace;font-size:13px;color:#cfe0f2;background:#08121f;width:100%;text-align:left;}
-.fb-row:hover:not(:disabled){border-color:var(--azure);}
+.findbug{display:flex;flex-direction:column;gap:4px;}
+.fb-lead{color:var(--muted);font-size:13.5px;margin-bottom:8px;}
+.fb-row{display:flex;gap:12px;align-items:flex-start;padding:7px 10px;border:1px solid var(--line);border-radius:8px;cursor:pointer;font-family:Consolas,monospace;font-size:13px;color:#cfe0f2;background:#0d2440;width:100%;text-align:left;transition:border-color .12s,background .12s;}
+.fb-row:hover:not(:disabled){border-color:var(--azure);background:#12304f;}
 .fb-row:disabled{cursor:default;}
-.fb-row .fb-num{color:var(--dim);min-width:16px;text-align:right;}
+.fb-row .fb-num{flex:none;min-width:20px;text-align:right;color:var(--dim);border-right:1px solid var(--line);padding-right:10px;}
 .fb-row.sel{border-color:var(--azure);}
 .fb-row.correct{border-color:var(--green);background:#0f2e22;}
 .fb-row.wrong{border-color:var(--gold);background:#2e2410;}
@@ -83,14 +85,6 @@ body{background:var(--bg);color:var(--ink);font-family:var(--font);font-size:14p
 
 
 /* in-lesson challenge minigame */
-.challenge-mini{border:1px solid var(--brand);border-radius:14px;background:#1a130a;padding:18px 20px;margin-top:26px;}
-.cm-h{display:flex;align-items:center;gap:8px;font-size:13px;letter-spacing:1px;text-transform:uppercase;color:var(--brand);font-weight:700;margin-bottom:10px;}
-.cm-task{color:#e6d6c2;font-size:14.5px;margin-bottom:12px;line-height:1.6;}
-.cm-code{width:100%;background:#08121f;border:1px solid var(--line);border-radius:8px;color:#cfe0f2;font-family:Consolas,monospace;font-size:12.5px;line-height:1.5;padding:10px 12px;resize:vertical;display:block;}
-.cm-stage{width:100%;height:210px;border:0;border-radius:8px;margin-top:10px;background:#08121f;display:block;}
-.cm-bar{display:flex;align-items:center;gap:12px;margin-top:10px;}
-.cm-run{background:var(--brand);color:var(--brand-ink);border:0;border-radius:8px;padding:8px 16px;font-weight:700;cursor:pointer;display:inline-flex;align-items:center;gap:6px;font-family:var(--font);}
-.cm-status{font-size:13px;} .cm-status.ok{color:var(--green);font-weight:700;} .cm-status.no{color:var(--gold);}
 .dock-body{flex:1;min-height:0;display:flex;flex-direction:column;overflow:hidden;}
 #panel-outline{flex:1;min-height:0;overflow:auto;padding:4px 0;}
 #panel-info{flex:1;min-height:0;overflow:auto;}
@@ -165,8 +159,6 @@ body{background:var(--bg);color:var(--ink);font-family:var(--font);font-size:14p
 .lesson .tip{display:flex;gap:10px;background:#0d2038;border-left:3px solid var(--gold);
   border-radius:0 10px 10px 0;padding:14px 16px;color:var(--muted);margin:0 0 14px;font-size:15px;line-height:1.65;}
 .lesson .tip .mdi{color:var(--gold);font-size:20px;}
-.challenge{border:1px solid var(--line);border-radius:12px;padding:20px 22px;background:#0d2038;margin-top:26px;}
-.challenge .ch-h{display:flex;align-items:center;gap:7px;font-size:12px;letter-spacing:1px;text-transform:uppercase;color:var(--gold);font-weight:700;margin-bottom:8px;}
 .btn-primary{display:inline-flex;align-items:center;gap:7px;background:var(--brand);color:var(--brand-ink);border:none;border-radius:8px;padding:10px 18px;font-weight:700;cursor:pointer;font-family:var(--font);font-size:14px;margin-top:10px;}
 .btn-primary:disabled{background:#2f7a5e;color:#bfeede;cursor:default;}
 
@@ -415,9 +407,26 @@ body{background:var(--bg);color:var(--ink);font-family:var(--font);font-size:14p
 .mcq-opt:disabled{cursor:default;}
 .mcq-opt.correct .mcq-num,.mcq-opt.wrong .mcq-num,.fb-row.correct .fb-num,.fb-row.wrong .fb-num{display:none;}
 .mcq-opt:hover:not(:disabled){border-color:var(--azure);color:var(--ink);}
+/* ---- parsons: same row language as the answer options, with order made visible ---- */
 .parsons{display:flex;flex-direction:column;gap:6px;}
-.parsons-row{display:flex;align-items:center;gap:8px;background:#08121f;border:1px solid var(--line);border-radius:8px;padding:6px 8px;}
-.parsons-row code{color:#cfe0f2;font-family:Consolas,monospace;font-size:13px;}
+.parsons-row{display:flex;align-items:center;gap:10px;background:#0d2440;border:1px solid var(--line);
+  border-radius:8px;padding:8px 10px;transition:border-color .12s,background .12s;}
+.parsons-row:hover{border-color:var(--azure);}
+.parsons-row .p-text{color:var(--ink);font-size:15px;line-height:1.5;flex:1;min-width:0;}
+.parsons-row code.p-text{color:#cfe0f2;font-family:Consolas,monospace;font-size:13px;}
+/* The position number leads the row — in a "put these in order" question it IS the answer. */
+.p-pos{flex:none;min-width:22px;height:22px;display:inline-flex;align-items:center;justify-content:center;
+  background:#08121f;border:1px solid var(--line);border-radius:6px;color:var(--dim);
+  font-family:Consolas,monospace;font-size:12px;}
+.p-tools{flex:none;display:flex;align-items:center;gap:4px;margin-left:auto;}
+.p-move,.p-use{background:transparent;border:1px solid transparent;border-radius:6px;color:var(--dim);
+  cursor:pointer;padding:2px 5px;display:inline-flex;align-items:center;font-size:15px;line-height:1;}
+.p-move:hover:not(:disabled),.p-use:hover:not(:disabled){border-color:var(--azure);color:var(--ink);background:#12304f;}
+.p-move:disabled{opacity:.3;cursor:default;}
+.p-use:hover:not(:disabled){border-color:var(--gold);color:var(--gold);background:#2e2410;}
+.parsons-row.unused{opacity:.55;background:#08121f;}
+.parsons-row.unused .p-text{text-decoration:line-through;}
+.parsons-row.unused .p-pos{visibility:hidden;}
 .quiz-foot{display:flex;align-items:center;gap:12px;margin-top:2px;}
 .quiz-check{flex:none;margin-left:auto;}
 .quiz-result{font-size:13.5px;font-weight:600;line-height:1.45;}
@@ -518,7 +527,6 @@ body{background:var(--bg);color:var(--ink);font-family:var(--font);font-size:14p
 .runcell .runbtn{background:var(--panel2);color:var(--ink);border:1px solid var(--line);border-radius:8px;
   padding:6px 13px;font-family:var(--font);font-size:13px;font-weight:600;cursor:pointer;display:inline-flex;align-items:center;gap:6px;}
 .runcell .runbtn:hover{border-color:var(--teal);color:#bff3e8;}
-.cm-run{font-size:14px;}
 
 /* ---------- lesson progress strip (replaces the Complete button) ---------- */
 .lesson-progress{display:flex;align-items:center;gap:12px;margin:28px 0 8px;padding:12px 16px;
@@ -545,4 +553,38 @@ body{background:var(--bg);color:var(--ink);font-family:var(--font);font-size:14p
    AI chat panel styled its code chips properly. 122 spans across the current lessons. */
 .lesson code{font-family:Consolas,monospace;font-size:.92em;background:#0d2440;border:1px solid var(--line);
   border-radius:4px;padding:1px 5px;color:#cfe6ff;}
-.lesson pre code{background:none;border:0;padding:0;font-size:inherit;color:inherit;}
+/* The rule above is for inline backticks in prose. Widgets build their own <code> elements and
+   size them themselves, so exempt them — otherwise a findbug line inherits .92em of its row and
+   renders at 11.96px with a chip background it never asked for. */
+.lesson pre code,.fb-row code,.parsons-row code,.quiz-code code,.mcq-opt code,.fill-code code
+  {background:none;border:0;padding:0;font-size:inherit;color:inherit;}
+
+/* ---- challenge: the same card as everything else, with a brand edge so it still reads as
+   the big one. It used to be an orange-bordered brown box with an uppercase letterspaced
+   header and 12.5px code — a fourth visual language on a surface that only needs one. ---- */
+.challenge-mini{background:var(--panel);border:1px solid var(--line);border-top:3px solid var(--brand);
+  border-radius:12px;overflow:hidden;margin:22px 0;}
+.ch-head{display:flex;align-items:center;gap:10px;padding:12px 16px;background:#12304f;
+  border-bottom:1px solid var(--line);}
+.ch-head .mdi{color:var(--brand);font-size:19px;}
+.ch-title{font-size:16px;font-weight:600;color:var(--ink);}
+.ch-body{padding:14px 16px;display:flex;flex-direction:column;gap:12px;}
+.ch-task{color:var(--muted);font-size:15px;line-height:1.65;}
+.ch-editor{border:1px solid var(--line);border-radius:8px;overflow:hidden;}
+.ch-editor .CodeMirror{height:auto;min-height:120px;font-family:Consolas,monospace;font-size:13px;line-height:1.6;}
+.ch-editor .CodeMirror-scroll{min-height:120px;}
+.ch-code{width:100%;background:#08121f;border:0;color:#cfe0f2;font-family:Consolas,monospace;
+  font-size:13px;line-height:1.6;padding:10px 12px;resize:vertical;display:block;}
+.ch-stage{width:100%;height:210px;border:1px solid var(--line);border-radius:8px;background:#08121f;display:block;}
+.ch-foot{display:flex;align-items:center;gap:12px;padding:12px 16px;border-top:1px solid var(--line);background:#0d2038;}
+.ch-status{font-size:13.5px;font-weight:600;color:var(--muted);display:flex;align-items:center;gap:6px;margin-right:auto;}
+.ch-status.ok{color:var(--green);} .ch-status.no{color:var(--gold);}
+.ch-status:empty{display:none;}
+.ch-run{flex:none;margin-left:auto;}
+
+/* ---- the next-lesson offer in the completion strip ---- */
+.lp-next{display:flex;align-items:center;gap:10px;margin-left:auto;}
+.lp-next-label{color:var(--muted);font-size:13px;}
+.lp-next-label b{color:var(--ink);font-variant-numeric:tabular-nums;}
+.lesson-progress.done .lp-xp{margin-left:0;}
+.lp-stay{flex:none;}

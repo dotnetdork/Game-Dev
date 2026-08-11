@@ -19,3 +19,31 @@ distractors:
   - text: "Invisible forever"
     why: "That's not a normal game state — the character needs to end in 'dead'."
 ```
+
+## Your challenge
+
+```challenge
+title: Alive, dying, dead
+task: This player takes three hits and never actually dies. Finish the state machine — when `health` runs out, `state` should become "dead".
+code: |
+  let health = 3;
+  let state = "alive";
+
+  function hit() {
+    health = health - 1;
+    if (health <= 0) {
+      // set state to "dead" here
+    }
+  }
+
+  hit();
+  hit();
+  hit();
+
+  ctx.fillStyle = "#eaf1f8";
+  ctx.font = "16px Consolas";
+  ctx.fillText("health: " + health, 20, 85);
+  ctx.fillText("state:  " + state, 20, 117);
+
+  if (state === "dead") win();
+```
