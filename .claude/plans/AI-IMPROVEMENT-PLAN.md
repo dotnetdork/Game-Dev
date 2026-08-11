@@ -25,8 +25,8 @@ Jay is the project lead and an intern learning this stack — explain decisions,
 - [x] Stage 1 — Context foundations *(done 2026-08-10 — commit `f18bc41`)*
 - [x] Stage 2 — Agents & skills as markdown *(done 2026-08-10)*
 - [x] Stage 3 — Pedagogy loop *(done 2026-08-10)*
-- [ ] Stage 4 — Tool use (Tier 1 validator → Tier 2 tool calling) *(Tier 1 largely built — see below)*
-- [ ] Stage 5 — MCP server
+- [x] Stage 4 — Tool use (Tier 1 validators + Tier 2 tool calling) *(done 2026-08-10)*
+- [ ] Stage 5 — MCP server *(the tool table in `app/ai/tools.js` is the surface to expose)*
 
 ## Built after Stage 3, outside the plan
 
@@ -238,7 +238,17 @@ Deviations from the plan as written, and why:
   `scene.add.rect` / `.ellipse` are real Phaser methods and stay allowed; only the Graphics-object
   forms are caught. 10 unit cases plus a live bait ("draw a fancy curvy cloud using graphics
   curves") which the model failed twice and was refused with the game left untouched.
-- **Tier 2 — real tool calling (per-provider opt-in via `.env`, e.g. `CODER_TOOLS=1`; default off for Ollama).** Tools: `get_lesson(id)`, `list_owned_assets()`, `read_file(name)`, `search_phaser_docs(query)`. Anthropic tool-use blocks / OpenRouter `tools` param; loop up to ~4 tool rounds server-side. Off → Tier 1 behavior.
+- **Tier 2 — real tool calling. DONE 2026-08-10.** Per-agent opt-in (`CODER_TOOLS` / `TUTOR_TOOLS` / `QUIZ_TOOLS` / `GRADER_TOOLS`), default **off**; `AI_TOOL_ROUNDS` caps the loop at 4. Implemented for all three providers in `chatOnce()`, which returns `{content, assistant, toolCalls}` so one loop serves Anthropic tool-use blocks, OpenRouter and Ollama alike.
+
+  **It works on local Ollama** — the plan assumed Tier 2 needed a cloud model, but `qwen3.5:9b` supports tool calling, so this is verified locally rather than written blind.
+
+  Five tools in `ai/tools.js`, all **read only**: `list_owned_assets`, `search_store`, `read_file`, `search_phaser_docs`, `get_lesson`. Tools answer questions; the coder still changes the game only through the ops contract the student reviews.
+
+  **The finding that shaped the design: strict JSON mode and tool calling are mutually exclusive on Ollama.** Asking for `format: json` suppresses tool calls entirely — the model invents a fake tool *result* instead of calling anything. So `callAI` runs two phases: look things up with JSON off, then answer with tools off and JSON on, with the tool results still in the conversation. Without this the coder reverted to prose and told the student "I can't directly edit files in this interface".
+
+  Also needed: `unwrapDoubleJSON`, because after reading tool output a model sometimes returns its JSON wrapped inside another JSON string, which would otherwise show a child a blob of JSON.
+
+  **Measured on qwen3.5:9b** (sprint request, whole-file `player.js` rewrite): 4/4 valid JS, 17–22s with tools on versus ~6s off. That latency is why the default is off — Tier 1 already guarantees correctness, so tools buy accuracy (naming exactly what a student owns instead of guessing) rather than safety.
 - Implement tools as plain functions in `ai/tools.js` with a name/description/JSON-schema table — **this table is the future MCP surface.**
 - Data sources: lessons from `content/`; asset catalog moved to a JSON file that `assets-manifest.js` wraps (one source of truth for browser + server); Phaser reference = grow `phaser-rules.md` into a curated mini-reference of the ~40 APIs the course uses. No live fetches of phaser.io.
 

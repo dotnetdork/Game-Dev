@@ -10,6 +10,7 @@ try { require('dotenv').config(); } catch (e) { /* optional */ }
 const express = require('express');
 const path = require('path');
 const ai = require('./ai/loader');   // agent + skill prompts, authored as Markdown in ai/
+const tools = require('./ai/tools'); // read-only lookups an agent can call (Stage 4 Tier 2)
 
 const app = express();
 app.use(express.json({ limit: '256kb' }));
@@ -37,6 +38,18 @@ const OLLAMA_NUM_PREDICT = Number(process.env.OLLAMA_NUM_PREDICT || 3072);
 // a child is waiting, so thinking is off by default: measured 15s -> 1s on the grader with no
 // loss of answer quality. Set OLLAMA_THINK=1 to turn it back on.
 const OLLAMA_THINK = /^(1|true|yes|on)$/i.test(process.env.OLLAMA_THINK || '');
+
+// ---- Tier 2: let an agent look things up instead of guessing ----
+// Per-agent so it can be enabled where it pays (the coder) without slowing the tutor down.
+// Off => Tier 1 behaviour exactly as before. Each tool round is another model call, so this
+// trades latency for accuracy; the deterministic Tier 1 validators still run either way.
+const AGENT_TOOLS = {
+  coder:  /^(1|true|yes|on)$/i.test(process.env.CODER_TOOLS  || ''),
+  tutor:  /^(1|true|yes|on)$/i.test(process.env.TUTOR_TOOLS  || ''),
+  quiz:   /^(1|true|yes|on)$/i.test(process.env.QUIZ_TOOLS   || ''),
+  grader: /^(1|true|yes|on)$/i.test(process.env.GRADER_TOOLS || '')
+};
+const MAX_TOOL_ROUNDS = Number(process.env.AI_TOOL_ROUNDS || 4);
 const ANTHROPIC_KEY = process.env.ANTHROPIC_API_KEY || '';
 const ANTHROPIC_MODEL = process.env.ANTHROPIC_MODEL || 'claude-3-5-sonnet-latest';
 const OPENROUTER_KEY = process.env.OPENROUTER_API_KEY || '';
@@ -88,7 +101,19 @@ app.get('/api/info', (req, res) => {
 function extractJSON(s) {
   const a = s.indexOf('{'), b = s.lastIndexOf('}');
   if (a < 0 || b < 0 || b < a) return null;
-  try { return JSON.parse(s.slice(a, b + 1)); } catch (e) { return null; }
+  try { return unwrapDoubleJSON(JSON.parse(s.slice(a, b + 1))); } catch (e) { return null; }
+}
+/* After reading tool output a model sometimes answers with its JSON wrapped inside another
+   JSON string, so `reply` arrives holding the whole object as text. Unwrap it once rather
+   than showing a student a blob of JSON. */
+const OP_FIELDS = ['reply', 'why', 'config', 'functions', 'create', 'update', 'newFile', 'editFile', 'replaceFile'];
+function unwrapDoubleJSON(parsed) {
+  if (!parsed || typeof parsed.reply !== 'string' || !/^\s*\{/.test(parsed.reply)) return parsed;
+  try {
+    const inner = JSON.parse(parsed.reply.slice(parsed.reply.indexOf('{'), parsed.reply.lastIndexOf('}') + 1));
+    if (inner && OP_FIELDS.some(function (k) { return inner[k] !== undefined; })) return inner;
+  } catch (e) { /* leave it alone */ }
+  return parsed;
 }
 // The browser sends prior turns so follow-ups like "even faster" or "undo that" make sense.
 // Never trusted as-is: roles, per-message length, turn count and total size are all capped here.
@@ -348,48 +373,101 @@ const FALLBACK_AGENT_SYSTEMS = {
   quiz: 'You write short comprehension questions for kids (11-15) learning to code. Output ONLY a JSON object.',
   grader: 'You check a student\'s answer or code change for a kids coding course. Output ONLY a JSON object with {"pass": true/false, "hint": "..."}.'
 };
-async function callAI(spec, system, user, wantJSON, history) {
+/* One turn with the model. Returns { content, assistant, toolCalls } — toolCalls is empty
+   unless tools were offered and the model chose to use one. `msgs` is the running conversation
+   (history, the new message, and any tool traffic already exchanged). */
+async function chatOnce(spec, system, msgs, wantJSON, withTools) {
   const provider = spec.provider, model = spec.model;
-  if (!model) throw new Error('No model set for ' + provider + ' — set it in .env');
-  const hist = history || [];   // earlier turns, oldest first; sits between the system prompt and the new message
   if (provider === 'anthropic') {
     if (!ANTHROPIC_KEY) throw new Error('ANTHROPIC_API_KEY not set');
+    const body = { model: model, max_tokens: 4000, system: system, messages: msgs };
+    if (withTools) body.tools = tools.anthropicSpecs();
     const r = await fetch('https://api.anthropic.com/v1/messages', {
       method: 'POST',
       headers: { 'x-api-key': ANTHROPIC_KEY, 'anthropic-version': '2023-06-01', 'content-type': 'application/json' },
-      body: JSON.stringify({ model: model, max_tokens: 4000, system: system, messages: hist.concat([{ role: 'user', content: user }]) })
+      body: JSON.stringify(body)
     });
     if (!r.ok) throw new Error('Anthropic HTTP ' + r.status);
     const d = await r.json();
-    return (d.content && d.content[0] && d.content[0].text) || '';
+    const blocks = d.content || [];
+    return {
+      content: blocks.filter(function (b) { return b.type === 'text'; }).map(function (b) { return b.text; }).join(''),
+      assistant: { role: 'assistant', content: blocks },
+      toolCalls: blocks.filter(function (b) { return b.type === 'tool_use'; })
+        .map(function (b) { return { id: b.id, name: b.name, args: b.input || {} }; })
+    };
   }
   if (provider === 'openrouter') {
     if (!OPENROUTER_KEY) throw new Error('OPENROUTER_API_KEY not set');
-    const body = { model: model, messages: [{ role: 'system', content: system }].concat(hist, [{ role: 'user', content: user }]) };
-    if (wantJSON) body.response_format = { type: 'json_object' };
+    const body = { model: model, messages: [{ role: 'system', content: system }].concat(msgs) };
+    if (wantJSON && !withTools) body.response_format = { type: 'json_object' };   // json mode and tools conflict
+    if (withTools) body.tools = tools.toolSpecs();
     const r = await fetch(OPENROUTER_URL, {
       method: 'POST', headers: { 'Authorization': 'Bearer ' + OPENROUTER_KEY, 'content-type': 'application/json' },
       body: JSON.stringify(body)
     });
     if (!r.ok) throw new Error('OpenRouter HTTP ' + r.status);
     const d = await r.json();
-    return (d.choices && d.choices[0] && d.choices[0].message && d.choices[0].message.content) || '';
+    const m = (d.choices && d.choices[0] && d.choices[0].message) || {};
+    return {
+      content: m.content || '',
+      assistant: m,
+      toolCalls: (m.tool_calls || []).map(function (c) {
+        let a = {}; try { a = typeof c.function.arguments === 'string' ? JSON.parse(c.function.arguments || '{}') : (c.function.arguments || {}); } catch (e) {}
+        return { id: c.id, name: c.function.name, args: a };
+      })
+    };
   }
-  // default: local Ollama (free). format:json nudges clean JSON out of small models.
-  // num_predict must be generous: a "replaceFile" reply is a whole game.js, and a truncated
-  // reply is unparseable JSON that would surface to the student as garbage.
+  // default: local Ollama
   const body = { model: model, stream: false, options: { num_ctx: OLLAMA_NUM_CTX, num_predict: OLLAMA_NUM_PREDICT, temperature: 0.3 },
-    messages: [{ role: 'system', content: system }].concat(hist, [{ role: 'user', content: user }]) };
-  if (wantJSON) body.format = 'json';
+    messages: [{ role: 'system', content: system }].concat(msgs) };
+  if (wantJSON && !withTools) body.format = 'json';       // Ollama ignores tool calls in strict json mode
+  if (withTools) body.tools = tools.toolSpecs();
   if (!OLLAMA_THINK) body.think = false;
   let r = await fetch(OLLAMA_URL, { method: 'POST', headers: { 'content-type': 'application/json' }, body: JSON.stringify(body) });
-  if (!r.ok && body.think === false) {           // older models reject the flag rather than ignoring it
-    delete body.think;
-    r = await fetch(OLLAMA_URL, { method: 'POST', headers: { 'content-type': 'application/json' }, body: JSON.stringify(body) });
-  }
+  if (!r.ok && body.think === false) { delete body.think; r = await fetch(OLLAMA_URL, { method: 'POST', headers: { 'content-type': 'application/json' }, body: JSON.stringify(body) }); }
   if (!r.ok) throw new Error('Ollama HTTP ' + r.status);
   const d = await r.json();
-  return (d.message && d.message.content) || d.response || '';
+  const m = d.message || {};
+  return {
+    content: m.content || d.response || '',
+    assistant: m,
+    toolCalls: (m.tool_calls || []).map(function (c) { return { id: c.id, name: c.function.name, args: c.function.arguments || {} }; })
+  };
+}
+
+/* The message that carries a tool's answer back to the model. */
+function toolResultMessage(provider, call, result) {
+  const text = JSON.stringify(result);
+  if (provider === 'anthropic') {
+    return { role: 'user', content: [{ type: 'tool_result', tool_use_id: call.id, content: text }] };
+  }
+  return { role: 'tool', tool_call_id: call.id, name: call.name, content: text };
+}
+
+async function callAI(spec, system, user, wantJSON, history, toolCtx) {
+  const provider = spec.provider, model = spec.model;
+  if (!model) throw new Error('No model set for ' + provider + ' — set it in .env');
+  const msgs = (history || []).concat([{ role: 'user', content: user }]);
+
+  if (!toolCtx) return (await chatOnce(spec, system, msgs, wantJSON, false)).content;
+
+  // Two phases, because strict JSON mode and tool calling are mutually exclusive on Ollama:
+  // asking for JSON suppresses tool calls entirely (the model invents a fake tool result
+  // instead). So phase 1 lets it look things up with JSON mode OFF, and phase 2 asks for the
+  // real answer with tools off and JSON back on, with the tool results in the conversation.
+  for (let round = 0; round < MAX_TOOL_ROUNDS; round++) {
+    const turn = await chatOnce(spec, system, msgs, false, true);
+    if (!turn.toolCalls.length) {
+      if (!wantJSON) return turn.content;     // plain-text agent: this is already the answer
+      break;                                  // JSON agent: fall through and ask properly
+    }
+    msgs.push(turn.assistant);
+    turn.toolCalls.forEach(function (call) {
+      msgs.push(toolResultMessage(provider, call, tools.runTool(call.name, call.args, toolCtx)));
+    });
+  }
+  return (await chatOnce(spec, system, msgs, wantJSON, false)).content;
 }
 
 // ---- the agent endpoint: relays the AI and returns a change for the browser to apply ----
@@ -423,16 +501,21 @@ app.post('/api/ai', async (req, res) => {
     lineNumber: String(b.lineNumber || '').slice(0, 8),
     line: String(b.line || '').slice(0, 400),
     snippet: String(b.snippet || '').slice(0, 2000),
+    gameCode: gameCode,
     files: Array.isArray(b.files) ? b.files.slice(0, 30).map(function (f) {
       return { name: String((f && f.name) || '').slice(0, 60), code: String((f && f.code) || '').slice(0, 12000) };
     }).filter(function (f) { return f.name; }) : []   // a file with no contents still tells the coder it exists
   };
 
+  // Tier 2: when this agent has tools switched on, it may look things up instead of guessing.
+  // ctx already carries the assets, files, game code and lesson this request is about.
+  const agentTools = AGENT_TOOLS[agent] ? ctx : null;
+
   // TUTOR: plain-language explanation, no code edits.
   if (agent === 'tutor') {
     let raw;
     const tutorSystem = ai.buildPrompt('tutor', Object.assign({ gameCode: gameCode }, ctx)) || fallbackTutorSystem(gameCode, context, ctx);
-    try { raw = await callAI(spec, tutorSystem, message, false, history); }
+    try { raw = await callAI(spec, tutorSystem, message, false, history, agentTools); }
     catch (e) { return res.status(502).json({ reply: 'The tutor is not reachable right now (' + e.message + ').' }); }
     return res.json({ reply: (raw || '').trim() || 'Hmm, I am not sure — try rephrasing.' });
   }
@@ -441,7 +524,7 @@ app.post('/api/ai', async (req, res) => {
   if (agent === 'quiz' || agent === 'grader') {
     let raw;
     const agentSystem = ai.buildPrompt(agent, ctx) || FALLBACK_AGENT_SYSTEMS[agent];
-    try { raw = await callAI(spec, agentSystem, message, true); }
+    try { raw = await callAI(spec, agentSystem, message, true, [], agentTools); }
     catch (e) { return res.status(502).json({ error: 'The ' + agent + ' agent is not reachable (' + e.message + ').' }); }
     return res.json({ result: extractJSON(raw) || {} });
   }
@@ -456,7 +539,7 @@ app.post('/api/ai', async (req, res) => {
     return ops;
   }
   let raw;
-  try { raw = await callAI(spec, system, message, true, history); }
+  try { raw = await callAI(spec, system, message, true, history, agentTools); }
   catch (e) { return res.status(502).json({ reply: 'The AI service is not reachable right now (' + e.message + ').' }); }
   let parsed = extractJSON(raw) || { reply: (raw || '').trim() || 'Done.' };
   let ops = toOps(parsed);
@@ -469,7 +552,7 @@ app.post('/api/ai', async (req, res) => {
       + 'in another file (movement in player.js, coins in coins.js, platforms in world.js) is changed with "editFile", '
       + 'passing that whole file back with your edit made. If you genuinely cannot do it, say so plainly and ask for '
       + 'what you need instead of claiming it is done.';
-    try { raw = await callAI(spec, system, retry, true, history); }
+    try { raw = await callAI(spec, system, retry, true, history, agentTools); }
     catch (e) { return res.status(502).json({ reply: 'The AI service is not reachable right now (' + e.message + ').' }); }
     parsed = extractJSON(raw) || { reply: (raw || '').trim() || '' };
     ops = toOps(parsed);
@@ -484,7 +567,7 @@ app.post('/api/ai', async (req, res) => {
     const list = badApis.map(function (b) { return '"' + b.name + '" (' + b.why + ' — ' + b.hint + ')'; }).join('; ');
     const retry = message + '\n\nIMPORTANT: your previous answer used ' + list
       + '. Redo the change using only APIs that exist, or if it cannot be done that way, change nothing and say so plainly.';
-    try { raw = await callAI(spec, system, retry, true, history); }
+    try { raw = await callAI(spec, system, retry, true, history, agentTools); }
     catch (e) { return res.status(502).json({ reply: 'The AI service is not reachable right now (' + e.message + ').' }); }
     parsed = extractJSON(raw) || { reply: '' };
     ops = toOps(parsed);
@@ -502,7 +585,7 @@ app.post('/api/ai', async (req, res) => {
       + ', but those keys are never registered, so the game crashes on the first frame. '
       + 'For SHIFT use scene.cursors.shift.isDown (it already exists). For any other key, add it to the '
       + "addKeys('W,A,S,D') call in createPlayer first. Send the corrected change.";
-    try { raw = await callAI(spec, system, retry, true, history); }
+    try { raw = await callAI(spec, system, retry, true, history, agentTools); }
     catch (e) { return res.status(502).json({ reply: 'The AI service is not reachable right now (' + e.message + ').' }); }
     parsed = extractJSON(raw) || { reply: '' };
     ops = toOps(parsed);
@@ -523,7 +606,7 @@ app.post('/api/ai', async (req, res) => {
         + ', which do not exist and would break the game. '
         + 'Redo it using ONLY the owned asset keys listed above, or — if this cannot be done with those — '
         + 'change nothing and reply with only {"reply":"..."} explaining which asset they would need to buy.';
-      try { raw = await callAI(spec, system, retry, true, history); }
+      try { raw = await callAI(spec, system, retry, true, history, agentTools); }
       catch (e) { return res.status(502).json({ reply: 'The AI service is not reachable right now (' + e.message + ').' }); }
       parsed = extractJSON(raw) || { reply: (raw || '').trim() || 'Done.' };
       ops = toOps(parsed);

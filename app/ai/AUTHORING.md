@@ -5,10 +5,16 @@ explains things and how the Build helper edits code — no code change, no resta
 
 ```
 ai/
-├─ agents/   one file per agent: coder · tutor · quiz · grader
-├─ skills/   reusable chunks an agent can pull in
-└─ loader.js the code that assembles them (don't edit to change behaviour)
+├─ agents/     one file per agent: coder · tutor · quiz · grader
+├─ skills/     reusable chunks an agent can pull in
+├─ reference/  phaser-api.md — what search_phaser_docs searches
+├─ tools.js    the lookups an agent can call (read-only)
+└─ loader.js   the code that assembles the prompts (don't edit to change behaviour)
 ```
+
+**`reference/phaser-api.md` is worth editing.** When tool calling is on, `search_phaser_docs`
+searches that file, so adding an entry there is how you stop the AI guessing at an API. Each
+block is a `##` heading, a `keywords:` line used for matching, and a short code example.
 
 ## How a prompt is assembled
 
