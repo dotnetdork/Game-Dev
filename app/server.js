@@ -1,4 +1,10 @@
-try { require('dotenv').config(); } catch (e) { /* optional */ }
+/* Config lives in .env (gitignored): API keys, which model each agent uses, ports, Ollama
+   settings. Resolved against this file's folder rather than the working directory, so the
+   server finds it whether it is started from app/ or from the repo root. Optional — real
+   environment variables work on their own. */
+try {
+  require('dotenv').config({ path: require('path').join(__dirname, '.env') });
+} catch (e) { /* dotenv is optional */ }
 // ============================================================
 //  LEAGUE Game Dev - course backend
 //  Runs the same on a plain server or inside GitHub Codespaces.
