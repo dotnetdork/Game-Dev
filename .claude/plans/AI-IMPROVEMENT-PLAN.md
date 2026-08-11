@@ -25,8 +25,26 @@ Jay is the project lead and an intern learning this stack — explain decisions,
 - [x] Stage 1 — Context foundations *(done 2026-08-10 — commit `f18bc41`)*
 - [x] Stage 2 — Agents & skills as markdown *(done 2026-08-10)*
 - [x] Stage 3 — Pedagogy loop *(done 2026-08-10)*
-- [ ] Stage 4 — Tool use (Tier 1 validator → Tier 2 tool calling)
+- [ ] Stage 4 — Tool use (Tier 1 validator → Tier 2 tool calling) *(Tier 1 largely built — see below)*
 - [ ] Stage 5 — MCP server
+
+## Built after Stage 3, outside the plan
+
+Six commits of work driven by real failures Jay hit while using the app. None were plan
+stages, but they changed things later stages depend on, so they are recorded here.
+
+| commit | what landed |
+|---|---|
+| `d91710b` | Diff review moved **into the CodeMirror editor** (red/− green/+, whole file, scrolled to the first change) with an IDE-style review bar. Guards so a diff preview can never be saved as `game.js`. `showConsole` re-fits the stage. |
+| `8507947` | **Starter game split into modules**: `config.js` · `world.js` · `player.js` · `coins.js` · `game.js` · `main.js`. `CONFIG` moved to config.js; the settings panel and the AI's `config` op follow it via `configFile()`, falling back to game.js for projects saved before the split. |
+| `470f6fc` | Coder no longer claims it cannot edit; tutor no longer writes code and hands off to Build; `reply` must say what changed. |
+| `31b89ee` | **`editFile` op** — the coder can edit any file, not just game.js. A proposal now spans several files (`opsToChanges`), the diff shows `===== filename =====` headers, and the review bar names them. Files context budget 3000 → 12000 chars, and a file is never dropped silently. |
+| `94c521d` | `think: false` for Ollama by default (grader 15s → 1s). `OLLAMA_THINK=1` re-enables. |
+
+**Model note:** local testing moved from `qwen2.5-coder:7b` to **`qwen3.5:9b`** (all four agents).
+It is materially better at this job — the sprint request that the 7B failed repeatedly now
+succeeds first try with the correct `cursors.shift` API. Constraint 1 still holds: the app runs
+on local Ollama with no cloud key.
 
 ---
 
@@ -203,7 +221,23 @@ Deviations from the plan as written, and why:
 
 **Why:** models guess (asset keys, Phaser APIs, lesson content) because they can't look anything up. Designed around constraint #1 — small local models are unreliable at multi-turn tool calling.
 
-- **Tier 1 — deterministic validation.** *(asset-key half DONE 2026-08-10 in `9b53f78` — reuse `unknownAssetKeys` / `callArgs` in server.js for the remaining checks.)* After the coder returns ops, the server scans proposed code for known-bad patterns (`cubicCurveTo`, `bezierCurveTo`, `arcTo`, `new Phaser.Game`) and asset keys not in the student's owned list. On violation: auto-retry once with the error appended to the conversation; if still bad, return a friendly "that change used something that doesn't exist" message. A validator, not model tool-calling — works with any model, and also catches F7-style truncation (unparseable JSON → retry once).
+- **Tier 1 — deterministic validation.** After the coder returns ops, the server checks the answer rather than trusting it: on violation it retries once with the error, then refuses with a kid-readable message. Works with any model. **Mostly built already**, each piece added while fixing a real failure:
+
+  | check | where | status |
+  |---|---|---|
+  | invented asset keys | `unknownAssetKeys` (`9b53f78`) | done — uses `callArgs`, a real argument scanner, not a regex |
+  | keys read but never registered (`scene.keys.SHIFT`) | `unregisteredKeys` / `badKeysIn` (`31b89ee`) | done |
+  | a reply claiming a change with no ops | `claimsChangeWithoutOps` (`31b89ee`) | done |
+  | whole-file rewrite that deletes existing functions | `keepsTopLevelFunctions` in `project.js` (`31b89ee`) | done (client side) |
+  | unparseable JSON / truncation | `extractJSON` + retry | done |
+  | known-bad Phaser APIs (`cubicCurveTo`, `arcTo`, `new Phaser.Game`, `keyboard.isDown`, remote loads) | `badApisIn` | done |
+
+  **Tier 1 COMPLETE 2026-08-10.** The last check compares each changed file against **its own
+  original** and only flags what the change *introduces* — `main.js` legitimately contains
+  `new Phaser.Game`, so a file sent back whole must not be condemned for what was already in it.
+  `scene.add.rect` / `.ellipse` are real Phaser methods and stay allowed; only the Graphics-object
+  forms are caught. 10 unit cases plus a live bait ("draw a fancy curvy cloud using graphics
+  curves") which the model failed twice and was refused with the game left untouched.
 - **Tier 2 — real tool calling (per-provider opt-in via `.env`, e.g. `CODER_TOOLS=1`; default off for Ollama).** Tools: `get_lesson(id)`, `list_owned_assets()`, `read_file(name)`, `search_phaser_docs(query)`. Anthropic tool-use blocks / OpenRouter `tools` param; loop up to ~4 tool rounds server-side. Off → Tier 1 behavior.
 - Implement tools as plain functions in `ai/tools.js` with a name/description/JSON-schema table — **this table is the future MCP surface.**
 - Data sources: lessons from `content/`; asset catalog moved to a JSON file that `assets-manifest.js` wraps (one source of truth for browser + server); Phaser reference = grow `phaser-rules.md` into a curated mini-reference of the ~40 APIs the course uses. No live fetches of phaser.io.

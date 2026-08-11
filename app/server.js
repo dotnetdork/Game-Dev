@@ -210,6 +210,61 @@ function assetApology(bad, owned) {
     + 'Buy more art and sounds in the Store, or ask me for something using what you have.';
 }
 
+// ---- Phaser APIs that do not exist ----
+// phaser-rules.md tells the model not to use these; it does anyway often enough to matter, and
+// each one either crashes the scene or silently does nothing. Checked, not trusted.
+const BAD_PHASER_APIS = [
+  { re: /\.(cubicCurveTo|bezierCurveTo|quadraticCurveTo|arcTo|arc|ellipse|rect)\s*\(/g,
+    why: 'is an HTML-canvas method and does not exist on Phaser Graphics',
+    hint: 'use fillRect, fillRoundedRect, fillCircle, fillTriangle or beginPath/moveTo/lineTo/closePath/fillPath' },
+  { re: /\bnew\s+Phaser\.Game\s*\(/g, label: 'new Phaser.Game',
+    why: 'creates a second game', hint: 'main.js already starts the game — never create another' },
+  { re: /\binput\.keyboard\.isDown\s*\(/g, label: 'input.keyboard.isDown()',
+    why: 'does not exist', hint: 'read scene.cursors.<key>.isDown, or register the key with addKeys first' },
+  { re: /\bload\.(?:image|audio|spritesheet)\s*\(\s*[^,)]+,\s*['"]https?:/g, label: 'loading a file from a URL',
+    why: 'is not allowed here', hint: 'every picture and sound is already loaded by key — use an owned key' }
+];
+// `arc`/`rect`/`ellipse` are only wrong on a Graphics object; scene.add.rect/ellipse are real.
+const GRAPHICS_ONLY = /^(arc|ellipse|rect)$/;
+function apiHits(code) {
+  const hits = {};
+  BAD_PHASER_APIS.forEach(function (rule) {
+    rule.re.lastIndex = 0; let m;
+    while ((m = rule.re.exec(String(code)))) {
+      if (m[1] && GRAPHICS_ONLY.test(m[1])) {
+        const before = String(code).slice(Math.max(0, m.index - 40), m.index);
+        if (!/graphics|\bg\b|gfx/i.test(before)) continue;      // scene.add.rect(...) is fine
+      }
+      const name = rule.label || m[1] || m[0].trim();
+      hits[name] = hits[name] || { name: name, why: rule.why, hint: rule.hint, n: 0 };
+      hits[name].n++;
+    }
+  });
+  return hits;
+}
+/* Only what this change INTRODUCES. main.js legitimately contains `new Phaser.Game`, so a file
+   sent back whole must not be condemned for what was already in it. */
+function badPhaserApis(proposed, baseline) {
+  const now = apiHits(proposed), was = apiHits(baseline || '');
+  return Object.keys(now).filter(function (k) { return now[k].n > (was[k] ? was[k].n : 0); })
+    .map(function (k) { return now[k]; });
+}
+// Per changed file, so each is compared against its own original.
+function badApisIn(ops, gameCode, ctxFiles) {
+  const out = [];
+  if (ops.editFile && typeof ops.editFile.code === 'string') {
+    const orig = (ctxFiles || []).filter(function (f) { return f.name === ops.editFile.name; })[0];
+    badPhaserApis(ops.editFile.code, orig ? orig.code : '').forEach(function (b) { out.push(b); });
+  }
+  const gameOps = {};
+  ['functions', 'create', 'update', 'replaceFile', 'newFile'].forEach(function (k) { if (ops[k] !== undefined) gameOps[k] = ops[k]; });
+  if (Object.keys(gameOps).length) {
+    badPhaserApis(opsCode(gameOps), ops.replaceFile ? gameCode : '').forEach(function (b) { out.push(b); });
+  }
+  const seen = {};
+  return out.filter(function (b) { if (seen[b.name]) return false; seen[b.name] = 1; return true; });
+}
+
 // ---- keyboard keys must be registered before they are read ----
 // `scene.keys.SHIFT.isDown` when only 'W,A,S,D' were registered throws on the very first frame
 // and freezes the game. The model gets this right about half the time however plainly the rule
@@ -420,6 +475,22 @@ app.post('/api/ai', async (req, res) => {
     ops = toOps(parsed);
     if (claimsChangeWithoutOps(parsed.reply, ops)) {
       return res.json({ reply: "I couldn't work out how to make that change — can you tell me a bit more about what you want to happen?", ops: null });
+    }
+  }
+
+  // A Phaser API that does not exist: correct it once, then refuse rather than ship a crash.
+  let badApis = badApisIn(ops, gameCode, ctx.files);
+  if (badApis.length) {
+    const list = badApis.map(function (b) { return '"' + b.name + '" (' + b.why + ' — ' + b.hint + ')'; }).join('; ');
+    const retry = message + '\n\nIMPORTANT: your previous answer used ' + list
+      + '. Redo the change using only APIs that exist, or if it cannot be done that way, change nothing and say so plainly.';
+    try { raw = await callAI(spec, system, retry, true, history); }
+    catch (e) { return res.status(502).json({ reply: 'The AI service is not reachable right now (' + e.message + ').' }); }
+    parsed = extractJSON(raw) || { reply: '' };
+    ops = toOps(parsed);
+    badApis = badApisIn(ops, gameCode, ctx.files);
+    if (badApis.length) {
+      return res.json({ reply: "I couldn't do that without using something Phaser doesn't have, so I left your game alone. Try asking for it a slightly different way.", ops: null });
     }
   }
 
