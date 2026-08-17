@@ -1,25 +1,25 @@
 ---
-title: Entities and Components
-xp: 220
+title: Physics and Collision
+xp: 200
 ai: full
-summary: Why a coin, a bullet and an enemy are the same thing wearing different hats.
+summary: Why things fall and bounce — and why games only pretend to do real physics.
 ---
 
-You could write separate code for coins, bullets and enemies. Every big game stopped doing that a long time ago, and for a good reason.
+Drop a block in Minecraft and it falls. Nothing in that game knows what gravity is. It knows one number, added every frame.
 
 > **TODO** — one or two more paragraphs setting up why this matters, ideally reaching for a game
 > the student already plays. Keep the example serving the idea; the lesson is not about the game.
 
-## The same thing, different parts
+## Position, velocity, gravity
 
 **TODO** — the main explanation. Aim for three or four short paragraphs, one idea each.
 
-## What they all share
+## Did these two boxes touch?
 
 **TODO** — the second piece. A table or a short list works well here.
 
 ```quiz
-question: TODO — a question about The same thing, different parts or What they all share, placed here on purpose so it lands right after the idea it tests rather than at the end of the lesson.
+question: TODO — a question about Position, velocity, gravity or Did these two boxes touch?, placed here on purpose so it lands right after the idea it tests rather than at the end of the lesson.
 options:
   - TODO the right answer
   - TODO a wrong answer a real student might pick
@@ -32,17 +32,17 @@ feedback:
 explain: TODO — the one sentence worth remembering.
 ```
 
-## What makes each one different
+## Why games fake it
 
 **TODO** — the second half of the teaching, now that the first idea has landed.
 
-## Adding a new kind for free
+## When the fake breaks
 
 **TODO** — the part that usually goes wrong, or the nuance worth knowing.
 
 ```challenge
-title: Lab — four things, four copies of the same code
-task: The same twelve lines appear four times with tiny differences. Find what they share and make one version.
+title: Lab — the thing that will not fall
+task: Gravity is in the code but nothing is falling. Work out what is missing between having a speed and actually moving.
 symptoms:
   - TODO the real problem, in plain words
   - TODO a believable wrong diagnosis
@@ -71,14 +71,14 @@ explain: TODO
 ```
 
 ```yourturn
-title: Find the copy-paste in your own game
-task: Look for code you have written more than once, and pull the shared part out.
+title: Tune the feel of your gravity
+task: Change how heavy your game feels, and notice how much a single number changes it.
 steps:
   - Open the Code tab and look at your own game.
   - TODO the concrete step
   - TODO the concrete step
   - Press Run and check it did what you expected.
-reward: Systems Thinker badge
+reward: Physics Tinkerer badge
 ```
 
 ## Recap

@@ -1,25 +1,25 @@
 ---
-title: Entities and Components
+title: Game State
 xp: 220
 ai: full
-summary: Why a coin, a bullet and an enemy are the same thing wearing different hats.
+summary: What your game is doing right now, and why that is one question.
 ---
 
-You could write separate code for coins, bullets and enemies. Every big game stopped doing that a long time ago, and for a good reason.
+Menu. Playing. Paused. Dead. A traffic light has the same problem your game does, and solves it the same way.
 
 > **TODO** — one or two more paragraphs setting up why this matters, ideally reaching for a game
 > the student already plays. Keep the example serving the idea; the lesson is not about the game.
 
-## The same thing, different parts
+## One question, a few answers
 
 **TODO** — the main explanation. Aim for three or four short paragraphs, one idea each.
 
-## What they all share
+## Why a pile of true/false goes wrong
 
 **TODO** — the second piece. A table or a short list works well here.
 
 ```quiz
-question: TODO — a question about The same thing, different parts or What they all share, placed here on purpose so it lands right after the idea it tests rather than at the end of the lesson.
+question: TODO — a question about One question, a few answers or Why a pile of true/false goes wrong, placed here on purpose so it lands right after the idea it tests rather than at the end of the lesson.
 options:
   - TODO the right answer
   - TODO a wrong answer a real student might pick
@@ -32,17 +32,17 @@ feedback:
 explain: TODO — the one sentence worth remembering.
 ```
 
-## What makes each one different
+## Drawing the map of states
 
 **TODO** — the second half of the teaching, now that the first idea has landed.
 
-## Adding a new kind for free
+## Where the rules live
 
 **TODO** — the part that usually goes wrong, or the nuance worth knowing.
 
 ```challenge
-title: Lab — four things, four copies of the same code
-task: The same twelve lines appear four times with tiny differences. Find what they share and make one version.
+title: Lab — the game that is dead and alive
+task: This game can be playing and game-over at the same time, and it shows. Give it one state instead of several flags.
 symptoms:
   - TODO the real problem, in plain words
   - TODO a believable wrong diagnosis
@@ -71,14 +71,14 @@ explain: TODO
 ```
 
 ```yourturn
-title: Find the copy-paste in your own game
-task: Look for code you have written more than once, and pull the shared part out.
+title: Give your game a real state
+task: Replace at least one true/false flag with a single state value.
 steps:
   - Open the Code tab and look at your own game.
   - TODO the concrete step
   - TODO the concrete step
   - Press Run and check it did what you expected.
-reward: Systems Thinker badge
+reward: State Machinist badge
 ```
 
 ## Recap

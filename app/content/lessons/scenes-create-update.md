@@ -1,25 +1,25 @@
 ---
-title: Entities and Components
+title: Scenes, create and update
 xp: 220
 ai: full
-summary: Why a coin, a bullet and an enemy are the same thing wearing different hats.
+summary: Why one part of your game runs once and the other runs forever.
 ---
 
-You could write separate code for coins, bullets and enemies. Every big game stopped doing that a long time ago, and for a good reason.
+There are exactly two moments in a Phaser game: the moment the world is built, and every moment after it.
 
 > **TODO** — one or two more paragraphs setting up why this matters, ideally reaching for a game
 > the student already plays. Keep the example serving the idea; the lesson is not about the game.
 
-## The same thing, different parts
+## create(): building the world once
 
 **TODO** — the main explanation. Aim for three or four short paragraphs, one idea each.
 
-## What they all share
+## update(): every frame, forever
 
 **TODO** — the second piece. A table or a short list works well here.
 
 ```quiz
-question: TODO — a question about The same thing, different parts or What they all share, placed here on purpose so it lands right after the idea it tests rather than at the end of the lesson.
+question: TODO — a question about create(): building the world once or update(): every frame, forever, placed here on purpose so it lands right after the idea it tests rather than at the end of the lesson.
 options:
   - TODO the right answer
   - TODO a wrong answer a real student might pick
@@ -32,17 +32,17 @@ feedback:
 explain: TODO — the one sentence worth remembering.
 ```
 
-## What makes each one different
+## What belongs where
 
 **TODO** — the second half of the teaching, now that the first idea has landed.
 
-## Adding a new kind for free
+## The classic mistake
 
 **TODO** — the part that usually goes wrong, or the nuance worth knowing.
 
 ```challenge
-title: Lab — four things, four copies of the same code
-task: The same twelve lines appear four times with tiny differences. Find what they share and make one version.
+title: Lab — the world built sixty times a second
+task: Something that should happen once is happening every frame. Find it and move it to where it belongs.
 symptoms:
   - TODO the real problem, in plain words
   - TODO a believable wrong diagnosis
@@ -71,14 +71,14 @@ explain: TODO
 ```
 
 ```yourturn
-title: Find the copy-paste in your own game
-task: Look for code you have written more than once, and pull the shared part out.
+title: Check your own create and update
+task: Read both functions in your game and make sure nothing that should happen once is happening every frame.
 steps:
   - Open the Code tab and look at your own game.
   - TODO the concrete step
   - TODO the concrete step
   - Press Run and check it did what you expected.
-reward: Systems Thinker badge
+reward: Scene Setter badge
 ```
 
 ## Recap

@@ -1,46 +1,42 @@
 # Course structure. Edit to add/reorder modules and lessons.
 # Each lesson id maps to content/lessons/<id>.md
+#
+# Five modules, 22 lessons. Module names are labels, not sentences.
+#
+# There is no "welcome / how this works" module on purpose — that job belongs to the first-run
+# tour, which highlights the real buttons instead of describing them.
+#
+# Games kids know (Mario, Minecraft, Fortnite, RuneScape, Roblox) appear all through the course as
+# familiar examples while a mechanic is being explained. They are never the subject of a lesson.
+# We are not teaching Fortnite; we are teaching what makes a game work, using something they have
+# already played so the idea lands.
+#
+# The v1 course (47 shorter lessons) is kept in content/_archive-v1/ .
 id: course1
-name: "CodeQuest — Level 1"   # course name TBD
+name: "CodeQuest — Level 1"
 library: Phaser
 modules:
-  - id: welcome
-    name: "Welcome & What You'll Build"
-    stars: 100
-    lessons: [what-youll-build, tour-of-the-studio, play-and-tinker, how-the-course-works]
-  - id: what-makes-games-fun
-    name: "What Makes Games Fun"
+  - id: engines
+    name: "Game Engines"
     stars: 120
-    lessons: [ingredients-of-fun, mechanics-rules-core-loop, genres, playtesting]
-  - id: engines-and-languages
-    name: "Game Engines & the Languages Games Are Made Of"
+    lessons: [what-an-engine-does, physics-and-collision, what-a-game-is-made-of, from-project-to-playable]
+
+  - id: mechanics
+    name: "Core Mechanics"
+    stars: 140
+    lessons: [the-core-loop, feedback, difficulty-and-flow, risk-and-reward, progression]
+
+  - id: phaser
+    name: "Phaser Programming"
+    stars: 160
+    lessons: [values-and-variables, decisions-and-repeats, scenes-create-update, input-movement-collision, reading-an-error]
+
+  - id: architecture
+    name: "Systems Architecture"
     stars: 150
-    lessons: [what-is-an-engine, tour-of-engines, languages-games-use, minecraft-case-study, why-javascript-phaser]
-  - id: who-makes-games
-    name: "Who Makes Games?"
-    stars: 120
-    lessons: [people-behind-a-game, designers-programmers-artists, animators-sound-level, producers-and-qa, you-and-your-ai]
-  - id: systems-and-architecture
-    name: "How a Game Is Built: Systems & Architecture"
-    stars: 180
-    lessons: [the-game-loop, scenes-and-objects, systems-of-a-game, entities-and-components, keeping-code-tidy, state-machines]
-  - id: sprites-and-movement
-    name: "Sprites & Movement"
-    stars: 180
-    lessons: [sprite-on-screen, reading-input, moving-with-velocity, challenge-drive-the-ship]
-  - id: collisions-and-scoring
-    name: "Collisions & Scoring"
-    stars: 200
-    lessons: [detecting-overlaps, variables-and-score, score-and-lives-ui, challenge-catch-the-stars]
-  - id: rules-wins-losses
-    name: "Rules, Wins & Losses"
-    stars: 200
-    lessons: [conditionals, lives-timers-spawning, game-over-restart, challenge-add-a-fail-state]
-  - id: juice-and-game-feel
-    name: "Juice & Game Feel"
-    stars: 200
-    lessons: [what-is-juice, tweens-and-motion, screen-shake-particles, sound-effects, challenge-make-a-hit-feel-great]
-  - id: build-your-game
-    name: "Build Your Game"
-    stars: 300
-    lessons: [choose-your-game, plan-it, build-the-core-loop, add-enemies-and-challenge, polish-and-juice, publish]
+    lessons: [game-state, entities-and-components, events-not-tangles, data-out-of-code]
+
+  - id: assets
+    name: "Asset Design"
+    stars: 130
+    lessons: [sprites-and-animation, sound-design, juice, ship-it]

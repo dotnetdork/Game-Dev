@@ -1,25 +1,25 @@
 ---
-title: Entities and Components
-xp: 220
+title: Reading an Error
+xp: 240
 ai: full
-summary: Why a coin, a bullet and an enemy are the same thing wearing different hats.
+summary: How to find a bug on purpose instead of by guessing.
 ---
 
-You could write separate code for coins, bullets and enemies. Every big game stopped doing that a long time ago, and for a good reason.
+Everybody's code breaks. The difference between someone who has been doing this a week and someone who has been doing it a year is entirely about what they do next.
 
 > **TODO** — one or two more paragraphs setting up why this matters, ideally reaching for a game
 > the student already plays. Keep the example serving the idea; the lesson is not about the game.
 
-## The same thing, different parts
+## The message is not shouting at you
 
 **TODO** — the main explanation. Aim for three or four short paragraphs, one idea each.
 
-## What they all share
+## Where it happened, and what it expected
 
 **TODO** — the second piece. A table or a short list works well here.
 
 ```quiz
-question: TODO — a question about The same thing, different parts or What they all share, placed here on purpose so it lands right after the idea it tests rather than at the end of the lesson.
+question: TODO — a question about The message is not shouting at you or Where it happened, and what it expected, placed here on purpose so it lands right after the idea it tests rather than at the end of the lesson.
 options:
   - TODO the right answer
   - TODO a wrong answer a real student might pick
@@ -32,17 +32,17 @@ feedback:
 explain: TODO — the one sentence worth remembering.
 ```
 
-## What makes each one different
+## Guess, check, repeat
 
 **TODO** — the second half of the teaching, now that the first idea has landed.
 
-## Adding a new kind for free
+## The four bugs you will meet most
 
 **TODO** — the part that usually goes wrong, or the nuance worth knowing.
 
 ```challenge
-title: Lab — four things, four copies of the same code
-task: The same twelve lines appear four times with tiny differences. Find what they share and make one version.
+title: Lab — three errors, one at a time
+task: This game has three separate problems. Fix them one at a time, reading what the console says before you change anything.
 symptoms:
   - TODO the real problem, in plain words
   - TODO a believable wrong diagnosis
@@ -71,14 +71,14 @@ explain: TODO
 ```
 
 ```yourturn
-title: Find the copy-paste in your own game
-task: Look for code you have written more than once, and pull the shared part out.
+title: Break your own game on purpose
+task: Make a deliberate mistake, read the error, then fix it. Doing this once when nothing is at stake is worth an hour of panic later.
 steps:
   - Open the Code tab and look at your own game.
   - TODO the concrete step
   - TODO the concrete step
   - Press Run and check it did what you expected.
-reward: Systems Thinker badge
+reward: Bug Hunter badge
 ```
 
 ## Recap

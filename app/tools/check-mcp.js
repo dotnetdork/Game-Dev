@@ -1,6 +1,17 @@
 /* Starts ai/mcp-server.js as a real MCP client would and exercises every surface it offers.
    Run: node tools/check-mcp.js   (from the app/ directory) */
 const path = require('path');
+const fs = require('fs');
+
+/* Read the real course rather than hardcoding what it used to contain. The first version asserted
+   "at least 50 resources" and fetched a lesson by name; rewriting the course from 47 lessons to 22
+   failed both, which told us nothing about the MCP server — the thing actually under test. The
+   course is content and will keep changing; this checks the server against whatever it currently
+   is. */
+const yaml = require(path.join(__dirname, '..', 'public', 'vendor', 'js-yaml', 'js-yaml.min.js'));
+const COURSE = yaml.load(fs.readFileSync(path.join(__dirname, '..', 'content', 'course.yaml'), 'utf8')) || {};
+const LESSON_IDS = (COURSE.modules || []).reduce(function (a, m) { return a.concat(m.lessons || []); }, []);
+const SAMPLE_LESSON = LESSON_IDS[0];
 
 async function main() {
   const { Client } = await import('@modelcontextprotocol/sdk/client/index.js');
@@ -24,7 +35,8 @@ async function main() {
   const prompts = (await client.listPrompts()).prompts;
 
   check('tools listed', tools.length === 5, tools.map(function (t) { return t.name; }).join(', '));
-  check('resources listed', resources.length >= 50, resources.length + ' resources');
+  // one per lesson, plus the outline, the asset catalogue and the Phaser reference
+  check('resources listed', resources.length >= LESSON_IDS.length, resources.length + ' resources for ' + LESSON_IDS.length + ' lessons');
   check('prompts listed', prompts.length === 8, prompts.map(function (p) { return p.name; }).join(', '));
 
   // every tool advertises a schema the client can actually use
@@ -48,7 +60,7 @@ async function main() {
   check('search_store invents nothing', (JSON.parse(none.content[0].text).matches || []).length === 0);
 
   // a lesson by id
-  const lesson = await client.callTool({ name: 'get_lesson', arguments: { id: 'moving-with-velocity' } });
+  const lesson = await client.callTool({ name: 'get_lesson', arguments: { id: SAMPLE_LESSON } });
   const got = JSON.parse(lesson.content[0].text);
   check('get_lesson reads a lesson', !!got.title && (got.text || '').length > 50, got.title);
 
@@ -65,7 +77,7 @@ async function main() {
   const outline = await client.readResource({ uri: 'course://outline' });
   check('course outline readable', /modules:/.test(outline.contents[0].text));
 
-  const one = await client.readResource({ uri: 'lesson://the-game-loop' });
+  const one = await client.readResource({ uri: 'lesson://' + SAMPLE_LESSON });
   check('lesson resource readable', /title:/.test(one.contents[0].text), one.contents[0].text.split('\n')[1]);
 
   const cat = await client.readResource({ uri: 'catalog://store' });

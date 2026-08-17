@@ -16,9 +16,9 @@ function resetWidgetHandlers() { Object.keys(widgetHandlers).forEach(function (k
    by kind — q0, q1, r0, c0 — which is the same on every render and after a reload, so the
    activity ledger in project.js has something durable to hang answers on. */
 let lessonWidgetId = '';
-let widgetSeq = { q: 0, r: 0, c: 0 };
+let widgetSeq = { q: 0, r: 0, c: 0, y: 0 };
 let goalRunKeys = [];        // run cells that declare @expect — the only ones that can be "finished"
-function beginLessonWidgets(lessonId) { lessonWidgetId = lessonId || ''; widgetSeq = { q: 0, r: 0, c: 0 }; goalRunKeys = []; }
+function beginLessonWidgets(lessonId) { lessonWidgetId = lessonId || ''; widgetSeq = { q: 0, r: 0, c: 0, y: 0 }; goalRunKeys = []; }
 function nextWidgetKey(kind) { return kind + (widgetSeq[kind]++); }
 function widgetToken(key) { return (lessonWidgetId || 'l') + ':' + key; }
 
@@ -691,6 +691,68 @@ function renderChallengeCells(root) {
   });
 }
 
+/* ```yourturn — the bridge from the lab to the student's own game.
+   A lab teaches a technique on the course's example. This asks them to do the same thing in the
+   game that is actually theirs, by hand. That order — worked example, then independent practice —
+   is the point: copying the lab's code across would move the technique without teaching it.
+
+   YAML: title, task, steps (a list), and optionally `reward` naming an unlockable.
+   Checking is manual for now — the student says when they have done it. Stage 5 replaces that with
+   a verifier that reads their project, at which point only this function changes. */
+function renderYourTurnCells(root) {
+  root.querySelectorAll('pre > code.language-yourturn').forEach(function (code) {
+    let c; try { c = jsyaml.load(code.textContent) || {}; } catch (e) { c = {}; }
+    const pre = code.parentNode;
+    const key = nextWidgetKey('y');
+    const lessonId = lessonWidgetId;
+    const done = activityDone(lessonId, key);
+
+    const cell = document.createElement('div'); cell.className = 'yourturn';
+    const head = document.createElement('div'); head.className = 'yt-head';
+    head.innerHTML = '<span class="mdi mdi-rocket-launch-outline" aria-hidden="true"></span>'
+      + '<span class="yt-title">' + esc(c.title || 'Your turn') + '</span>'
+      + '<span class="yt-where">in your own game</span>';
+    cell.appendChild(head);
+
+    const body = document.createElement('div'); body.className = 'yt-body';
+    if (c.task) { const t = document.createElement('p'); t.className = 'yt-task'; t.textContent = c.task; body.appendChild(t); }
+    if (Array.isArray(c.steps) && c.steps.length) {
+      const ol = document.createElement('ol'); ol.className = 'yt-steps';
+      c.steps.forEach(function (s) { const li = document.createElement('li'); li.textContent = String(s); ol.appendChild(li); });
+      body.appendChild(ol);
+    }
+    if (c.reward) {
+      const r = document.createElement('p'); r.className = 'yt-reward';
+      r.innerHTML = '<span class="mdi mdi-lock-open-variant-outline" aria-hidden="true"></span>'
+        + 'Doing this unlocks <b>' + esc(c.reward) + '</b> — you cannot buy it with Stars.';
+      body.appendChild(r);
+    }
+    cell.appendChild(body);
+
+    const foot = document.createElement('div'); foot.className = 'yt-foot';
+    const openCode = document.createElement('button'); openCode.type = 'button';
+    openCode.className = 'btn btn-secondary';
+    openCode.innerHTML = '<span class="mdi mdi-code-tags" aria-hidden="true"></span>Open my game';
+    openCode.addEventListener('click', function () { switchView('code'); });
+    const status = document.createElement('span'); status.className = 'yt-status'; status.setAttribute('aria-live', 'polite');
+    const mark = document.createElement('button'); mark.type = 'button';
+    mark.className = 'btn btn-primary-role yt-done';
+    mark.innerHTML = '<span class="mdi mdi-check" aria-hidden="true"></span>I’ve done this';
+
+    function settle() {
+      status.className = 'yt-status ok';
+      status.innerHTML = '<span class="mdi mdi-check-circle" aria-hidden="true"></span>Done in your game';
+      mark.disabled = true; mark.hidden = true;
+    }
+    if (done) settle();
+    mark.addEventListener('click', function () { settle(); resolveActivity(key); });
+
+    foot.appendChild(openCode); foot.appendChild(status); foot.appendChild(mark);
+    cell.appendChild(foot);
+    pre.parentNode.replaceChild(cell, pre);
+  });
+}
+
 const MODULE_HERO = ['#143561', '#2f2a6b', '#1f5b63', '#5b3320', '#1f6b45', '#6b2a52', '#26456b', '#4a6b26', '#6b5320', '#33305b'];
 const MODULE_ACCENT = ['#3e8fd6', '#8b7cff', '#2fd0b6', '#f5820a', '#3ddc84', '#ff6b9d', '#59a5ff', '#a3d94a', '#f5b02e', '#7c9cff'];
 function moduleHero(mi) { return MODULE_HERO[mi % MODULE_HERO.length]; }
@@ -720,6 +782,7 @@ function paintLesson2(f, html) {
   renderRunCells($('lessonBody'));
   renderQuizCells($('lessonBody'));
   renderChallengeCells($('lessonBody'));
+  renderYourTurnCells($('lessonBody'));
   paintLesson($('lessonBody'));
   applyAIMode(f.l.ai);
   startLessonProgress(f);
@@ -739,6 +802,7 @@ function lessonActivityKeys() {
   const keys = [];
   for (let i = 0; i < widgetSeq.q; i++) keys.push('q' + i);
   for (let i = 0; i < widgetSeq.c; i++) keys.push('c' + i);
+  for (let i = 0; i < widgetSeq.y; i++) keys.push('y' + i);
   // only run cells with an @expect goal can be "finished"; the rest are for tinkering
   goalRunKeys.forEach(function (k) { keys.push(k); });
   return keys;

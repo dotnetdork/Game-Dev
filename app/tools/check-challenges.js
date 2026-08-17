@@ -65,18 +65,33 @@ function blocks(md) {
   return out;
 }
 
-// tiny YAML reader for the two keys we use (task:, title:, code: |)
-function parseChallenge(src) {
-  const codeAt = src.indexOf('\ncode: |');
-  if (codeAt < 0) return null;
-  const head = src.slice(0, codeAt + 1);
-  const body = src.slice(codeAt + '\ncode: |'.length).replace(/^\n/, '');
+/* Pulls one `key: |` block out, de-indented, stopping at the first line that dedents past it.
+   Hand-rolled rather than a real YAML parse because these blocks hold JavaScript, and a stray
+   colon or `#` inside a string is perfectly good code that a strict parser would reject. */
+function blockValue(src, key) {
+  const at = src.indexOf('\n' + key + ': |');
+  if (at < 0) return null;
+  const body = src.slice(at + ('\n' + key + ': |').length).replace(/^\n/, '');
   const lines = body.split('\n');
-  const indent = (lines.find(function (l) { return l.trim(); }) || '').match(/^\s*/)[0].length;
-  const code = lines.map(function (l) { return l.slice(indent); }).join('\n');
+  const first = lines.find(function (l) { return l.trim(); }) || '';
+  const indent = first.match(/^\s*/)[0].length;
+  if (!indent) return null;
+  const out = [];
+  for (const l of lines) {
+    if (l.trim() && l.match(/^\s*/)[0].length < indent) break;   // dedented: the block has ended
+    out.push(l.slice(indent));
+  }
+  return out.join('\n').replace(/\s+$/, '');
+}
+
+// tiny YAML reader for the keys we use (title:, task:, code: |, solution: |)
+function parseChallenge(src) {
+  const code = blockValue(src, 'code');
+  if (code === null) return null;
+  const head = src.slice(0, src.indexOf('\ncode: |') + 1);
   const task = (head.match(/^task:\s*(.+)$/m) || [])[1] || '';
   const title = (head.match(/^title:\s*(.+)$/m) || [])[1] || '';
-  return { title, task, code };
+  return { title, task, code, solution: blockValue(src, 'solution') };
 }
 
 (async function () {
@@ -88,12 +103,22 @@ function parseChallenge(src) {
       const c = parseChallenge(b);
       if (!c) { rows.push({ file: f, status: 'UNPARSEABLE' }); continue; }
       const before = await runChallenge(c.code);
-      let fixed = c.code;
-      (FIXES[f] || []).forEach(function (p) {
-        if (fixed.indexOf(p[0]) < 0) throw new Error(f + ': fix anchor not found -> ' + p[0]);
-        fixed = fixed.replace(p[0], p[1]);
-      });
-      const after = FIXES[f] ? await runChallenge(fixed) : null;
+      /* The worked answer now lives in the lab itself, as `solution:` — the student is offered it
+         when they get properly stuck, so the same text is both the escape hatch and the thing this
+         checks. That is the point: a fix kept in a separate table here can drift out of step with
+         the lesson, and then this passes while the lesson is broken.
+         FIXES stays as a fallback for any lab that has no solution authored yet. */
+      let after = null;
+      if (typeof c.solution === 'string' && c.solution.trim()) {
+        after = await runChallenge(c.solution);
+      } else if (FIXES[f]) {
+        let fixed = c.code;
+        FIXES[f].forEach(function (p) {
+          if (fixed.indexOf(p[0]) < 0) throw new Error(f + ': fix anchor not found -> ' + p[0]);
+          fixed = fixed.replace(p[0], p[1]);
+        });
+        after = await runChallenge(fixed);
+      }
       rows.push({
         file: f, title: c.title, hasTask: !!c.task,
         unfixedWins: before.won, unfixedErr: before.err,
