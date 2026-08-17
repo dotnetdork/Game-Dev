@@ -503,10 +503,24 @@ const MODULE_HERO = ['#143561', '#2f2a6b', '#1f5b63', '#5b3320', '#1f6b45', '#6b
 const MODULE_ACCENT = ['#3e8fd6', '#8b7cff', '#2fd0b6', '#f5820a', '#3ddc84', '#ff6b9d', '#59a5ff', '#a3d94a', '#f5b02e', '#7c9cff'];
 function moduleHero(mi) { return MODULE_HERO[mi % MODULE_HERO.length]; }
 function moduleAccent(mi) { return MODULE_ACCENT[mi % MODULE_ACCENT.length]; }
+/* Lesson bodies are fetched on demand now, so this has two halves: the part that must happen
+   immediately (the outline highlight and the tab switch — a click has to feel answered) and the
+   part that needs the body. `token` guards against a student clicking three lessons quickly: only
+   the newest request is allowed to paint, so a slow earlier fetch cannot land on top of it. */
+let lessonToken = 0;
 function selectLesson(idx) {
   curIdx = idx; const f = flat[idx];
+  const token = ++lessonToken;
   $('crumb').dataset.lesson = f.m.name + ': ' + f.l.t;
-  $('lessonBody').innerHTML = lessonBodyHTML(f);
+  cancelAdvance();
+  renderOutline(); switchView('learn');
+  lessonBody(f.l).then(function (html) {
+    if (token !== lessonToken) return;   // they moved on; this is a stale answer
+    paintLesson2(f, html);
+  });
+}
+function paintLesson2(f, html) {
+  $('lessonBody').innerHTML = lessonBodyHTML(f, html);
   $('lessonBody').style.setProperty('--mod', moduleHero(f.mi));
   currentLessonText = ($('lessonBody').textContent || '').replace(/\s+/g, ' ').trim().slice(0, 3000);
   resetWidgetHandlers();   // the previous lesson's widget iframes are gone with the innerHTML
@@ -517,7 +531,7 @@ function selectLesson(idx) {
   paintLesson($('lessonBody'));
   applyAIMode(f.l.ai);
   startLessonProgress(f);
-  renderOutline(); switchView('learn');
+  prefetchNextLesson(curIdx);
 }
 
 /* ---------- finishing a lesson ----------

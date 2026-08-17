@@ -156,6 +156,71 @@ app.use('/vendor', express.static(path.join(ROOT, 'public', 'vendor'), { setHead
 app.use(express.static(path.join(ROOT, 'public')));
 app.use('/content', express.static(path.join(ROOT, 'content'), { etag: false, lastModified: false, cacheControl: false })); // authored course: YAML structure + Markdown lessons (read-only)
 
+/* ---- the course index, in one request ----
+   Boot used to be: fetch course.yaml, then fetch all 47 lesson files, then parse the front-matter
+   of each in the browser — 48 requests and 47 Markdown renders before the outline could appear,
+   to show one lesson. This returns the structure and every lesson's front-matter together; bodies
+   are fetched from /content/lessons/<id>.md when a lesson is actually opened.
+
+   Uses the js-yaml that is already vendored for the browser rather than a second parser, so the
+   server and the client can never disagree about what course.yaml says.
+
+   Cached against the newest mtime under content/, because lessons are authored files that get
+   edited while the server is running and a stale outline would be baffling. */
+const yaml = require('./public/vendor/js-yaml/js-yaml.min.js');
+const fs = require('fs');
+const CONTENT = path.join(ROOT, 'content');
+const LESSON_DIR = path.join(CONTENT, 'lessons');
+
+let indexCache = null;
+
+function newestMtime() {
+  let newest = 0;
+  const stat = (p) => { try { const m = fs.statSync(p).mtimeMs; if (m > newest) newest = m; } catch (e) {} };
+  stat(path.join(CONTENT, 'course.yaml'));
+  try { fs.readdirSync(LESSON_DIR).forEach((f) => stat(path.join(LESSON_DIR, f))); } catch (e) {}
+  return newest;
+}
+
+/* The corpus is 47 files of four flat keys, so a full YAML parse per lesson is not needed — but
+   using js-yaml on the front-matter block anyway means an author who adds a quoted colon or a
+   list later gets the behaviour they expect instead of a silent mis-parse. */
+function frontMatter(raw) {
+  const m = raw.match(/^---\s*\r?\n([\s\S]*?)\r?\n---\s*\r?\n?/);
+  if (!m) return {};
+  try { return yaml.load(m[1]) || {}; } catch (e) { return {}; }
+}
+
+function buildIndex() {
+  const data = yaml.load(fs.readFileSync(path.join(CONTENT, 'course.yaml'), 'utf8')) || {};
+  const modules = (data.modules || []).map((mod) => {
+    const lessons = (mod.lessons || []).map((id) => {
+      let meta = {};
+      try { meta = frontMatter(fs.readFileSync(path.join(LESSON_DIR, id + '.md'), 'utf8')); }
+      catch (e) { return { id: id, title: id, xp: 0, summary: '', ai: 'full', missing: true }; }
+      return {
+        id: id,
+        title: meta.title || id,
+        xp: meta.xp || 0,
+        summary: meta.summary || '',
+        ai: meta.ai || 'full'
+      };
+    });
+    return { id: mod.id, name: mod.name, stars: mod.stars || 0, lessons: lessons };
+  });
+  return { id: data.id, name: data.name || 'Course', library: data.library || 'Phaser', modules: modules };
+}
+
+app.get('/api/lessons', (req, res) => {
+  try {
+    const stamp = newestMtime();
+    if (!indexCache || indexCache.stamp !== stamp) indexCache = { stamp: stamp, body: buildIndex() };
+    res.json(indexCache.body);
+  } catch (e) {
+    res.status(500).json({ error: 'Could not read the course content.' });
+  }
+});
+
 // ---- which models are running (per agent) ----
 app.get('/api/info', (req, res) => {
   const agents = {};

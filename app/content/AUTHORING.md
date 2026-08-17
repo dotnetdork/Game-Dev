@@ -6,6 +6,19 @@ Everything here is editable without touching app code.
 Modules in order; each lists lesson ids that map to lessons/<id>.md.
 `stars` is awarded when the whole module is completed.
 
+## How the app reads all this
+At boot the app makes one request, `GET /api/lessons`, which returns the module structure plus
+every lesson's front-matter (title, xp, summary, ai). A lesson's **body** is fetched only when
+that lesson is opened, and the next one is fetched in the background so the click never waits.
+
+You do not need to restart the server after editing content. The index is cached against the
+newest modification time under `content/`, so saving a lesson or course.yaml is enough — reload
+the page and your change is there.
+
+If a lesson id in course.yaml has no matching file, it still appears in the outline (marked
+`missing`) rather than breaking the course, so a typo shows up as one bad row instead of a blank
+app.
+
 ## Lesson front-matter
 Each lessons/<id>.md starts with a YAML block:
 

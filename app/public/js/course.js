@@ -13,29 +13,51 @@ function splitFrontMatter(text) {
   let meta = {}; try { meta = jsyaml.load(m[1]) || {}; } catch (e) { meta = {}; }
   return { meta: meta, body: m[2] };
 }
+
+/* Boot used to fetch course.yaml and then all 47 lesson files, and render every one of them to
+   HTML, before the outline could appear — 48 requests to show one lesson. /api/lessons returns the
+   structure and every lesson's front-matter in one response; a body is fetched and rendered the
+   first time that lesson is opened (see lessonBody below). */
 function loadCourse() {
-  return fetch('content/course.yaml').then(function (r) { return r.text(); }).then(function (y) {
-    const data = jsyaml.load(y) || {};
+  return fetch('/api/lessons').then(function (r) {
+    if (!r.ok) throw new Error('index ' + r.status);
+    return r.json();
+  }).then(function (data) {
     course = { id: data.id, name: data.name || 'Course', library: data.library || 'Phaser', modules: [] };
-    const jobs = [];
     (data.modules || []).forEach(function (mod) {
       const module = { name: mod.name, stars: mod.stars || 0, lessons: [] };
       course.modules.push(module);
-      (mod.lessons || []).forEach(function (lessonId) {
-        const lesson = { t: lessonId, xp: 0, d: '', body: '', ai: 'full' };
-        module.lessons.push(lesson);
-        jobs.push(fetch('content/lessons/' + lessonId + '.md').then(function (r) { return r.ok ? r.text() : ''; }).then(function (md) {
-          const fm = splitFrontMatter(md || '');
-          lesson.t = (fm.meta && fm.meta.title) || lessonId;
-          lesson.xp = (fm.meta && fm.meta.xp) || 0;
-          lesson.d = (fm.meta && fm.meta.summary) || '';
-          lesson.ai = (fm.meta && fm.meta.ai) || 'full';
-          lesson.body = mdToSafeHTML(fm.body || '');
-        }).catch(function () { lesson.body = '<p>(Could not load this lesson.)</p>'; }));
+      (mod.lessons || []).forEach(function (l) {
+        // `id` is new: the body fetch needs the filename, which used to be implicit in load order.
+        module.lessons.push({ id: l.id, t: l.title, xp: l.xp, d: l.summary, ai: l.ai, body: null });
       });
     });
-    return Promise.all(jobs).then(buildFlat);
+    buildFlat();
   });
+}
+
+/* ---------- lesson bodies, fetched on demand ----------
+   Cached on the lesson object, so re-opening one is instant and a student who loses the network
+   mid-class can still move around what they have already read. */
+function lessonBody(lesson) {
+  if (lesson.body !== null) return Promise.resolve(lesson.body);
+  return fetch('content/lessons/' + lesson.id + '.md')
+    .then(function (r) { return r.ok ? r.text() : Promise.reject(new Error(String(r.status))); })
+    .then(function (md) {
+      lesson.body = mdToSafeHTML(splitFrontMatter(md).body || '');
+      return lesson.body;
+    })
+    .catch(function () {
+      // Not cached: a lesson that failed because the network blinked should retry next time,
+      // not be permanently replaced by an apology.
+      return '<p>(Could not load this lesson. Check your connection and try again.)</p>';
+    });
+}
+/* The next lesson is very likely the next thing they open, and it is a few KB. Fetching it once
+   the current one is on screen means the click that matters never waits on the network. */
+function prefetchNextLesson(idx) {
+  const next = flat[idx + 1];
+  if (next && next.l.body === null) lessonBody(next.l);
 }
 // Guard the -1: an empty `lessons:` list in course.yaml would otherwise index flat[-2] and throw.
 function lessonUnlocked(idx) { return idx <= 0 ? idx === 0 : !!(flat[idx - 1] && state.done[flat[idx - 1].id]); }
@@ -111,7 +133,7 @@ function wireTreeKeys() {
 }
 
 /* ---------- lesson (rendered from authored Markdown) ---------- */
-function lessonBodyHTML(f) {
+function lessonBodyHTML(f, body) {
   const done = !!state.done[f.id];
   const total = f.m.lessons.length;
   const meta = '<div class="lesson-meta">'
@@ -124,7 +146,7 @@ function lessonBodyHTML(f) {
   const strip = '<div class="lesson-progress" id="lessonProgress" aria-live="polite"></div>';
   return '<div class="lesson-hero"><div class="hero-inner"><h1>' + f.l.t + '</h1>'
     + (f.l.d ? '<p class="lead">' + f.l.d + '</p>' : '') + meta + '</div></div>'
-    + '<div class="lesson-content">' + f.l.body + strip + '</div>';
+    + '<div class="lesson-content">' + body + strip + '</div>';
 }
 
 /* The strip under the lesson. Three states: how much is left, keep-reading, and the reward. */
