@@ -13,13 +13,24 @@
  */
 const DEV_DEFAULTS = {
   /* Every lesson clickable, in any order, without finishing the one before. For authoring and
-     testing — a course you have to play through to proof-read is a course nobody proof-reads. */
-  unlockAll: false,
+     testing — a course you have to play through to proof-read is a course nobody proof-reads.
+
+     ON while we are building. It MUST go back to false before any student uses this, or the
+     course has no sequence at all. The status bar says "Dev: unlockAll" the whole time it is on,
+     which is the reminder. */
+  unlockAll: true,
 
   /* The game frame runs with an opaque origin so student code cannot reach the app. Off only to
      rule it out if assets ever mysteriously fail to load. */
   sandboxGame: true
 };
+
+/* What each switch MUST be before a real student uses the app. The status-bar marker is driven by
+   this, not by whether a value differs from its default — the moment `unlockAll` became the default
+   for development, "differs from default" said nothing was on and the marker disappeared, which is
+   exactly when it was most needed. This is a statement about safety, so flipping a default can
+   never silence it. */
+const DEV_SAFE = { unlockAll: false, sandboxGame: true };
 
 const DEV_URL_KEYS = { unlock: 'unlockAll', sandbox: 'sandboxGame' };
 const DEV_STORE_KEY = 'leagueDev';
@@ -50,8 +61,9 @@ const DEV = (function () {
     return cfg[name];
   };
   cfg.reset = function () { Storage.remove(DEV_STORE_KEY); console.log('[dev] back to defaults — reload'); };
+  /* Everything currently set to something a student should never see. */
   cfg.active = function () {
-    return Object.keys(DEV_DEFAULTS).filter(function (k) { return cfg[k] !== DEV_DEFAULTS[k]; });
+    return Object.keys(DEV_SAFE).filter(function (k) { return cfg[k] !== DEV_SAFE[k]; });
   };
   return cfg;
 })();
