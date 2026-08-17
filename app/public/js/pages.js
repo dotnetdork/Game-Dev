@@ -218,7 +218,7 @@ function renderHelp() {
 }
 function resetProgress() {
   modal({ title: 'Reset progress?', message: 'This clears all XP, Stars, unlocked assets, and completed lessons on this browser. This cannot be undone.', okLabel: 'Reset everything',
-    onOk: function () { localStorage.removeItem(SKEY); location.reload(); } });
+    onOk: function () { Storage.remove(SKEY); location.reload(); } });
 }
 function wirePage(page) {
   document.querySelectorAll('#page [data-buy]').forEach(function (b) { b.addEventListener('click', function () { buyAsset(b.getAttribute('data-buy')); }); });

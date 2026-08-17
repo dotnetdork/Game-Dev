@@ -40,6 +40,8 @@ function load(seed) {
   };
   sandbox.globalThis = sandbox;
   const ctx = vm.createContext(sandbox);
+  // storage.js first: project.js reads and writes through it, not through localStorage.
+  vm.runInContext(fs.readFileSync(path.join(SRC, 'storage.js'), 'utf8'), ctx);
   vm.runInContext(fs.readFileSync(path.join(SRC, 'starter-code.js'), 'utf8'), ctx);
   // project.js's tail touches DOM helpers we don't have; only the storage half is under test.
   const src = fs.readFileSync(path.join(SRC, 'project.js'), 'utf8');
@@ -96,6 +98,57 @@ console.log('\n--- a save that is JSON but not a project ---');
   const { project, state, store } = load({ leagueProject: JSON.stringify({ hello: 'world' }) });
   checkTrue('unrecognised shape falls back', typeof project.files['game.js'] === 'string');
   check('...and is quarantined', store.keys().filter(k => k.startsWith('leagueProject.broken.')).length, 1);
+}
+
+console.log('\n--- storage the browser refuses to use ---');
+{
+  // Some school-managed browsers expose localStorage and then throw on every call. The app has to
+  // stay usable: work in memory, and say so, rather than fail to start.
+  const dead = { getItem: () => { throw new Error('blocked'); },
+                 setItem: () => { throw new Error('blocked'); },
+                 removeItem: () => { throw new Error('blocked'); } };
+  const sandbox = { localStorage: dead, console: { warn(){}, log(){}, error(){} },
+                    window: {}, document: { getElementById: () => null },
+                    renderFooter(){}, saveState(){} };
+  sandbox.globalThis = sandbox;
+  const ctx = vm.createContext(sandbox);
+  vm.runInContext(fs.readFileSync(path.join(SRC, 'storage.js'), 'utf8'), ctx);
+  vm.runInContext(fs.readFileSync(path.join(SRC, 'starter-code.js'), 'utf8'), ctx);
+  const src = fs.readFileSync(path.join(SRC, 'project.js'), 'utf8');
+  const cut = src.indexOf('/* ---------- per-lesson activity ledger');
+  let threw = null;
+  try { vm.runInContext(src.slice(0, cut > 0 ? cut : src.length), ctx); } catch (e) { threw = e.message; }
+  check('the app still starts when storage is blocked', threw, null);
+  const got = vm.runInContext('({ project: project, persistent: Storage.persistent })', ctx);
+  checkTrue('...with a working project', typeof got.project.files['game.js'] === 'string');
+  check('...and it knows saving will not stick', got.persistent, false);
+  const roundTrip = vm.runInContext("Storage.write('k','v'), Storage.read('k')", ctx);
+  check('...and still remembers things for this session', roundTrip, 'v');
+}
+
+console.log('\n--- storage that is full ---');
+{
+  // setItem throwing used to reach nobody, so a student kept working on a game that had silently
+  // stopped saving. It must report, and it must not delete anything to make room.
+  let allow = true;
+  const map = {};
+  const full = { getItem: (k) => (k in map ? map[k] : null),
+                 setItem: (k, v) => { if (!allow && k !== '__league_probe__') { const e = new Error('QuotaExceededError'); e.name = 'QuotaExceededError'; throw e; } map[k] = String(v); },
+                 removeItem: (k) => { delete map[k]; } };
+  const sandbox = { localStorage: full, console: { warn(){}, log(){}, error(){} },
+                    window: {}, document: { getElementById: () => null },
+                    renderFooter(){}, saveState(){} };
+  sandbox.globalThis = sandbox;
+  const ctx = vm.createContext(sandbox);
+  vm.runInContext(fs.readFileSync(path.join(SRC, 'storage.js'), 'utf8'), ctx);
+  vm.runInContext("Storage.write('keepme','precious')", ctx);
+  vm.runInContext('var reported = 0; onStorageFailure(function(){ reported++; });', ctx);
+  allow = false;
+  const ok = vm.runInContext("Storage.write('leagueProject','{}')", ctx);
+  check('a full disk reports the write failed', ok, false);
+  check('...and tells the app once', vm.runInContext('reported', ctx), 1);
+  check('...and destroys nothing to make room', vm.runInContext("Storage.read('keepme')", ctx), 'precious');
+  check('...and still serves the value this session', vm.runInContext("Storage.read('leagueProject')", ctx), '{}');
 }
 
 console.log('\n' + (failures ? failures + ' failing' : 'all state checks pass'));

@@ -19,7 +19,7 @@ function sandboxGame() {
   try {
     const q = new URLSearchParams(location.search).get('sandbox');
     if (q !== null) return q !== '0' && q !== 'false';
-    const s = localStorage.getItem('leagueSandbox');
+    const s = Storage.read('leagueSandbox');
     if (s !== null) return s !== '0' && s !== 'false';
   } catch (e) { /* a blocked localStorage must not stop the game running */ }
   return SANDBOX_DEFAULT;
@@ -29,9 +29,9 @@ function ownedAssets() { const A = window.STORE_ASSETS || []; return A.filter(fu
 function assetInjectScript() {
   // Assets go in by URL, not as inlined base64. The manifest used to carry a data URI for all 265
   // of them — 933 KB downloaded by every student on every load, for the handful they own. The
-  // iframe is srcdoc with no sandbox attribute, so it shares this page's origin and can fetch
-  // /assets/* directly, exactly as it already fetches /vendor/phaser/phaser.min.js below. As a
-  // bonus the browser now caches each asset instead of re-parsing base64 on every run.
+  // frame is sandboxed, so /assets is cross-origin to it; the server sends those paths CORS-open
+  // for exactly this reason. As a bonus the browser now caches each asset instead of re-parsing
+  // base64 on every run.
   const map = {}; ownedAssets().forEach(function (a) { map[a.key] = { type: a.type, url: '/' + a.file }; });
   return '<' + 'script>window.LEAGUE_ASSETS=' + JSON.stringify(map) + ';'
     + 'window.preloadAssets=function(scene){var A=window.LEAGUE_ASSETS||{};'
@@ -106,14 +106,14 @@ function fitStage() {  // size the game frame to the largest true 4:3 box that f
 window.addEventListener('resize', function () { const v = $('view-play'); if (v && !v.hidden) fitStage(); });
 
 /* ---------- game audio: mute defaults ON; controls live in the Play viewport ---------- */
-let gameMuted = (localStorage.getItem('leagueMuted') !== 'false');
-let gameVolume = parseFloat(localStorage.getItem('leagueVol') || '0.5'); if (isNaN(gameVolume)) gameVolume = 0.5;
+let gameMuted = (Storage.read('leagueMuted') !== 'false');
+let gameVolume = parseFloat(Storage.read('leagueVol') || '0.5'); if (isNaN(gameVolume)) gameVolume = 0.5;
 function postGameAudio() { const f = $('gameFrame'); if (f && f.contentWindow) { try { f.contentWindow.postMessage({ __leagueAudio: { mute: gameMuted, volume: gameVolume } }, '*'); } catch (e) {} } }
 function updateAudioUI() { const b = $('muteBtn'), s = $('volSlider'); if (!b) return;
   b.innerHTML = '<span class="mdi ' + (gameMuted ? 'mdi-volume-off' : 'mdi-volume-high') + '"></span>';
   b.title = gameMuted ? 'Sound is off — click to turn it on' : 'Sound is on — click to mute';
   b.classList.toggle('on', !gameMuted); if (s) { s.value = Math.round(gameVolume * 100); s.disabled = gameMuted; } }
-if ($('muteBtn')) $('muteBtn').addEventListener('click', function () { gameMuted = !gameMuted; localStorage.setItem('leagueMuted', gameMuted ? 'true' : 'false'); updateAudioUI(); postGameAudio(); });
-if ($('volSlider')) $('volSlider').addEventListener('input', function () { gameVolume = (+this.value) / 100; if (gameMuted) { gameMuted = false; localStorage.setItem('leagueMuted', 'false'); } localStorage.setItem('leagueVol', String(gameVolume)); updateAudioUI(); postGameAudio(); });
+if ($('muteBtn')) $('muteBtn').addEventListener('click', function () { gameMuted = !gameMuted; Storage.write('leagueMuted', gameMuted ? 'true' : 'false'); updateAudioUI(); postGameAudio(); });
+if ($('volSlider')) $('volSlider').addEventListener('input', function () { gameVolume = (+this.value) / 100; if (gameMuted) { gameMuted = false; Storage.write('leagueMuted', 'false'); } Storage.write('leagueVol', String(gameVolume)); updateAudioUI(); postGameAudio(); });
 updateAudioUI();
 

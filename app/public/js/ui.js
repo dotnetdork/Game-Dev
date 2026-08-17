@@ -30,6 +30,22 @@ function makeResizer(handle, side) {
 $('editor').style.setProperty('--leftw', '280px'); $('editor').style.setProperty('--rightw', '320px');
 makeResizer($('resLeft'), 'left'); makeResizer($('resRight'), 'right');
 
+/* ---------- saving problems are the student's problem, so say so ----------
+   A failed save used to throw somewhere nobody was listening, and the student carried on working
+   on a game that had quietly stopped being kept. Both cases below are rare and both are worth a
+   sentence, because the alternative is losing an afternoon's work without ever being told. */
+let warnedAboutSaving = false;
+onStorageFailure(function () {
+  if (warnedAboutSaving) return;                 // once, not on every keystroke
+  warnedAboutSaving = true;
+  toast('Your browser is out of space — your work is not being saved. Tell your teacher.');
+});
+if (!Storage.persistent) {
+  setTimeout(function () {
+    toast('This browser has saving switched off, so your work will be lost when you close the tab.');
+  }, 1200);
+}
+
 /* ---------- boot ---------- */
 renderFooter(); showPage('courses');
 loadCourse().then(function () { renderOutline(); selectLesson(0); })

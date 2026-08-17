@@ -1,4 +1,4 @@
-/* project.js — The student project itself: localStorage load/save, the Markdown sanitizer, XP/Stars state, and the applier that turns the AI's "ops" into edited code. */
+/* project.js — The student project itself: load/save, the Markdown sanitizer, XP/Stars state, and the applier that turns the AI's "ops" into edited code. Saving goes through storage.js, never localStorage directly. */
 /* ================= app ================= */
 const $ = function (id) { return document.getElementById(id); };
 
@@ -12,8 +12,8 @@ function mdToSafeHTML(src) {
   if (typeof DOMPurify === 'undefined' || typeof marked === 'undefined') return esc(text);
   return DOMPurify.sanitize(marked.parse(text));
 }
-let studentId = localStorage.getItem('leagueStudentId');
-if (!studentId) { studentId = 'stu-' + Math.random().toString(36).slice(2, 10); localStorage.setItem('leagueStudentId', studentId); }
+let studentId = Storage.read('leagueStudentId');
+if (!studentId) { studentId = 'stu-' + Math.random().toString(36).slice(2, 10); Storage.write('leagueStudentId', studentId); }
 
 /* ================= student project (lives in the browser only) =================
    Prebuilt games (above) are read-only templates served by the server. When a
@@ -40,7 +40,7 @@ const SCHEMA = { project: 1, progress: 1 };
 
 function keepBroken(key, raw, why) {
   try {
-    if (raw) localStorage.setItem(key + '.broken.' + Date.now(), raw);
+    if (raw) Storage.write(key + '.broken.' + Date.now(), raw);
     console.warn('[league] ' + key + ': ' + why + ' — the old value was kept under ' + key + '.broken.*');
   } catch (e) { /* storage may be full; the warning above is the fallback */ }
 }
@@ -70,7 +70,7 @@ function defaultProject() {
   return { v: SCHEMA.project, files: files, order: STARTER_ORDER.slice() };
 }
 function loadProject() {
-  const raw = localStorage.getItem(PKEY);
+  const raw = Storage.read(PKEY);
   if (!raw) return defaultProject();
   let p;
   try { p = JSON.parse(raw); } catch (e) { keepBroken(PKEY, raw, 'could not be read'); return defaultProject(); }
@@ -86,7 +86,7 @@ function loadProject() {
   return r.data;
 }
 let project = loadProject();
-function saveProject() { project.v = SCHEMA.project; localStorage.setItem(PKEY, JSON.stringify(project)); }
+function saveProject() { project.v = SCHEMA.project; Storage.writeJSON(PKEY, project); }
 function fileNames() { const out = project.order.filter(function (n) { return project.files[n] !== undefined; }); Object.keys(project.files).forEach(function (n) { if (out.indexOf(n) < 0) out.push(n); }); return out; }
 const CONFIG_FILE = 'config.js';
 // Projects saved before the starter was split still keep CONFIG inside game.js.
@@ -258,7 +258,7 @@ function opsToChanges(ops) {
 const SKEY = 'leagueProgress';
 const DEFAULT_STATE = { v: SCHEMA.progress, xp: 0, stars: 250, done: {}, modDone: {}, unlocked: {}, published: [], activities: {} };
 function loadState() {
-  const raw = localStorage.getItem(SKEY);
+  const raw = Storage.read(SKEY);
   if (!raw) return Object.assign({}, DEFAULT_STATE);
   let s;
   try { s = JSON.parse(raw); } catch (e) { keepBroken(SKEY, raw, 'could not be read'); return Object.assign({}, DEFAULT_STATE); }
@@ -290,7 +290,7 @@ function markActivity(lessonId, key) {
   saveState();
   return true;
 }
-function saveState() { localStorage.setItem(SKEY, JSON.stringify(state)); renderFooter(); }
+function saveState() { Storage.writeJSON(SKEY, state); renderFooter(); }
 function renderFooter() {
   const lvl = Math.floor(state.xp / 1000) + 1; const into = state.xp % 1000;
   $('xpVal').textContent = state.xp; $('starVal').textContent = state.stars; $('lvlVal').textContent = lvl;
