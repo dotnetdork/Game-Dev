@@ -98,7 +98,11 @@ if ($('reviewSkip')) $('reviewSkip').addEventListener('click', function () { if 
 function switchView(view) {
   // never write the editor back to the project while it holds a diff preview
   if (typeof codeEditor !== 'undefined' && !reviewing && !$('view-code').hidden) { project.files[currentFile] = codeEditor.getValue(); saveProject(); } // keep edits when leaving Code
-  document.querySelectorAll('.vtab').forEach(function (b) { b.classList.toggle('on', b.getAttribute('data-view') === view); });
+  document.querySelectorAll('.vtab').forEach(function (b) {
+    const on = b.getAttribute('data-view') === view;
+    b.classList.toggle('on', on);
+    b.setAttribute('aria-selected', on ? 'true' : 'false');   // the tablist's state, not just its paint
+  });
   ['learn', 'code', 'play'].forEach(function (v) { $('view-' + v).hidden = (v !== view); });
   const panelFor = { learn: 'panel-outline', code: 'panel-files', play: 'panel-info' };
   const titleFor = { learn: 'Course Outline', code: 'Files', play: 'Game Info' };
@@ -107,7 +111,10 @@ function switchView(view) {
   if (view === 'learn') $('crumb').textContent = $('crumb').dataset.lesson || 'Lesson';
   if (view === 'code') { $('crumb').textContent = currentFile; refreshFiles(); loadCode(); setTimeout(function () { codeEditor.refresh(); }, 0); }
   if (view === 'play') { $('crumb').textContent = 'Playing: ' + course.name; startGame(); loadSettings(); } else { stopGame(); }
-  setAIMode(view === 'learn' ? 'tutor' : 'coder');   // Learn = ask the tutor; Code/Play = build with the coder
+  // The assistant's mode is the student's choice, not the tab's. Switching it for them meant a
+  // question typed in Tutor mode went to the coder the moment they clicked Code to look at the
+  // answer — the panel changed its mind while they were mid-thought. Only an explicit click on
+  // the toggle (or explainLine, which is a tutor question by definition) changes it now.
   if (view === 'learn') showConsole(false); else if (view === 'code') showConsole(true, true); else showConsole(true, false); // log: open on Code, closed on Play
   if (view === 'play') requestAnimationFrame(fitStage);
 }

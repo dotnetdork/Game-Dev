@@ -21,24 +21,25 @@
 <link rel="stylesheet" href="vendor/mdi/css/materialdesignicons.min.css">
 <link rel="stylesheet" href="styles.css">
 <body>
-  <div class="topbar">
+  <a class="skiplink" href="#view-learn">Skip to the lesson</a>
+  <header class="topbar">
     <div class="brand"><img class="brand-logo" src="img/wordmark.png" alt="The League of Amazing Programmers"><span class="brand-tag">CodeQuest</span></div>
-    <div class="topnav">
+    <nav class="topnav" aria-label="Sections">
       <button class="navitem on" data-page="courses"><span class="mdi mdi-school"></span>Courses</button>
       <button class="navitem" data-page="store"><span class="mdi mdi-cart-outline"></span>Store</button>
       <button class="navitem" data-page="gallery"><span class="mdi mdi-view-grid"></span>Gallery</button>
       <button class="navitem" data-page="leaderboards"><span class="mdi mdi-podium"></span>Leaderboards</button>
-    </div>
-    <div class="topright">
+    </nav>
+    <nav class="topright" aria-label="Reference">
       <button class="navitem" data-page="docs"><span class="mdi mdi-book-open-variant"></span>Docs</button>
       <button class="navitem" data-page="help"><span class="mdi mdi-help-circle-outline"></span>Help</button>
-    </div>
-  </div>
+    </nav>
+  </header>
 
   <div class="stage-wrap">
     <button id="aiFab" class="ai-fab" title="Open the assistant" hidden><span class="mdi mdi-robot-happy-outline"></span></button>
     <div class="editor" id="editor">
-      <div class="dock left">
+      <aside class="dock left" aria-labelledby="leftTitle">
         <div class="res r" id="resLeft"></div>
         <div class="dock-head" id="leftTitle">Course Outline</div>
         <div class="dock-body">
@@ -57,20 +58,20 @@
             <button class="iconbtn" id="resetGameBtn" title="Restore the original starter game" style="margin:14px 12px;"><span class="mdi mdi-restore"></span>Reset game</button>
           </div>
         </div>
-      </div>
+      </aside>
 
-      <div class="center">
+      <main class="center">
         <div class="viewbar">
           <span class="crumb" id="crumb">Welcome</span>
-          <div class="vtabs">
-            <button class="vtab on" data-view="learn"><span class="mdi mdi-book-open-page-variant"></span>Learn</button>
-            <button class="vtab" data-view="code"><span class="mdi mdi-code-tags"></span>Code</button>
-            <button class="vtab" data-view="play"><span class="mdi mdi-gamepad-variant"></span>Play</button>
+          <div class="vtabs" role="tablist" aria-label="Lesson view">
+            <button class="vtab on" data-view="learn" role="tab" aria-selected="true" aria-controls="view-learn"><span class="mdi mdi-book-open-page-variant"></span>Learn</button>
+            <button class="vtab" data-view="code" role="tab" aria-selected="false" aria-controls="view-code"><span class="mdi mdi-code-tags"></span>Code</button>
+            <button class="vtab" data-view="play" role="tab" aria-selected="false" aria-controls="view-play"><span class="mdi mdi-gamepad-variant"></span>Play</button>
           </div>
         </div>
         <div class="viewbody">
-          <div class="view" id="view-learn"><div class="lesson" id="lessonBody"></div></div>
-          <div class="view" id="view-code" hidden>
+          <div class="view" id="view-learn" role="tabpanel" tabindex="-1"><div class="lesson" id="lessonBody"></div></div>
+          <div class="view" id="view-code" role="tabpanel" tabindex="-1" hidden>
             <div class="review-bar" id="reviewBar" hidden>
               <span class="mdi mdi-file-compare"></span>
               <span class="rv-title">Suggested change</span>
@@ -80,7 +81,7 @@
             </div>
             <textarea id="codeeditor"></textarea><div class="cm-statusbar" id="cmStatus">Ln 1, Col 1</div>
           </div>
-          <div class="view" id="view-play" hidden>
+          <div class="view" id="view-play" role="tabpanel" tabindex="-1" hidden>
             <div class="stage" id="gameStage">
               <div class="stage-frame">
                 <iframe id="gameFrame" title="Game viewport"></iframe>
@@ -93,14 +94,14 @@
           <div class="console-head">
             <button class="con-toggle" id="conToggle" title="Show or hide the log"><span class="mdi mdi-chevron-down"></span></button>
             <span class="con-title"><span class="mdi mdi-console-line"></span>Console</span>
-            <div class="game-audio" id="gameAudio" title="Game sound"><button id="muteBtn" title="Sound is off — click to turn it on"><span class="mdi mdi-volume-off"></span></button><input type="range" id="volSlider" min="0" max="100" value="50" disabled></div>
+            <div class="game-audio" id="gameAudio" title="Game sound"><button id="muteBtn" title="Sound is off — click to turn it on"><span class="mdi mdi-volume-off"></span></button><input type="range" id="volSlider" aria-label="Game volume" min="0" max="100" value="50" disabled></div>
             <button class="con-clear" id="conClear" title="Clear the log">Clear</button>
           </div>
           <div class="console-body" id="consoleBody"></div>
         </div>
       </div>
 
-      <div class="dock right">
+      <aside class="dock right" aria-label="AI assistant">
         <div class="res l" id="resRight"></div>
         <div class="dock-head">
           <span class="ai-title"><img class="ai-ava" src="img/clearRobotRing4.png" alt="">AI Assistant</span>
@@ -115,13 +116,13 @@
             <button id="aiSend" title="Send"><span class="mdi mdi-send"></span></button>
           </div>
         </div>
-      </div>
+      </aside>
     </div>
 
     <div class="page" id="page" hidden></div>
   </div>
 
-  <div class="statusbar">
+  <footer class="statusbar">
     <span class="sb-left">CodeQuest — v0.1.0</span>
     <div class="sb-mid">
       <span><span class="mdi mdi-star st"></span> <b id="starVal">0</b></span>
@@ -130,7 +131,7 @@
       <span>Lvl <b id="lvlVal">1</b></span>
     </div>
     <span class="sb-right">© The League of Amazing Programmers</span>
-  </div>
+  </footer>
 
   <div class="toast" id="toast"></div>
   <div class="modal-backdrop" id="modalBack" hidden></div>

@@ -60,7 +60,7 @@ function showAssetInfo(a) {
     if (typeof codeEditor !== 'undefined' && !$('view-code').hidden) { codeEditor.replaceSelection("'" + a.key + "'"); codeEditor.focus(); toast('Inserted "' + a.key + '"'); }
     else { toast('Open the Code tab, then Insert.'); }
   } });
-  const pb = $('assetPlay'); if (pb) pb.addEventListener('click', function () { try { new Audio(a.uri).play(); } catch (e) {} });
+  const pb = $('assetPlay'); if (pb) pb.addEventListener('click', function () { try { new Audio('/' + a.file).play(); } catch (e) {} });
 }
 function deleteFile(name) {
   modal({ title: 'Delete ' + name + '?', message: 'This removes the file from your project. This cannot be undone.', okLabel: 'Delete', onOk: function () {

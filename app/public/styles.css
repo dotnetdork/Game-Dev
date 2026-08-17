@@ -1,6 +1,10 @@
 /* LEAGUE Game Dev — app styles. Extracted from index.html; loaded by index.html. */
 :root{--bg:#0a1728;--panel:#0f2440;--panel2:#13304f;--head:#102a49;--line:#223a58;
-  --ink:#eaf1f8;--muted:#9fb2cc;--dim:#5f758f;--azure:#3e8fd6;--gold:#f5b02e;--teal:#2fd0b6;--green:#3ddc84;--sel:#1b4b78;
+  /* --dim was #5f758f, which measured 2.83:1 on --panel2 and 3.05:1 on --head. Every one of its
+     20 uses is 10-13px text, which WCAG AA wants at 4.5:1, so it failed on all six backgrounds it
+     sits on — both dock headers, the whole status bar, the quiz number badges, the Parsons
+     positions and the cursor readout. #8b9db1 clears it everywhere: 4.83:1 worst case. */
+  --ink:#eaf1f8;--muted:#9fb2cc;--dim:#8b9db1;--azure:#3e8fd6;--gold:#f5b02e;--teal:#2fd0b6;--green:#3ddc84;--sel:#1b4b78;
   --lock:#7d8ea3;--brand:#f5820a;--brand-ink:#241300;--focus:#7cc4ff;--font:Segoe UI, Roboto, Arial, sans-serif;--leftw:280px;--rightw:320px;}
 :focus-visible{outline:2px solid var(--focus);outline-offset:2px;border-radius:4px;}
 *{box-sizing:border-box;}
@@ -466,7 +470,12 @@ body{background:var(--bg);color:var(--ink);font-family:var(--font);font-size:14p
 .modal .acts button{border:none;border-radius:8px;padding:8px 16px;font-weight:700;cursor:pointer;font-family:var(--font);font-size:13px;}
 .modal .cancel{background:var(--panel2);color:var(--ink);border:1px solid var(--line)!important;}
 .modal .ok{background:var(--brand);color:var(--brand-ink);}
-.ai-collapse{background:none;border:0;color:var(--dim);cursor:pointer;display:flex;padding:0;}
+/* 24x24 is the WCAG 2.2 AA floor for a pointer target (2.5.8). This was 18x18 — and it is the
+   only control that hides the assistant, so it is not one a child should have to aim at. The
+   glyph is unchanged; only the box around it grew. */
+.ai-collapse{background:none;border:0;color:var(--dim);cursor:pointer;display:inline-flex;
+  align-items:center;justify-content:center;width:24px;height:24px;padding:0;border-radius:6px;flex:none;}
+.ai-collapse:hover{color:var(--ink);background:#17395c;}
 .ai-collapse .mdi{font-size:18px;}
 .ai-fab{position:absolute;right:18px;bottom:48px;z-index:20;width:48px;height:48px;border-radius:50%;background:var(--brand);color:var(--brand-ink);border:0;box-shadow:0 8px 22px rgba(0,0,0,.45);cursor:pointer;display:flex;align-items:center;justify-content:center;}
 .ai-fab .mdi{font-size:24px;}
@@ -605,3 +614,34 @@ body{background:var(--bg);color:var(--ink);font-family:var(--font);font-size:14p
 .lp-next-label b{color:var(--ink);font-variant-numeric:tabular-nums;}
 .lesson-progress.done .lp-xp{margin-left:0;}
 .lp-stay{flex:none;}
+
+/* ---------- skip link ----------
+   First focusable element in the document. Without it, reaching the lesson from the address bar
+   meant tabbing past six nav buttons and all 57 rows of the course outline. */
+.skiplink{position:absolute;left:8px;top:-100px;z-index:300;background:var(--brand);color:var(--brand-ink);
+  border-radius:0 0 8px 8px;padding:9px 16px;font-weight:700;font-size:13px;text-decoration:none;
+  transition:top .12s ease;}
+.skiplink:focus{top:0;}
+
+/* ---------- reduced motion ----------
+   Two rules used to cover two animations while a dozen other things moved. This is deliberately
+   NOT a blanket `animation:none;transition:none` kill — that would delete the feedback a child
+   relies on to know something happened. Colour and opacity changes stay (they carry state without
+   moving anything); only travel, lift and spin are removed, and each one keeps a still
+   equivalent. */
+@media (prefers-reduced-motion: reduce){
+  /* card and row hover: the lift goes, the border emphasis it was paired with stays */
+  .gcard:hover,.scard:hover,.lrow:hover{transform:none;}
+  .gbtn:active:not(:disabled),.btn-primary:active:not(:disabled),.btn:active:not(:disabled),
+  .gcard .art .playbtn:active{transform:none;}
+  /* progress fills jump to their value instead of sweeping to it */
+  .progress > div,.lesson-progress .lp-bar > i,.rail .prog > div,.lbar > div{transition:none;}
+  /* the toast appears in place rather than sliding up; it still fades, so arrival is still visible */
+  .toast{transition:opacity .2s;transform:translateX(-50%);}
+  .toast.show{transform:translateX(-50%);}
+  /* the console chevron flips instantly; its direction is the state, the rotation was decoration */
+  .con-toggle .mdi{transition:none;}
+  /* the spinner stops turning, so the "Building your game…" label carries the state on its own */
+  .game-loading .spin{animation:none;border-top-color:var(--brand);}
+  .quiz-result.ok,.quiz-result.no{animation:none;}
+}

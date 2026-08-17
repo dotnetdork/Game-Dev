@@ -36,7 +36,13 @@ function storeArt(a) {
       + '<button class="playbtn" data-play="' + a.id + '" title="Preview sound"><span class="mdi mdi-play"></span></button></div>';
   }
   const pixel = '';  // Kenney art is smooth, not pixel-art
-  return '<div class="art' + pixel + '" style="' + bg + '"><img src="' + a.file + '" alt="' + a.name + '"></div>';
+  // The catalogue is 233 pictures, and asking for all of them the instant the Store opens was the
+  // single heaviest moment in the app — the one most likely to fall over on a shared classroom
+  // connection. Lazy loading takes that to roughly what fits on screen. No width/height here on
+  // purpose: `.gcard .art` is already a fixed 130px box, so there is no shift to prevent, and
+  // fixed attributes would force a 1:1 ratio onto sprites that are not square.
+  return '<div class="art' + pixel + '" style="' + bg + '"><img src="' + a.file + '" alt="' + a.name
+    + '" loading="lazy" decoding="async"></div>';
 }
 function renderStore() {
   const cats = ['All', 'Characters', 'Enemies', 'Collectibles', 'Tiles', 'Backgrounds', 'UI', 'Sounds'];
@@ -217,7 +223,7 @@ function resetProgress() {
 function wirePage(page) {
   document.querySelectorAll('#page [data-buy]').forEach(function (b) { b.addEventListener('click', function () { buyAsset(b.getAttribute('data-buy')); }); });
   document.querySelectorAll('#page [data-filter]').forEach(function (b) { b.addEventListener('click', function () { storeFilter = b.getAttribute('data-filter'); showPage('store'); }); });
-  document.querySelectorAll('#page [data-play]').forEach(function (b) { b.addEventListener('click', function () { const a = assets.find(function (x) { return x.id === b.getAttribute('data-play'); }); if (a) { try { new Audio(a.uri).play(); } catch (e) {} } }); });
+  document.querySelectorAll('#page [data-play]').forEach(function (b) { b.addEventListener('click', function () { const a = assets.find(function (x) { return x.id === b.getAttribute('data-play'); }); if (a) { try { new Audio('/' + a.file).play(); } catch (e) {} } }); });
   if (page === 'gallery') { var pb = $('publishBtn'); if (pb) pb.addEventListener('click', publishGame); }
   if (page === 'leaderboards') {
     document.querySelectorAll('#page [data-bscope]').forEach(function (b) { b.addEventListener('click', function () { boardScope = b.getAttribute('data-bscope'); showPage('leaderboards'); }); });

@@ -2,14 +2,18 @@
 /* Owned Store assets → auto-preloaded into every Phaser scene by key (student just uses the name). */
 function ownedAssets() { const A = window.STORE_ASSETS || []; return A.filter(function (a) { return a.free || !!state.unlocked[a.id]; }); }
 function assetInjectScript() {
-  const map = {}; ownedAssets().forEach(function (a) { map[a.key] = { type: a.type, uri: a.uri }; });
+  // Assets go in by URL, not as inlined base64. The manifest used to carry a data URI for all 265
+  // of them — 933 KB downloaded by every student on every load, for the handful they own. The
+  // iframe is srcdoc with no sandbox attribute, so it shares this page's origin and can fetch
+  // /assets/* directly, exactly as it already fetches /vendor/phaser/phaser.min.js below. As a
+  // bonus the browser now caches each asset instead of re-parsing base64 on every run.
+  const map = {}; ownedAssets().forEach(function (a) { map[a.key] = { type: a.type, url: '/' + a.file }; });
   return '<' + 'script>window.LEAGUE_ASSETS=' + JSON.stringify(map) + ';'
     + 'window.preloadAssets=function(scene){var A=window.LEAGUE_ASSETS||{};'
-    + 'function toBlob(u){var c=u.indexOf(","),mime=u.slice(5,c).split(";")[0]||"application/octet-stream",b=atob(u.slice(c+1)),n=b.length,arr=new Uint8Array(n);for(var i=0;i<n;i++)arr[i]=b.charCodeAt(i);return URL.createObjectURL(new Blob([arr],{type:mime}));}'
     + 'try{scene.load.on("loaderror",function(f){console.warn("[league] could not load: "+(f&&f.key));});}catch(e){}'
     + 'for(var k in A){var a=A[k];try{'
-    + 'if(a.type==="image"){if(!scene.textures.exists(k))scene.load.image(k,a.uri);}'
-    + 'else if(a.type==="audio"){if(!scene.cache||!scene.cache.audio||!scene.cache.audio.exists(k))scene.load.audio(k,toBlob(a.uri));}'
+    + 'if(a.type==="image"){if(!scene.textures.exists(k))scene.load.image(k,a.url);}'
+    + 'else if(a.type==="audio"){if(!scene.cache||!scene.cache.audio||!scene.cache.audio.exists(k))scene.load.audio(k,a.url);}'
     + '}catch(e){}}};'
     + 'if(window.__leagueMute===undefined)window.__leagueMute=true;'
     + '(function(){if(!window.Phaser||!Phaser.Game||Phaser.Game.prototype.__audioHook)return;Phaser.Game.prototype.__audioHook=1;'
