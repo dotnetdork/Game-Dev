@@ -608,6 +608,51 @@ body{background:var(--bg);color:var(--ink);font-family:var(--font);font-size:14p
 .ch-status:empty{display:none;}
 .ch-run{flex:none;margin-left:auto;}
 
+/* ---------- the lab: the course's bench, not the student's game ----------
+   Everything here exists to answer one question before it is asked: whose code is this? The header
+   names it, the note says it outright, and Reset sits in the header rather than hidden in a menu,
+   so breaking it never feels dangerous. */
+.ch-head .ch-reset{margin-left:auto;flex:none;padding:5px 11px;font-size:12px;}
+.ch-note{display:flex;align-items:flex-start;gap:8px;margin:0;color:var(--dim);font-size:12.5px;line-height:1.5;}
+.ch-note .mdi{font-size:15px;flex:none;color:var(--azure);line-height:1.4;}
+
+/* The guess. Row language matches the quiz options, because it IS the same act: commit to an
+   answer, then find out. */
+.ch-guess{display:flex;flex-direction:column;gap:8px;padding:12px 14px;background:#0d2440;
+  border:1px solid var(--line);border-radius:10px;}
+.ch-guess-q{margin:0;font-size:14.5px;font-weight:600;color:var(--ink);line-height:1.45;}
+.ch-guess-list{display:flex;flex-direction:column;gap:6px;}
+.ch-guess-opt{display:block;width:100%;text-align:left;background:#0a1c33;border:1px solid var(--line);
+  border-radius:8px;color:#c3d3e6;font-family:var(--font);font-size:14px;line-height:1.45;
+  padding:9px 12px;cursor:pointer;transition:border-color .1s,background .1s,color .1s;}
+.ch-guess-opt:hover:not(:disabled){border-color:var(--azure);color:var(--ink);}
+.ch-guess-opt:disabled{cursor:default;}
+.ch-guess-opt.correct{border-color:var(--green);background:#0f2e22;color:#c9f5dc;}
+.ch-guess-opt.wrong{border-color:var(--gold);background:#2e2410;color:#f2ddb8;}
+.ch-guess-say{margin:0;font-size:13.5px;line-height:1.5;}
+.ch-guess-say.ok{color:var(--green);} .ch-guess-say.no{color:var(--gold);}
+
+/* Locked until the guess is in. Dimmed and un-clickable, but still READABLE — the student is
+   meant to be looking at this code while they decide what is wrong with it. */
+.ch-editor.locked{position:relative;opacity:.72;}
+.ch-editor.locked::after{content:"Say what you think is wrong first";position:absolute;inset:auto 0 0 0;
+  background:rgba(13,32,56,.94);border-top:1px solid var(--line);color:var(--dim);
+  font-size:12px;text-align:center;padding:5px 8px;}
+
+.ch-hint{display:flex;align-items:flex-start;gap:8px;margin:0;padding:10px 12px;background:#0d2038;
+  border-left:3px solid var(--gold);border-radius:0 8px 8px 0;color:var(--muted);
+  font-size:13.5px;line-height:1.55;}
+.ch-hint .mdi{color:var(--gold);font-size:17px;flex:none;}
+
+.ch-solve{display:flex;align-items:center;gap:12px;flex-wrap:wrap;padding:11px 13px;
+  background:#0d2440;border:1px solid var(--line);border-radius:10px;}
+.ch-solve p{margin:0;color:var(--muted);font-size:13.5px;line-height:1.5;flex:1;min-width:180px;}
+.ch-solve-done{color:#c9f5dc !important;}
+
+@media (prefers-reduced-motion: reduce){
+  .ch-guess-opt{transition:none;}
+}
+
 /* ---- the next-lesson offer in the completion strip ---- */
 .lp-next{display:flex;align-items:center;gap:10px;margin-left:auto;}
 .lp-next-label{color:var(--muted);font-size:13px;}

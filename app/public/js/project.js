@@ -256,7 +256,12 @@ function opsToChanges(ops) {
 }
 
 const SKEY = 'leagueProgress';
-const DEFAULT_STATE = { v: SCHEMA.progress, xp: 0, stars: 250, done: {}, modDone: {}, unlocked: {}, published: [], activities: {} };
+/* `labs` is separate from `activities` on purpose. `activities` answers "is this done?" and is
+   read with !!, so putting a draft in there would mark an unfinished lab as complete. This holds
+   the working state of a lab instead — the code as they left it, whether they have committed to a
+   guess, how many runs have failed — keyed "<lessonId>:<widgetKey>". A 50-minute class gets
+   interrupted; coming back to an empty editor is how you lose a 12-year-old. */
+const DEFAULT_STATE = { v: SCHEMA.progress, xp: 0, stars: 250, done: {}, modDone: {}, unlocked: {}, published: [], activities: {}, labs: {} };
 function loadState() {
   const raw = Storage.read(SKEY);
   if (!raw) return Object.assign({}, DEFAULT_STATE);
@@ -281,6 +286,24 @@ function lessonActivities(lessonId) {
   return (state.activities && state.activities[lessonId]) || {};
 }
 function activityDone(lessonId, key) { return !!lessonActivities(lessonId)[key]; }
+
+/* ---------- lab working state ---------- */
+function labKey(lessonId, key) { return (lessonId || 'l') + ':' + key; }
+function labState(lessonId, key) {
+  if (!state.labs) state.labs = {};                       // progress saved before labs existed
+  return state.labs[labKey(lessonId, key)] || null;
+}
+function saveLabState(lessonId, key, patch) {
+  if (!state.labs) state.labs = {};
+  const k = labKey(lessonId, key);
+  state.labs[k] = Object.assign({ code: null, guessed: false, fails: 0, revealed: false }, state.labs[k], patch);
+  saveState();
+  return state.labs[k];
+}
+function clearLabState(lessonId, key) {
+  if (state.labs) delete state.labs[labKey(lessonId, key)];
+  saveState();
+}
 function markActivity(lessonId, key) {
   if (!lessonId || !key) return false;
   if (!state.activities) state.activities = {};
