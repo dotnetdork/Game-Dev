@@ -30,10 +30,60 @@ chunk of it anyway.
 
 ---
 
-# Stage 2 — The two-game structure
+# Stage 2 — The lesson lab
 
-**The problem, concretely.** The app has two different "code you can edit" and never says which is
-which:
+## DECIDED 17 Aug 2026 — and it made this stage much smaller
+
+The first draft of this stage proposed two projects as **peers**: two entries in a file list, both
+edited in the same editor, with a switcher to flip between them. It needed four policy decisions
+before it could start, which was the tell — four open policy questions means the structure is
+wrong, not that there is a to-do list.
+
+**The decision instead: they are different kinds of thing.**
+
+> **The Code tab is the student's game. Always. Only.**
+> **Teaching games live inside lessons — a bench you work at, not a thing you own.**
+
+No switcher, because there is no decision for the student to make. The module's game never appears
+in the file tree, never appears in the Play tab, never competes for the word "your".
+
+**All four policy questions dissolved into things the app already does:**
+
+| Question | Answer under the reframe |
+|---|---|
+| Does "my game" start blank or from a template? | Gone. One project, the starter game, exactly as today |
+| Can the AI edit the lesson game? | Gone. Build mode is off in a lab — the existing `ai: off` front-matter setting |
+| Does the lesson game persist? | Gone. Lab state saves through the activity ledger that already exists |
+| Reveal the answer when stuck? | Reuse the quiz retry rule already shipped: feedback first, teach on the second failure |
+
+**And the cost dropped.** The Code tab is *already* only the student's game — there is no second
+project today, and the challenge widget already renders its own editor and its own sandboxed view
+inside the lesson. The structure chosen is close to what exists. This stage is no longer a
+restructure; it is making the lab good.
+
+**The bridge between the two:** each module ends by applying the technique to the student's own
+game, by hand. Worked example, then independent practice.
+
+### Still open — the reward for doing it in your own game
+
+Jay, on whether a student can copy lab code into their own game: no copy button — they redo it
+themselves — **but** completing the redo should award unlockables that Stars cannot buy, verified
+by an agent that checks whether the feature really landed in their game. Circling back to this.
+
+One design note for when we do. An AI judging "did you implement this?" is wrong in two directions,
+and one of them is much worse: refusing a student who *did* the work is infuriating, while granting
+one who didn't just cheapens the badge. So:
+
+- check deterministically wherever possible (a tween is `this.tweens.add` — that is a parse, not a
+  judgement, and the app already has four validators built this way)
+- let the AI only ever **grant**, never deny — it can spot an equivalent solution the parser missed
+- never gate progress on it; it is a bonus, not a door
+
+---
+
+## The problem this stage solves
+
+The app has two different "code you can edit" and never says which is which:
 
 1. **The project** — `starter-code.js` defines one starter game (config.js, world.js, player.js,
    coins.js, game.js, main.js). It is copied into the browser on first run. All 47 lessons share
@@ -44,31 +94,24 @@ which:
 So a student fixes a challenge, feels like they changed something, presses Play, and their game is
 exactly as it was. Nothing links the two.
 
-**What gets built.**
+**What gets built.** The existing challenge widget grows into a lab. It already has a task, an
+editor, a sandboxed stage, a run button and a status line — so this is six additions to something
+that works, not a rewrite.
 
-### 2.1 Two projects instead of one
+### 2.1 It runs a real game, not a bare canvas
 
-| | Lesson game | My game |
-|---|---|---|
-| Whose | The course's | The student's |
-| Lifetime | One module | The whole course |
-| Can be reset | Yes, freely, to broken or fixed | No (only deliberately) |
-| Starts as | Deliberately broken | A blank-ish template |
-| Where it's saved | `leagueLessonGame:<moduleId>` | `leagueMyGame` |
+The challenge stage today is a 300×200 canvas with a `win()` function. A lab needs Phaser and the
+student's owned assets, the same way the Play tab does — so a module's game can actually be a game.
 
-Reusing the storage layer from Stage 1, so both are just two keys with the same code behind them.
+### 2.2 It reads as the course's bench, not your code
 
-### 2.2 Saying which one you're looking at
+Visually distinct from the Code tab: its own header naming the module, a permanent "this is the
+example" note, and a reset control in plain sight. Nothing about it should suggest ownership.
 
-A two-item switch in the bar above the editor: **`Module 2's game` | `My game`**. The Code tab, the
-Play tab and the file list all follow it. The lesson game's side carries a visible "this is the
-example — reset it any time" affordance so it never feels precious.
+### 2.3 Lab work survives leaving the lesson
 
-### 2.3 The fix-it widget edits the real module game
-
-The in-lesson editor stops making its own private copy. It opens the module's game, scrolled to
-the relevant part. Fix it in the lesson, press Play, and the thing you just fixed is the thing
-that runs. This is the whole point of the stage.
+A 50-minute class gets interrupted. Edits save per lesson through the activity ledger, which
+already does exactly this for quiz answers.
 
 ### 2.4 The hypothesis step
 
@@ -81,27 +124,32 @@ changing things at random until it works, learning nothing. Making them commit t
 the difference between an exercise and a slot machine. Getting the theory *wrong* is fine and gets
 its own response.
 
-### 2.5 Reset and reveal
+### 2.5 Reset, hint, and a way out
 
-Reset the lesson game to broken. And, after enough failed attempts, an offer to show the working
-version — a student who is stuck for twenty minutes has stopped learning and needs a way out.
+Reset to broken, always available. Then the quiz retry rule applied to runs: a first failure gets
+feedback on what they actually tried, a later one gets taught the answer. A student stuck for
+twenty minutes has stopped learning and needs a door, not a wall.
 
-### 2.6 Authoring format
+### 2.6 More than one file
 
-Lessons need to declare what they operate on. Front-matter grows:
+Module 4's lab is a 400-line program to reorganise, so the lab needs a small file strip. Single-file
+labs never show it.
 
-```
-game: module-2          # which teaching game this lesson touches
-bug: coins-dont-vanish  # which planted bug this lesson fixes
-```
+### 2.7 Authoring format
 
-`app/content/AUTHORING.md` gets the new format, and `check-challenges.js` extends to assert every
-planted bug is both breakable and fixable.
+`app/content/AUTHORING.md` gains the lab block: the files, which one is broken, the hypothesis
+options, the success condition, and the worked answer. `check-challenges.js` extends to assert
+every lab is both broken to start with and fixable.
 
-**Files touched:** `starter-code.js`, `project.js`, `widgets.js`, `editor.js`, `game-runner.js`,
-`files.js`, `index.html`, `styles.css`, the content authoring guide.
+**Files touched:** `widgets.js` (the lab), `styles.css`, `project.js` (lab state in the ledger),
+`game-runner.js` (share the Phaser harness), the content authoring guide.
 
-**Open decisions** (worth settling before starting — see the end of this file).
+**Known constraints, not yet solved:**
+
+- **Screen space.** The lesson column is 756px on a 1366 laptop. Code beside game will not fit —
+  it stacks, game above code. Stage 6 helps but does not remove this.
+- **Multi-file labs** are more work than a single editor and only Module 4 needs them; they can
+  land after the rest of the stage.
 
 ---
 
@@ -242,9 +290,11 @@ Worth stating, because it looked like more:
 - **XP unlocks** work off progress already stored in the browser.
 - **Stages 2, 3 and 6** never touch accounts at all.
 
-## Open decisions for Stage 2
+## Open decisions
 
-1. Does **"my game"** start blank, or from a small working template?
-2. Can the **AI edit the lesson game**, or only the student's own?
-3. When a module is finished, does its **lesson game stay** available to revisit?
-4. Should a stuck student be able to **reveal the working version**, and after how long?
+**Stage 2's four are settled** — see the top of that stage. The reframe dissolved all of them.
+
+**Carried forward, for Stage 5:** what unlockables a student earns for applying a lab's technique
+to their own game, and how an agent verifies they really did. Direction is set (no copy button,
+reward the redo, deterministic checks first, AI may only grant and never deny); the specifics are
+open.
