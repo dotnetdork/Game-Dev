@@ -5,7 +5,9 @@
   "type": "commonjs",
   "description": "LEAGUE Game Dev course app: engine-style shell (Learn/Code/Play), authored lessons, asset store, and multi-agent AI relay.",
   "scripts": {
-    "start": "node server.js"
+    "start": "node server.js",
+    "dev": "node --watch server.js",
+    "test": "node tools/check-html.js && node tools/check-state.js && node tools/check-challenges.js && node tools/check-mcp.js"
   },
   "engines": {
     "node": ">=18"

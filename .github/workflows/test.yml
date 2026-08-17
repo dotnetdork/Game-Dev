@@ -1,0 +1,24 @@
+name: test
+
+on:
+  push:
+  pull_request:
+
+jobs:
+  test:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+      - name: Install
+        working-directory: app
+        run: npm ci || npm install
+      - name: Test
+        working-directory: app
+        # check-html   tag balance + the containment the three-column layout depends on
+        # check-state  saved-state migrations, including the "never destroy a save" rule
+        # check-challenges  every in-lesson challenge is solvable AND not already solved
+        # check-mcp    starts the MCP server and exercises its tools, resources and prompts
+        run: npm test

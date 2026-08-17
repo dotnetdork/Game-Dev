@@ -1,4 +1,28 @@
 /* game-runner.js — Runs the student's game: injects owned assets, builds the sandboxed iframe document, sizes the 4:3 stage, and drives mute/volume. */
+
+/* ---------- game frame isolation ----------
+   Without `sandbox` this frame is same-origin with the app, and a probe confirmed code inside it
+   could write the parent's localStorage, read document.cookie, and call parent.completeLesson()
+   directly. It runs code written partly by the AI and partly by whatever a student copied off the
+   internet, so it gets an opaque origin and talks to the app over postMessage only — which is how
+   the audio control already worked.
+
+   `?sandbox=0` turns it off for a run. That is a debug switch, not a fallback: the dev harness
+   can't load subresources into an opaque-origin frame at all, so if Phaser ever goes missing in a
+   real browser, that switch tells us in one reload whether this is why.
+
+   Longer term the frame should have its own origin (separate port or subdomain) rather than
+   relying on the attribute — that's in the plan. */
+const SANDBOX_DEFAULT = true;
+function sandboxGame() {
+  try {
+    const q = new URLSearchParams(location.search).get('sandbox');
+    if (q !== null) return q !== '0' && q !== 'false';
+    const s = localStorage.getItem('leagueSandbox');
+    if (s !== null) return s !== '0' && s !== 'false';
+  } catch (e) { /* a blocked localStorage must not stop the game running */ }
+  return SANDBOX_DEFAULT;
+}
 /* Owned Store assets → auto-preloaded into every Phaser scene by key (student just uses the name). */
 function ownedAssets() { const A = window.STORE_ASSETS || []; return A.filter(function (a) { return a.free || !!state.unlocked[a.id]; }); }
 function assetInjectScript() {
@@ -10,6 +34,9 @@ function assetInjectScript() {
   const map = {}; ownedAssets().forEach(function (a) { map[a.key] = { type: a.type, url: '/' + a.file }; });
   return '<' + 'script>window.LEAGUE_ASSETS=' + JSON.stringify(map) + ';'
     + 'window.preloadAssets=function(scene){var A=window.LEAGUE_ASSETS||{};'
+    // The frame is sandboxed, so its origin is opaque and /assets is cross-origin to it. Without
+    // this, a WebGL texture built from those images taints the context and the sprite never draws.
+    + 'try{scene.load.crossOrigin="anonymous";}catch(e){}'
     + 'try{scene.load.on("loaderror",function(f){console.warn("[league] could not load: "+(f&&f.key));});}catch(e){}'
     + 'for(var k in A){var a=A[k];try{'
     + 'if(a.type==="image"){if(!scene.textures.exists(k))scene.load.image(k,a.url);}'
@@ -64,6 +91,8 @@ function startGame() { // build a self-contained page from the browser-side proj
   fitStage();
   const gl = $('gameLoading'); if (gl) gl.classList.remove('hidden');
   const gf = $('gameFrame'); gf.onload = function () { const g = $('gameLoading'); if (g) g.classList.add('hidden'); fitStage(); try { gf.contentWindow.focus(); } catch (e) {} if (typeof postGameAudio === 'function') postGameAudio(); };
+  // Set per run rather than in the markup, so toggling it takes effect on the next Play.
+  if (sandboxGame()) gf.setAttribute('sandbox', 'allow-scripts'); else gf.removeAttribute('sandbox');
   gf.removeAttribute('src'); gf.srcdoc = html;
 }
 function stopGame() { const f = $('gameFrame'); if (f) { f.removeAttribute('srcdoc'); f.removeAttribute('src'); } }

@@ -21,17 +21,72 @@ if (!studentId) { studentId = 'stu-' + Math.random().toString(36).slice(2, 10); 
    saving, and running happen in the browser (localStorage) — nothing the student
    makes is written back to the server. */
 const PKEY = 'leagueProject';
+
+/* ---------- saved-state versioning ----------
+   Both saved blobs used to be written as bare JSON with no version on them, and read back with a
+   guess at their shape. That is fine until the shape changes once — and the thing in this blob is
+   a game a child built and cares about. Anything that reaches a server has to be migratable.
+
+   Rules, for both project and progress:
+     - every write stamps the current version
+     - a lower version is walked forward through MIGRATIONS, one step at a time
+     - a version from the FUTURE (an older build reading a newer save) is left alone, not
+       overwritten — the student is probably on two machines, and the newer one still has it
+     - anything unreadable is quarantined under its key + '.broken.<timestamp>' rather than
+       replaced, so nothing is ever silently destroyed
+   `keepBroken` is the important one. Losing a save to a parse error is recoverable; losing it
+   because we cheerfully wrote a fresh default over the top of it is not. */
+const SCHEMA = { project: 1, progress: 1 };
+
+function keepBroken(key, raw, why) {
+  try {
+    if (raw) localStorage.setItem(key + '.broken.' + Date.now(), raw);
+    console.warn('[league] ' + key + ': ' + why + ' — the old value was kept under ' + key + '.broken.*');
+  } catch (e) { /* storage may be full; the warning above is the fallback */ }
+}
+
+/* Each entry migrates FROM its key TO the next version. Empty today by design: v1 is the first
+   numbered shape, and the un-numbered blobs that came before it are handled by adopt() below. */
+const MIGRATIONS = {
+  project: {},
+  progress: {}
+};
+
+function migrate(kind, data) {
+  let v = typeof data.v === 'number' ? data.v : 0;
+  const target = SCHEMA[kind];
+  if (v > target) return { data: data, status: 'future' };
+  while (v < target) {
+    const step = MIGRATIONS[kind][v];
+    if (!step) { data.v = target; break; }   // no step recorded: the shape did not change
+    data = step(data); v = data.v = v + 1;
+  }
+  return { data: data, status: 'ok' };
+}
+
 function defaultProject() {
   const files = {};
   STARTER_ORDER.forEach(function (n) { files[n] = STARTER[n]; });
-  return { files: files, order: STARTER_ORDER.slice() };
+  return { v: SCHEMA.project, files: files, order: STARTER_ORDER.slice() };
 }
 function loadProject() {
-  try { const p = JSON.parse(localStorage.getItem(PKEY) || 'null'); if (p && p.files && typeof p.files['game.js'] === 'string') { if (!Array.isArray(p.order)) p.order = Object.keys(p.files); return p; } } catch (e) {}
-  return defaultProject();
+  const raw = localStorage.getItem(PKEY);
+  if (!raw) return defaultProject();
+  let p;
+  try { p = JSON.parse(raw); } catch (e) { keepBroken(PKEY, raw, 'could not be read'); return defaultProject(); }
+  // adopt(): a pre-versioning save is recognised by its shape and stamped as v1 rather than
+  // discarded. Every existing student is in this branch exactly once.
+  if (!p || !p.files || typeof p.files['game.js'] !== 'string') {
+    keepBroken(PKEY, raw, 'was not a project we recognise');
+    return defaultProject();
+  }
+  if (!Array.isArray(p.order)) p.order = Object.keys(p.files);
+  const r = migrate('project', p);
+  if (r.status === 'future') console.warn('[league] project was saved by a newer version of the app; leaving it untouched.');
+  return r.data;
 }
 let project = loadProject();
-function saveProject() { localStorage.setItem(PKEY, JSON.stringify(project)); }
+function saveProject() { project.v = SCHEMA.project; localStorage.setItem(PKEY, JSON.stringify(project)); }
 function fileNames() { const out = project.order.filter(function (n) { return project.files[n] !== undefined; }); Object.keys(project.files).forEach(function (n) { if (out.indexOf(n) < 0) out.push(n); }); return out; }
 const CONFIG_FILE = 'config.js';
 // Projects saved before the starter was split still keep CONFIG inside game.js.
@@ -201,8 +256,19 @@ function opsToChanges(ops) {
 }
 
 const SKEY = 'leagueProgress';
-const DEFAULT_STATE = { xp: 0, stars: 250, done: {}, modDone: {}, unlocked: {}, published: [], activities: {} };
-function loadState() { try { return Object.assign({}, DEFAULT_STATE, JSON.parse(localStorage.getItem(SKEY) || '{}')); } catch (e) { return Object.assign({}, DEFAULT_STATE); } }
+const DEFAULT_STATE = { v: SCHEMA.progress, xp: 0, stars: 250, done: {}, modDone: {}, unlocked: {}, published: [], activities: {} };
+function loadState() {
+  const raw = localStorage.getItem(SKEY);
+  if (!raw) return Object.assign({}, DEFAULT_STATE);
+  let s;
+  try { s = JSON.parse(raw); } catch (e) { keepBroken(SKEY, raw, 'could not be read'); return Object.assign({}, DEFAULT_STATE); }
+  if (!s || typeof s !== 'object' || Array.isArray(s)) { keepBroken(SKEY, raw, 'was not progress we recognise'); return Object.assign({}, DEFAULT_STATE); }
+  const r = migrate('progress', s);
+  if (r.status === 'future') console.warn('[league] progress was saved by a newer version of the app; leaving it untouched.');
+  // Object.assign order matters: defaults first so a key added in a later release appears, saved
+  // values second so nothing the student earned is overwritten by a default.
+  return Object.assign({}, DEFAULT_STATE, r.data);
+}
 let state = loadState();
 
 /* ---------- per-lesson activity ledger ----------

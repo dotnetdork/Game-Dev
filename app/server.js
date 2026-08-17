@@ -95,7 +95,64 @@ function rateLimited(id) {
   e.count++; return e.count > RATE.max;
 }
 
-// ---- static hosting ----
+/* ---- security headers ----
+   There were none of these at all, which left DOMPurify as the single line of defence on a page
+   that renders both Markdown and model output into the DOM.
+
+   A note on script-src, because the honest version matters more than a strict-looking policy that
+   is a lie: the game runs in a `srcdoc` iframe built entirely from inline <script> blocks (the
+   student's own files), and a srcdoc document inherits its parent's CSP whether or not it is
+   sandboxed. So `script-src 'self'` here would block every student game in the app. Tightening it
+   means moving the game frame to its own origin and giving that origin its own policy — a real
+   change, planned, not done here. Everything else is locked down now:
+     object-src 'none'     no plugins
+     base-uri 'self'       injected markup cannot re-point every relative URL on the page
+     form-action 'none'    nothing on this page submits anywhere
+     frame-ancestors 'none' the app cannot be framed by someone else
+   `frame-src blob: data:` is for the game and run-cell frames; `img-src`/`media-src` allow the
+   data: URIs that run cells and the lesson widgets still produce. */
+/* Every directive names the origin explicitly as well as `'self'`. A srcdoc document inherits its
+   parent's CSP, and once the game frame is sandboxed (see SANDBOX_GAME in game-runner.js) its own
+   origin is opaque — so in there `'self'` matches nothing and would block Phaser and every asset.
+   Naming the host grants exactly the same server that `'self'` was meant to grant, and costs
+   nothing while the sandbox is still off. */
+function cspFor(req) {
+  const origin = (req.headers['x-forwarded-proto'] || req.protocol) + '://' + req.headers.host;
+  return [
+    "default-src 'self' " + origin,
+    "script-src 'self' 'unsafe-inline' " + origin,   // see note above: srcdoc games are inline scripts
+    "style-src 'self' 'unsafe-inline'",              // widgets and pages set style="" attributes
+    "img-src 'self' data: blob: " + origin,
+    "media-src 'self' data: blob: " + origin,
+    "font-src 'self' " + origin,
+    "connect-src 'self' " + origin,                  // Phaser's audio loader is XHR
+    "frame-src 'self' blob: data:",
+    "worker-src 'self' blob:",
+    "object-src 'none'",
+    "base-uri 'self'",
+    "form-action 'none'",
+    "frame-ancestors 'none'"
+  ].join('; ');
+}
+
+app.use((req, res, next) => {
+  res.setHeader('Content-Security-Policy', cspFor(req));
+  res.setHeader('X-Content-Type-Options', 'nosniff');
+  res.setHeader('Referrer-Policy', 'no-referrer');
+  res.setHeader('X-Frame-Options', 'DENY');
+  res.setHeader('Permissions-Policy', 'geolocation=(), microphone=(), camera=(), payment=(), usb=()');
+  next();
+});
+
+/* ---- static hosting ----
+   /assets and /vendor are readable cross-origin on purpose. The game iframe is sandboxed without
+   allow-same-origin, so from its point of view this server is a different origin: Phaser's audio
+   loader uses XHR and would be refused, and a WebGL texture built from an image with no CORS
+   grant taints the context. Both are public files — CC0 art and vendored libraries — so there is
+   nothing here to protect, and the alternative was the megabyte of inlined base64 we just removed. */
+const corsOpen = (res) => { res.setHeader('Access-Control-Allow-Origin', '*'); res.setHeader('Cross-Origin-Resource-Policy', 'cross-origin'); };
+app.use('/assets', express.static(path.join(ROOT, 'public', 'assets'), { setHeaders: corsOpen }));
+app.use('/vendor', express.static(path.join(ROOT, 'public', 'vendor'), { setHeaders: corsOpen }));
 app.use(express.static(path.join(ROOT, 'public')));
 app.use('/content', express.static(path.join(ROOT, 'content'), { etag: false, lastModified: false, cacheControl: false })); // authored course: YAML structure + Markdown lessons (read-only)
 

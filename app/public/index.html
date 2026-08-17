@@ -84,6 +84,8 @@
           <div class="view" id="view-play" role="tabpanel" tabindex="-1" hidden>
             <div class="stage" id="gameStage">
               <div class="stage-frame">
+                <!-- The sandbox attribute is applied at runtime by game-runner.js, not here, so it
+                     can be toggled without an edit. See SANDBOX_GAME there for why. -->
                 <iframe id="gameFrame" title="Game viewport"></iframe>
                 <div class="game-loading hidden" id="gameLoading"><span class="spin"></span>Building your game…</div>
               </div>
