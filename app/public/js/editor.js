@@ -1,11 +1,16 @@
 /* editor.js — The CodeMirror editor (lint, hints, folding, shortcuts) and the Learn / Code / Play tab switcher. */
 /* ---------- code editor ---------- */
 let currentFile = 'game.js';
+/* The editor is built now, but plainly: linting, folding, hinting and search all belong to addons
+   that no longer load at boot (js/lazy.js — they were ~2 MB, and a student reading a lesson never
+   touches them). upgradeEditor() below switches them on once those files arrive, so every existing
+   reference to `codeEditor` stays valid and nothing here had to become async.
+   The extraKeys naming addon commands are safe to declare early: CodeMirror resolves a command by
+   name at the moment the key is pressed, and by then the addons are in. */
 const codeEditor = CodeMirror.fromTextArea($('codeeditor'), {
   mode: 'javascript', theme: 'material-darker', lineNumbers: true, tabSize: 2, indentUnit: 2,
-  matchBrackets: true, autoCloseBrackets: true, styleActiveLine: true, foldGutter: true,
+  matchBrackets: true, autoCloseBrackets: true,
   gutters: ['CodeMirror-lint-markers', 'CodeMirror-linenumbers', 'CodeMirror-foldgutter'],
-  lint: { esversion: 2021, asi: true, undef: false, browser: true },
   extraKeys: {
     'Ctrl-Space': 'autocomplete',
     'Ctrl-/': 'toggleComment', 'Cmd-/': 'toggleComment',
@@ -14,6 +19,23 @@ const codeEditor = CodeMirror.fromTextArea($('codeeditor'), {
     'Ctrl-F': 'findPersistent', 'Cmd-F': 'findPersistent'
   }
 });
+
+/* Called on the first visit to the Code tab. Idempotent; a failure leaves a working plain editor
+   rather than a broken one, because being unable to lint is much better than being unable to type. */
+let codeToolsReady = false;
+function upgradeEditor() {
+  if (codeToolsReady) return Promise.resolve();
+  return loadCodeTools().then(function () {
+    codeToolsReady = true;
+    codeEditor.setOption('styleActiveLine', true);
+    codeEditor.setOption('foldGutter', true);
+    if (!reviewing) codeEditor.setOption('lint', LINT_OPTS);   // a diff is not valid JS; see startReview
+    codeEditor.refresh();
+    if (typeof loadCode === 'function' && !$('view-code').hidden) loadCode();  // re-run now Prettier exists
+  }).catch(function (e) {
+    console.warn('[league] editor tools unavailable, continuing without them:', e.message);
+  });
+}
 codeEditor.setSize('100%', '100%');
 codeEditor.on('cursorActivity', function (cm) { const p = cm.getCursor(); const el = $('cmStatus'); if (el) el.textContent = 'Ln ' + (p.line + 1) + ', Col ' + (p.ch + 1); });
 codeEditor.on('inputRead', function (cm, e) { if (e.text && /[\w.]/.test(e.text[0]) && !cm.state.completionActive) cm.showHint({ hint: CodeMirror.hint.anyword, completeSingle: false }); });
@@ -88,7 +110,7 @@ function endReview() {
   reviewing = null;
   $('reviewBar').hidden = true;
   codeEditor.setOption('readOnly', false);
-  codeEditor.setOption('lint', LINT_OPTS);
+  if (codeToolsReady) codeEditor.setOption('lint', LINT_OPTS);   // no addon yet => nothing to turn on
   loadCode();                                          // back to the real file
 }
 if ($('reviewApply')) $('reviewApply').addEventListener('click', function () { if (reviewing) acceptProposal(reviewing); });
@@ -109,7 +131,7 @@ function switchView(view) {
   ['panel-outline', 'panel-files', 'panel-info'].forEach(function (p) { $(p).hidden = (p !== panelFor[view]); });
   $('leftTitle').textContent = titleFor[view];
   if (view === 'learn') $('crumb').textContent = $('crumb').dataset.lesson || 'Lesson';
-  if (view === 'code') { $('crumb').textContent = currentFile; refreshFiles(); loadCode(); setTimeout(function () { codeEditor.refresh(); }, 0); }
+  if (view === 'code') { upgradeEditor(); $('crumb').textContent = currentFile; refreshFiles(); loadCode(); setTimeout(function () { codeEditor.refresh(); }, 0); }
   if (view === 'play') { $('crumb').textContent = 'Playing: ' + course.name; startGame(); loadSettings(); } else { stopGame(); }
   // The assistant's mode is the student's choice, not the tab's. Switching it for them meant a
   // question typed in Tutor mode went to the coder the moment they clicked Code to look at the

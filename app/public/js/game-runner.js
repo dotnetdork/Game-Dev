@@ -7,12 +7,13 @@
    internet, so it gets an opaque origin and talks to the app over postMessage only — which is how
    the audio control already worked.
 
-   `?sandbox=0` turns it off for a run. That is a debug switch, not a fallback: the dev harness
-   can't load subresources into an opaque-origin frame at all, so if Phaser ever goes missing in a
-   real browser, that switch tells us in one reload whether this is why.
+   Confirmed working in Chrome: the game runs normally with the frame isolated. (The dev preview
+   pane cannot load ANY subresource into an opaque-origin frame — script, stylesheet or image —
+   which is a fault in that pane, not in the browser. `?sandbox=0` stays as a one-reload way to
+   rule this out if assets ever go missing somewhere new.)
 
    Longer term the frame should have its own origin (separate port or subdomain) rather than
-   relying on the attribute — that's in the plan. */
+   relying on the attribute — that's what would let script-src drop 'unsafe-inline'. */
 const SANDBOX_DEFAULT = true;
 function sandboxGame() {
   try {
