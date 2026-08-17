@@ -632,9 +632,23 @@ function completeLesson() {
   const allDone = course.modules[f.mi].lessons.every(function (l, li) { return state.done[f.mi + '.' + li]; });
   if (allDone && !state.modDone[f.mi]) { state.modDone[f.mi] = true; state.stars += course.modules[f.mi].stars; setTimeout(function () { toast('Module complete: ' + course.modules[f.mi].name + '!  +' + course.modules[f.mi].stars + ' ★'); }, 900); }
   saveState();
-  // Update in place. This used to call selectLesson(), which re-rendered from innerHTML and wiped
-  // every answer and run-cell edit at the exact moment the student earned the reward.
-  renderLessonProgress(f);
-  renderOutline();
-  startAdvance(f);
+  /* Announce it and stop caring who is listening. Everything that has to react to a finished
+     lesson — the outline tick, the progress strip, the countdown to the next one — subscribes in
+     wireLessonEvents() below instead of being named here.
+
+     Note what this function no longer does: call selectLesson(). That used to rebuild the lesson
+     from scratch and wipe every answer and run-cell edit at the exact moment the student earned
+     the reward. Nothing here touches the screen at all now. */
+  emit(EV.LESSON_DONE, { id: f.id, xp: f.l.xp, moduleIndex: f.mi, lesson: f });
+  if (allDone && state.modDone[f.mi]) emit(EV.MODULE_DONE, { moduleIndex: f.mi, stars: course.modules[f.mi].stars });
 }
+
+/* Who reacts to a finished lesson. Registered once, at load, so the list of consequences is
+   readable in one place rather than scattered through whatever function happened to trigger it. */
+function wireLessonEvents() {
+  on(EV.LESSON_DONE, function (d) { renderLessonProgress(d.lesson); });   // the reward, in place
+  on(EV.LESSON_DONE, function () { renderOutline(); });                   // tick the row, unlock the next
+  on(EV.LESSON_DONE, function (d) { startAdvance(d.lesson); });           // offer the next lesson
+  on(EV.PROGRESS_CHANGED, function () { renderFooter(); });               // XP bar, stars, level
+}
+wireLessonEvents();

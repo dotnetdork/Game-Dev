@@ -41,6 +41,7 @@ function load(seed) {
   sandbox.globalThis = sandbox;
   const ctx = vm.createContext(sandbox);
   // storage.js first: project.js reads and writes through it, not through localStorage.
+  vm.runInContext(fs.readFileSync(path.join(SRC, 'events.js'), 'utf8'), ctx);
   vm.runInContext(fs.readFileSync(path.join(SRC, 'storage.js'), 'utf8'), ctx);
   vm.runInContext(fs.readFileSync(path.join(SRC, 'starter-code.js'), 'utf8'), ctx);
   // project.js's tail touches DOM helpers we don't have; only the storage half is under test.
@@ -112,6 +113,7 @@ console.log('\n--- storage the browser refuses to use ---');
                     renderFooter(){}, saveState(){} };
   sandbox.globalThis = sandbox;
   const ctx = vm.createContext(sandbox);
+  vm.runInContext(fs.readFileSync(path.join(SRC, 'events.js'), 'utf8'), ctx);
   vm.runInContext(fs.readFileSync(path.join(SRC, 'storage.js'), 'utf8'), ctx);
   vm.runInContext(fs.readFileSync(path.join(SRC, 'starter-code.js'), 'utf8'), ctx);
   const src = fs.readFileSync(path.join(SRC, 'project.js'), 'utf8');
@@ -140,6 +142,7 @@ console.log('\n--- storage that is full ---');
                     renderFooter(){}, saveState(){} };
   sandbox.globalThis = sandbox;
   const ctx = vm.createContext(sandbox);
+  vm.runInContext(fs.readFileSync(path.join(SRC, 'events.js'), 'utf8'), ctx);
   vm.runInContext(fs.readFileSync(path.join(SRC, 'storage.js'), 'utf8'), ctx);
   vm.runInContext("Storage.write('keepme','precious')", ctx);
   vm.runInContext('var reported = 0; onStorageFailure(function(){ reported++; });', ctx);

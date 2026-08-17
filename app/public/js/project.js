@@ -290,7 +290,10 @@ function markActivity(lessonId, key) {
   saveState();
   return true;
 }
-function saveState() { Storage.writeJSON(SKEY, state); renderFooter(); }
+/* saveState used to call renderFooter() directly, which meant this file — which knows about
+   storage and XP arithmetic — also had to know that a footer exists. It announces instead; the
+   footer subscribes. */
+function saveState() { Storage.writeJSON(SKEY, state); emit(EV.PROGRESS_CHANGED, { xp: state.xp, stars: state.stars }); }
 function renderFooter() {
   const lvl = Math.floor(state.xp / 1000) + 1; const into = state.xp % 1000;
   $('xpVal').textContent = state.xp; $('starVal').textContent = state.stars; $('lvlVal').textContent = lvl;
