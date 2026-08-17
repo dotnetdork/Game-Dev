@@ -7,6 +7,127 @@
 2. **Work lives on the LEAGUE code server**, behind a login — code-server account normally, personal GitHub occasionally.
 3. **Students see real token cost**, capped per account by their allotment.
 4. **Sync lives in the bottom status bar.**
+5. **1.0.0 is a shipped product, not an MVP.** Nothing reaches a child, a classroom, or the League
+   server before then. Everything below is pre-1.0.0 work measured against the bar in Part 0.
+
+---
+
+## Part 0 — What 1.0.0 has to mean
+
+This is a product that (a) children under 13 will use, (b) runs on school infrastructure, (c) holds
+work a child will care about losing, and (d) sends that child's code to a third-party AI. Each of
+those four carries obligations an internal tool doesn't have. The list below is the release gate:
+1.0.0 ships when every line is true, and not before.
+
+### Blockers — things that are wrong today and get worse with accounts
+
+**B1. The game iframe is same-origin with the app.** `#gameFrame` has no `sandbox` attribute and is
+driven by `srcdoc`, so it inherits this page's origin. Verified in a live probe: code inside it can
+read and write the parent's `localStorage`, read `document.cookie`, and **call app functions
+directly** — `parent.completeLesson` and `parent.saveState` both resolve. Today the blast radius is
+the student's own browser. After Stage 2 it is session access and a one-line course skip, in a
+document whose contents are written partly by an AI and partly by a 13-year-old pasting things off
+the internet. Fix: `sandbox="allow-scripts"` (no `allow-same-origin`), and move the console capture
+and audio control fully onto `postMessage`, which is already how the audio path works.
+
+**B2. Saved state has no schema version.** `leagueProject` and `leagueProgress` are written as bare
+JSON (`project.js:34, 227`). `loadProject` guesses at shape; `loadState` does `Object.assign` over
+defaults. Any change to either shape silently drops or corrupts existing work, and the artifact
+here is a game a child built. Fix before anything writes to a server: a `v` field, a migration
+chain, and a refusal-to-load path that preserves the old blob rather than overwriting it.
+
+**B3. Rate limiting keys on a client-supplied id.** `server.js:495` limits on `studentId`, which
+`ai.js` generates in the browser. Any student can mint a new one and reset their own limit, and
+after Stage 7 that is the token budget being bypassed. Must key on the server session.
+
+**B4. No security headers at all.** No CSP, no `X-Content-Type-Options`, no frame options. The app
+renders AI output and Markdown into the DOM; DOMPurify is the only line of defence and it should
+not be the only one.
+
+**B5. No automated tests and no CI.** Two hand-run harnesses (`check-challenges`, `check-mcp`,
+plus the `check-html` added this session). No `test` script, no `.github/workflows`. A product
+maintained by rotating interns needs the tests to run themselves.
+
+### The 1.0.0 checklist
+
+**Correctness**
+- [ ] `npm test` runs everything; CI runs it on every push
+- [ ] Unit coverage on the ops protocol, the four validators, state migrations, and XP/unlock rules
+- [ ] A boot smoke test that loads the app and asserts it reaches a usable lesson
+- [ ] All 5 teaching games covered both ways by the challenge harness
+- [ ] Every failure path has a defined behaviour: AI down, server down, network drop mid-sync,
+      storage full, corrupt saved state, asset 404
+
+**Data safety**
+- [ ] Versioned state schema with migrations (B2)
+- [ ] Server-side backup of student work, and a tested restore
+- [ ] Sync conflict resolution a 12-year-old can act on
+- [ ] Nothing can destroy a student's game without a confirm and a recoverable copy
+
+**Security**
+- [ ] Game iframe sandboxed (B1)
+- [ ] Rate limit and token budget keyed to the session (B3)
+- [ ] CSP and the standard headers (B4)
+- [ ] Input validation on every endpoint; no student-supplied value reaching a file path
+- [ ] Secrets never in the repo, never in the browser; documented rotation
+- [ ] Dependency audit clean
+
+**Privacy** *(the League's policy call — the app has to make the answers implementable)*
+- [ ] Written answer to: what is stored, for how long, who can see it, what leaves the building
+- [ ] COPPA position for under-13s and FERPA position for school records — decided by the League,
+      not by me, but decided *before* launch
+- [ ] Data export and data deletion actually implemented, per account
+- [ ] The AI profile stores behaviour, never transcripts or free text
+- [ ] A plain-English page a parent could read
+
+**Accessibility**
+- [ ] Full WCAG 2.2 AA pass, not the partial one done so far
+- [ ] Keyboard-only path through every task in the course
+- [ ] Screen-reader pass on the lesson surface and the editor
+- [ ] A published accessibility statement (a school product will be asked for one)
+
+**Operations**
+- [ ] Health check, structured logging, error reporting
+- [ ] Documented deploy and a tested rollback
+- [ ] A teacher can reset a class and recover a student's work
+- [ ] Load-tested at one class (25 concurrent) and one school
+
+**Content**
+- [ ] All 22 lessons authored to one quality bar and reviewed by someone who teaches this age
+- [ ] **Image rights cleared** — see the note below
+- [ ] Asset licences documented (Kenney is CC0; everything else needs a line)
+- [ ] Reading level checked against the 10–14 target
+
+**Handoff** *(Jay is an intern; someone else will own this)*
+- [ ] Teacher guide
+- [ ] Operator runbook
+- [ ] Architecture doc that matches the code
+- [ ] The authoring guides kept current
+
+### One content risk worth raising early
+
+Module 2 is built on game history, and history lessons want screenshots — Asteroids, Donkey Kong,
+Mario, Sonic, Zelda, RuneScape, Minecraft, Fortnite — plus the engine module wants shots of Unity,
+Unreal and Godot. **All of that is copyrighted.** A teacher putting screenshots in a slide deck is
+a very different legal position from an organisation shipping a product. Educational fair use is
+arguable, not automatic, and it is not a call for me or for Jay to make alone.
+
+Cheap ways through, in order of preference: original diagrams and recreations that show the *system*
+rather than the screen (which is what the lesson is actually about, and is better teaching);
+press-kit art, which most engine vendors provide under clear terms; Wikipedia/Wikimedia images with
+checkable licences; or a cleared licence. Worth deciding in Module 2's authoring, not at release.
+
+### Version milestones
+
+| Version | Gate |
+|---|---|
+| **0.2.0** | Blockers B1–B5 closed. Foundations landed (Stage 1). |
+| **0.3.0** | Login, server persistence, sync working end to end (Stages 2–3). |
+| **0.4.0** | Two-game structure and the rebuilt panels (Stage 4). |
+| **0.5.0** | All 22 lessons and 5 teaching games authored (Stage 5). |
+| **0.8.0** | Agentic AI, budgets, unlocks (Stages 6–7). Feature complete. |
+| **0.9.x** | Hardening only: the checklist above, plus a supervised pilot with real students. |
+| **1.0.0** | Every box ticked. First class of students who aren't a pilot. |
 
 ---
 
@@ -184,7 +305,16 @@ You want students to see real token cost, capped by a per-account allotment, to 
 
 ## Part 6 — The build order
 
-Seven stages. Each is shippable on its own and nothing later depends on a stage being perfect.
+Eight stages. Each is shippable on its own and nothing later depends on a stage being perfect.
+
+### Stage 0 — Close the blockers *(first, and it's small)*
+Everything in Part 0's B-list. It is roughly two days of work and it gets much more expensive
+later — B1 and B3 are cheap now and become a security review once there are accounts, and B2 has
+to land before the first byte of student work goes to a server.
+- Sandbox the game iframe; move console capture and audio fully onto `postMessage`.
+- Version the saved-state schema and write the first migration (a no-op that stamps `v:1`).
+- Security headers and a CSP.
+- `npm test` wrapping the four existing harnesses, and a GitHub Actions workflow that runs it.
 
 ### Stage 1 — Foundations *(do first; everything else is easier after it)*
 - ES modules + a tiny event bus. No bundler, no build step — native `<script type="module">`, which every target browser supports. Keeps the "open the folder and edit it" property.
@@ -196,6 +326,8 @@ Seven stages. Each is shippable on its own and nothing later depends on a stage 
 - Code-server login (primary) and GitHub OAuth (secondary), both landing on one account record.
 - Server-side project and progress storage keyed to that account.
 - Migration for students who already have work in `localStorage`.
+- Rate limit and, later, the token budget re-keyed from the client-supplied id to the session (B3).
+- Backup and a *tested* restore. Not "we have backups" — a restore someone has actually run.
 
 ### Stage 3 — Sync
 - Status-bar indicator: clean / N changes / syncing / failed, click to sync.
@@ -231,14 +363,38 @@ Seven stages. Each is shippable on its own and nothing later depends on a stage 
 
 ---
 
-## What I'd cut or defer
+## Sequencing, not cutting
 
-- **Stage B of the layout plan, for now.** The panel structure is Stage 4's subject. Making the current three-dock layout responsive and then restructuring it would be paying twice.
-- **Leaderboards.** Sample data, no real backend, and it competes for attention with the thing that matters. Worth asking whether it earns its top-level nav slot.
-- **The Gallery**, until publishing is real.
+Since 1.0.0 is a full product, nothing below is dropped — it is ordered.
 
-## Open questions for later (not blocking)
+- **Stage B of the layout plan** (responsive) waits for Stage 4. The panel structure is Stage 4's
+  subject; making the current three-dock layout responsive and then restructuring it is paying
+  twice. It still ships in 1.0.0, just after the structure it has to adapt.
+- **Leaderboards and Gallery are currently sample data with no backend.** For 1.0.0 they either
+  become real (which means moderation — student-named games shown to other students need a review
+  path) or they come out of the top-level nav. Shipping fake data in a product is the one option
+  that isn't available.
+- **Moderation is a real work item nobody has scoped yet.** Published game titles, and the games
+  themselves, are student-authored content displayed to other children. That needs a policy and a
+  button before the Gallery is real.
 
-1. Does a student's game need to be *playable by other students* from the Gallery, or is a screenshot enough for v1?
-2. Do teachers need their own login and view, or is that a later phase?
-3. How long is a class period, and how much of a lesson has to fit inside one? This decides lesson length more than anything else in this document.
+## Open questions
+
+Blocking 1.0.0, needed from the League rather than from the code:
+
+1. **The privacy answers** — what's stored, for how long, who sees it, the under-13 position, and
+   whether student code may go to a third-party AI at all. Everything in Stage 6 depends on this.
+2. **Image rights for Module 2 and Module 1** — see Part 0.
+3. **Who owns this after Jay?** The handoff checklist is written for a named person, and the
+   architecture decisions in Stage 1 (no build step, files over frameworks) are chosen partly to
+   make that handoff survivable.
+
+Needed soon, shapes the work but doesn't block it:
+
+4. **How long is a class period, and how much of a lesson must fit in one?** This decides lesson
+   length more than anything else in this document, and it is cheap to answer.
+5. **Do teachers need a login and a view in 1.0.0?** My read is yes — "a teacher can reset a class
+   and recover a student's work" is already on the release checklist, and that needs a teacher
+   account to hang off.
+6. **Is the Gallery playable-by-others, or a showcase?** Playable means running one student's code
+   in another student's browser, which is a much bigger security question than the one in B1.
