@@ -14,16 +14,8 @@
 
    Longer term the frame should have its own origin (separate port or subdomain) rather than
    relying on the attribute — that's what would let script-src drop 'unsafe-inline'. */
-const SANDBOX_DEFAULT = true;
-function sandboxGame() {
-  try {
-    const q = new URLSearchParams(location.search).get('sandbox');
-    if (q !== null) return q !== '0' && q !== 'false';
-    const s = Storage.read('leagueSandbox');
-    if (s !== null) return s !== '0' && s !== 'false';
-  } catch (e) { /* a blocked localStorage must not stop the game running */ }
-  return SANDBOX_DEFAULT;
-}
+function sandboxGame() { return !!DEV.sandboxGame; }
+
 /* Owned Store assets → auto-preloaded into every Phaser scene by key (student just uses the name). */
 function ownedAssets() { const A = window.STORE_ASSETS || []; return A.filter(function (a) { return a.free || !!state.unlocked[a.id]; }); }
 function assetInjectScript() {

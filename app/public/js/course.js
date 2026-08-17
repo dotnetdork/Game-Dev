@@ -60,7 +60,11 @@ function prefetchNextLesson(idx) {
   if (next && next.l.body === null) lessonBody(next.l);
 }
 // Guard the -1: an empty `lessons:` list in course.yaml would otherwise index flat[-2] and throw.
-function lessonUnlocked(idx) { return idx <= 0 ? idx === 0 : !!(flat[idx - 1] && state.done[flat[idx - 1].id]); }
+// DEV.unlockAll opens every lesson for authoring and testing — see js/dev.js.
+function lessonUnlocked(idx) {
+  if (DEV.unlockAll) return true;
+  return idx <= 0 ? idx === 0 : !!(flat[idx - 1] && state.done[flat[idx - 1].id]);
+}
 
 /* ---------- outline ----------
    Rows are real buttons in a tree, not divs with click listeners. Before this the panel had zero

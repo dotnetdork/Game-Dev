@@ -47,6 +47,7 @@ if (!Storage.persistent) {
 }
 
 /* ---------- boot ---------- */
+renderDevBadge();   // says so in the status bar if any developer switch is on
 renderFooter(); showPage('courses');
 loadCourse().then(function () { renderOutline(); selectLesson(0); })
   .catch(function () { $('lessonBody').innerHTML = '<p style="color:var(--muted)">Could not load the course content. Is the server running?</p>'; });

@@ -370,6 +370,12 @@ body{background:var(--bg);color:var(--ink);font-family:var(--font);font-size:14p
 .sb-mid .xp-bolt{height:13px;width:auto;vertical-align:-2px;}
 .progress{width:200px;height:7px;background:#0d2440;border:1px solid var(--line);border-radius:5px;overflow:hidden;}
 .progress > div{height:100%;width:0;background:linear-gradient(90deg,var(--teal),var(--green));transition:width .4s ease;}
+/* Developer switches are on. Deliberately loud-ish: a hidden mode that changes how the app
+   behaves is how you lose an afternoon debugging something you turned on yourself. */
+.dev-badge{display:inline-flex;align-items:center;gap:5px;flex:none;background:#3a2a10;
+  border:1px solid var(--gold);color:var(--gold);border-radius:999px;padding:1px 10px;
+  font-size:11px;font-weight:700;white-space:nowrap;}
+.dev-badge .mdi{font-size:13px;}
 .doc-card{background:var(--panel);border:1px solid var(--line);border-radius:12px;padding:16px 18px;}
 .doc-card h3{margin:0 0 8px;font-size:15px;display:flex;align-items:center;gap:8px;}
 .doc-card h3 .mdi{color:var(--azure);}
