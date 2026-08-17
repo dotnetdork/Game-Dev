@@ -17,7 +17,9 @@
      from js/lazy.js the first time that tab is opened. -->
 <link rel="stylesheet" href="vendor/codemirror/lib/codemirror.css">
 <link rel="stylesheet" href="vendor/codemirror/theme/material-darker.css">
-<link rel="stylesheet" href="vendor/mdi/css/materialdesignicons.min.css">
+<!-- The 70 icons the app draws, not the 7,000 in the library: 733 KB -> 8 KB. Rebuild with
+     `node app/tools/subset-icons.js` after adding an icon; `npm test` fails if you forget. -->
+<link rel="stylesheet" href="vendor/mdi/css/mdi-subset.css">
 <link rel="stylesheet" href="styles.css">
 <body>
   <a class="skiplink" href="#view-learn">Skip to the lesson</a>

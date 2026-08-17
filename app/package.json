@@ -7,7 +7,7 @@
   "scripts": {
     "start": "node server.js",
     "dev": "node --watch server.js",
-    "test": "node tools/check-html.js && node tools/check-state.js && node tools/check-challenges.js && node tools/check-mcp.js"
+    "test": "node tools/check-html.js && node tools/check-state.js && node tools/subset-icons.js --check && node tools/check-challenges.js && node tools/check-mcp.js"
   },
   "engines": {
     "node": ">=18"
