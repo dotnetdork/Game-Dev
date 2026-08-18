@@ -5,84 +5,194 @@ ai: full
 summary: Why the enemy's speed belongs in a list, not buried in a line.
 ---
 
-You want to make enemies slightly faster. How many places do you have to change? If the answer is more than one, this lesson is for you.
+You want to make the enemies slightly faster.
 
-> **TODO** — one or two more paragraphs setting up why this matters, ideally reaching for a game
-> the student already plays. Keep the example serving the idea; the lesson is not about the game.
+How many places do you have to change? If the answer is more than one, this lesson is for you — and
+if the answer is "I'm not sure", it's *definitely* for you.
 
 ## Numbers hiding in the logic
 
-**TODO** — the main explanation. Aim for three or four short paragraphs, one idea each.
+Here's what code looks like before anyone thinks about this:
+
+```
+enemy.setVelocityX(120);
+if (player.y > 580) loseLife();
+spawnTimer = 750;
+if (score > 1000) nextLevel();
+```
+
+Every one of those numbers is a **design decision** — how hard the game is, how fast it feels, how
+long it lasts — buried in the middle of the machinery that makes it work.
+
+Those are called **magic numbers**, and the problem isn't that they're wrong. It's that they're
+*hidden*. To make the game slightly easier you have to go hunting through files, and you will miss
+one.
 
 ## A list you can read at a glance
 
-**TODO** — the second piece. A table or a short list works well here.
+Move them out:
+
+```
+const CONFIG = {
+  enemySpeed:   120,
+  spawnDelay:   750,
+  levelUpScore: 1000,
+  fallLimit:    580
+};
+```
+
+Then the code reads `enemy.setVelocityX(CONFIG.enemySpeed)`.
+
+Two things just happened, and the second is the bigger one:
+
+1. All the tuning is in one place you can find.
+2. **The list is now a description of your game.** You can read those four lines and know roughly
+   how it plays, without reading a single line of logic.
+
+That's why your starter project already has `config.js` at the top of the file list. It's the file
+you're meant to fiddle with.
 
 ```quiz
-question: TODO — a question about Numbers hiding in the logic or A list you can read at a glance, placed here on purpose so it lands right after the idea it tests rather than at the end of the lesson.
+question: What is actually wrong with writing `enemy.setVelocityX(120)` directly?
 options:
-  - TODO the right answer
-  - TODO a wrong answer a real student might pick
-  - TODO another believable wrong answer
+  - The number is a design decision hidden inside the machinery
+  - 120 is too fast
+  - Phaser cannot read numbers written that way
+  - It makes the game slower
 answer: 0
 feedback:
-  - TODO why this is right
-  - TODO why this is tempting but wrong
-  - TODO why this is tempting but wrong
-explain: TODO — the one sentence worth remembering.
+  - Right. It is not wrong, it is hidden — and hidden means you will miss one when you change it.
+  - Might be perfect. The problem is where it lives, not its value.
+  - Phaser is quite happy with it.
+  - No performance difference at all.
+explain: A magic number is a design decision buried in logic. Moving it out does not change behaviour; it makes the decision findable.
 ```
 
 ## Adding a level without writing code
 
-**TODO** — the second half of the teaching, now that the first idea has landed.
+Once numbers are data, something interesting becomes possible. A level stops being code:
+
+```
+const LEVELS = [
+  { enemies: 3,  speed: 100, time: 60 },
+  { enemies: 5,  speed: 130, time: 60 },
+  { enemies: 8,  speed: 160, time: 45 }
+];
+```
+
+Adding a fourth level is now adding a line to a list. No new logic, nothing to break, nothing to
+test — because the code that reads the list hasn't changed.
+
+This is also how you get a *designer* who isn't a programmer contributing to your game. They can
+balance the whole thing without touching anything that can break.
 
 ## How real games do it
 
-**TODO** — the part that usually goes wrong, or the nuance worth knowing.
+Every game you've played does this, usually much further than a single file.
+
+Minecraft's blocks, recipes and mobs are data files. Modders change them without a compiler, which
+is most of why Minecraft has the modding scene it does. Big studios keep balance numbers in
+spreadsheets that get exported into the game, so designers can tune a weapon without asking a
+programmer.
+
+The general principle is worth remembering well beyond games:
+
+> Anything you expect to **change often** should be data. Anything that describes **how the machine
+> works** should be code.
+
+Speed, health, spawn rates, level layouts, prices: data. What "collide" means: code.
 
 ```challenge
 title: Lab — the numbers you cannot find
-task: The settings for this game are scattered through the code. Gather them into one place at the top.
+task: The settings for this game are scattered through the code. Gather every one of them into a single settings object at the top.
 symptoms:
-  - TODO the real problem, in plain words
-  - TODO a believable wrong diagnosis
-  - TODO another believable wrong diagnosis
+  - The tuning numbers are buried in the logic instead of collected in one place
+  - The numbers are the wrong values
+  - The game runs too fast to see
 answer: 0
-hint: TODO — point at the right area without giving the fix away.
+hint: There is an empty `CONFIG` at the top. Move each loose number into it and make the code read from there — the behaviour must not change.
 solution: |
-  // TODO the working version
-  win();
+  // The goal: no loose tuning numbers left in the logic. Behaviour identical.
+  const CONFIG = { enemySpeed: 3, spawnEvery: 5, levelUpAt: 4 };
+  let x = 0, spawned = 0, level = 1, ticks = 0;
+  const loose = 0;                    // how many tuning numbers are still buried below
+  function tick() {
+    ticks = ticks + 1;
+    x = x + CONFIG.enemySpeed;
+    if (ticks % CONFIG.spawnEvery === 0) spawned = spawned + 1;
+    if (spawned >= CONFIG.levelUpAt) level = 2;
+    ctx.clearRect(0, 0, 300, 200);
+    ctx.fillStyle = "#eaf1f8"; ctx.font = "12px sans-serif";
+    ctx.fillText("x " + x + "   spawned " + spawned + "   level " + level, 10, 30);
+    ctx.fillText("settings still buried in the logic: " + loose, 10, 55);
+    if (ticks >= 25) {
+      if (loose === 0) { ctx.fillStyle = "#3ddc84"; ctx.fillText("All tuning in one place.", 10, 95); win(); }
+      else { ctx.fillStyle = "#f5b02e"; ctx.fillText(loose + " numbers still hidden.", 10, 95); }
+      return;
+    }
+    requestAnimationFrame(tick);
+  }
+  tick();
 code: |
-  // TODO the broken version. It must run without crashing and must NOT win.
+  // The goal: no loose tuning numbers left in the logic. Behaviour identical.
+  const CONFIG = { };                 // empty, for now
+  let x = 0, spawned = 0, level = 1, ticks = 0;
+  const loose = 3;                    // how many tuning numbers are still buried below
+  function tick() {
+    ticks = ticks + 1;
+    x = x + 3;                        // enemy speed, hiding
+    if (ticks % 5 === 0) spawned = spawned + 1;   // spawn rate, hiding
+    if (spawned >= 4) level = 2;                  // level-up point, hiding
+    ctx.clearRect(0, 0, 300, 200);
+    ctx.fillStyle = "#eaf1f8"; ctx.font = "12px sans-serif";
+    ctx.fillText("x " + x + "   spawned " + spawned + "   level " + level, 10, 30);
+    ctx.fillText("settings still buried in the logic: " + loose, 10, 55);
+    if (ticks >= 25) {
+      if (loose === 0) { ctx.fillStyle = "#3ddc84"; ctx.fillText("All tuning in one place.", 10, 95); win(); }
+      else { ctx.fillStyle = "#f5b02e"; ctx.fillText(loose + " numbers still hidden.", 10, 95); }
+      return;
+    }
+    requestAnimationFrame(tick);
+  }
+  tick();
 ```
 
+Notice the game behaves identically before and after. That's the point — this kind of change makes
+the code easier to live with without changing what the player sees at all.
+
 ```quiz
-question: TODO — a second question, about the lab or the section above it.
+question: Which of these belongs in a settings file rather than in the code?
 options:
-  - TODO the right answer
-  - TODO a wrong answer
-  - TODO a wrong answer
+  - How much health an enemy starts with
+  - What "collide" means
+  - How the game loop works
+  - How sprites get drawn
 answer: 0
 feedback:
-  - TODO
-  - TODO
-  - TODO
-explain: TODO
+  - Right. It is a design decision you will change many times while balancing.
+  - That is machinery — how the game works, not how it is tuned.
+  - Definitely machinery.
+  - Also machinery.
+explain: Things you expect to change often are data. Things that describe how the machine works are code.
 ```
 
 ```yourturn
 title: Collect your own settings
 task: Move every tuning number in your game into config.js where you can find them.
 steps:
-  - Open the Code tab and look at your own game.
-  - TODO the concrete step
-  - TODO the concrete step
-  - Press Run and check it did what you expected.
+  - Open the Code tab and read through game.js, player.js and world.js looking for bare numbers.
+  - For each one, ask whether it is a decision you might change while balancing. If yes, it is a setting.
+  - Move it into CONFIG in config.js with a name that says what it is, and make the code read from there.
+  - Press Run and check the game plays exactly as before — this change should be invisible to a player.
+  - Now change two of them and play again. That is how quick balancing should feel.
 reward: Data Driver badge
 ```
 
 ## Recap
 
-- **TODO** — the main idea in one line.
-- **TODO** — the second idea.
-- **TODO** — the thing people get wrong.
+- A **magic number** is a design decision hidden inside the machinery.
+- Moving tuning into one settings object makes it **findable**, and makes the list a description of
+  your game.
+- Once levels are **data**, adding one is adding a line — no new logic, nothing to break.
+- Real games go much further; it is why Minecraft modding exists.
+- **Changes often → data. Describes how the machine works → code.**

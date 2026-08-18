@@ -5,84 +5,177 @@ ai: full
 summary: Why the same jump feels different with a different noise.
 ---
 
-Play the same jump with three different sounds and you have three different characters. Nothing else changed.
+Take one jump animation. Give it a soft *boing* and you have a cartoon. Give it a sharp *thud* and
+you have someone heavy. Give it a metallic *clank* and you have a robot.
 
-> **TODO** — one or two more paragraphs setting up why this matters, ideally reaching for a game
-> the student already plays. Keep the example serving the idea; the lesson is not about the game.
+Nothing about the picture changed. Sound did all of that.
 
 ## Sound is feedback you can hear
 
-**TODO** — the main explanation. Aim for three or four short paragraphs, one idea each.
+You met **feedback** in Core Mechanics: everything a game does to tell you your action mattered.
+Sound is the channel people add last and should probably add first, because it's the cheapest way
+to make something feel real.
+
+There's a reason for that. Your ears react faster than your eyes — noticeably faster. A sound that
+lands on the exact frame of a hit makes the hit feel solid in a way a visual effect alone doesn't.
+
+> Turn the sound off on a game you like and watch how quickly it stops feeling good.
 
 ## Short, sharp, and not annoying
 
-**TODO** — the second piece. A table or a short list works well here.
+Game sound effects follow rules that seem obvious once you hear them broken:
+
+- **Short.** Most are under half a second. A long sound overlaps with the next one.
+- **Sharp start.** No fade-in. The noise must begin the instant the thing happens.
+- **Not too big.** It plays hundreds of times a session. Anything dramatic becomes unbearable by the
+  twentieth repeat.
+
+That last one is the trap. You pick a satisfying coin sound, hear it five times while testing, and
+ship it. The player hears it four hundred times.
+
+The usual fix in real games is **variation** — three slightly different versions picked at random,
+so your ear never quite settles. That's why footsteps in good games don't drive you mad.
 
 ```quiz
-question: TODO — a question about Sound is feedback you can hear or Short, sharp, and not annoying, placed here on purpose so it lands right after the idea it tests rather than at the end of the lesson.
+question: Why do most game sound effects last less than half a second?
 options:
-  - TODO the right answer
-  - TODO a wrong answer a real student might pick
-  - TODO another believable wrong answer
+  - They play constantly, and long sounds overlap and become tiring
+  - Short files load faster
+  - Phaser cannot play long sounds
+  - Players cannot hear long sounds
 answer: 0
 feedback:
-  - TODO why this is right
-  - TODO why this is tempting but wrong
-  - TODO why this is tempting but wrong
-explain: TODO — the one sentence worth remembering.
+  - Right. It is about repetition, not file size — you will hear this sound hundreds of times.
+  - Loading is a minor benefit, not the reason.
+  - It can play long sounds fine; that is what music is.
+  - They hear them perfectly well. That is the problem.
+explain: A sound effect fires again and again. Short and unobtrusive survives repetition; dramatic does not.
 ```
 
 ## Music sets the room
 
-**TODO** — the second half of the teaching, now that the first idea has landed.
+Music does a completely different job. A sound effect says *that happened*; music says *this is
+what kind of place you are in*.
+
+Which means it can be much longer, much more compressed, and it should sit **underneath** the
+effects rather than competing with them. If your jump sound gets lost under the soundtrack, the
+music is too loud — not the effect too quiet.
+
+Practical starting point: effects at full volume, music at about a third.
 
 ## Why mute has to work
 
-**TODO** — the part that usually goes wrong, or the nuance worth knowing.
+Now the part that matters more than any of the above, especially for a game played in a classroom.
+
+**Sound must be off by default, and turning it off must be one obvious click.**
+
+Thirty laptops all playing coin noises is a genuinely bad room to be in, and a student who can't
+find the mute button will just close your game. This app already defaults to muted for exactly that
+reason — look at the speaker icon in the Play tab.
+
+A related rule worth taking seriously: never make a sound the *only* way something is communicated.
+Some players are deaf, some have broken speakers, and most people playing in public have the sound
+off. If a warning is only a noise, those players never get the warning.
 
 ```challenge
 title: Lab — the silent game
-task: Everything works and nothing makes a sound. Add sound to the moment that matters most.
+task: Everything works and nothing makes a sound. Add sound to the moment that matters most — and make sure it is not the only way that moment is communicated.
 symptoms:
-  - TODO the real problem, in plain words
-  - TODO a believable wrong diagnosis
-  - TODO another believable wrong diagnosis
+  - The most important moment has no sound attached to it
+  - The sound file failed to load
+  - The volume is set to zero
 answer: 0
-hint: TODO — point at the right area without giving the fix away.
+hint: Look inside `collect()`. It changes the score and shows a flash. What about the third channel — is anything played?
 solution: |
-  // TODO the working version
-  win();
+  // The goal: the collect moment must reach the player through more than one channel.
+  const played = [];
+  function playSound(name) { played.push(name); }
+  let score = 0, flash = 0, ticks = 0;
+  function collect() {
+    score = score + 1;
+    flash = 5;                       // seen
+    playSound("coin");               // and heard
+  }
+  function step() {
+    ticks = ticks + 1;
+    if (ticks % 6 === 0) collect();
+    if (flash > 0) flash = flash - 1;
+    ctx.clearRect(0, 0, 300, 200);
+    ctx.fillStyle = flash > 0 ? "#ffffff" : "#f5b02e";
+    ctx.fillRect(140, 90, 20, 20);
+    ctx.fillStyle = "#eaf1f8"; ctx.font = "13px sans-serif";
+    ctx.fillText("score " + score, 10, 30);
+    ctx.fillText("sounds played: " + played.length, 10, 52);
+    if (score >= 3) {
+      if (played.length >= 3) { ctx.fillStyle = "#3ddc84"; ctx.fillText("Seen AND heard.", 10, 90); win(); }
+      else { ctx.fillStyle = "#f5b02e"; ctx.fillText("Nothing was ever played.", 10, 90); }
+      return;
+    }
+    if (ticks < 60) requestAnimationFrame(step);
+  }
+  step();
 code: |
-  // TODO the broken version. It must run without crashing and must NOT win.
+  // The goal: the collect moment must reach the player through more than one channel.
+  const played = [];
+  function playSound(name) { played.push(name); }
+  let score = 0, flash = 0, ticks = 0;
+  function collect() {
+    score = score + 1;
+    flash = 5;                       // seen... and that is all
+  }
+  function step() {
+    ticks = ticks + 1;
+    if (ticks % 6 === 0) collect();
+    if (flash > 0) flash = flash - 1;
+    ctx.clearRect(0, 0, 300, 200);
+    ctx.fillStyle = flash > 0 ? "#ffffff" : "#f5b02e";
+    ctx.fillRect(140, 90, 20, 20);
+    ctx.fillStyle = "#eaf1f8"; ctx.font = "13px sans-serif";
+    ctx.fillText("score " + score, 10, 30);
+    ctx.fillText("sounds played: " + played.length, 10, 52);
+    if (score >= 3) {
+      if (played.length >= 3) { ctx.fillStyle = "#3ddc84"; ctx.fillText("Seen AND heard.", 10, 90); win(); }
+      else { ctx.fillStyle = "#f5b02e"; ctx.fillText("Nothing was ever played.", 10, 90); }
+      return;
+    }
+    if (ticks < 60) requestAnimationFrame(step);
+  }
+  step();
 ```
 
 ```quiz
-question: TODO — a second question, about the lab or the section above it.
+question: Why should a warning never be communicated by sound alone?
 options:
-  - TODO the right answer
-  - TODO a wrong answer
-  - TODO a wrong answer
+  - Deaf players, broken speakers and muted games all miss it entirely
+  - Sounds are expensive to make
+  - Phaser cannot play warning sounds
+  - Warnings are always visual in games
 answer: 0
 feedback:
-  - TODO
-  - TODO
-  - TODO
-explain: TODO
+  - Right. Plenty of players never hear it, and most people in public have the sound off.
+  - Cost is not the issue.
+  - It can play them fine.
+  - Plenty of games make this exact mistake — which is why it is worth saying.
+explain: Sound is one channel among several. Anything important needs at least one other, or some players never receive it.
 ```
 
 ```yourturn
 title: Give your game one good sound
 task: Add a sound from the Store to the most important moment in your game.
 steps:
-  - Open the Code tab and look at your own game.
-  - TODO the concrete step
-  - TODO the concrete step
-  - Press Run and check it did what you expected.
+  - Open the Store, filter to Sounds, and preview a few with the play button. Note the green key of one you like.
+  - Open the Code tab and find the moment that matters most — the collect, the hit, the jump.
+  - Play it there with `this.sound.play("the-key")`.
+  - Press Run, then unmute using the speaker icon in the Play tab.
+  - Do the thing ten times in a row. If it is annoying by the tenth, pick something quieter — the player will hear it hundreds of times.
 reward: Sound Designer badge
 ```
 
 ## Recap
 
-- **TODO** — the main idea in one line.
-- **TODO** — the second idea.
-- **TODO** — the thing people get wrong.
+- Sound is **feedback you can hear**, and your ears react faster than your eyes.
+- Effects: **short, sharp start, not too dramatic** — you will hear them hundreds of times.
+- **Variation** stops repeated sounds becoming unbearable.
+- Music sets the room and sits **underneath** the effects.
+- **Muted by default, one click to change** — especially in a classroom.
+- Never make sound the **only** way something is communicated.

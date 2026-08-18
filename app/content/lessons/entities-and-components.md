@@ -5,84 +5,173 @@ ai: full
 summary: Why a coin, a bullet and an enemy are the same thing wearing different hats.
 ---
 
-You could write separate code for coins, bullets and enemies. Every big game stopped doing that a long time ago, and for a good reason.
+You could write separate code for coins, separate code for bullets, and separate code for enemies.
 
-> **TODO** — one or two more paragraphs setting up why this matters, ideally reaching for a game
-> the student already plays. Keep the example serving the idea; the lesson is not about the game.
+Every large game stopped doing that a long time ago, and the reason is worth understanding — it's
+one of those ideas that changes how you see all the code you write afterwards.
 
 ## The same thing, different parts
 
-**TODO** — the main explanation. Aim for three or four short paragraphs, one idea each.
+Look at what a coin, a bullet and an enemy actually *are*:
+
+| | Coin | Bullet | Enemy |
+|---|---|---|---|
+| Has a position | yes | yes | yes |
+| Has a picture | yes | yes | yes |
+| Moves | no | yes | yes |
+| Can be collected | yes | no | no |
+| Can damage you | no | yes | yes |
+| Has health | no | no | yes |
+
+They aren't three different things. They're one thing — something in the world — with a **different
+set of parts**.
+
+That's the whole idea:
+
+- An **entity** is a thing in your game. It's barely anything on its own.
+- A **component** is one capability it has: a position, a picture, health, damage.
+- A thing *is* the parts it has.
 
 ## What they all share
 
-**TODO** — the second piece. A table or a short list works well here.
+Almost everything in your game needs the same small handful:
+
+- **Position** — where it is.
+- **Sprite** — what it looks like.
+- **Body** — a box for collisions.
+
+If you find yourself writing "x and y and a picture" for the fourth time, that's the signal. Those
+three belong in one place, and everything else builds on top.
 
 ```quiz
-question: TODO — a question about The same thing, different parts or What they all share, placed here on purpose so it lands right after the idea it tests rather than at the end of the lesson.
+question: In this way of thinking, what actually makes an enemy different from a coin?
 options:
-  - TODO the right answer
-  - TODO a wrong answer a real student might pick
-  - TODO another believable wrong answer
+  - The set of parts it has — an enemy has health and does damage
+  - Enemies are a completely different kind of object
+  - Enemies are drawn with different code
+  - Nothing; they are identical
 answer: 0
 feedback:
-  - TODO why this is right
-  - TODO why this is tempting but wrong
-  - TODO why this is tempting but wrong
-explain: TODO — the one sentence worth remembering.
+  - Right. Same foundation, different parts bolted on.
+  - That is the approach this replaces — and it means writing everything twice.
+  - Both get drawn by the same code, using different pictures.
+  - They differ, just not in the way beginners usually assume.
+explain: An entity is defined by the components it has. Add health and damage to a coin and you have an enemy.
 ```
 
 ## What makes each one different
 
-**TODO** — the second half of the teaching, now that the first idea has landed.
+Once the shared foundation exists, each kind is a short list of extras:
+
+```
+coin   = position + sprite + collectable
+bullet = position + sprite + movement + damage
+enemy  = position + sprite + movement + damage + health
+```
+
+Read that list and you can predict exactly how each behaves without reading any code. That's the
+sign you've got the shape right.
+
+It also makes bugs less scary. If collision is broken for everything, the shared part is wrong. If
+it's broken for enemies only, it's in the enemy's extras. The bug has a smaller place to hide.
 
 ## Adding a new kind for free
 
-**TODO** — the part that usually goes wrong, or the nuance worth knowing.
+Here's where it pays off. Somebody asks for a new enemy that shoots.
+
+The old way: copy the enemy file, paste it, change bits, and now you have two files that both need
+fixing every time you find a bug.
+
+This way: `shooter = position + sprite + movement + damage + health + shooting`. You add one new
+part and combine it with what already exists. Nothing gets copied, so nothing can drift out of
+step.
+
+> The test of a good structure isn't how neat it looks. It's how much you have to write to add the
+> next thing.
 
 ```challenge
 title: Lab — four things, four copies of the same code
-task: The same twelve lines appear four times with tiny differences. Find what they share and make one version.
+task: The same lines appear four times with tiny differences. Find what they share and make one version that handles all of them.
 symptoms:
-  - TODO the real problem, in plain words
-  - TODO a believable wrong diagnosis
-  - TODO another believable wrong diagnosis
+  - The same logic is copied for each kind instead of being written once
+  - The things are drawn in the wrong colours
+  - One of the four is missing
 answer: 0
-hint: TODO — point at the right area without giving the fix away.
+hint: Every one of them needs its x moved by its speed. Instead of four separate blocks, could you keep them in a list and go through it?
 solution: |
-  // TODO the working version
-  win();
+  // The goal: move everything with ONE piece of movement code, not four copies.
+  const things = [
+    { name: "coin",   x: 10, speed: 0 },
+    { name: "bullet", x: 10, speed: 6 },
+    { name: "enemy",  x: 10, speed: 2 },
+    { name: "cloud",  x: 10, speed: 1 }
+  ];
+  let moveBlocks = 1;                  // one loop handles every kind
+  for (let i = 0; i < 12; i++) {
+    things.forEach(function (t) { t.x = t.x + t.speed; });
+  }
+  ctx.clearRect(0, 0, 300, 200);
+  ctx.fillStyle = "#eaf1f8"; ctx.font = "12px sans-serif";
+  things.forEach(function (t, i) { ctx.fillText(t.name + " x=" + t.x, 10, 30 + i * 20); });
+  ctx.fillText("movement written " + moveBlocks + " time(s)", 10, 130);
+  if (moveBlocks === 1) { ctx.fillStyle = "#3ddc84"; ctx.fillText("One rule, four things.", 10, 160); win(); }
+  else { ctx.fillStyle = "#f5b02e"; ctx.fillText("Still copied " + moveBlocks + " times.", 10, 160); }
 code: |
-  // TODO the broken version. It must run without crashing and must NOT win.
+  // The goal: move everything with ONE piece of movement code, not four copies.
+  const coin   = { name: "coin",   x: 10, speed: 0 };
+  const bullet = { name: "bullet", x: 10, speed: 6 };
+  const enemy  = { name: "enemy",  x: 10, speed: 2 };
+  const cloud  = { name: "cloud",  x: 10, speed: 1 };
+  const things = [coin, bullet, enemy, cloud];
+  let moveBlocks = 4;                  // the same three words, written out four times
+  for (let i = 0; i < 12; i++) {
+    coin.x = coin.x + coin.speed;
+    bullet.x = bullet.x + bullet.speed;
+    enemy.x = enemy.x + enemy.speed;
+    cloud.x = cloud.x + cloud.speed;
+  }
+  ctx.clearRect(0, 0, 300, 200);
+  ctx.fillStyle = "#eaf1f8"; ctx.font = "12px sans-serif";
+  things.forEach(function (t, i) { ctx.fillText(t.name + " x=" + t.x, 10, 30 + i * 20); });
+  ctx.fillText("movement written " + moveBlocks + " time(s)", 10, 130);
+  if (moveBlocks === 1) { ctx.fillStyle = "#3ddc84"; ctx.fillText("One rule, four things.", 10, 160); win(); }
+  else { ctx.fillStyle = "#f5b02e"; ctx.fillText("Still copied " + moveBlocks + " times.", 10, 160); }
 ```
 
+Both versions produce identical results. The difference is what happens when you want to add a
+fifth thing, or fix how movement works — one version needs a single change, the other needs five.
+
 ```quiz
-question: TODO — a second question, about the lab or the section above it.
+question: What is the real advantage of building things out of shared parts?
 options:
-  - TODO the right answer
-  - TODO a wrong answer
-  - TODO a wrong answer
+  - Adding a new kind means combining existing parts instead of copying a file
+  - It makes the game run faster
+  - It uses fewer variables
+  - It is the only way Phaser works
 answer: 0
 feedback:
-  - TODO
-  - TODO
-  - TODO
-explain: TODO
+  - Right. The measure of a good structure is how little you write to add the next thing.
+  - Speed is roughly the same.
+  - Variable count is not what this is about.
+  - Phaser is happy either way; this is about keeping your own code sane.
+explain: Copying a file means every future fix has to be made in several places. Shared parts mean one fix, everywhere.
 ```
 
 ```yourturn
 title: Find the copy-paste in your own game
 task: Look for code you have written more than once, and pull the shared part out.
 steps:
-  - Open the Code tab and look at your own game.
-  - TODO the concrete step
-  - TODO the concrete step
-  - Press Run and check it did what you expected.
+  - Open the Code tab and read through your files looking for two blocks that look almost the same.
+  - Work out what they share and what genuinely differs — the difference is usually just a number or a name.
+  - Write one version that takes the difference as a value, and use it in both places.
+  - Press Run and check the game behaves exactly as before. Same game, half the code.
 reward: Systems Thinker badge
 ```
 
 ## Recap
 
-- **TODO** — the main idea in one line.
-- **TODO** — the second idea.
-- **TODO** — the thing people get wrong.
+- An **entity** is a thing in the world; a **component** is one capability it has.
+- A coin, a bullet and an enemy differ by their **parts**, not their type.
+- Nearly everything shares **position**, **sprite** and **body**.
+- Writing the same lines a fourth time is the signal to pull them out.
+- The measure of a good structure is **how little you write to add the next thing**.
