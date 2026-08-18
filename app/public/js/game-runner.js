@@ -95,7 +95,19 @@ function fitStage() {  // size the game frame to the largest true 4:3 box that f
   let fw = w, fh = w * 3 / 4; if (fh > h) { fh = h; fw = h * 4 / 3; }
   fr.style.width = Math.floor(fw) + 'px'; fr.style.height = Math.floor(fh) + 'px';
 }
-window.addEventListener('resize', function () { const v = $('view-play'); if (v && !v.hidden) fitStage(); });
+/* Sizing the stage is CSS's job now (see .stage / .stage-frame in styles.css): the frame is the
+   largest 4:3 box that fits its container, worked out by the browser whenever anything changes
+   size. This used to be measured by hand after a requestAnimationFrame from three separate
+   places, and it lost — collapsing the console grew the box from 387px to 591px while the game
+   stayed 516x387, leaving a dead gap, and opening it again pushed the game over the log.
+
+   fitStage stays as a no-op because several call sites still ask for it, and clearing any inline
+   sizing left over from an older session is the one useful thing left to do. */
+function fitStage() {
+  const st = $('gameStage'); if (!st) return;
+  const fr = st.querySelector('.stage-frame'); if (!fr) return;
+  if (fr.style.width || fr.style.height) { fr.style.width = ''; fr.style.height = ''; }
+}
 
 /* ---------- game audio: mute defaults ON; controls live in the Play viewport ---------- */
 let gameMuted = (Storage.read('leagueMuted') !== 'false');
