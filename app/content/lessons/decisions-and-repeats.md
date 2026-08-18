@@ -102,11 +102,6 @@ that checks each one, and a **function** saying what to do when it matches.
 ```challenge
 title: Lab — the check that never fires
 task: The rule is written but never comes true, so nothing ever happens. Read the condition carefully and work out what it is really asking.
-symptoms:
-  - The condition asks for something that can never happen
-  - The loop does not run enough times
-  - The function is never called
-answer: 0
 hint: The player's health only ever goes down to 0, one at a time. What exactly is that `if` waiting for?
 solution: |
   // The goal: notice when the player runs out of health.

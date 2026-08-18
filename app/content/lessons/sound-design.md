@@ -80,11 +80,6 @@ off. If a warning is only a noise, those players never get the warning.
 ```challenge
 title: Lab — the silent game
 task: Everything works and nothing makes a sound. Add sound to the moment that matters most — and make sure it is not the only way that moment is communicated.
-symptoms:
-  - The most important moment has no sound attached to it
-  - The sound file failed to load
-  - The volume is set to zero
-answer: 0
 hint: Look inside `collect()`. It changes the score and shows a flash. What about the third channel — is anything played?
 solution: |
   // The goal: the collect moment must reach the player through more than one channel.

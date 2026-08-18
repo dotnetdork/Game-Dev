@@ -439,24 +439,34 @@ function buildFindBug(q, body, ctx) {
     if (ctx.resolved) rows.forEach(function (r) { r.disabled = true; });
   });
 }
+/* Inline Markdown for the short authored strings in a lab or a "your turn" step — `code` and
+   **bold**, nothing else. Written by hand rather than run through marked() because these are
+   single lines, not documents: marked would wrap each one in a <p> and fight the list styling.
+   Escaped FIRST, so authored text can never inject markup. */
+function inlineMd(text) {
+  return esc(String(text == null ? '' : text))
+    .replace(/`([^`]+)`/g, '<code>$1</code>')
+    .replace(/\*\*([^*]+)\*\*/g, '<b>$1</b>');
+}
+
 /* ```challenge — the lesson LAB: the course's own game, broken on purpose, sitting inside the
    lesson for the student to fix.
 
    The important thing about a lab is whose it is. It is NOT the student's game — that lives in the
    Code tab and nothing here ever touches it. This is the course's example, on a bench, and it says
    so: its own header, a note that it can be reset at any time, and a reset button in plain sight.
-   A student should never wonder which code they are looking at.
+
+   Layout: the CODE comes first and the running game sits under it. You read the thing you are
+   about to change, then watch what it does — and after pressing Run your eye does not have to
+   travel back up past the output to reach the editor again.
 
    Authored as YAML in a ```challenge fence:
      title:     what the bench is called
      task:      what is wrong / what to do, in a sentence
-     symptoms:  optional list — the student must say what they think is wrong BEFORE they may edit
-     answer:    index of the true symptom (default 0)
      hint:      shown after the first failed run
      code:      the broken starting code
      solution:  the working version, offered once they are properly stuck
-   Everything except `code` is optional, so the ten challenges written before any of this existed
-   still render exactly as they did.
+   Only `code` is required.
 
    The student's code calls win() when the goal is met, which resolves the activity and can
    complete the lesson. */
@@ -471,17 +481,9 @@ function renderChallengeCells(root) {
     const lessonId = lessonWidgetId;
     const saved = labState(lessonId, key) || {};
     const startCode = c.code || '';
-    const symptoms = Array.isArray(c.symptoms) ? c.symptoms : null;
-    const answerIdx = typeof c.answer === 'number' ? c.answer : 0;
     const solved = activityDone(lessonId, key);
     let fails = saved.fails || 0;
     let revealed = !!saved.revealed;
-    /* `solved ||` matters more than it looks. The guess box is only drawn for an unsolved lab, so
-       without it a student who finishes a lab and then presses Reset is locked out permanently:
-       Reset clears the lab's draft state (including the recorded guess) while "solved" lives in
-       the activity ledger and stays — leaving a locked editor and nothing on screen able to
-       unlock it. Anyone who has already done the work is never re-gated. */
-    let guessed = solved || (symptoms ? !!saved.guessed : true);   // no symptoms authored => nothing to commit to
 
     /* Classes are ch-*, not cm-*: the lesson root carries CodeMirror's `cm-s-material-darker`
        theme class, and a widget naming its own parts cm-anything is one rename from colliding. */
@@ -499,87 +501,33 @@ function renderChallengeCells(root) {
 
     const bodyEl = document.createElement('div'); bodyEl.className = 'ch-body'; cell.appendChild(bodyEl);
 
-    /* Says whose this is, every time, without the student having to remember. */
+    /* Says whose this is, every time, so the student never has to remember. */
     const note = document.createElement('p'); note.className = 'ch-note';
     note.innerHTML = '<span class="mdi mdi-information-outline" aria-hidden="true"></span>'
-      + 'This is the course’s example, not your game. Break it as much as you like — Reset puts it back.';
+      + '<span>This is the course’s example, not your game. Break it as much as you like — Reset puts it back.</span>';
     bodyEl.appendChild(note);
 
-    if (c.task) { const t = document.createElement('div'); t.className = 'ch-task'; t.textContent = c.task; bodyEl.appendChild(t); }
-
-    const stage = document.createElement('iframe'); stage.className = 'ch-stage'; stage.setAttribute('sandbox', 'allow-scripts');
-    stage.setAttribute('title', 'Lab output');
+    if (c.task) { const t = document.createElement('div'); t.className = 'ch-task'; t.innerHTML = inlineMd(c.task); bodyEl.appendChild(t); }
 
     const host = document.createElement('div'); host.className = 'ch-editor';
     const ta = document.createElement('textarea'); ta.spellcheck = false;
     let editor = null;
 
-    /* ---------- the guess ----------
-       Novices handed broken code change things at random until it works, and learn nothing from
-       it. Committing to a theory first is what turns poking into diagnosing. A wrong guess is
-       fine and is answered, not punished — the point is having one, not having the right one. */
-    let guessBox = null;
-    /* Assigned inside the block below, replayed at the very END of this function. It cannot be
-       called any earlier: it unlocks the editor, and unlocking touches the Run button, which is
-       not constructed until further down. Calling it here threw before anything rendered — so any
-       lab a student had already guessed on simply vanished from the lesson. */
-    let replaySavedGuess = null;
-    if (symptoms && !solved) {
-      guessBox = document.createElement('div'); guessBox.className = 'ch-guess';
-      const q = document.createElement('p'); q.className = 'ch-guess-q';
-      q.textContent = 'Before you change anything — what do you think is wrong?';
-      guessBox.appendChild(q);
-      const list = document.createElement('div'); list.className = 'ch-guess-list';
-      symptoms.forEach(function (s, i) {
-        const b = document.createElement('button'); b.type = 'button'; b.className = 'ch-guess-opt';
-        b.textContent = String(s);
-        b.addEventListener('click', function () {
-          if (guessed) return;
-          replaySavedGuess(i);
-          saveLabState(lessonId, key, { guessed: true, guess: i });
-        });
-        list.appendChild(b);
-      });
-      guessBox.appendChild(list);
-      bodyEl.appendChild(guessBox);
+    const stage = document.createElement('iframe'); stage.className = 'ch-stage'; stage.setAttribute('sandbox', 'allow-scripts');
+    stage.setAttribute('title', 'Lab output');
 
-      replaySavedGuess = function (i) {
-        const right = i === answerIdx;
-        [].forEach.call(list.children, function (el) { el.disabled = true; });
-        list.children[i].classList.add(right ? 'correct' : 'wrong');
-        if (!right) list.children[answerIdx].classList.add('correct');
-        const say = document.createElement('p'); say.className = 'ch-guess-say ' + (right ? 'ok' : 'no');
-        say.textContent = right
-          ? 'That’s it. Now find the line that causes it.'
-          : 'Not quite — it’s the one highlighted. Have a look at the code with that in mind.';
-        guessBox.appendChild(say);
-        guessed = true;
-        unlockEditor();
-      };
-    }
-
-    bodyEl.appendChild(stage);
-    bodyEl.appendChild(host);
+    bodyEl.appendChild(host);       // code first
+    bodyEl.appendChild(stage);      // then what it does
 
     const bar = document.createElement('div'); bar.className = 'ch-foot';
     const status = document.createElement('div'); status.className = 'ch-status'; status.setAttribute('aria-live', 'polite');
     const run = document.createElement('button'); run.type = 'button'; run.className = 'btn btn-primary-role ch-run';
-    run.innerHTML = '<span class="mdi mdi-play"></span>Run &amp; check';
+    run.innerHTML = '<span class="mdi mdi-play"></span>Run';
     bar.appendChild(status); bar.appendChild(run);
     cell.appendChild(bar);
 
     function readCode() { return editor ? editor.getValue() : ta.value; }
     function writeCode(v) { if (editor) editor.setValue(v); else ta.value = v; }
-
-    /* Locked until the guess is in. Visibly locked, with a reason — a disabled box with no
-       explanation is just a broken page. */
-    function unlockEditor() {
-      const locked = !guessed;
-      host.classList.toggle('locked', locked);
-      run.disabled = locked;
-      if (editor) editor.setOption('readOnly', locked ? 'nocursor' : false);
-      else ta.readOnly = locked;
-    }
 
     function build(userCode) {
       const safe = userCode.replace(/<\/(script)/gi, '<\\/$1');
@@ -587,25 +535,19 @@ function renderChallengeCells(root) {
     }
 
     /* ---------- getting stuck ----------
-       Same shape as the quiz retry rule the student already knows: the first failure gets a nudge
-       about what they tried, and a later one gets taught the answer. Twenty minutes stuck is not
-       perseverance, it is a child who has stopped learning and needs a door. */
-    function afterFail() {
-      fails++;
-      saveLabState(lessonId, key, { fails: fails, code: readCode() });
-      if (c.hint && fails >= LAB_HINT_AFTER) showHint();
-      if (c.solution && fails >= LAB_REVEAL_AFTER && !revealed) offerSolution();
-    }
+       Same shape as the quiz retry rule the student already knows: a nudge after the first failure,
+       and the answer offered after several. Twenty minutes stuck is not perseverance, it is a child
+       who has stopped learning and needs a door. */
     let hintEl = null;
     function showHint() {
-      if (hintEl) return;
+      if (hintEl || !c.hint) return;
       hintEl = document.createElement('p'); hintEl.className = 'ch-hint';
-      hintEl.innerHTML = '<span class="mdi mdi-lightbulb-on-outline" aria-hidden="true"></span>' + esc(c.hint);
-      bodyEl.insertBefore(hintEl, stage);
+      hintEl.innerHTML = '<span class="mdi mdi-lightbulb-on-outline" aria-hidden="true"></span><span>' + inlineMd(c.hint) + '</span>';
+      bodyEl.insertBefore(hintEl, host);
     }
     let solveEl = null;
     function offerSolution() {
-      if (solveEl) return;
+      if (solveEl || !c.solution) return;
       solveEl = document.createElement('div'); solveEl.className = 'ch-solve';
       const p = document.createElement('p');
       p.textContent = 'Stuck on this one? You can put the working version in and read it instead.';
@@ -619,7 +561,13 @@ function renderChallengeCells(root) {
           + 'differently — that is the bit worth remembering.</p>';
       });
       solveEl.appendChild(p); solveEl.appendChild(b);
-      bodyEl.insertBefore(solveEl, stage);
+      bodyEl.insertBefore(solveEl, host);
+    }
+    function afterFail() {
+      fails++;
+      saveLabState(lessonId, key, { fails: fails, code: readCode() });
+      if (fails >= LAB_HINT_AFTER) showHint();
+      if (fails >= LAB_REVEAL_AFTER && !revealed) offerSolution();
     }
 
     function markSolved() {
@@ -636,17 +584,13 @@ function renderChallengeCells(root) {
     };
 
     /* When does a run count as failed?
-       The first version asked "did it win within 900ms?", which is wrong: this very lab animates a
-       ship across the screen at 3px a frame and needs about 1.4 seconds to reach the flag. It was
-       marking a correct answer as a failure, telling the student "not there yet" while the ship
-       was still sailing.
-       A run is counted as failed when the student RUNS AGAIN without having won in between. That
-       is the honest signal — they tried it, it did not do the job, they are having another go —
-       and it can never mislabel a slow success. A thrown error is counted straight away, because
-       that one is not ambiguous. */
+       Not "did it win within 900ms" — this lab animates a ship across the screen and needs about
+       1.4 seconds, so that question marked a CORRECT answer as a failure. A run counts as failed
+       when the student runs AGAIN without having won in between: honest, and it can never mislabel
+       a slow success. A thrown error is counted straight away, since that one is not ambiguous. */
     let attemptOpen = false;
     run.addEventListener('click', function () {
-      if (attemptOpen) afterFail();               // the previous go did not work out
+      if (attemptOpen) afterFail();
       attemptOpen = true;
       status.className = 'ch-status'; status.textContent = 'Running…';
       saveLabState(lessonId, key, { code: readCode() });
@@ -655,20 +599,19 @@ function renderChallengeCells(root) {
 
     reset.addEventListener('click', function () {
       writeCode(startCode);
-      fails = 0; revealed = false;
+      fails = 0; revealed = false; attemptOpen = false;
       if (hintEl) { hintEl.remove(); hintEl = null; }
       if (solveEl) { solveEl.remove(); solveEl = null; }
       status.className = 'ch-status'; status.textContent = '';
       stage.removeAttribute('srcdoc');
       clearLabState(lessonId, key);
-      if (symptoms && !solved) { /* the guess stands; re-asking it after a reset is nagging */ }
       toast('Example reset.');
     });
 
     pre.parentNode.replaceChild(cell, pre);
 
-    /* A real editor, not a bare <textarea>. Built after replaceChild: CodeMirror mounts into a
-       detached node otherwise and renders as an empty frame. */
+    /* Built after replaceChild: CodeMirror mounts into a detached node otherwise and renders as an
+       empty frame. */
     const initial = typeof saved.code === 'string' ? saved.code : startCode;
     if (typeof CodeMirror === 'function') {
       editor = CodeMirror(host, {
@@ -682,12 +625,8 @@ function renderChallengeCells(root) {
       ta.className = 'ch-code'; ta.value = initial; host.appendChild(ta);
       ta.addEventListener('blur', function () { saveLabState(lessonId, key, { code: readCode() }); });
     }
-    unlockEditor();
-    // Now everything exists, so a remembered guess can be put back on screen. Re-asking a question
-    // the student already answered reads as the app having forgotten them.
-    if (replaySavedGuess && saved.guessed) replaySavedGuess(typeof saved.guess === 'number' ? saved.guess : answerIdx);
-    if (c.hint && fails >= LAB_HINT_AFTER) showHint();
-    if (c.solution && fails >= LAB_REVEAL_AFTER && !revealed) offerSolution();
+    if (fails >= LAB_HINT_AFTER) showHint();
+    if (fails >= LAB_REVEAL_AFTER && !revealed) offerSolution();
   });
 }
 
@@ -710,15 +649,16 @@ function renderYourTurnCells(root) {
     const cell = document.createElement('div'); cell.className = 'yourturn';
     const head = document.createElement('div'); head.className = 'yt-head';
     head.innerHTML = '<span class="mdi mdi-rocket-launch-outline" aria-hidden="true"></span>'
-      + '<span class="yt-title">' + esc(c.title || 'Your turn') + '</span>'
-      + '<span class="yt-where">in your own game</span>';
+      + '<span class="yt-title">' + esc(c.title || 'Your turn') + '</span>';
     cell.appendChild(head);
 
     const body = document.createElement('div'); body.className = 'yt-body';
-    if (c.task) { const t = document.createElement('p'); t.className = 'yt-task'; t.textContent = c.task; body.appendChild(t); }
+    if (c.task) { const t = document.createElement('p'); t.className = 'yt-task'; t.innerHTML = inlineMd(c.task); body.appendChild(t); }
     if (Array.isArray(c.steps) && c.steps.length) {
       const ol = document.createElement('ol'); ol.className = 'yt-steps';
-      c.steps.forEach(function (s) { const li = document.createElement('li'); li.textContent = String(s); ol.appendChild(li); });
+      // inlineMd, not textContent: steps name real functions like `update`, and the backticks were
+      // showing up literally on screen.
+      c.steps.forEach(function (s) { const li = document.createElement('li'); li.innerHTML = inlineMd(s); ol.appendChild(li); });
       body.appendChild(ol);
     }
     if (c.reward) {

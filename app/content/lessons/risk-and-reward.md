@@ -78,11 +78,6 @@ Here's a choice that isn't one.
 ```challenge
 title: Lab — the choice that isn't a choice
 task: The risky chest gives more points and costs nothing. Give it a real downside so the decision actually means something.
-symptoms:
-  - Taking the risky chest costs nothing, so there is no decision to make
-  - The chests are drawn in the wrong position
-  - The score counter is broken
-answer: 0
 hint: Look at `openRisky()`. It only ever adds points. What if it sometimes took some away, or ended the run?
 solution: |
   // The goal: opening the risky chest must be a real gamble, not a better version of the safe one.

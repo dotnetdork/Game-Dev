@@ -77,11 +77,6 @@ being about waiting.
 ```challenge
 title: Lab — the sprite that never appears
 task: The code asks for a picture that isn't there, so nothing is drawn. Ask for one that exists instead, and notice how the game tells you it could not find something.
-symptoms:
-  - The code asks for an asset name that does not exist in the list
-  - The sprite is drawn behind the background
-  - The screen is being cleared after the sprite is drawn
-answer: 0
 hint: Look at `wanted` and compare it, letter by letter, with what is actually in `owned`. Names have to match exactly.
 solution: |
   // The goal: draw a sprite the game actually owns.

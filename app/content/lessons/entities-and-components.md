@@ -92,11 +92,6 @@ step.
 ```challenge
 title: Lab — four things, four copies of the same code
 task: The same lines appear four times with tiny differences. Find what they share and make one version that handles all of them.
-symptoms:
-  - The same logic is copied for each kind instead of being written once
-  - The things are drawn in the wrong colours
-  - One of the four is missing
-answer: 0
 hint: Every one of them needs its x moved by its speed. Instead of four separate blocks, could you keep them in a list and go through it?
 solution: |
   // The goal: move everything with ONE piece of movement code, not four copies.

@@ -106,11 +106,6 @@ being "find every place that moves something and add a check" — it becomes one
 ```challenge
 title: Lab — the game that is dead and alive
 task: This game can be playing and game-over at the same time, and it shows. Replace the separate flags with one state so impossible combinations cannot happen.
-symptoms:
-  - Separate true/false flags let the game be in two states at once
-  - The player has too much health
-  - The game never ends
-answer: 0
 hint: Count how many combinations `isPlaying` and `isGameOver` can be in. Which of them make sense? One `state` variable can only ever hold one answer.
 solution: |
   // The goal: run 30 ticks and never once be in an impossible state.

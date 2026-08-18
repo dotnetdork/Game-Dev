@@ -108,11 +108,6 @@ is clearer and you should just make the call.
 ```challenge
 title: Lab — the tangle
 task: One function reaches directly into four systems, so every change touches it. Make it announce what happened instead, and let the systems listen.
-symptoms:
-  - One function has to know about every system it affects
-  - The score is being counted twice
-  - The sound never plays
-answer: 0
 hint: There is already an `on()` and an `emit()` below. Try making `collectCoin` emit one event, and registering the four systems as listeners instead.
 solution: |
   // The goal: collectCoin must know about NOTHING. It announces; others listen.

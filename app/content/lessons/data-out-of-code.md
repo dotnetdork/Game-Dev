@@ -105,11 +105,6 @@ Speed, health, spawn rates, level layouts, prices: data. What "collide" means: c
 ```challenge
 title: Lab — the numbers you cannot find
 task: The settings for this game are scattered through the code. Gather every one of them into a single settings object at the top.
-symptoms:
-  - The tuning numbers are buried in the logic instead of collected in one place
-  - The numbers are the wrong values
-  - The game runs too fast to see
-answer: 0
 hint: There is an empty `CONFIG` at the top. Move each loose number into it and make the code read from there — the behaviour must not change.
 solution: |
   // The goal: no loose tuning numbers left in the logic. Behaviour identical.

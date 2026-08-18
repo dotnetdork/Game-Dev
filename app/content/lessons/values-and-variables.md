@@ -91,11 +91,6 @@ not `speedNumber`. And if a name needs a comment to explain it, the name is wron
 ```challenge
 title: Lab — the score that forgets
 task: The score goes up and then straight back to zero. Work out where the value is being lost.
-symptoms:
-  - The score is made fresh every time round the loop instead of being kept
-  - Each point is worth zero
-  - The score is never drawn on screen
-answer: 0
 hint: Look at where `score` is created. Is that inside the loop or outside it? A box made new each time cannot remember anything.
 solution: |
   // The goal: reach a score of 5. The score has to survive from one go to the next.

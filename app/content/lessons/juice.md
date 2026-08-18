@@ -95,11 +95,6 @@ There is no correct number for shake duration. Set it, play it, change it, play 
 ```challenge
 title: Lab — mechanically perfect, completely flat
 task: Nothing here is broken. It just feels like nothing. Add the feel — the hit should be obvious on more than one channel.
-symptoms:
-  - The hit changes a number and nothing else happens
-  - The hit is not being detected
-  - The score is going up too slowly
-answer: 0
 hint: You have `shake` and `pop` sitting there unused. Set them when a hit lands, and let them fade back down each frame.
 solution: |
   // The goal: a hit must land on at least two channels — movement AND scale, not just a number.

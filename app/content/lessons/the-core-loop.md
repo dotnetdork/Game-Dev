@@ -87,11 +87,6 @@ over and over isn't working.
 ```challenge
 title: Lab — the loop that goes nowhere
 task: Collecting a coin should set up the next collection. Right now it doesn't. Make a new coin appear in a new spot each time one is collected.
-symptoms:
-  - Collecting a coin doesn't set up another one, so the loop stops after the first go
-  - The coin is drawn in the wrong colour
-  - The player moves too slowly to reach the coin
-answer: 0
 hint: Look at what happens inside `collect()`. The coin disappears — but nothing ever puts a new one anywhere.
 solution: |
   let px = 150, py = 100, cx = 60, cy = 60, score = 0;

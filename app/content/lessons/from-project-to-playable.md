@@ -79,11 +79,6 @@ For a first game — and for a lot of real games — the top row wins and the re
 ```challenge
 title: Lab — the game that only runs here
 task: This game depends on something that only exists on the machine it was written on. Find the assumption and make it work anywhere.
-symptoms:
-  - It loads a file from one specific folder on one specific computer
-  - The colours are wrong
-  - The game window is the wrong size
-answer: 0
 hint: Look at `assetPath`. Would that address mean anything on somebody else's computer?
 solution: |
   // The goal: every asset path must be one another machine could actually follow.

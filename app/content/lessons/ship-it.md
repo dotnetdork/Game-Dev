@@ -90,11 +90,6 @@ projects.
 ```challenge
 title: Lab — the game that breaks for everyone else
 task: This game works perfectly for the person who wrote it and fails for everybody else. Go through the checklist and find what is missing.
-symptoms:
-  - It starts mid-game with test values, and there is no way to restart after losing
-  - The graphics are too simple
-  - The score counts too slowly
-answer: 0
 hint: Two things are wrong. Look at the values it starts with, and at what happens after the player loses.
 solution: |
   // The goal: start in a sensible state, and be restartable after losing.

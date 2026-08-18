@@ -93,11 +93,6 @@ nothing, the usual cause is an `if` that's never true, so the code inside never 
 ```challenge
 title: Lab — three errors, one at a time
 task: This code has three separate problems. Fix them one at a time, reading what the log says before you change anything.
-symptoms:
-  - There are several different mistakes, and they need finding one at a time
-  - The whole file needs rewriting from scratch
-  - The game is too slow
-answer: 0
 hint: Work top to bottom. First a name that was never made, then reading from something that does not exist, then a condition that can never be true.
 solution: |
   // The goal: fix all three so `cleared` reaches 3.

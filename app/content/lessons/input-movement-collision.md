@@ -97,11 +97,6 @@ If your player sticks to the coins instead of collecting them, you used `collide
 ```challenge
 title: Lab — the player who ignores you
 task: The keys are being read and the player still will not move. Follow the value from the key all the way to the sprite.
-symptoms:
-  - The key is read into a value that is never actually used to move anything
-  - The keys are never read at all
-  - The player is drawn off screen
-answer: 0
 hint: `wantsRight` gets set correctly. Now look for the line that should use it to change the player's position — is there one?
 solution: |
   // The goal: hold "right" for 30 frames and get the player across to x = 250.

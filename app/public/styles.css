@@ -614,44 +614,48 @@ body{background:var(--bg);color:var(--ink);font-family:var(--font);font-size:14p
    so breaking it never feels dangerous. */
 .ch-head .ch-reset{margin-left:auto;flex:none;padding:5px 11px;font-size:12px;}
 .ch-note{display:flex;align-items:flex-start;gap:8px;margin:0;color:var(--dim);font-size:12.5px;line-height:1.5;}
+.ch-note > span:last-child{flex:1;min-width:0;}
 .ch-note .mdi{font-size:15px;flex:none;color:var(--azure);line-height:1.4;}
-
-/* The guess. Row language matches the quiz options, because it IS the same act: commit to an
-   answer, then find out. */
-.ch-guess{display:flex;flex-direction:column;gap:8px;padding:12px 14px;background:#0d2440;
-  border:1px solid var(--line);border-radius:10px;}
-.ch-guess-q{margin:0;font-size:14.5px;font-weight:600;color:var(--ink);line-height:1.45;}
-.ch-guess-list{display:flex;flex-direction:column;gap:6px;}
-.ch-guess-opt{display:block;width:100%;text-align:left;background:#0a1c33;border:1px solid var(--line);
-  border-radius:8px;color:#c3d3e6;font-family:var(--font);font-size:14px;line-height:1.45;
-  padding:9px 12px;cursor:pointer;transition:border-color .1s,background .1s,color .1s;}
-.ch-guess-opt:hover:not(:disabled){border-color:var(--azure);color:var(--ink);}
-.ch-guess-opt:disabled{cursor:default;}
-.ch-guess-opt.correct{border-color:var(--green);background:#0f2e22;color:#c9f5dc;}
-.ch-guess-opt.wrong{border-color:var(--gold);background:#2e2410;color:#f2ddb8;}
-.ch-guess-say{margin:0;font-size:13.5px;line-height:1.5;}
-.ch-guess-say.ok{color:var(--green);} .ch-guess-say.no{color:var(--gold);}
-
-/* Locked until the guess is in. Dimmed and un-clickable, but still READABLE — the student is
-   meant to be looking at this code while they decide what is wrong with it. */
-.ch-editor.locked{position:relative;opacity:.72;}
-.ch-editor.locked::after{content:"Say what you think is wrong first";position:absolute;inset:auto 0 0 0;
-  background:rgba(13,32,56,.94);border-top:1px solid var(--line);color:var(--dim);
-  font-size:12px;text-align:center;padding:5px 8px;}
 
 .ch-hint{display:flex;align-items:flex-start;gap:8px;margin:0;padding:10px 12px;background:#0d2038;
   border-left:3px solid var(--gold);border-radius:0 8px 8px 0;color:var(--muted);
   font-size:13.5px;line-height:1.55;}
-.ch-hint .mdi{color:var(--gold);font-size:17px;flex:none;}
+.ch-hint .mdi{color:var(--gold);font-size:17px;flex:none;line-height:1.4;}
+.ch-hint > span:last-child{flex:1;min-width:0;}
 
 .ch-solve{display:flex;align-items:center;gap:12px;flex-wrap:wrap;padding:11px 13px;
   background:#0d2440;border:1px solid var(--line);border-radius:10px;}
 .ch-solve p{margin:0;color:var(--muted);font-size:13.5px;line-height:1.5;flex:1;min-width:180px;}
 .ch-solve-done{color:#c9f5dc !important;}
 
-@media (prefers-reduced-motion: reduce){
-  .ch-guess-opt{transition:none;}
-}
+
+/* ---- "your turn": the same technique, in the student's own game ----
+   Deliberately the warmest card on the page. The lab is the course's bench; this is where the
+   lesson stops being about the example and starts being about the thing they are building. Brand
+   colour rather than the azure everything else uses, so it reads as different in kind. */
+.yourturn{margin:22px 0;border:1px solid var(--brand);border-radius:12px;overflow:hidden;
+  background:linear-gradient(180deg,#241a10,var(--panel));}
+.yt-head{display:flex;align-items:center;gap:10px;padding:12px 16px;background:#2a1c10;
+  border-bottom:1px solid rgba(245,130,10,.35);}
+.yt-head .mdi{color:var(--brand);font-size:19px;flex:none;line-height:1;}
+.yt-title{font-size:16px;font-weight:700;color:var(--ink);line-height:1.4;}
+.yt-body{padding:14px 16px;display:flex;flex-direction:column;gap:10px;}
+.yt-task{margin:0;color:#e6d6c2;font-size:15px;line-height:1.65;}
+.yt-steps{margin:0;padding-left:22px;color:var(--muted);font-size:14.5px;line-height:1.7;}
+.yt-steps li{margin:0 0 6px;}
+.yt-reward{display:flex;align-items:center;gap:8px;margin:2px 0 0;color:var(--gold);
+  font-size:13px;line-height:1.5;}
+.yt-reward .mdi{font-size:16px;flex:none;line-height:1;}
+.yt-reward b{color:#ffd98a;}
+.yt-foot{display:flex;align-items:center;gap:12px;flex-wrap:wrap;padding:12px 16px;
+  border-top:1px solid rgba(245,130,10,.25);background:rgba(0,0,0,.16);}
+.yt-status{display:flex;align-items:center;gap:6px;font-size:13.5px;font-weight:600;color:var(--muted);}
+.yt-status:empty{display:none;}
+.yt-status.ok{color:var(--green);}
+.yt-done{margin-left:auto;flex:none;}
+/* Inline code inside a step or task, e.g. `update`. Without this the backticks showed literally. */
+.yt-steps code,.yt-task code{font-family:Consolas,monospace;font-size:.9em;background:rgba(0,0,0,.3);
+  border:1px solid rgba(245,130,10,.25);border-radius:4px;padding:1px 5px;color:#ffd9a8;}
 
 /* ---- the next-lesson offer in the completion strip ---- */
 .lp-next{display:flex;align-items:center;gap:10px;margin-left:auto;}

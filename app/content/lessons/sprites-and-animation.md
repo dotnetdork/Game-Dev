@@ -93,11 +93,6 @@ and half faces right, you'll spend forever tracking down which ones need flippin
 ```challenge
 title: Lab — the animation that will not play
 task: The frames are loaded and the animation never runs. Find the step between having frames and actually showing them.
-symptoms:
-  - The animation is created but never told to play
-  - The frames failed to load
-  - The frame rate is set to zero
-answer: 0
 hint: Creating an animation only describes it. Something has to ask for it to start. Is anything calling `play`?
 solution: |
   // The goal: reach frame 4 of the walk cycle. Describing an animation is not the same as playing it.

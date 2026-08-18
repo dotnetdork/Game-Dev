@@ -87,11 +87,6 @@ happens, something is being created in `update()` that should have been created 
 ```challenge
 title: Lab — the world built sixty times a second
 task: Something that should happen once is happening every frame, and it is piling up. Move it to where it belongs.
-symptoms:
-  - Something is being created every frame instead of once at the start
-  - The loop is running too slowly
-  - The score is never updated
-answer: 0
 hint: Count what `made` reaches. Should the game really be making a new label on every single frame, or making one and changing it?
 solution: |
   // The goal: finish 40 frames having made only ONE label. Make once, change after.

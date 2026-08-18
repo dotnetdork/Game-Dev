@@ -86,11 +86,6 @@ Here's a game whose difficulty goes wrong.
 ```challenge
 title: Lab — the difficulty cliff
 task: This game jumps straight from trivial to impossible. Make the speed climb gradually instead, so it gets harder at about the rate a player improves.
-symptoms:
-  - The difficulty jumps in one huge step instead of climbing gradually
-  - The player cannot move at all
-  - The score never goes up
-answer: 0
 hint: Look at how `speed` changes. It doubles all at once at score 3. What if it went up by a small amount every time instead?
 solution: |
   // The goal: reach level 6 with difficulty climbing SMOOTHLY. A single big jump fails it.

@@ -86,11 +86,6 @@ Here's a progression that promises nothing.
 ```challenge
 title: Lab — the progress that isn't progress
 task: The player collects points forever and nothing ever changes. Give them something that actually arrives — a level, a visible bar, an ability that gets better.
-symptoms:
-  - Points go up but nothing ever changes for the player
-  - The points counter is broken
-  - The player moves too fast to control
-answer: 0
 hint: You have a `points` number and nothing reading it. Try working out a level from it, and drawing a bar showing how far into the next level they are.
 solution: |
   // The goal: the player must actually REACH level 4. Points alone are not progression.

@@ -82,11 +82,6 @@ Here's a hit that changes a number and says nothing.
 ```challenge
 title: Lab — the silent hit
 task: Hitting the target lowers its health, but nothing tells the player. Add feedback so a hit is obvious — a flash, a number, a shake, anything.
-symptoms:
-  - The hit works, but nothing on screen shows it happened
-  - The target's health never actually goes down
-  - The player can't reach the target
-answer: 0
 hint: Look at `hit()`. It changes `health` and stops. Try setting `flash = 6` in there, and draw something different while `flash` is above 0.
 solution: |
   // Checked, not taken on trust: on the frame of a hit, the way the target is DRAWN must change.

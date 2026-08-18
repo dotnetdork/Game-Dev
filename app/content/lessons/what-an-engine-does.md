@@ -85,11 +85,6 @@ Learning the loop means learning all of them. The buttons move; the machine does
 ```challenge
 title: Lab — the world that will not tick
 task: Everything is drawn once and then freezes. The loop only runs a single time. Find the reason and get the world moving.
-symptoms:
-  - The loop never asks for another frame, so it runs once and stops
-  - The box is drawn in the wrong colour
-  - The box starts at the wrong position
-answer: 0
 hint: Look at the end of `frame()`. A loop keeps going because something asks for the next frame. What is missing?
 solution: |
   // The goal: the box must travel across the screen, which needs the loop to keep going.

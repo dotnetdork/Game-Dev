@@ -92,11 +92,6 @@ If something fast is going through something thin, that's almost always why.
 ```challenge
 title: Lab — the thing that will not fall
 task: Gravity is in the code and nothing is falling. Work out what is missing between having a speed and actually moving.
-symptoms:
-  - The speed is being worked out but never actually applied to the position
-  - Gravity is set to zero
-  - The ball is drawn off the bottom of the screen
-answer: 0
 hint: Follow the two steps. `velocityY` grows every frame — but is anything using it to change `y`?
 solution: |
   // The goal: the ball must reach the ground. Gravity changes speed; speed must change position.
