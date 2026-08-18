@@ -154,14 +154,14 @@ body{background:var(--bg);color:var(--ink);font-family:var(--font);font-size:14p
 .lesson-meta{display:flex;gap:8px;margin-top:16px;flex-wrap:wrap;}
 .lesson-meta .lchip{display:inline-flex;align-items:center;gap:5px;font-size:11.5px;font-weight:600;color:#cfe0f2;background:rgba(255,255,255,.06);border:1px solid rgba(255,255,255,.14);border-radius:999px;padding:3px 10px;}
 .lesson-meta .lchip .mdi{font-size:14px;color:var(--gold);}
-.lesson h2{font-size:20px;margin:26px 0 8px;color:var(--ink);padding-left:12px;border-left:3px solid var(--teal);border-radius:0;}
+.lesson h2{font-size:20px;margin:26px 0 8px;color:var(--ink);}
 .lesson p{color:#c3d3e6;line-height:1.7;margin:0 0 14px;}
 .lesson ul{color:#c3d3e6;line-height:1.7;margin:0 0 14px;padding-left:22px;}
 .lesson pre{background:#08121f;border:1px solid var(--line);border-radius:10px;padding:14px 16px;overflow:auto;color:#cfe0f2;font-family:Consolas,monospace;font-size:13px;line-height:1.6;}
-/* A callout, so it reads as an aside rather than as a grey box the author forgot to style. The
-   gold edge carries that on its own — the .mdi rule below is for authors who also want an icon. */
-.lesson .tip{display:flex;gap:10px;background:#0d2038;border-left:3px solid var(--gold);
-  border-radius:0 10px 10px 0;padding:14px 16px;color:var(--muted);margin:0 0 14px;font-size:15px;line-height:1.65;}
+/* A callout, so it reads as an aside rather than a grey box the author forgot to style. A tinted
+   panel and the icon do that; a coloured rail down one edge is the thing every generated UI does. */
+.lesson .tip{display:flex;gap:11px;background:#141f14;border:1px solid #2c4a2c;border-radius:10px;
+  padding:14px 16px;color:#c8dcc8;margin:0 0 18px;font-size:15px;line-height:1.65;}
 .lesson .tip .mdi{color:var(--gold);font-size:20px;}
 .btn-primary{display:inline-flex;align-items:center;gap:7px;background:var(--brand);color:var(--brand-ink);border:none;border-radius:8px;padding:10px 18px;font-weight:700;cursor:pointer;font-family:var(--font);font-size:14px;margin-top:10px;}
 .btn-primary:disabled{background:#2f7a5e;color:#bfeede;cursor:default;}
@@ -386,8 +386,6 @@ body{background:var(--bg);color:var(--ink);font-family:var(--font);font-size:14p
 .wiki-sec p{color:#c3d3e6;line-height:1.7;margin:0 0 12px;}
 .wiki-sec pre{background:#08121f;border:1px solid var(--line);border-radius:10px;padding:14px 16px;overflow-x:auto;color:#cfe0f2;font-family:Consolas,monospace;font-size:12.5px;line-height:1.55;margin:0;}
 .lesson img{max-width:100%;border-radius:10px;}
-.lesson blockquote{margin:14px 0;padding:10px 14px;border-left:3px solid var(--teal);background:#0d2440;border-radius:0 8px 8px 0;color:#c3d3e6;}
-.lesson blockquote p{margin:0;}
 .runcell{margin:14px 0;border:1px solid var(--line);border-radius:10px;overflow:hidden;background:#0d2440;}
 /* No min-height: the editor sizes to its code, so a one-line example stops reserving four
    lines of empty box above the Run bar. */
@@ -588,7 +586,7 @@ body{background:var(--bg);color:var(--ink);font-family:var(--font);font-size:14p
 /* ---- challenge: the same card as everything else, with a brand edge so it still reads as
    the big one. It used to be an orange-bordered brown box with an uppercase letterspaced
    header and 12.5px code — a fourth visual language on a surface that only needs one. ---- */
-.challenge-mini{background:var(--panel);border:1px solid var(--line);border-top:3px solid var(--brand);
+.challenge-mini{background:var(--panel);border:1px solid var(--line);
   border-radius:12px;overflow:hidden;margin:22px 0;}
 .ch-head{display:flex;align-items:center;gap:10px;padding:12px 16px;background:#12304f;
   border-bottom:1px solid var(--line);}
@@ -617,9 +615,8 @@ body{background:var(--bg);color:var(--ink);font-family:var(--font);font-size:14p
 .ch-note > span:last-child{flex:1;min-width:0;}
 .ch-note .mdi{font-size:15px;flex:none;color:var(--azure);line-height:1.4;}
 
-.ch-hint{display:flex;align-items:flex-start;gap:8px;margin:0;padding:10px 12px;background:#0d2038;
-  border-left:3px solid var(--gold);border-radius:0 8px 8px 0;color:var(--muted);
-  font-size:13.5px;line-height:1.55;}
+.ch-hint{display:flex;align-items:flex-start;gap:10px;margin:0;padding:11px 13px;background:#241d0e;
+  border:1px solid #4a3c18;border-radius:9px;color:#e6d8b8;font-size:13.5px;line-height:1.55;}
 .ch-hint .mdi{color:var(--gold);font-size:17px;flex:none;line-height:1.4;}
 .ch-hint > span:last-child{flex:1;min-width:0;}
 
@@ -694,3 +691,97 @@ body{background:var(--bg);color:var(--ink);font-family:var(--font);font-size:14p
   .game-loading .spin{animation:none;border-top-color:var(--brand);}
   .quiz-result.ok,.quiz-result.no{animation:none;}
 }
+
+/* ================= lesson reading surface =================
+   The lesson is the one screen a student spends real time READING, and it was being laid out like
+   a document that happened to have widgets in it. Three measured problems drove this pass:
+   prose ran 92 characters per line (comfortable is 65-75), tables had no styling at all so they
+   rendered with the browser's 1px cell padding, and selecting text gave you Chrome's default blue
+   on a navy page.
+
+   The column is now two widths. Prose sits at ~68ch because that is what is comfortable to read;
+   anything with its own internal layout — a table, a code block, a lab, a quiz — is allowed to be
+   wider, because squeezing an editor to the width of a paragraph helps nobody. Both are centred on
+   the same axis, so the page still reads as one column. */
+/* One centred column, text filling it, with margins that grow with the window. The earlier
+   version split this into a narrow prose strip with wider cards, which left paragraphs floating in
+   a column that was mostly empty — the page has to feel like it fits the space it is in. 780px of
+   block gives roughly 80 characters a line: a little past the classic 65-75, and the right call
+   here because the surface also carries tables, code and editors that a narrow strip strangles. */
+.lesson-content{
+  max-width:780px;
+  margin:0 auto;
+  padding:44px clamp(28px,4vw,68px) 0;
+  display:block;
+}
+
+/* ---- tables ----
+   There was no rule for these at all, and the course uses them constantly to compare three things
+   at a glance. Header row carries the weight; rows are separated by a hairline rather than boxed,
+   so the eye runs along a row instead of stopping at every cell. */
+.lesson table{width:100%;border-collapse:collapse;margin:0 0 18px;font-size:14.5px;line-height:1.55;}
+.lesson thead th{text-align:left;padding:9px 14px 9px 0;color:var(--ink);font-weight:700;
+  font-size:12.5px;letter-spacing:.4px;text-transform:uppercase;
+  border-bottom:1px solid var(--azure);}
+.lesson tbody td{padding:11px 14px 11px 0;color:#c3d3e6;border-bottom:1px solid var(--line);
+  vertical-align:top;overflow-wrap:anywhere;}
+.lesson tbody tr:last-child td{border-bottom:0;}
+.lesson thead th:last-child,.lesson tbody td:last-child{padding-right:0;}
+/* The first column is nearly always the label being compared, so it leads. */
+.lesson tbody td:first-child{color:var(--ink);font-weight:600;}
+.lesson table code{white-space:nowrap;}
+
+/* ---- the aside ----
+   Was a teal bar down the left edge, which is the single most recognisable "a machine made this"
+   tell there is. These are the lines worth remembering in a lesson, so they get treated like a
+   pulled quote: bigger, lighter, with a real quote mark doing the marking. */
+.lesson blockquote{position:relative;margin:22px 0;padding:2px 0 2px 40px;border:0;background:none;
+  border-radius:0;color:#dbe7f4;font-size:17px;line-height:1.6;}
+.lesson blockquote::before{content:"\201C";position:absolute;left:0;top:-6px;
+  font-family:Georgia,"Times New Roman",serif;font-size:46px;line-height:1;color:var(--azure);opacity:.55;}
+.lesson blockquote p{margin:0;color:inherit;font-size:inherit;line-height:inherit;}
+.lesson blockquote strong,.lesson blockquote b{color:#fff;}
+
+/* ---- prose rhythm ----
+   Lists were inheriting paragraph spacing and reading as one block. */
+.lesson-content > ul,.lesson-content > ol{margin:0 0 18px;padding-left:24px;}
+.lesson li{margin:0 0 8px;padding-left:2px;}
+.lesson li:last-child{margin-bottom:0;}
+.lesson li > strong:first-child{color:var(--ink);}
+.lesson h2{margin:38px 0 10px;}
+.lesson h2:first-child{margin-top:0;}
+.lesson h3{margin:26px 0 8px;}
+.lesson-content > p{margin:0 0 18px;}
+.lesson strong,.lesson b{color:var(--ink);font-weight:600;}
+
+/* ---- browser surfaces ----
+   The parts nobody draws still belong to the design. Selection was Chrome's default blue on a navy
+   page; the caret and the underline offset were whatever the browser felt like. */
+::selection{background:rgba(62,143,214,.34);color:#fff;}
+.lesson{caret-color:var(--azure);}
+.lesson a{text-underline-offset:3px;text-decoration-thickness:1px;}
+.lesson a:hover{text-decoration-thickness:2px;}
+/* Numbers that sit in a column must not dance as they change. */
+.sb-mid b,.lp-xp,.quiz-count,.mcq-num,.p-pos,.fb-num{font-variant-numeric:tabular-nums;}
+
+/* ---- the hero ----
+   The lesson title had the same left edge as the body text but none of its restraint. Tightening
+   the tracking and capping the lead's measure makes the top of the page settle. */
+.lesson h1{font-size:34px;line-height:1.15;letter-spacing:-.6px;font-weight:700;max-width:20ch;}
+.lesson .lead{max-width:56ch;font-size:16.5px;line-height:1.55;color:#c2d4e8;}
+
+/* h2 no longer has a rail, so size, weight and space carry the hierarchy — which is what they
+   should have been doing anyway. */
+.lesson-content > h2{font-size:21px;font-weight:700;letter-spacing:-.2px;line-height:1.3;}
+.lesson-content > h3{font-size:17px;font-weight:600;letter-spacing:-.1px;}
+/* The lab head keeps the brand, in the icon rather than as a stripe across a rounded corner. */
+.ch-head{background:#17233a;}
+.ch-head .mdi{color:var(--brand);}
+
+/* The hero's title has to sit on the same axis as the prose beneath it, so it gets the same
+   centred measure rather than the full block width. Otherwise the page opens on one left margin
+   and continues on another. */
+/* The hero mirrors the body block exactly — same max-width, same centring, same gutter — so the
+   title sits on the same axis as the first paragraph. */
+.hero-inner{max-width:780px;margin:0 auto;padding:0 clamp(28px,4vw,68px);}
+.lesson-hero{padding:40px 0 32px;}
