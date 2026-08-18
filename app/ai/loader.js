@@ -88,6 +88,16 @@ function renderFiles(files) {
     return '--- ' + f.name + ' ---\n' + f.code;
   }).join('\n');
 }
+/* The game's own console output. Two "nothing" cases mean opposite things and must never
+   look the same: a game that ran silently is probably fine, a game that was never run tells
+   you the student has not tried it yet. */
+function renderGameLog(lines, ran) {
+  if (!ran) return '(they have not run their game yet, so there is no output to go on)';
+  if (!lines || !lines.length) return '(the game ran and printed nothing — no errors)';
+  return lines.map(function (l) {
+    return '[' + l.level + '] ' + l.text + (l.n > 1 ? '   (repeated ' + l.n + ' times)' : '');
+  }).join('\n');
+}
 function fill(text, vars) {
   return text.replace(/\{\{(\w+)\}\}/g, function (m, key) {
     const v = vars[key];
@@ -127,6 +137,7 @@ function buildPrompt(agent, ctx) {
     ownedAssets: renderAssets(c.assets),
     files: renderFiles(c.files),
     aiMode: c.aiMode || 'full',
+    gameLog: renderGameLog(c.gameLog, c.gameRan),
     fileName: c.fileName || 'game.js',
     lineNumber: c.lineNumber || '',
     line: c.line || '',

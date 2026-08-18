@@ -60,6 +60,7 @@ Supported syntax is deliberately small: `key: value`, quoted values, `[a, b, c]`
 | `{{ownedAssets}}` | the asset keys they own, one per line — the only keys that exist |
 | `{{files}}` | their other project files (`main.js`, anything they added) |
 | `{{aiMode}}` | `full`, `guided` or `off` for this lesson |
+| `{{gameLog}}` | what their game printed the last time they ran it — errors, warnings and logs, exactly what they can see in the console panel. Says so plainly when they have not run it |
 
 An unknown placeholder becomes an empty string.
 

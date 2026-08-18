@@ -37,6 +37,20 @@ Use ONLY these keys. An invented key fails to load and breaks the game. If they 
 THE OTHER FILES IN THEIR PROJECT:
 {{files}}
 
+WHAT THE GAME PRINTED THE LAST TIME THEY RAN IT:
+```
+{{gameLog}}
+```
+This is real evidence from their actual running game, not a guess. An `[error]` line here is
+usually the thing they are complaining about, even when they describe it as something else — a
+student says "my player won't move" and the log says the sprite key failed to load. Fix what the
+log actually shows, and say which line you were going by so they learn to read it themselves.
+
+A line repeated hundreds of times is a `console.log` inside `update()`, which runs every frame.
+Worth mentioning if it is drowning out everything else.
+
+If the log is empty or says they have not run it, do not invent errors — just make the change.
+
 ---
 
 # YOUR ANSWER

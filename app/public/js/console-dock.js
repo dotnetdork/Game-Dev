@@ -1,12 +1,42 @@
 /* console-dock.js — The console/log panel under Code and Play, game/file reset dialogs, and the collapsible AI dock. */
 /* ---------- console / log panel (bottom of Code & Play) ---------- */
+
+/* ---------- what the game said, kept for the AI ----------
+   Every log, warning and error the game produces already arrives here and is drawn on screen.
+   It used to stop there: the AI could read the student's code but had no idea what happened
+   when it ran, so "it's broken, help" was a guessing game. The last run's output is kept in
+   this buffer and travels with each AI request.
+
+   It holds exactly what the student can see: cleared when the game restarts, and cleared by
+   the Clear button too. The AI should never know something the student's own console does not.
+
+   Identical consecutive lines are counted rather than stored — a console.log in update() fires
+   sixty times a second and would otherwise be the entire buffer. */
+const GAMELOG_MAX = 60;
+let gameLog = [];
+let gameHasRun = false;
+function noteGameRun() { gameHasRun = true; }
+/* The last few lines, plus any earlier errors that scrolled out of that window — an error at
+   startup matters more than the sixtieth frame of ordinary logging. */
+function recentGameLog(max) {
+  const n = max || 14;
+  if (gameLog.length <= n) return gameLog.slice();
+  const tail = gameLog.slice(-n);
+  const missedProblems = gameLog.slice(0, -n)
+    .filter(function (l) { return l.level === 'error' || l.level === 'warn'; }).slice(-3);
+  return missedProblems.concat(tail);
+}
+
 function conLine(level, text) {
+  const last = gameLog[gameLog.length - 1];
+  if (last && last.level === level && last.text === text) last.n++;
+  else { gameLog.push({ level: level, text: String(text), n: 1 }); if (gameLog.length > GAMELOG_MAX) gameLog.shift(); }
   const body = $('consoleBody'); if (!body) return;
   const empty = body.querySelector('.cl-empty'); if (empty) empty.remove();
   const d = document.createElement('div'); d.className = 'cl' + (level === 'error' ? ' err' : (level === 'warn' ? ' warn' : ''));
   d.textContent = text; body.appendChild(d); body.scrollTop = body.scrollHeight;
 }
-function conClear() { const b = $('consoleBody'); if (b) b.innerHTML = '<div class="cl cl-empty">Console output from your game appears here.</div>'; }
+function conClear() { gameLog = []; const b = $('consoleBody'); if (b) b.innerHTML = '<div class="cl cl-empty">Console output from your game appears here.</div>'; }
 let consoleOpen = true;
 function showConsole(show, open) {
   const c = $('console'); if (!c) return;

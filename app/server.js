@@ -643,7 +643,16 @@ app.post('/api/ai', async (req, res) => {
     gameCode: gameCode,
     files: Array.isArray(b.files) ? b.files.slice(0, 30).map(function (f) {
       return { name: String((f && f.name) || '').slice(0, 60), code: String((f && f.code) || '').slice(0, 12000) };
-    }).filter(function (f) { return f.name; }) : []   // a file with no contents still tells the coder it exists
+    }).filter(function (f) { return f.name; }) : [],   // a file with no contents still tells the coder it exists
+    // What the game printed the last time the student ran it, straight from the browser console
+    // panel. `gameRan` separates "it printed nothing" from "they have not pressed Play yet",
+    // which are opposite pieces of evidence and would otherwise look identical.
+    gameRan: !!b.gameRan,
+    gameLog: Array.isArray(b.gameLog) ? b.gameLog.slice(-30).map(function (l) {
+      const level = ['log', 'warn', 'error'].indexOf(l && l.level) >= 0 ? l.level : 'log';
+      const n = Math.max(1, Math.min(9999, parseInt((l && l.n) || 1, 10) || 1));
+      return { level: level, text: String((l && l.text) || '').slice(0, 300), n: n };
+    }).filter(function (l) { return l.text; }) : []
   };
 
   // Tier 2: when this agent has tools switched on, it may look things up instead of guessing.

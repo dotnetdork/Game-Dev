@@ -151,7 +151,11 @@ function aiContext() {
     lessonContext: currentLessonText || '',
     aiMode: currentAIMode,
     ownedAssets: (typeof ownedAssets === 'function' ? ownedAssets() : []).map(function (a) { return { key: a.key, type: a.type }; }),
-    files: files
+    files: files,
+    // What the game actually printed the last time it ran. "It says undefined is not a function
+    // on line 40" is a different conversation from "here is my code, help".
+    gameLog: (typeof recentGameLog === 'function' ? recentGameLog() : []),
+    gameRan: (typeof gameHasRun !== 'undefined' && gameHasRun)
   };
 }
 
@@ -215,7 +219,7 @@ function askTutor(question, context) {
   const history = chatHistory('tutor');
   addMsg('user', question); const pending = addMsg('bot', 'Thinking…');
   const c = aiContext();
-  fetch('/api/ai', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ studentId: studentId, agent: 'tutor', message: question, context: context || '', code: project.files['game.js'] || '', history: history, lessonTitle: c.lessonTitle }) })
+  fetch('/api/ai', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ studentId: studentId, agent: 'tutor', message: question, context: context || '', code: project.files['game.js'] || '', history: history, lessonTitle: c.lessonTitle, files: c.files, gameLog: c.gameLog, gameRan: c.gameRan }) })
     .then(function (r) { return r.json(); }).then(function (d) { setMsg(pending, 'bot', d.reply || '—'); })
     .catch(function () { setMsg(pending, 'bot', 'Could not reach the tutor.'); });
 }
@@ -230,7 +234,8 @@ function explainLine(fileName, lineNumber, lineText, snippet) {
     studentId: studentId, agent: 'tutor', skill: 'explain-a-line',
     message: 'What does line ' + lineNumber + ' do?',
     code: project.files['game.js'] || '', history: history, lessonTitle: c.lessonTitle,
-    fileName: fileName, lineNumber: String(lineNumber), line: lineText, snippet: snippet
+    fileName: fileName, lineNumber: String(lineNumber), line: lineText, snippet: snippet,
+    gameLog: c.gameLog, gameRan: c.gameRan
   }) })
     .then(function (r) { return r.json(); }).then(function (d) { setMsg(pending, 'bot', d.reply || '—'); })
     .catch(function () { setMsg(pending, 'bot', 'Could not reach the tutor.'); });
@@ -248,7 +253,8 @@ function sendAI() {
   fetch('/api/ai', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({
     studentId: studentId, agent: 'coder', message: text, code: project.files['game.js'] || '',
     history: history, lessonTitle: c.lessonTitle, lessonContext: c.lessonContext,
-    aiMode: c.aiMode, ownedAssets: c.ownedAssets, files: c.files
+    aiMode: c.aiMode, ownedAssets: c.ownedAssets, files: c.files,
+    gameLog: c.gameLog, gameRan: c.gameRan
   }) })
     .then(function (r) { return r.json(); }).then(function (data) {
       const ops = data.ops;

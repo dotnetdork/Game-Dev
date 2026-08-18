@@ -67,7 +67,8 @@ function errorReporterScript() {
 }
 
 function startGame() { // build a self-contained page from the browser-side project and run it in the iframe (no server)
-  conClear();
+  conClear();                                          // this run starts with a clean log, on screen and in the buffer
+  if (typeof noteGameRun === 'function') noteGameRun(); // so the AI can tell "printed nothing" from "never ran"
   // load order is the file order in the tree; main.js runs last because it starts the engine
   const ordered = fileNames().filter(function (n) { return n !== 'main.js'; });
   const scripts = ordered.map(function (n) { return '<' + 'script>\n' + (project.files[n] || '') + '\n<' + '/script>'; }).join('\n')
@@ -89,12 +90,6 @@ function startGame() { // build a self-contained page from the browser-side proj
   gf.removeAttribute('src'); gf.srcdoc = html;
 }
 function stopGame() { const f = $('gameFrame'); if (f) { f.removeAttribute('srcdoc'); f.removeAttribute('src'); } }
-function fitStage() {  // size the game frame to the largest true 4:3 box that fits the stage
-  const st = $('gameStage'); if (!st) return; const fr = st.querySelector('.stage-frame'); if (!fr) return;
-  const w = st.clientWidth, h = st.clientHeight; if (!w || !h) return;
-  let fw = w, fh = w * 3 / 4; if (fh > h) { fh = h; fw = h * 4 / 3; }
-  fr.style.width = Math.floor(fw) + 'px'; fr.style.height = Math.floor(fh) + 'px';
-}
 /* Sizing the stage is CSS's job now (see .stage / .stage-frame in styles.css): the frame is the
    largest 4:3 box that fits its container, worked out by the browser whenever anything changes
    size. This used to be measured by hand after a requestAnimationFrame from three separate
