@@ -1,0 +1,58 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 720 320" role="img"
+     aria-label="A state machine with four states: title, playing, dying and gameover. Arrows show the only moves allowed between them, and gameover leads back to playing.">
+  <title>A state machine: the states, and the only moves between them</title>
+
+  <defs>
+    <marker id="sm-arrow" viewBox="0 0 10 10" refX="8" refY="5" markerWidth="6.5" markerHeight="6.5" orient="auto-start-reverse">
+      <path d="M0 0 L10 5 L0 10 z" fill="#59a5ff"/>
+    </marker>
+    <marker id="sm-back" viewBox="0 0 10 10" refX="8" refY="5" markerWidth="6.5" markerHeight="6.5" orient="auto-start-reverse">
+      <path d="M0 0 L10 5 L0 10 z" fill="#3ddc84"/>
+    </marker>
+  </defs>
+
+  <g font-family="Segoe UI, Roboto, Arial, sans-serif">
+
+    <!-- the four states -->
+    <g>
+      <rect x="24" y="112" width="132" height="60" rx="30" fill="#12304f" stroke="#8b9db1" stroke-width="1.5"/>
+      <text x="90" y="140" text-anchor="middle" fill="#eaf1f8" font-size="14.5" font-weight="700" font-family="Consolas, monospace">title</text>
+      <text x="90" y="158" text-anchor="middle" fill="#9fb2cc" font-size="11.5">waiting to start</text>
+    </g>
+    <g>
+      <rect x="228" y="112" width="132" height="60" rx="30" fill="#0f2e22" stroke="#3ddc84" stroke-width="2"/>
+      <text x="294" y="140" text-anchor="middle" fill="#3ddc84" font-size="14.5" font-weight="700" font-family="Consolas, monospace">playing</text>
+      <text x="294" y="158" text-anchor="middle" fill="#9fb2cc" font-size="11.5">the game is on</text>
+    </g>
+    <g>
+      <rect x="432" y="112" width="132" height="60" rx="30" fill="#2e2410" stroke="#f5b02e" stroke-width="1.5"/>
+      <text x="498" y="140" text-anchor="middle" fill="#f5b02e" font-size="14.5" font-weight="700" font-family="Consolas, monospace">dying</text>
+      <text x="498" y="158" text-anchor="middle" fill="#9fb2cc" font-size="11.5">the death animation</text>
+    </g>
+    <g>
+      <rect x="588" y="228" width="108" height="60" rx="30" fill="#2e1414" stroke="#e28282" stroke-width="1.5"/>
+      <text x="642" y="256" text-anchor="middle" fill="#e28282" font-size="14" font-weight="700" font-family="Consolas, monospace">gameover</text>
+      <text x="642" y="274" text-anchor="middle" fill="#9fb2cc" font-size="11.5">score on screen</text>
+    </g>
+
+    <!-- the allowed moves -->
+    <g stroke="#59a5ff" stroke-width="2" fill="none" marker-end="url(#sm-arrow)">
+      <line x1="160" y1="142" x2="220" y2="142"/>
+      <line x1="364" y1="142" x2="424" y2="142"/>
+      <path d="M540 172 L590 210 Q598 218 606 222"/>
+    </g>
+    <text x="190" y="132" text-anchor="middle" fill="#59a5ff" font-size="11.5">press start</text>
+    <text x="394" y="132" text-anchor="middle" fill="#59a5ff" font-size="11.5">you got hit</text>
+    <text x="596" y="196" text-anchor="middle" fill="#59a5ff" font-size="11.5">it finished</text>
+
+    <!-- the one that matters most: a way back out -->
+    <path d="M588 258 L330 258 Q294 258 294 220 L294 176"
+          fill="none" stroke="#3ddc84" stroke-width="2" stroke-dasharray="6 5" marker-end="url(#sm-back)"/>
+    <text x="440" y="278" text-anchor="middle" fill="#3ddc84" font-size="12.5" font-weight="600">press restart — the way back in</text>
+
+    <!-- the lesson -->
+    <text x="360" y="42" text-anchor="middle" fill="#8b9db1" font-size="13" letter-spacing="1.4">ONE STATE AT A TIME · ONLY THESE MOVES</text>
+    <rect x="24" y="60" width="672" height="32" rx="8" fill="#0d2440" stroke="#223a58" stroke-width="1"/>
+    <text x="360" y="81" text-anchor="middle" fill="#c3d3e6" font-size="13.5">If a state has no arrow leaving it, the player is stuck there forever.</text>
+  </g>
+</svg>

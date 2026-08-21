@@ -165,10 +165,43 @@ function eachBlock(text, re, fn) {
   return i;
 }
 
+/* Every picture a lesson points at has to exist. A wrong path does not throw and does not warn —
+   it renders as nothing at all, or as alt text, on a page nobody is checking. And the trap is
+   specific: a lesson's Markdown is fetched from /content/lessons/ but rendered into the page at /,
+   so a plain relative name resolves against the wrong place. Root-relative paths only. */
+const PUBLIC = path.join(__dirname, '..', 'public');
+const CONTENT = path.join(__dirname, '..', 'content');
+const IMG_SRC = /<img[^>]+src\s*=\s*["']([^"']+)["']|!\[[^\]]*\]\(([^)\s]+)/g;
+
+function checkImages(file, text) {
+  IMG_SRC.lastIndex = 0;
+  let m;
+  while ((m = IMG_SRC.exec(text))) {
+    const src = m[1] || m[2];
+    if (/^(https?:|data:|blob:)/i.test(src)) {
+      fail(file, 'points at "' + src.slice(0, 48) + '" — the security policy only allows same-origin,'
+        + ' data: and blob: images, so a remote one is blocked. Put the file in content/images/.');
+      continue;
+    }
+    if (src.charAt(0) !== '/') {
+      fail(file, 'has the image "' + src + '" without a leading slash. A lesson renders at / but is'
+        + ' fetched from /content/lessons/, so a relative path silently resolves to the wrong place.'
+        + ' Write it as /content/images/' + src.replace(/^\.?\//, '') + ' .');
+      continue;
+    }
+    const rel = src.replace(/^\//, '').split('?')[0];
+    const onDisk = rel.indexOf('content/') === 0
+      ? path.join(CONTENT, rel.slice('content/'.length))
+      : path.join(PUBLIC, rel);
+    if (!fs.existsSync(onDisk)) fail(file, 'points at "' + src + '", which is not on disk');
+  }
+}
+
 const files = fs.readdirSync(DIR).filter(function (f) { return f.endsWith('.md'); }).sort();
 files.forEach(function (f) {
   // Normalised to \n first. A \r\n checkout is why check-challenges.js silently examined nothing.
   const text = fs.readFileSync(path.join(DIR, f), 'utf8').replace(/\r\n/g, '\n');
+  checkImages(f, text);
   quizzes += eachBlock(text, QUIZ, function (i, src) { checkQuiz(f + ' quiz ' + i, src); });
   yourturns += eachBlock(text, YOURTURN, function (i, src) { checkYourTurn(f + ' yourturn ' + i, src); });
   challenges += eachBlock(text, CHALLENGE, function (i, src) { checkChallenge(f + ' challenge ' + i, src); });

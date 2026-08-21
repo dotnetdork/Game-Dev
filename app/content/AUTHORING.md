@@ -152,6 +152,37 @@ the status bar, and cannot be bought with Stars — that is the whole point of i
 Checking is the student's word for now — they press "I've done this". A future stage verifies it
 against their actual project, and only this step changes.
 
+## Pictures and diagrams
+Put the file in `content/images/` and reference it **with a leading slash**:
+
+    <figure class="diagram">
+      <img src="/content/images/game-loop.svg" alt="What the picture shows, for a student who cannot see it.">
+      <figcaption>What it means. This is teaching text, not a label — say the thing the picture is for.</figcaption>
+    </figure>
+
+**The leading slash is not optional.** A lesson's Markdown is fetched from `/content/lessons/` but
+rendered into the page at `/`, so `![](loop.svg)` quietly resolves to `/loop.svg` and shows nothing
+at all. `npm test` fails on a relative path and on a file that is not on disk.
+
+- **SVG is the format to reach for.** It stays sharp at any width, it is a text file you can edit
+  and diff, and it needs no build step. Match the app's colours by hand — an external SVG cannot
+  read the page's CSS variables (there is only the one dark theme, so there is one set to match).
+- `class="diagram"` gets the panel background, border and full block width. Add `narrow` for a small
+  diagram that would look silly blown up, and use `class="shot"` instead for a photo or screenshot,
+  which gets no panel behind it.
+- **A caption is required in practice.** The picture and the caption teach together; a picture with
+  no caption is decoration.
+- **Animate only when the movement IS the idea** — a loop going round, an arc, a shake. Wrap the
+  moving part in a group and hide it under `prefers-reduced-motion` (see `game-loop.svg`), and make
+  sure the diagram still reads correctly once it is hidden.
+- Remote images are blocked by the security policy, so the file has to live in this repo. Game and
+  engine screenshots are almost all copyrighted — an original diagram of how the thing *works* is
+  both legally safe and the better teaching anyway.
+
+For an aside, use a `tip` div — it renders as a callout:
+
+    <div class="tip">Sprites are just pictures the game can move around.</div>
+
 ## Prose
 Standard Markdown (headings, lists, **bold**, images, > quotes) renders normally. Plain code
 blocks are syntax-highlighted with the same theme as the Code tab.

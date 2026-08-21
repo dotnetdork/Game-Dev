@@ -83,6 +83,11 @@ works in almost every game you've played — the guard is *patrolling*, then *su
 Sketching it first is worth five minutes because it makes you notice missing arrows. Can you get
 out of `gameover`? If there's no arrow leaving a state, the player is stuck there forever.
 
+<figure class="diagram">
+  <img src="/content/images/state-machine.svg" alt="Four states — title, playing, dying and gameover — with arrows showing the only allowed moves, and a dashed arrow from gameover back to playing.">
+  <figcaption>Read it as a map: you are always in exactly one bubble, and you can only leave along an arrow. The dashed one back to <code>playing</code> is the one people forget.</figcaption>
+</figure>
+
 ## Where the rules live
 
 Once you have a state, `update()` gets a clear shape:

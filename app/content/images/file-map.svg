@@ -1,0 +1,74 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 720 400" role="img"
+     aria-label="A map of the starter game's files. main.js starts the engine, which calls game.js. game.js calls helpers in world.js, player.js and coins.js, and all of them read the numbers in config.js.">
+  <title>Which file calls which in the starter game</title>
+
+  <defs>
+    <marker id="fm-arrow" viewBox="0 0 10 10" refX="8" refY="5" markerWidth="6.5" markerHeight="6.5" orient="auto-start-reverse">
+      <path d="M0 0 L10 5 L0 10 z" fill="#5f7893"/>
+    </marker>
+    <marker id="fm-arrow-dim" viewBox="0 0 10 10" refX="8" refY="5" markerWidth="6" markerHeight="6" orient="auto-start-reverse">
+      <path d="M0 0 L10 5 L0 10 z" fill="#f5b02e"/>
+    </marker>
+  </defs>
+
+  <g font-family="Segoe UI, Roboto, Arial, sans-serif">
+
+    <!-- main.js: the boot file -->
+    <rect x="272" y="18" width="176" height="52" rx="10" fill="#12304f" stroke="#8b7cff" stroke-width="1.5"/>
+    <text x="360" y="41" text-anchor="middle" fill="#b6adff" font-size="14.5" font-weight="700" font-family="Consolas, monospace">main.js</text>
+    <text x="360" y="59" text-anchor="middle" fill="#9fb2cc" font-size="12">starts the engine</text>
+
+    <line x1="360" y1="70" x2="360" y2="106" stroke="#5f7893" stroke-width="2" marker-end="url(#fm-arrow)"/>
+
+    <!-- game.js: the conductor -->
+    <rect x="248" y="106" width="224" height="66" rx="10" fill="#12304f" stroke="#3e8fd6" stroke-width="2"/>
+    <text x="360" y="130" text-anchor="middle" fill="#3e8fd6" font-size="15" font-weight="700" font-family="Consolas, monospace">game.js</text>
+    <text x="360" y="149" text-anchor="middle" fill="#eaf1f8" font-size="12.5">create() and update()</text>
+    <text x="360" y="165" text-anchor="middle" fill="#9fb2cc" font-size="12">calls the helpers, in order</text>
+
+    <!-- the three helper files -->
+    <g>
+      <rect x="24" y="228" width="188" height="66" rx="10" fill="#0d2440" stroke="#2fd0b6" stroke-width="1.5"/>
+      <text x="118" y="252" text-anchor="middle" fill="#2fd0b6" font-size="14" font-weight="700" font-family="Consolas, monospace">world.js</text>
+      <text x="118" y="270" text-anchor="middle" fill="#9fb2cc" font-size="12">the sky, the ground,</text>
+      <text x="118" y="285" text-anchor="middle" fill="#9fb2cc" font-size="12">the platforms</text>
+    </g>
+    <g>
+      <rect x="266" y="228" width="188" height="66" rx="10" fill="#0d2440" stroke="#3ddc84" stroke-width="1.5"/>
+      <text x="360" y="252" text-anchor="middle" fill="#3ddc84" font-size="14" font-weight="700" font-family="Consolas, monospace">player.js</text>
+      <text x="360" y="270" text-anchor="middle" fill="#9fb2cc" font-size="12">making the player and</text>
+      <text x="360" y="285" text-anchor="middle" fill="#9fb2cc" font-size="12">moving them</text>
+    </g>
+    <g>
+      <rect x="508" y="228" width="188" height="66" rx="10" fill="#0d2440" stroke="#ff6b9d" stroke-width="1.5"/>
+      <text x="602" y="252" text-anchor="middle" fill="#ff6b9d" font-size="14" font-weight="700" font-family="Consolas, monospace">coins.js</text>
+      <text x="602" y="270" text-anchor="middle" fill="#9fb2cc" font-size="12">the coins and</text>
+      <text x="602" y="285" text-anchor="middle" fill="#9fb2cc" font-size="12">the score</text>
+    </g>
+
+    <!-- game.js down into each helper -->
+    <path d="M300 172 L300 200 Q300 210 288 210 L130 210 Q118 210 118 220 L118 224" fill="none" stroke="#5f7893" stroke-width="2" marker-end="url(#fm-arrow)"/>
+    <line x1="360" y1="172" x2="360" y2="224" stroke="#5f7893" stroke-width="2" marker-end="url(#fm-arrow)"/>
+    <path d="M420 172 L420 200 Q420 210 432 210 L590 210 Q602 210 602 220 L602 224" fill="none" stroke="#5f7893" stroke-width="2" marker-end="url(#fm-arrow)"/>
+
+    <!-- config.js: read by all of them. Dashed, because reading a number is not calling a function -->
+    <rect x="248" y="336" width="224" height="50" rx="10" fill="#2b2410" stroke="#f5b02e" stroke-width="1.5"/>
+    <text x="360" y="358" text-anchor="middle" fill="#f5b02e" font-size="14" font-weight="700" font-family="Consolas, monospace">config.js</text>
+    <text x="360" y="376" text-anchor="middle" fill="#e6d8b8" font-size="12">all the numbers you can tweak</text>
+
+    <g stroke="#f5b02e" stroke-width="1.5" stroke-dasharray="5 4" fill="none" marker-end="url(#fm-arrow-dim)">
+      <path d="M118 294 L118 316 Q118 326 130 326 L240 326 Q252 326 258 331"/>
+      <path d="M360 294 L360 332"/>
+      <path d="M602 294 L602 316 Q602 326 590 326 L480 326 Q468 326 462 331"/>
+    </g>
+    <text x="360" y="322" text-anchor="middle" fill="#8b9db1" font-size="11.5" font-style="italic">every file reads these</text>
+
+    <!-- reading key -->
+    <g transform="translate(24,18)">
+      <line x1="0" y1="10" x2="26" y2="10" stroke="#5f7893" stroke-width="2" marker-end="url(#fm-arrow)"/>
+      <text x="34" y="14" fill="#8b9db1" font-size="11.5">calls</text>
+      <line x1="0" y1="32" x2="26" y2="32" stroke="#f5b02e" stroke-width="1.5" stroke-dasharray="5 4"/>
+      <text x="34" y="36" fill="#8b9db1" font-size="11.5">reads</text>
+    </g>
+  </g>
+</svg>

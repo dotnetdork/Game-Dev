@@ -1,0 +1,80 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 720 330" role="img"
+     aria-label="Two panels. On the left, every part of the game calls every other part directly, making a tangle of lines. On the right, each part announces what happened and the others listen, so every line goes through one place."><title>Calling everything directly, versus announcing what happened</title>
+
+  <defs>
+    <marker id="ev-a" viewBox="0 0 10 10" refX="8" refY="5" markerWidth="5.5" markerHeight="5.5" orient="auto-start-reverse">
+      <path d="M0 0 L10 5 L0 10 z" fill="#e28282"/>
+    </marker>
+    <marker id="ev-b" viewBox="0 0 10 10" refX="8" refY="5" markerWidth="5.5" markerHeight="5.5" orient="auto-start-reverse">
+      <path d="M0 0 L10 5 L0 10 z" fill="#3ddc84"/>
+    </marker>
+  </defs>
+
+  <g font-family="Segoe UI, Roboto, Arial, sans-serif">
+
+    <!-- ============ the tangle ============ -->
+    <g>
+      <rect x="16" y="16" width="336" height="298" rx="12" fill="#0d2137" stroke="#e28282" stroke-width="1.5"/>
+      <text x="184" y="44" text-anchor="middle" fill="#e28282" font-size="13.5" font-weight="700" letter-spacing="1.2">EVERYONE CALLS EVERYONE</text>
+
+      <!-- five parts in a ring -->
+      <g stroke="#e28282" stroke-width="1.4" opacity="0.75" marker-end="url(#ev-a)" fill="none">
+        <line x1="118" y1="106" x2="240" y2="106"/>
+        <line x1="252" y1="126" x2="268" y2="196"/>
+        <line x1="248" y1="222" x2="128" y2="248"/>
+        <line x1="98"  y1="228" x2="92"  y2="132"/>
+        <line x1="120" y1="120" x2="248" y2="212"/>
+        <line x1="240" y1="120" x2="112" y2="240"/>
+        <line x1="184" y1="128" x2="184" y2="196"/>
+        <line x1="108" y1="240" x2="252" y2="216"/>
+      </g>
+
+      <g>
+        <rect x="62" y="86" width="66" height="40" rx="8" fill="#12304f" stroke="#5f7893"/>
+        <text x="95" y="111" text-anchor="middle" fill="#c3d3e6" font-size="12">player</text>
+        <rect x="238" y="86" width="66" height="40" rx="8" fill="#12304f" stroke="#5f7893"/>
+        <text x="271" y="111" text-anchor="middle" fill="#c3d3e6" font-size="12">score</text>
+        <rect x="238" y="196" width="66" height="40" rx="8" fill="#12304f" stroke="#5f7893"/>
+        <text x="271" y="221" text-anchor="middle" fill="#c3d3e6" font-size="12">sound</text>
+        <rect x="62" y="228" width="66" height="40" rx="8" fill="#12304f" stroke="#5f7893"/>
+        <text x="95" y="253" text-anchor="middle" fill="#c3d3e6" font-size="12">UI</text>
+        <rect x="150" y="150" width="68" height="40" rx="8" fill="#12304f" stroke="#5f7893"/>
+        <text x="184" y="175" text-anchor="middle" fill="#c3d3e6" font-size="12">coins</text>
+      </g>
+
+      <text x="184" y="292" text-anchor="middle" fill="#f0b8b8" font-size="13">Change one thing, break four.</text>
+    </g>
+
+    <!-- ============ the hub ============ -->
+    <g>
+      <rect x="368" y="16" width="336" height="298" rx="12" fill="#0d2137" stroke="#3ddc84" stroke-width="1.5"/>
+      <text x="536" y="44" text-anchor="middle" fill="#3ddc84" font-size="13.5" font-weight="700" letter-spacing="1.2">ONE ANNOUNCES · THE REST LISTEN</text>
+
+      <!-- spokes -->
+      <g stroke="#3ddc84" stroke-width="1.6" marker-end="url(#ev-b)" fill="none">
+        <line x1="480" y1="112" x2="512" y2="152"/>
+        <line x1="592" y1="112" x2="560" y2="152"/>
+        <line x1="592" y1="222" x2="560" y2="188"/>
+        <line x1="480" y1="248" x2="512" y2="192"/>
+      </g>
+
+      <!-- the hub itself -->
+      <circle cx="536" cy="170" r="34" fill="#0f2e22" stroke="#3ddc84" stroke-width="2"/>
+      <text x="536" y="166" text-anchor="middle" fill="#3ddc84" font-size="11.5" font-weight="700">“a coin</text>
+      <text x="536" y="181" text-anchor="middle" fill="#3ddc84" font-size="11.5" font-weight="700">was got”</text>
+
+      <g>
+        <rect x="414" y="86" width="66" height="40" rx="8" fill="#12304f" stroke="#5f7893"/>
+        <text x="447" y="111" text-anchor="middle" fill="#c3d3e6" font-size="12">player</text>
+        <rect x="590" y="86" width="66" height="40" rx="8" fill="#12304f" stroke="#5f7893"/>
+        <text x="623" y="111" text-anchor="middle" fill="#c3d3e6" font-size="12">score</text>
+        <rect x="590" y="196" width="66" height="40" rx="8" fill="#12304f" stroke="#5f7893"/>
+        <text x="623" y="221" text-anchor="middle" fill="#c3d3e6" font-size="12">sound</text>
+        <rect x="414" y="228" width="66" height="40" rx="8" fill="#12304f" stroke="#5f7893"/>
+        <text x="447" y="253" text-anchor="middle" fill="#c3d3e6" font-size="12">UI</text>
+      </g>
+
+      <text x="536" y="292" text-anchor="middle" fill="#c9f5dc" font-size="13">Add a fifth thing and nothing else changes.</text>
+    </g>
+  </g>
+</svg>

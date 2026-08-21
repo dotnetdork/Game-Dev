@@ -22,6 +22,11 @@ Here it is, the whole thing:
 Then throw that picture away and do it again. And again. Sixty times a second, for as long as the
 game is open.
 
+<figure class="diagram">
+  <img src="/content/images/game-loop.svg" alt="Three steps in a cycle — read the input, update the world, draw it — with an arrow going back from draw to read.">
+  <figcaption>The green dot is one <b>frame</b> going round. The dashed arrow back to the start is the whole trick: nothing would move without it.</figcaption>
+</figure>
+
 That's it. Minecraft is doing that. Fortnite is doing that. The game you are about to build is
 doing that.
 

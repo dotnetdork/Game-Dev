@@ -1,0 +1,65 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 720 260" role="img"
+     aria-label="A cycle of three steps: read the input, update the world, draw it. An arrow returns from draw back to read, and the cycle repeats about sixty times a second.">
+  <title>The game loop: read, update, draw — about sixty times a second</title>
+
+  <!-- Colours are the app's own palette, hard-coded because an external SVG cannot inherit the
+       page's custom properties. The app is dark-only, so there is one set to match. -->
+  <defs>
+    <marker id="gl-arrow" viewBox="0 0 10 10" refX="8" refY="5" markerWidth="6" markerHeight="6" orient="auto-start-reverse">
+      <path d="M0 0 L10 5 L0 10 z" fill="#3e8fd6"/>
+    </marker>
+    <marker id="gl-arrow-back" viewBox="0 0 10 10" refX="8" refY="5" markerWidth="6" markerHeight="6" orient="auto-start-reverse">
+      <path d="M0 0 L10 5 L0 10 z" fill="#f5820a"/>
+    </marker>
+  </defs>
+
+  <g font-family="Segoe UI, Roboto, Arial, sans-serif">
+
+    <!-- the three steps -->
+    <g>
+      <rect x="28" y="66" width="176" height="92" rx="12" fill="#12304f" stroke="#2fd0b6" stroke-width="1.5"/>
+      <text x="116" y="100" text-anchor="middle" fill="#2fd0b6" font-size="13" font-weight="700" letter-spacing="1.4">1 · READ</text>
+      <text x="116" y="124" text-anchor="middle" fill="#eaf1f8" font-size="15" font-weight="600">What keys are down?</text>
+      <text x="116" y="143" text-anchor="middle" fill="#9fb2cc" font-size="13">Ask the controls.</text>
+    </g>
+
+    <g>
+      <rect x="272" y="66" width="176" height="92" rx="12" fill="#12304f" stroke="#3e8fd6" stroke-width="1.5"/>
+      <text x="360" y="100" text-anchor="middle" fill="#3e8fd6" font-size="13" font-weight="700" letter-spacing="1.4">2 · UPDATE</text>
+      <text x="360" y="124" text-anchor="middle" fill="#eaf1f8" font-size="15" font-weight="600">Move everything.</text>
+      <text x="360" y="143" text-anchor="middle" fill="#9fb2cc" font-size="13">Check what hit what.</text>
+    </g>
+
+    <g>
+      <rect x="516" y="66" width="176" height="92" rx="12" fill="#12304f" stroke="#f5b02e" stroke-width="1.5"/>
+      <text x="604" y="100" text-anchor="middle" fill="#f5b02e" font-size="13" font-weight="700" letter-spacing="1.4">3 · DRAW</text>
+      <text x="604" y="124" text-anchor="middle" fill="#eaf1f8" font-size="15" font-weight="600">Put it on screen.</text>
+      <text x="604" y="143" text-anchor="middle" fill="#9fb2cc" font-size="13">Then throw it away.</text>
+    </g>
+
+    <!-- forward arrows -->
+    <line x1="212" y1="112" x2="264" y2="112" stroke="#3e8fd6" stroke-width="2" marker-end="url(#gl-arrow)"/>
+    <line x1="456" y1="112" x2="508" y2="112" stroke="#3e8fd6" stroke-width="2" marker-end="url(#gl-arrow)"/>
+
+    <!-- and back to the start: the part that makes it a loop -->
+    <path d="M604 166 L604 208 Q604 220 592 220 L128 220 Q116 220 116 208 L116 166"
+          fill="none" stroke="#f5820a" stroke-width="2" stroke-dasharray="6 5" marker-end="url(#gl-arrow-back)"/>
+    <text x="360" y="243" text-anchor="middle" fill="#f5820a" font-size="13.5" font-weight="600">and again — about 60 times every second</text>
+
+    <!-- One frame travelling the cycle. Motion is the point here: the loop is a thing that keeps
+         going, and a still picture of a cycle has to be inferred. Removed entirely under
+         prefers-reduced-motion, which leaves the diagram complete without it. -->
+    <g class="gl-runner">
+      <circle r="7" fill="#3ddc84" stroke="#0a1a2e" stroke-width="2">
+        <animateMotion dur="4s" repeatCount="indefinite" rotate="auto"
+          path="M116 112 L360 112 L604 112 L604 208 Q604 220 592 220 L128 220 Q116 220 116 208 Z"/>
+      </circle>
+    </g>
+
+    <text x="360" y="34" text-anchor="middle" fill="#8b9db1" font-size="13" letter-spacing="1.6">ONE TRIP ROUND = ONE FRAME</text>
+  </g>
+
+  <style>
+    @media (prefers-reduced-motion: reduce) { .gl-runner { display: none; } }
+  </style>
+</svg>

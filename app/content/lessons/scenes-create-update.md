@@ -50,6 +50,11 @@ feedback:
 explain: Things are MADE in create() and CHANGED in update(). Creating in update() makes a new one every frame.
 ```
 
+<figure class="diagram">
+  <img src="/content/images/create-vs-update.svg" alt="A timeline showing create running once at the start, then update running on every frame afterwards.">
+  <figcaption>One tick for <code>create</code>. Sixty ticks a second, forever, for <code>update</code>. Every mistake in this lesson comes from putting something in the wrong one.</figcaption>
+</figure>
+
 ## What belongs where
 
 The question to ask is: **does this need to happen again?**

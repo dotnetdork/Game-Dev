@@ -68,6 +68,11 @@ feedback:
 explain: Walls working proves the physics system is fine. If one specific pair does nothing, that pair has no overlap or collider set up.
 ```
 
+<figure class="diagram">
+  <img src="/content/images/overlap-vs-collider.svg" alt="On the left, a player passes straight through a coin. On the right, a player is stopped by a wall and pushed back out.">
+  <figcaption>Both notice the touch. Only one of them <b>does</b> something about it — which is the whole difference between a coin and a wall.</figcaption>
+</figure>
+
 ## Why games fake it
 
 Real physics is expensive to calculate and, more importantly, **not much fun**.

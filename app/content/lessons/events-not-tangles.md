@@ -60,6 +60,11 @@ feedback:
 explain: Direct calls create knowledge. The more each part knows about the others, the more places you must edit to change one thing.
 ```
 
+<figure class="diagram">
+  <img src="/content/images/events-vs-tangles.svg" alt="Left: five parts of a game all calling each other, making a tangle of crossing lines. Right: the same parts, each connected to one central announcement.">
+  <figcaption>Same five parts, same game. The left needs eight connections and the right needs four — and the right one does not grow when you add a fifth part.</figcaption>
+</figure>
+
 ## Announcing instead
 
 The alternative is to have `collectCoin` **say what happened** and stop caring who is listening:

@@ -28,6 +28,11 @@ Those are called **magic numbers**, and the problem isn't that they're wrong. It
 *hidden*. To make the game slightly easier you have to go hunting through files, and you will miss
 one.
 
+<figure class="diagram">
+  <img src="/content/images/file-map.svg" alt="A map of the starter game's files: main.js starts the engine and calls game.js, which calls world.js, player.js and coins.js. All three read config.js.">
+  <figcaption>Your own game is already built this way. Solid arrows are one file <b>calling</b> another; the dashed ones are every file <b>reading</b> the same numbers out of <code>config.js</code> — which is why changing one number there changes the game everywhere at once.</figcaption>
+</figure>
+
 ## A list you can read at a glance
 
 Move them out:

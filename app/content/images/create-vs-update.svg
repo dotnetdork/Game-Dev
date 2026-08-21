@@ -1,0 +1,58 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 720 300" role="img"
+     aria-label="A timeline. create runs once at the start. update runs on every frame after it, over and over, for as long as the game is open.">
+  <title>create() runs once; update() runs every frame</title>
+
+  <defs>
+    <marker id="cu-arrow" viewBox="0 0 10 10" refX="8" refY="5" markerWidth="6" markerHeight="6" orient="auto-start-reverse">
+      <path d="M0 0 L10 5 L0 10 z" fill="#5f7893"/>
+    </marker>
+  </defs>
+
+  <g font-family="Segoe UI, Roboto, Arial, sans-serif">
+
+    <!-- the timeline itself -->
+    <line x1="40" y1="150" x2="686" y2="150" stroke="#5f7893" stroke-width="2" marker-end="url(#cu-arrow)"/>
+    <text x="676" y="176" text-anchor="end" fill="#8b9db1" font-size="13">time the game is open</text>
+
+    <!-- create: one tick, once -->
+    <g>
+      <line x1="96" y1="150" x2="96" y2="92" stroke="#3ddc84" stroke-width="2"/>
+      <circle cx="96" cy="150" r="8" fill="#3ddc84" stroke="#0a1a2e" stroke-width="2"/>
+      <rect x="24" y="46" width="150" height="46" rx="10" fill="#0f2e22" stroke="#3ddc84" stroke-width="1.5"/>
+      <text x="99" y="66" text-anchor="middle" fill="#3ddc84" font-size="14" font-weight="700" font-family="Consolas, monospace">create()</text>
+      <text x="99" y="83" text-anchor="middle" fill="#c9f5dc" font-size="12.5">runs ONCE</text>
+      <text x="99" y="200" text-anchor="middle" fill="#eaf1f8" font-size="13.5" font-weight="600">Build the world</text>
+      <text x="99" y="219" text-anchor="middle" fill="#9fb2cc" font-size="12.5">the player, the ground,</text>
+      <text x="99" y="235" text-anchor="middle" fill="#9fb2cc" font-size="12.5">the coins, the rules</text>
+    </g>
+
+    <!-- update: a tick for every frame, forever -->
+    <g>
+      <g stroke="#3e8fd6" stroke-width="2">
+        <line x1="222" y1="150" x2="222" y2="118"/><line x1="262" y1="150" x2="262" y2="118"/>
+        <line x1="302" y1="150" x2="302" y2="118"/><line x1="342" y1="150" x2="342" y2="118"/>
+        <line x1="382" y1="150" x2="382" y2="118"/><line x1="422" y1="150" x2="422" y2="118"/>
+        <line x1="462" y1="150" x2="462" y2="118"/><line x1="502" y1="150" x2="502" y2="118"/>
+        <line x1="542" y1="150" x2="542" y2="118"/><line x1="582" y1="150" x2="582" y2="118"/>
+        <line x1="622" y1="150" x2="622" y2="118"/>
+      </g>
+      <g fill="#3e8fd6">
+        <circle cx="222" cy="150" r="5"/><circle cx="262" cy="150" r="5"/><circle cx="302" cy="150" r="5"/>
+        <circle cx="342" cy="150" r="5"/><circle cx="382" cy="150" r="5"/><circle cx="422" cy="150" r="5"/>
+        <circle cx="462" cy="150" r="5"/><circle cx="502" cy="150" r="5"/><circle cx="542" cy="150" r="5"/>
+        <circle cx="582" cy="150" r="5"/><circle cx="622" cy="150" r="5"/>
+      </g>
+      <rect x="330" y="46" width="206" height="46" rx="10" fill="#0d2440" stroke="#3e8fd6" stroke-width="1.5"/>
+      <text x="433" y="66" text-anchor="middle" fill="#3e8fd6" font-size="14" font-weight="700" font-family="Consolas, monospace">update()</text>
+      <text x="433" y="83" text-anchor="middle" fill="#cfe0f2" font-size="12.5">runs EVERY frame, forever</text>
+      <line x1="433" y1="92" x2="433" y2="112" stroke="#3e8fd6" stroke-width="1.5" stroke-dasharray="3 3"/>
+      <text x="422" y="200" text-anchor="middle" fill="#eaf1f8" font-size="13.5" font-weight="600">Change the world</text>
+      <text x="422" y="219" text-anchor="middle" fill="#9fb2cc" font-size="12.5">read the keys, move things,</text>
+      <text x="422" y="235" text-anchor="middle" fill="#9fb2cc" font-size="12.5">add up the score</text>
+    </g>
+
+    <!-- the trap this diagram exists to prevent -->
+    <rect x="24" y="262" width="672" height="30" rx="8" fill="#241d0e" stroke="#4a3c18" stroke-width="1"/>
+    <text x="360" y="282" text-anchor="middle" fill="#e6d8b8" font-size="13.5">Make something in update() and you make a new one 60 times a second.</text>
+  </g>
+</svg>

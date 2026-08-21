@@ -1,0 +1,63 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 720 290" role="img"
+     aria-label="Two panels. On the left, overlap: the player passes through a coin and the coin is collected. On the right, collider: the player is stopped by a wall and pushed back out.">
+  <title>overlap tells you they touched; collider also pushes them apart</title>
+
+  <defs>
+    <marker id="ov-arrow" viewBox="0 0 10 10" refX="8" refY="5" markerWidth="6" markerHeight="6" orient="auto-start-reverse">
+      <path d="M0 0 L10 5 L0 10 z" fill="#2fd0b6"/>
+    </marker>
+    <marker id="co-arrow" viewBox="0 0 10 10" refX="8" refY="5" markerWidth="6" markerHeight="6" orient="auto-start-reverse">
+      <path d="M0 0 L10 5 L0 10 z" fill="#f5820a"/>
+    </marker>
+  </defs>
+
+  <g font-family="Segoe UI, Roboto, Arial, sans-serif">
+
+    <!-- ============ overlap ============ -->
+    <g>
+      <rect x="16" y="16" width="336" height="258" rx="12" fill="#0d2137" stroke="#2fd0b6" stroke-width="1.5"/>
+      <text x="40" y="46" fill="#2fd0b6" font-size="14" font-weight="700" font-family="Consolas, monospace">overlap</text>
+      <text x="40" y="68" fill="#eaf1f8" font-size="14.5" font-weight="600">“Tell me when they touch.”</text>
+
+      <!-- the player moving right, straight through -->
+      <rect x="48" y="120" width="42" height="42" rx="7" fill="#3e8fd6"/>
+      <text x="69" y="182" text-anchor="middle" fill="#9fb2cc" font-size="12">player</text>
+
+      <line x1="100" y1="141" x2="184" y2="141" stroke="#2fd0b6" stroke-width="2" stroke-dasharray="5 4" marker-end="url(#ov-arrow)"/>
+
+      <!-- the coin it passes through, drawn faded to show it has gone -->
+      <circle cx="212" cy="141" r="20" fill="#f5b02e" opacity="0.28"/>
+      <circle cx="212" cy="141" r="20" fill="none" stroke="#f5b02e" stroke-width="1.5" stroke-dasharray="4 4"/>
+      <text x="212" y="182" text-anchor="middle" fill="#9fb2cc" font-size="12">coin</text>
+
+      <line x1="240" y1="141" x2="318" y2="141" stroke="#2fd0b6" stroke-width="2" stroke-dasharray="5 4" marker-end="url(#ov-arrow)"/>
+
+      <text x="184" y="228" text-anchor="middle" fill="#c9f5dc" font-size="13.5">It carries straight on.</text>
+      <text x="184" y="250" text-anchor="middle" fill="#9fb2cc" font-size="13">Good for collecting.</text>
+    </g>
+
+    <!-- ============ collider ============ -->
+    <g>
+      <rect x="368" y="16" width="336" height="258" rx="12" fill="#0d2137" stroke="#f5820a" stroke-width="1.5"/>
+      <text x="392" y="46" fill="#f5820a" font-size="14" font-weight="700" font-family="Consolas, monospace">collider</text>
+      <text x="392" y="68" fill="#eaf1f8" font-size="14.5" font-weight="600">“…and push them apart.”</text>
+
+      <rect x="400" y="120" width="42" height="42" rx="7" fill="#3e8fd6"/>
+      <text x="421" y="182" text-anchor="middle" fill="#9fb2cc" font-size="12">player</text>
+
+      <line x1="452" y1="141" x2="536" y2="141" stroke="#f5820a" stroke-width="2" stroke-dasharray="5 4" marker-end="url(#co-arrow)"/>
+
+      <!-- the wall, solid -->
+      <rect x="556" y="98" width="26" height="86" rx="5" fill="#8a6d3b"/>
+      <rect x="556" y="98" width="26" height="86" rx="5" fill="none" stroke="#c9a86a" stroke-width="1.5"/>
+      <text x="569" y="204" text-anchor="middle" fill="#9fb2cc" font-size="12">wall</text>
+
+      <!-- pushed back out -->
+      <path d="M548 141 L512 141" fill="none" stroke="#f5820a" stroke-width="2" marker-end="url(#co-arrow)"/>
+      <text x="530" y="126" text-anchor="middle" fill="#f5820a" font-size="11.5" font-weight="600">stopped</text>
+
+      <text x="536" y="228" text-anchor="middle" fill="#f5d3a8" font-size="13.5">It cannot get through.</text>
+      <text x="536" y="250" text-anchor="middle" fill="#9fb2cc" font-size="13">Good for walls and floors.</text>
+    </g>
+  </g>
+</svg>
