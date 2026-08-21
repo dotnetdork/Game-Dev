@@ -146,7 +146,6 @@ body[data-tier="narrow"] .dock.left{--floatw:min(300px,84vw);}
 .fb-row:hover:not(:disabled){border-color:var(--azure);background:#12304f;}
 .fb-row:disabled{cursor:default;}
 .fb-row .fb-num{flex:none;min-width:20px;text-align:right;color:var(--dim);border-right:1px solid var(--line);padding-right:10px;}
-.fb-row.sel{border-color:var(--azure);}
 .fb-row.correct{border-color:var(--green);background:#0f2e22;}
 .fb-row.wrong{border-color:var(--gold);background:#2e2410;}
 /* quiz display polish */
@@ -508,9 +507,12 @@ body[data-tier="narrow"] .dock.left{--floatw:min(300px,84vw);}
 .mcq-text{display:flex;flex-direction:column;gap:3px;}
 .mcq-why{font-size:13px;color:var(--muted);font-weight:400;}
 .mcq-num{margin-left:auto;flex:none;font-family:Consolas,monospace;font-size:12px;color:var(--dim);border:1px solid var(--line);border-radius:5px;padding:0 7px;line-height:19px;}
-.mcq-opt.sel{border-color:var(--azure);background:#12304f;color:var(--ink);}
-.mcq-opt.sel .mcq-num{border-color:var(--azure);color:#cfe6ff;}
+/* There is no selected-but-unchecked state any more: clicking an option answers it, so a row is
+   either untouched, right or wrong. .sel had nothing left to describe. */
 .mcq-opt:disabled{cursor:default;}
+/* A wrong option is locked out so the second try has to be a different answer. It stays legible —
+   greying it out to 0.7 opacity would hide the thing they need to read to learn why. */
+.mcq-opt.wrong:disabled,.fb-row.wrong:disabled{opacity:1;}
 .mcq-opt.correct .mcq-num,.mcq-opt.wrong .mcq-num,.fb-row.correct .fb-num,.fb-row.wrong .fb-num{display:none;}
 .mcq-opt:hover:not(:disabled){border-color:var(--azure);color:var(--ink);}
 /* ---- parsons: same row language as the answer options, with order made visible ---- */
@@ -721,10 +723,10 @@ body[data-tier="narrow"] .dock.left{--floatw:min(300px,84vw);}
    The card in the lesson no longer holds the working surface; it announces the lab and opens it.
    That keeps the lesson a thing you read and the lab a thing you do, and it means the editor is
    never squeezed into a 760px reading column. */
-.ch-open{flex:none;margin-left:auto;}
-.ch-launch{display:flex;align-items:center;gap:12px;flex-wrap:wrap;}
-.ch-launch .ch-status{margin-right:0;}
-.ch-solved{display:inline-flex;align-items:center;gap:6px;color:var(--green);font-size:13.5px;font-weight:600;}
+/* "Fixed it!" sits beside the heading with the other block statuses, so it needs no row of its own
+   and no auto margin pushing it anywhere. */
+.ch-solved{display:inline-flex;align-items:center;gap:6px;color:var(--green);font-size:13px;font-weight:600;
+  white-space:nowrap;}
 .ch-solved .mdi{font-size:16px;}
 
 /* ---------- the lab, full window ----------
@@ -903,7 +905,9 @@ body[data-tier="narrow"] .dock.left{--floatw:min(300px,84vw);}
 .yt-status{display:flex;align-items:center;gap:6px;font-size:13.5px;font-weight:600;color:var(--muted);}
 .yt-status:empty{display:none;}
 .yt-status.ok{color:var(--green);}
-.yt-done{margin-left:auto;flex:none;}
+/* The footer holds a link and a status now, both quiet, so it is a left-aligned row rather than a
+   bar with things pushed to both ends. */
+.lesson-content > .yourturn > .yt-foot{display:flex;align-items:center;gap:16px;flex-wrap:wrap;}
 /* Inline code inside a step or task, e.g. `update`. Without this the backticks showed literally. */
 .yt-steps code,.yt-task code{font-family:Consolas,monospace;font-size:.9em;background:rgba(0,0,0,.3);
   border:1px solid rgba(245,130,10,.25);border-radius:4px;padding:1px 5px;color:#ffd9a8;}
@@ -998,16 +1002,31 @@ body[data-tier="narrow"] .dock.left{--floatw:min(300px,84vw);}
 .lesson-content > .yourturn,
 .lesson-content > .runcell{
   background:none;border:0;border-radius:0;overflow:visible;
-  border-top:1px solid var(--line);
-  margin:28px 0;padding:20px 0 0;}
-/* Prose once it is not a card, so it takes the reading measure like everything else. The lab
-   launcher and the run cell keep the full block: one has a button row, the other has code. */
-/* All three are prose with a control or two, so they take the reading measure. The lab launcher
-   used to keep the full block, which put its button three hundred pixels to the right of its own
-   sentence. Only the run cell stays wide, because it holds code. */
+  margin:36px 0;padding:0 0 0 20px;}
+/* A coloured edge down the left, not a rule across the top.
+   A hairline above said "something starts here" and nothing said where it stopped, so a block ran
+   into the paragraph after it. The stripe has a length: it begins at the label and ends after the
+   last thing that belongs to the block, which also means the action in the header and any status
+   underneath are visibly inside the same thing. --kind is set per block type just below. */
 .lesson-content > .quizcell,
 .lesson-content > .challenge-mini,
-.lesson-content > .yourturn{max-width:var(--measure);}
+.lesson-content > .yourturn{
+  border-left:3px solid var(--kind,var(--azure));}
+/* The run cell keeps no stripe: it is a code sample you can press play on, not an activity, and it
+   already reads as its own thing because it holds code. */
+.lesson-content > .runcell{border-top:1px solid var(--line);padding-top:20px;}
+
+/* These take the full block width, like code and figures — not the 480px reading measure.
+   At the measure, a four-option quiz wrapped answers mid-sentence and every control landed in the
+   middle of a wide screen with empty page to its right. Prose stays at the measure; a thing with
+   its own internal layout does not. */
+.lesson-content > .quizcell,
+.lesson-content > .challenge-mini,
+.lesson-content > .yourturn{max-width:none;}
+.lesson-content > .challenge-mini > .ch-body > .ch-note,
+.lesson-content > .challenge-mini > .ch-body > .ch-task,
+.lesson-content > .yourturn > .yt-body > .yt-task,
+.lesson-content > .yourturn > .yt-body > .yt-steps{max-width:var(--measure);}
 
 /* ---------- one header for every in-lesson activity ----------
    Three block types had three different conventions: a quiz used the question AS its heading with
@@ -1017,17 +1036,41 @@ body[data-tier="narrow"] .dock.left{--floatw:min(300px,84vw);}
    Now: a label saying what kind it is, and a heading saying what this one is. The label is coloured
    per kind, which reinforces it — the word does the work, so a student who cannot tell the colours
    apart loses nothing. */
-.block-hd{display:grid;grid-template-columns:minmax(0,1fr) auto;gap:2px 12px;margin:0 0 14px;}
-.block-kind{grid-column:1;font-size:11px;font-weight:700;letter-spacing:1.5px;text-transform:uppercase;
+.block-hd{display:grid;grid-template-columns:minmax(0,1fr) auto;gap:3px 16px;margin:0 0 14px;}
+.block-kind{grid-column:1;font-size:12.5px;font-weight:700;letter-spacing:1.8px;text-transform:uppercase;
   color:var(--kind,var(--azure));}
-.block-title{grid-column:1;margin:0;font-size:17px;font-weight:600;line-height:1.42;color:var(--ink);
-  letter-spacing:-.1px;text-wrap:balance;}
-.block-note{grid-column:2;grid-row:1 / span 2;align-self:center;flex:none;
+/* .block-hd .block-title, not .block-title: the heading is an <h3>, and `.lesson h3` is one class
+   plus one element, which outranks a single class. So this rule's font-size had never applied —
+   every block heading was taking 17px from .lesson h3, which happened to be the value written here
+   too, so nothing looked wrong until the size was meant to change. */
+.block-hd .block-title{grid-column:1;margin:0;font-size:20px;font-weight:600;line-height:1.35;
+  color:var(--ink);letter-spacing:-.2px;text-wrap:balance;}
+/* One flex row for everything to the right of the heading: the "2 of 2" chip, the green tick, and
+   the block's action. It is a single container on purpose — see blockSide() in widgets.js. Three
+   separate grid children all claiming column 2 is how the chip and the tick came to be drawn on
+   top of each other. */
+.block-side{grid-column:2;grid-row:1 / span 2;align-self:center;
+  display:flex;align-items:center;gap:10px;flex:none;}
+.block-side:empty{display:none;}
+.block-note{flex:none;
   font-size:11.5px;font-weight:600;color:#cfe0f2;background:rgba(255,255,255,.06);
   border:1px solid rgba(255,255,255,.14);border-radius:999px;padding:3px 10px;white-space:nowrap;}
 .block-note:empty{display:none;}
-.block-tick{grid-column:2;grid-row:1 / span 2;align-self:center;color:var(--green);font-size:18px;}
-.block-note + .block-tick{grid-column:2;}
+.block-tick{flex:none;color:var(--green);font-size:19px;line-height:1;}
+.block-act{flex:none;}
+/* The secondary action: a link, so it cannot compete with the one in the header. */
+.block-link{display:inline-flex;align-items:center;gap:6px;background:none;border:0;padding:0;
+  font-family:var(--font);font-size:13.5px;font-weight:600;color:var(--azure);cursor:pointer;
+  text-decoration:underline;text-underline-offset:3px;text-decoration-thickness:1px;}
+.block-link:hover{color:var(--ink);}
+.block-link .mdi{font-size:16px;text-decoration:none;}
+
+/* A long heading and an action on one line will collide before the page gets narrow enough for the
+   tier to change, so the header stacks on its own terms. */
+@media (max-width: 720px){
+  .block-hd{grid-template-columns:minmax(0,1fr);}
+  .block-side{grid-column:1;grid-row:auto;justify-content:flex-start;margin-top:10px;}
+}
 
 .lesson-content > .quizcell{--kind:var(--azure);}
 .lesson-content > .challenge-mini{--kind:var(--teal);}
@@ -1038,7 +1081,6 @@ body[data-tier="narrow"] .dock.left{--floatw:min(300px,84vw);}
 .lesson-content > .quizcell > .quiz-body,
 .lesson-content > .challenge-mini > .ch-body,
 .lesson-content > .yourturn > .yt-body{padding:0;}
-.lesson-content > .challenge-mini > .ch-foot,
 .lesson-content > .yourturn > .yt-foot{background:none;border:0;padding:14px 0 0;}
 .lesson-content > .runcell > .runbar{background:none;padding:8px 0 0;}
 

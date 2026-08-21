@@ -153,13 +153,50 @@ function parseWidgetYaml(kind, text, key) {
    `note` is the "2 of 2" chip. The title goes through inlineMd, so a question that names real code
    ("what does `if (lives <= 0)` ask?") shows the code rather than the backticks — which it did
    not before. */
-function blockHeader(kind, title, note) {
+function blockHeader(kind, title, note, action) {
   const h = document.createElement('div'); h.className = 'block-hd';
   const k = document.createElement('span'); k.className = 'block-kind'; k.textContent = kind;
   const t = document.createElement('h3'); t.className = 'block-title'; t.innerHTML = inlineMd(title);
   h.appendChild(k); h.appendChild(t);
-  if (note) { const n = document.createElement('span'); n.className = 'block-note'; n.textContent = note; h.appendChild(n); }
+  const s = blockSide(h);
+  if (note) { const n = document.createElement('span'); n.className = 'block-note'; n.textContent = note; s.appendChild(n); }
+  if (action) s.appendChild(action);
   return h;
+}
+
+/* Everything that sits to the right of the heading — the "2 of 2" chip, the green tick, and the
+   block's one action — shares a single flex row.
+   It has to be one container rather than three grid children: .block-note and .block-tick both
+   claimed grid-column:2 / grid-row:1 span 2, so on a lesson with two answered quizzes the chip and
+   the tick were placed in the SAME cell and drew on top of each other. The rule written to fix
+   that (.block-note + .block-tick) re-declared column 2 instead of moving out of it, so it did
+   nothing. A flex row cannot have that bug: things in it are laid out in order, by definition. */
+function blockSide(head) {
+  let s = head.querySelector('.block-side');
+  if (!s) { s = document.createElement('div'); s.className = 'block-side'; head.appendChild(s); }
+  return s;
+}
+
+/* The block's action lives in its header, on the heading line. It used to sit at the bottom of the
+   block pushed right with margin-left:auto — which, in a 480px column on a wide screen, left it
+   floating in the middle of the page with nothing near it, and put the practice step's two buttons
+   at opposite ends of a row. Up here it is against the heading it belongs to. */
+function blockAction(label, icon, role) {
+  const b = document.createElement('button'); b.type = 'button';
+  b.className = 'btn ' + (role === 'secondary' ? 'btn-secondary' : 'btn-primary-role') + ' block-act';
+  if (icon) { const i = document.createElement('span'); i.className = 'mdi mdi-' + icon; b.appendChild(i); }
+  b.appendChild(document.createTextNode(label));
+  return b;
+}
+
+/* A quiet secondary action: a link, not a second button. Two filled buttons side by side made a
+   practice step look like it was asking a question ("open my game" OR "done"?) when one of them is
+   just a shortcut. */
+function blockLink(label, icon) {
+  const b = document.createElement('button'); b.type = 'button'; b.className = 'block-link';
+  if (icon) { const i = document.createElement('span'); i.className = 'mdi mdi-' + icon; b.appendChild(i); }
+  b.appendChild(document.createTextNode(label));
+  return b;
 }
 
 /* Authored lab titles read "Lab — the world that will not tick". The label carries "Lab" now, so
@@ -191,32 +228,35 @@ function renderQuizCells(root) {
 
     const cell = document.createElement('div'); cell.className = 'quizcell'; cell.setAttribute('role', 'group');
 
+    /* Which types need a button at all.
+       Picking an option IS the answer, so for those the Check button was a second click that
+       carried no information — you had already told it what you thought. Typing in a box and
+       putting lines in order are different: there is no moment a program can call "the answer",
+       because a half-typed word and a half-ordered list both look like an attempt. Those two keep
+       a Check, and it goes in the header with every other block's action. */
+    const type = q.type || 'mcq';
+    const needsCheck = (type === 'parsons' || type === 'fillblank');
+    const check = needsCheck ? blockAction('Check', '', 'secondary') : null;
+
     // Header: the question is the strongest thing in the card, with its place in the lesson.
     const head = blockHeader('Quiz', quizPrompt(q) || 'Quick check',
-      total > 1 ? (idx + 1) + ' of ' + total : '');
+      total > 1 ? (idx + 1) + ' of ' + total : '', check);
     cell.appendChild(head);
 
     const body = document.createElement('div'); body.className = 'quiz-body'; cell.appendChild(body);
 
-    // Footer: verdict on the left, the action on the right. Both live INSIDE .quiz-body so one
-    // formatting context owns the card — the old split put the button in the flex column and the
-    // result outside it, which is where the dead space under Check came from.
-    const foot = document.createElement('div'); foot.className = 'quiz-foot';
     const result = document.createElement('div'); result.className = 'quiz-result';
     result.setAttribute('aria-live', 'polite');
-    const check = document.createElement('button'); check.type = 'button'; check.className = 'btn btn-secondary quiz-check'; check.textContent = 'Check';
 
     const ctx = { q: q, key: key, cell: cell, head: head, body: body, check: check, attempts: 0, resolved: false };
     ctx.say = function (kind, msg) { result.className = 'quiz-result' + (kind ? ' ' + kind : ''); result.textContent = msg || ''; };
 
-    const type = q.type || 'mcq';
     if (type === 'parsons') buildParsons(q, body, ctx);
     else if (type === 'fillblank') buildFill(q, body, ctx);
     else if (type === 'findbug') buildFindBug(q, body, ctx);
     else buildMCQ(q, body, ctx, type === 'predict');
 
-    foot.appendChild(result); foot.appendChild(check);
-    body.appendChild(foot);
+    body.appendChild(result);
     pre.parentNode.replaceChild(cell, pre);
 
     if (activityDone(lessonWidgetId, key)) markQuizDone(ctx, true);
@@ -235,7 +275,7 @@ function quizVerdict(ctx, correct, wrongHint, reveal) {
   ctx.attempts++;
   if (ctx.attempts < 2) {
     ctx.say('no', wrongHint || 'Not quite — take another look.');
-    ctx.check.textContent = 'Try again';
+    if (ctx.check) ctx.check.textContent = 'Try again';
     return;
   }
   if (typeof reveal === 'function') reveal();
@@ -244,16 +284,17 @@ function quizVerdict(ctx, correct, wrongHint, reveal) {
 }
 
 /* Resolved for good: lock the card, tick the header, and record it so the lesson can complete
-   and so the answer survives a reload. */
+   and so the answer survives a reload.
+   ctx.check is null for the types where clicking an option checks it, so every touch of it is
+   guarded — the whole point of those is that there is no button. */
 function markQuizDone(ctx, restoring) {
   ctx.resolved = true;
-  ctx.check.disabled = true;
-  ctx.check.textContent = 'Answered';
+  if (ctx.check) { ctx.check.disabled = true; ctx.check.textContent = 'Answered'; }
   ctx.cell.classList.add('answered');
   if (!ctx.head.querySelector('.block-tick')) {
     const tick = document.createElement('span'); tick.className = 'block-tick mdi mdi-check-circle';
     tick.title = 'Answered';
-    ctx.head.appendChild(tick);
+    blockSide(ctx.head).appendChild(tick);
   }
   if (restoring) { ctx.say('', ''); if (typeof ctx.restore === 'function') ctx.restore(); return; }
   resolveActivity(ctx.key);
@@ -275,22 +316,24 @@ function buildMCQ(q, body, ctx, isPredict) {
     const text = document.createElement('span'); text.className = 'mcq-text'; text.textContent = opt;
     const num = document.createElement('span'); num.className = 'mcq-num'; num.textContent = String(i + 1);
     row.appendChild(text); row.appendChild(num);
-    row.addEventListener('click', function () { if (!ctx.resolved) select(i); });
+    row.addEventListener('click', function () { if (!ctx.resolved && !row.disabled) answer(i); });
     rows.push(row); list.appendChild(row);
   });
   body.appendChild(list);
 
-  function select(i) {
+  /* Picking IS answering. There is no select-then-confirm step: the click marks the row and checks
+     it in the same motion. A wrong row is then disabled, so the two tries a student gets are two
+     DIFFERENT answers rather than the same one twice. */
+  function answer(i) {
     chosen = i;
-    rows.forEach(function (r, n) { r.classList.toggle('sel', n === i); r.setAttribute('aria-checked', n === i ? 'true' : 'false'); });
-    ctx.say('', '');
+    rows.forEach(function (r, n) { r.setAttribute('aria-checked', n === i ? 'true' : 'false'); });
+    grade();
   }
-  // Number keys pick an answer, Enter checks it — the shortcut the badge is advertising.
+  // Number keys answer directly, for the same reason the mouse does.
   ctx.cell.addEventListener('keydown', function (e) {
     if (ctx.resolved || e.altKey || e.ctrlKey || e.metaKey) return;
     const n = parseInt(e.key, 10);
-    if (n >= 1 && n <= rows.length) { select(n - 1); rows[n - 1].focus(); e.preventDefault(); }
-    else if (e.key === 'Enter' && document.activeElement !== ctx.check && chosen >= 0) { ctx.check.click(); e.preventDefault(); }
+    if (n >= 1 && n <= rows.length && !rows[n - 1].disabled) { rows[n - 1].focus(); answer(n - 1); e.preventDefault(); }
   });
 
   /* The content authors per-option feedback that only ever appeared as one line at the bottom of
@@ -300,20 +343,19 @@ function buildMCQ(q, body, ctx, isPredict) {
     const why = document.createElement('span'); why.className = 'mcq-why'; why.textContent = fb[i];
     row.querySelector('.mcq-text').appendChild(why);
   }
-  const answer = Number(q.answer);
-  ctx.restore = function () { rows.forEach(function (r, i) { r.disabled = true; if (i === answer) r.classList.add('correct'); }); };
+  const right = Number(q.answer);
+  ctx.restore = function () { rows.forEach(function (r, i) { r.disabled = true; if (i === right) r.classList.add('correct'); }); };
 
-  ctx.check.addEventListener('click', function () {
-    if (ctx.resolved) return;
-    if (chosen < 0) { ctx.say('no', 'Pick an answer first.'); return; }
-    const ok = chosen === answer;
-    if (ok) { rows[chosen].classList.remove('sel'); rows[chosen].classList.add('correct'); }
-    else { rows[chosen].classList.add('wrong'); rows[chosen].classList.remove('sel'); explainRow(chosen); }
+  function grade() {
+    if (ctx.resolved || chosen < 0) return;
+    const ok = chosen === right;
+    if (ok) { rows[chosen].classList.add('correct'); }
+    else { rows[chosen].classList.add('wrong'); rows[chosen].disabled = true; explainRow(chosen); }
     quizVerdict(ctx, ok, fb[chosen] || 'Not quite — read that one again.', function () {
-      rows[answer].classList.add('correct');
+      rows[right].classList.add('correct');
     });
     if (ctx.resolved) rows.forEach(function (r) { r.disabled = true; });
-  });
+  }
 }
 function buildParsons(q, body, ctx) {
   const items = (q.lines || []).map(function (t) { return { text: t, distractor: false, why: '' }; })
@@ -453,7 +495,7 @@ function buildFindBug(q, body, ctx) {
   // Say what to do. The card showed a block of code and a Check button and left the child to
   // infer that the lines were clickable at all.
   const lead = document.createElement('div'); lead.className = 'fb-lead';
-  lead.textContent = 'Click the line you think has the bug.';
+  lead.textContent = 'Click the line you think has the bug — that answers it.';
   wrap.appendChild(lead);
   lines.forEach(function (ln, i) {
     // A button, so the line is reachable and pressable without a mouse.
@@ -464,29 +506,26 @@ function buildFindBug(q, body, ctx) {
     const c = document.createElement('code'); c.textContent = ln;
     if (typeof paintCode === 'function') paintCode(c);
     row.appendChild(num); row.appendChild(c);
-    row.addEventListener('click', function () {
-      if (ctx.resolved) return;
-      chosen = i;
-      rows.forEach(function (r, n) { r.classList.toggle('sel', n === i); r.setAttribute('aria-checked', n === i ? 'true' : 'false'); });
-      ctx.say('', '');
-    });
+    // Clicking a line answers it, the same as picking an option in a multiple choice question —
+    // which is what this is, with the code as the options.
+    row.addEventListener('click', function () { if (!ctx.resolved && !row.disabled) grade(i); });
     wrap.appendChild(row);
   });
   body.appendChild(wrap);
-  const answer = Number(q.answer);
-  ctx.restore = function () { rows.forEach(function (r, i) { r.disabled = true; if (i === answer) r.classList.add('correct'); }); };
+  const right = Number(q.answer);
+  ctx.restore = function () { rows.forEach(function (r, i) { r.disabled = true; if (i === right) r.classList.add('correct'); }); };
 
-  ctx.check.addEventListener('click', function () {
-    if (ctx.resolved) return;
-    if (chosen < 0) { ctx.say('no', 'Pick the line you think has the bug.'); return; }
-    const ok = chosen === answer;
-    if (ok) { rows[chosen].classList.remove('sel'); rows[chosen].classList.add('correct'); }
-    else { rows[chosen].classList.add('wrong'); rows[chosen].classList.remove('sel'); }
+  function grade(i) {
+    chosen = i;
+    rows.forEach(function (r, n) { r.setAttribute('aria-checked', n === i ? 'true' : 'false'); });
+    const ok = chosen === right;
+    if (ok) { rows[chosen].classList.add('correct'); }
+    else { rows[chosen].classList.add('wrong'); rows[chosen].disabled = true; }
     quizVerdict(ctx, ok, q.explain ? 'Not quite — ' + q.explain : 'Not quite — look at that line again.', function () {
-      rows[answer].classList.add('correct');
+      rows[right].classList.add('correct');
     });
     if (ctx.resolved) rows.forEach(function (r) { r.disabled = true; });
-  });
+  }
 }
 /* Inline Markdown for the short authored strings in a lab or a "your turn" step — `code` and
    **bold**, nothing else. Written by hand rather than run through marked() because these are
@@ -929,7 +968,10 @@ function renderChallengeCells(root) {
        theme class, and a widget naming its own parts cm-anything is one rename from colliding. */
     const cell = document.createElement('div'); cell.className = 'challenge-mini';
 
-    const head = blockHeader('Lab', blockTitleOf(c.title, 'Lab') || 'The course’s example');
+    /* Start sits in the header. paintLabCard swaps its label between Start / Continue / Open, so
+       the heading line always says both what the lab is and what pressing it will do. */
+    const open = blockAction('Start', 'play');
+    const head = blockHeader('Lab', blockTitleOf(c.title, 'Lab') || 'The course’s example', '', open);
     head.classList.add('ch-head');
     cell.appendChild(head);
 
@@ -945,12 +987,10 @@ function renderChallengeCells(root) {
 
     if (c.task) { const t = document.createElement('div'); t.className = 'ch-task'; t.innerHTML = inlineMd(c.task); bodyEl.appendChild(t); }
 
-    const bar = document.createElement('div'); bar.className = 'ch-foot ch-launch';
+    /* "Solved" belongs beside the heading with every other block's status, not on a row of its own
+       at the bottom of the block. That row is now empty, so it is gone. */
     const done = document.createElement('span'); done.className = 'ch-solved'; done.hidden = true;
-    const open = document.createElement('button'); open.type = 'button';
-    open.className = 'btn btn-primary-role ch-open';
-    bar.appendChild(done); bar.appendChild(open);
-    cell.appendChild(bar);
+    blockSide(head).insertBefore(done, open);
 
     lab.card = { done: done, open: open };
     paintLabCard(lab);
@@ -1006,7 +1046,8 @@ function renderYourTurnCells(root) {
     /* "Practice" rather than "Your turn": one word, it sits beside Quiz and Lab as a short noun
        naming the kind of activity, and it is honest about what this is — the independent practice
        that follows the lab's worked example. Not "Build", which is already the AI's other mode. */
-    const head = blockHeader('Practice', blockTitleOf(c.title, 'Practice') || 'In your own game');
+    const mark = blockAction('Done', 'check');
+    const head = blockHeader('Practice', blockTitleOf(c.title, 'Practice') || 'In your own game', '', mark);
     head.classList.add('yt-head');
     cell.appendChild(head);
 
@@ -1039,20 +1080,23 @@ function renderYourTurnCells(root) {
     }
     cell.appendChild(body);
 
+    /* Opening the Code tab is a shortcut, not a decision, so it is a link rather than a second
+       filled button. Two equal-weight buttons at opposite ends of a row read as a question with two
+       answers, which this is not. */
     const foot = document.createElement('div'); foot.className = 'yt-foot';
-    const openCode = document.createElement('button'); openCode.type = 'button';
-    openCode.className = 'btn btn-secondary';
-    openCode.innerHTML = '<span class="mdi mdi-code-tags" aria-hidden="true"></span>Open my game';
+    const openCode = blockLink('open my game', 'code-tags');
     openCode.addEventListener('click', function () { switchView('code'); });
     const status = document.createElement('span'); status.className = 'yt-status'; status.setAttribute('aria-live', 'polite');
-    const mark = document.createElement('button'); mark.type = 'button';
-    mark.className = 'btn btn-primary-role yt-done';
-    mark.innerHTML = '<span class="mdi mdi-check" aria-hidden="true"></span>Done';
 
     function settle() {
       status.className = 'yt-status ok';
       status.innerHTML = '<span class="mdi mdi-check-circle" aria-hidden="true"></span>Done in your game';
       mark.disabled = true; mark.hidden = true;
+      // The header tick, so a finished practice step reads the same as a finished quiz.
+      if (!head.querySelector('.block-tick')) {
+        const tick = document.createElement('span'); tick.className = 'block-tick mdi mdi-check-circle';
+        tick.title = 'Done'; blockSide(head).appendChild(tick);
+      }
     }
     if (done) settle();
     mark.addEventListener('click', function () {
@@ -1067,7 +1111,7 @@ function renderYourTurnCells(root) {
       resolveActivity(key);
     });
 
-    foot.appendChild(openCode); foot.appendChild(status); foot.appendChild(mark);
+    foot.appendChild(openCode); foot.appendChild(status);
     cell.appendChild(foot);
     pre.parentNode.replaceChild(cell, pre);
   });
