@@ -98,7 +98,12 @@ function parseChallenge(src) {
   const files = fs.readdirSync(dir).filter(function (f) { return f.endsWith('.md'); });
   const rows = [];
   for (const f of files) {
-    const md = fs.readFileSync(path.join(dir, f), 'utf8');
+    /* Normalised to \n before anything looks at it. Every pattern below was written for \n —
+       the fence matcher, the `key: |` finder, the `^task:` line match — and on a Windows
+       checkout the lesson files are \r\n, so the fence matcher found 0 of 22 labs and this
+       script reported "0 challenges, 0 failing" for three commits. It passed on CI and failed
+       to run on the machine the labs were being written on, which is the wrong way round. */
+    const md = fs.readFileSync(path.join(dir, f), 'utf8').replace(/\r\n/g, '\n');
     for (const b of blocks(md)) {
       const c = parseChallenge(b);
       if (!c) { rows.push({ file: f, status: 'UNPARSEABLE' }); continue; }
@@ -133,5 +138,12 @@ function parseChallenge(src) {
     console.log((ok ? 'PASS  ' : 'FAIL  ') + r.file.padEnd(30) + JSON.stringify(r));
   });
   console.log('\n' + rows.length + ' challenges, ' + bad + ' failing');
+  /* Finding nothing is a failure, not a pass. This is the check that let the \r\n bug live: a
+     suite whose reassuring output is identical whether it examined 22 labs or none is not a
+     suite. If a course legitimately has no labs, that is a deliberate edit to this line. */
+  if (!rows.length) {
+    console.error('FAIL  no ```challenge blocks were found in ' + dir + ' — the course has labs, so this is a bug in this script, not an empty course.');
+    process.exit(1);
+  }
   process.exit(bad ? 1 : 0);
 })();

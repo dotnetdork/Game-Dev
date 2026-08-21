@@ -31,7 +31,28 @@ Each lessons/<id>.md starts with a YAML block:
     # Markdown body
 
 - ai: full = normal help · guided = student must say exactly what to change · off = AI disabled.
-- Quote any value with a colon, e.g. summary: "Fun: goal, feedback, reward."
+
+## Quoting — the one thing that bites everybody
+
+This applies to front-matter AND to every `quiz` / `challenge` / `yourturn` block. **Wrap the
+whole value in single quotes** if it:
+
+- contains a colon followed by a space — `Add a tween: make it grow`
+- starts with a backtick — `` `<=` means "at most" ``
+- starts with a double quote — `"Number" describes the type`
+
+Unquoted, all three are read as something other than text. A step written
+`- Read update(), asking each one: does this need to happen again?` becomes an object instead of a
+sentence, and the student sees the literal words `[object Object]`. A question starting with a
+backtick makes the whole block fail to parse, and the card then renders **with no question and no
+options at all** — which looks merely sparse, not broken. Both of these shipped.
+
+    steps:
+      - 'Add a tween: make something grow and shrink when it happens.'
+    question: '`<=` means "at most" — what does `if (lives <= 0)` ask?'
+
+`npm test` now catches all of it (`tools/check-lessons.js`), and the browser console warns while
+you are writing. If a card looks emptier than you wrote it, that is the first thing to check.
 
 ## How a lesson gets completed
 There is no "Complete lesson" button. A lesson finishes when its work is finished, so **what you
@@ -57,6 +78,21 @@ Editable JavaScript + Run button. Optional directives as // comment lines:
 - // @slider: name min max step value   adds a live slider; `name` is set for you and re-runs on drag
 
 ## Quizzes (```quiz) — checked locally, answer is 0-based
+
+**`question:` is the question**, and it is the one key every quiz must have — it is the text
+the student reads. (`prompt:` is the older name for it and still works, so the archived v1
+lessons render. Write `question:` in anything new.)
+
+    ```quiz
+    question: Where does "the player pressed jump" get noticed?
+    options:
+      - In the read step, at the start of a frame
+      - In the draw step
+    answer: 0
+    explain: Read, update, draw — input is read at the top of each frame.
+    ```
+
+Types:
 - type: mcq        options + answer + optional feedback[] per option
 - type: predict    like mcq but shows read-only `code:` first (predict the output)
 - type: parsons    lines: [...] in correct order; optional distractors: [{text, why}] (drag to order)

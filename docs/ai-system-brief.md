@@ -264,7 +264,7 @@ Starts the MCP server and exercises every part of it — 14 checks.
 node app/tools/check-challenges.js
 ```
 
-Runs all 10 in-lesson coding challenges and confirms each is both solvable and not already solved.
+Runs all 22 in-lesson labs and confirms each is both solvable and not already solved.
 
 The AI's teaching behaviour is readable without any technical knowledge, in `app/ai/agents/` and
 `app/ai/skills/`. Those are the files I'd suggest looking at first — they're short, they're

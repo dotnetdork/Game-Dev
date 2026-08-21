@@ -97,7 +97,7 @@ If your player sticks to the coins instead of collecting them, you used `collide
 ```challenge
 title: Lab — the player who ignores you
 task: The keys are being read and the player still will not move. Follow the value from the key all the way to the sprite.
-hint: `wantsRight` gets set correctly. Now look for the line that should use it to change the player's position — is there one?
+hint: '`wantsRight` gets set correctly. Now look for the line that should use it to change the player''s position — is there one?'
 solution: |
   // The goal: hold "right" for 30 frames and get the player across to x = 250.
   let playerX = 20, frames = 0;

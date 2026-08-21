@@ -40,7 +40,7 @@ Now you can look at line 42 and ask which thing was supposed to exist and doesn'
 answer is a sprite you thought you created, or a name spelled slightly differently.
 
 ```quiz
-question: `ReferenceError: playerSpeed is not defined  at update (game.js:17)` — what does this tell you?
+question: '`ReferenceError: playerSpeed is not defined  at update (game.js:17)` — what does this tell you?'
 options:
   - Line 17 uses a name that was never created, or is spelled differently
   - Line 17 is too slow
@@ -52,7 +52,7 @@ feedback:
   - Errors are about correctness, not speed.
   - Nothing is moving at all — the line never ran.
   - It is almost never Phaser. It is almost always a name.
-explain: "X is not defined" means nothing was ever created under that name. Check spelling, and check it was created somewhere the code can see.
+explain: '"X is not defined" means nothing was ever created under that name. Check spelling, and check it was created somewhere the code can see.'
 ```
 
 ## Guess, check, repeat

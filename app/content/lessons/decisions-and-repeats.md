@@ -50,7 +50,7 @@ feedback:
   - That would be `lives === 0`, which misses losing two lives at once.
   - That is the opposite question.
   - One `=` assigns a value; comparing needs `===` or `<=`.
-explain: `<=` means "at most". Checking `lives <= 0` rather than `lives === 0` survives losing two lives in the same frame.
+explain: '`<=` means "at most". Checking `lives <= 0` rather than `lives === 0` survives losing two lives in the same frame.'
 ```
 
 ## Loops: doing something many times

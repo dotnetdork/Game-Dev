@@ -135,7 +135,7 @@ answer: 0
 feedback:
   - Right. It says what it is, and still makes sense in three weeks.
   - Fine for a moment, meaningless tomorrow.
-  - "Number" describes the type, which you can already see. It adds nothing.
+  - '"Number" describes the type, which you can already see. It adds nothing.'
   - Short, and unreadable to everyone including future you.
 explain: A good name says what the value IS. If it needs a comment to explain it, the name is wrong.
 ```

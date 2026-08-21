@@ -161,7 +161,7 @@ title: Check your own create and update
 task: Read both functions in your game and make sure nothing that should happen once is happening every frame.
 steps:
   - Open the Code tab and open game.js.
-  - Read `update()` line by line, asking each one: does this need to happen again next frame?
+  - 'Read `update()` line by line, asking each one: does this need to happen again next frame?'
   - Look especially for `this.add.` anything — that means "make a new one", and it almost always belongs in create().
   - Move anything you find into `create()`, keeping a reference to it so update() can still change it.
   - Press Run and play for thirty seconds. It should feel exactly as fast at the end as at the start.

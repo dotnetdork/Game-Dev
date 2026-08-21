@@ -176,7 +176,12 @@ function maybeAskQuiz(en) {
   }) })
     .then(function (r) { return r.json(); }).then(function (d) {
       const q = d && d.result;
-      if (!q || !q.question || !Array.isArray(q.options) || q.options.length < 2) return;   // bad question: skip silently
+      // The server validates this properly (cleanQuizQuestion) and drops anything it cannot
+      // vouch for. This stays as a second net, and it checks `answer` — which it did not use to.
+      // Without that check a missing or out-of-range answer marked every choice wrong, so a
+      // student could not answer the question correctly however well they understood it.
+      if (!q || !q.question || !Array.isArray(q.options) || q.options.length < 2) return;
+      if (!Number.isInteger(q.answer) || q.answer < 0 || q.answer >= q.options.length) return;
       const entry = { who: 'bot', kind: 'quiz', q: q, picked: -1, text: q.question };
       (chats.coder || (chats.coder = [])).push(entry);
       const card = renderQuizCard(entry); card.__entry = entry;

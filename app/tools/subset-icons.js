@@ -75,7 +75,10 @@ function fontCodepoints() {
   const py = 'from fontTools.ttLib import TTFont;'
     + 'f=TTFont(' + JSON.stringify(OUT_FONT) + ');'
     + 'print(",".join("%04X"%c for c in f.getBestCmap().keys()))';
-  return new Set(execFileSync(python(), ['-c', py]).toString().trim().split(',').filter(Boolean));
+  // stderr silenced: with no fontTools installed this raises, and the caller already handles that
+  // by checking the CSS alone. Letting Python's traceback through made a passing run look broken.
+  return new Set(execFileSync(python(), ['-c', py], { stdio: ['ignore', 'pipe', 'ignore'] })
+    .toString().trim().split(',').filter(Boolean));
 }
 let _py = null;
 function python() {
@@ -100,7 +103,13 @@ if (process.argv.includes('--check')) {
       + notBuilt.join(', ') + '\nRebuild with: node app/tools/subset-icons.js');
   }
   let inFont;
-  try { inFont = fontCodepoints(); } catch (e) { inFont = null; console.warn('(could not read the font; CSS checked only)'); }
+  try { inFont = fontCodepoints(); }
+  catch (e) {
+    inFont = null;
+    // Not a failure. The glyph check needs Python + fontTools, which is a build-time dependency,
+    // not something the app or CI needs installed. Say so plainly rather than looking broken.
+    console.warn('  (skipping the glyph check — needs `python -m pip install fonttools brotli`; the CSS was checked)');
+  }
   if (inFont) {
     const noGlyph = icons.filter(function (n) { return built.has(n) && !inFont.has(map[n]); });
     if (noGlyph.length) {
@@ -108,7 +117,13 @@ if (process.argv.includes('--check')) {
       console.error('In the CSS but with no glyph in the font — also blank boxes:\n  ' + noGlyph.join(', '));
     }
   }
-  if (!bad) console.log('icons: all ' + icons.length + ' used icons are in the subset CSS and the font');
+  // Says what it actually checked. This line used to claim "and the font" even when the glyph
+  // check had been skipped for a missing Python library — a check reporting more than it verified,
+  // which is the same shape of problem as a lab validator that finds no labs and prints "0 failing".
+  if (!bad) {
+    console.log('icons: all ' + icons.length + ' used icons are in the subset CSS'
+      + (inFont ? ' and the font' : ' (font glyphs not checked)'));
+  }
   process.exit(bad);
 }
 

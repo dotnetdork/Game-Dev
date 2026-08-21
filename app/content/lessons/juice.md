@@ -170,7 +170,7 @@ title: Juice up your best moment
 task: Take the single best moment in your game and make it feel three times bigger.
 steps:
   - Open the Code tab and find your most important moment — the collect, the kill, the win.
-  - Add a tween: make something grow and shrink, or rise and fade, when it happens.
+  - 'Add a tween: make something grow and shrink, or rise and fade, when it happens.'
   - Add a short screen shake with `this.cameras.main.shake(120, 0.01)` — small numbers first.
   - Press Run and do it ten times in a row. If you are bored by the tenth it is too little; if you are tired by the tenth it is too much.
   - Then go and check nothing ELSE in your game shakes, or this one stops feeling special.

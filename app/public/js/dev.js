@@ -2,6 +2,10 @@
  *
  * ============================================================
  *  BEFORE PRODUCTION: set unlockAll back to false.
+ *  You do not have to remember this:
+ *      npm --prefix app run check:release
+ *  fails while it is on. Run that before a class. It is kept out
+ *  of `npm test` so the daily run stays green while building.
  * ============================================================
  *
  * Change the value below and that is the whole job. A URL parameter can override either one for a

@@ -125,14 +125,43 @@ function shuffleOrder(n) {
   while (a.every(function (v, i) { return v === i; }) && tries < 12);
   return a;
 }
+/* The YAML inside a widget fence. A parse failure used to be swallowed silently and the widget
+   built from an empty object — which renders a card with a heading, no question and no options,
+   looking merely sparse rather than broken. Three quiz blocks and two your-turn steps shipped
+   that way. It still degrades rather than throwing (one bad block must not take the lesson down)
+   but it now says so, so the person authoring the lesson finds out while they are writing it.
+   `npm test` catches the same thing ahead of time — see tools/check-lessons.js. */
+function parseWidgetYaml(kind, text, key) {
+  try {
+    const v = jsyaml.load(text);
+    if (v && typeof v === 'object' && !Array.isArray(v)) return v;
+    console.warn('[league] ' + kind + ' ' + (key || '?') + ' is empty or is not a set of keys — it will render with nothing in it.');
+    return {};
+  } catch (e) {
+    console.warn('[league] ' + kind + ' ' + (key || '?') + ' has YAML that does not parse, so it will render empty: '
+      + String(e.message).split('\n')[0]
+      + '\n  A value starting with ` or " or containing ": " has to be wrapped in quotes.');
+    return {};
+  }
+}
+
+/* The question itself. Authored as `question:`; the v1 course used `prompt:` and both are
+   accepted, because a renamed key that only the renderer knows about is how all 44 quizzes in
+   the course came to display the words "Quick check" instead of anything a student could answer.
+   One place to read it from, so a third name can never quietly become a fifth bug. */
+function quizPrompt(q) {
+  const p = (q && (q.question || q.prompt));
+  return typeof p === 'string' && p.trim() ? p.trim() : '';
+}
+
 /* ```quiz  (provisional syntax) — types: mcq | predict | parsons | fillblank | findbug. All checked locally. */
 function renderQuizCells(root) {
   const codes = [].slice.call(root.querySelectorAll('pre > code.language-quiz'));
   const total = codes.length;
   codes.forEach(function (code, idx) {
-    let q; try { q = jsyaml.load(code.textContent) || {}; } catch (e) { q = {}; }
     const pre = code.parentNode;
     const key = nextWidgetKey('q');
+    const q = parseWidgetYaml('quiz', code.textContent, key);
 
     const cell = document.createElement('div'); cell.className = 'quizcell'; cell.setAttribute('role', 'group');
 
@@ -140,7 +169,7 @@ function renderQuizCells(root) {
     const head = document.createElement('div'); head.className = 'quiz-h';
     const qText = document.createElement('div'); qText.className = 'quiz-q';
     qText.innerHTML = '<span class="mdi mdi-help-circle-outline"></span>';
-    qText.appendChild(document.createTextNode(q.prompt || 'Quick check'));
+    qText.appendChild(document.createTextNode(quizPrompt(q) || 'Quick check'));
     head.appendChild(qText);
     const badge = document.createElement('span'); badge.className = 'quiz-count';
     badge.textContent = total > 1 ? (idx + 1) + ' of ' + total : '';
@@ -216,7 +245,7 @@ function buildMCQ(q, body, ctx, isPredict) {
 
   const list = document.createElement('div'); list.className = 'mcq-list';
   list.setAttribute('role', 'radiogroup');
-  list.setAttribute('aria-label', q.prompt || 'Answer options');
+  list.setAttribute('aria-label', quizPrompt(q) || 'Answer options');
 
   opts.forEach(function (opt, i) {
     // A real button, not a label wrapping a radio: the whole row is the target, and it is
@@ -374,7 +403,7 @@ function buildFill(q, body, ctx) {
   const isCode = typeof looksLikeCode === 'function' && looksLikeCode(tpl);
   const wrap = document.createElement('div'); wrap.className = 'fill-code' + (isCode ? '' : ' prose');
   const input = document.createElement('input'); input.type = 'text'; input.className = 'fill-input'; input.spellcheck = false; input.placeholder = 'type your answer';
-  input.setAttribute('aria-label', q.prompt || 'Fill in the blank');
+  input.setAttribute('aria-label', quizPrompt(q) || 'Fill in the blank');
   if (parts.length >= 2) { wrap.appendChild(document.createTextNode(parts[0])); wrap.appendChild(input); wrap.appendChild(document.createTextNode(parts.slice(1).join('___'))); }
   else { wrap.appendChild(input); }
   body.appendChild(wrap);
@@ -400,7 +429,7 @@ function buildFill(q, body, ctx) {
 function buildFindBug(q, body, ctx) {
   const lines = q.code || q.lines || []; let chosen = -1; const rows = [];
   const wrap = document.createElement('div'); wrap.className = 'findbug';
-  wrap.setAttribute('role', 'radiogroup'); wrap.setAttribute('aria-label', q.prompt || 'Which line has the bug?');
+  wrap.setAttribute('role', 'radiogroup'); wrap.setAttribute('aria-label', quizPrompt(q) || 'Which line has the bug?');
   // Say what to do. The card showed a block of code and a Check button and left the child to
   // infer that the lines were clickable at all.
   const lead = document.createElement('div'); lead.className = 'fb-lead';
@@ -475,9 +504,9 @@ const LAB_REVEAL_AFTER = 4;   // failed runs before the worked answer is offered
 
 function renderChallengeCells(root) {
   root.querySelectorAll('pre > code.language-challenge').forEach(function (code) {
-    let c; try { c = jsyaml.load(code.textContent) || {}; } catch (e) { c = {}; }
     const pre = code.parentNode;
     const key = nextWidgetKey('c'), tok = widgetToken(key);
+    const c = parseWidgetYaml('challenge', code.textContent, key);
     const lessonId = lessonWidgetId;
     const saved = labState(lessonId, key) || {};
     const startCode = c.code || '';
@@ -640,9 +669,9 @@ function renderChallengeCells(root) {
    a verifier that reads their project, at which point only this function changes. */
 function renderYourTurnCells(root) {
   root.querySelectorAll('pre > code.language-yourturn').forEach(function (code) {
-    let c; try { c = jsyaml.load(code.textContent) || {}; } catch (e) { c = {}; }
     const pre = code.parentNode;
     const key = nextWidgetKey('y');
+    const c = parseWidgetYaml('yourturn', code.textContent, key);
     const lessonId = lessonWidgetId;
     const done = activityDone(lessonId, key);
 
@@ -715,6 +744,10 @@ function selectLesson(idx) {
 }
 function paintLesson2(f, html) {
   $('lessonBody').innerHTML = lessonBodyHTML(f, html);
+  /* Start at the top. #view-learn is the thing that scrolls (the document itself never does), and
+     nothing reset it — so reading to the bottom of a long lesson and clicking the next one landed
+     the student part-way down it, past the title, with no clue they had missed anything. */
+  const learn = $('view-learn'); if (learn) learn.scrollTop = 0;
   $('lessonBody').style.setProperty('--mod', moduleHero(f.mi));
   currentLessonText = ($('lessonBody').textContent || '').replace(/\s+/g, ' ').trim().slice(0, 3000);
   resetWidgetHandlers();   // the previous lesson's widget iframes are gone with the innerHTML

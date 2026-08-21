@@ -1,7 +1,7 @@
 # UA0 — Project Status
 
 Maintained by the agent. Records where the LEAGUE Game Development course project stands.
-(Kept in `.ua/`; a fuller snapshot lives in `../.claude/HANDOFF.md`.)
+(Kept in `.ua/`; what is being built and in what order lives in `../.claude/plans/STAGES.md`.)
 
 ## Project header
 - **Project:** LEAGUE Game Development Course — Level 1

@@ -17,8 +17,20 @@ jobs:
         run: npm ci || npm install
       - name: Test
         working-directory: app
-        # check-html   tag balance + the containment the three-column layout depends on
-        # check-state  saved-state migrations, including the "never destroy a save" rule
-        # check-challenges  every in-lesson challenge is solvable AND not already solved
-        # check-mcp    starts the MCP server and exercises its tools, resources and prompts
+        # check-html       tag balance + the containment the three-column layout depends on
+        # check-state      saved-state migrations, including the "never destroy a save" rule
+        # subset-icons     every icon the app draws is in the subset (glyph half needs Python
+        #                  + fontTools, which CI does not install — that half skips, loudly)
+        # check-quiz       every malformed AI question is dropped rather than shown to a child
+        # check-lessons    every authored quiz and your-turn step parses and is answerable
+        # check-challenges every in-lesson lab is solvable AND not already solved, and fails
+        #                  if it finds none at all
+        # check-mcp        starts the MCP server and exercises its tools, resources and prompts
+        # check-gamelog    what the game printed, as the AI receives it
+        # check-boot       starts the real server and loads the real page
+        #
+        # Deliberately NOT here: tools/resize-brand-images.py (a one-off image-prep tool whose
+        # output is committed — it needs numpy and Pillow, which is why every run of this
+        # workflow failed before), and tools/check-release.js (asserts development switches are
+        # off, which they are not while the app is being built — run it before a class).
         run: npm test

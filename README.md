@@ -25,7 +25,7 @@ stay server-side.
 | `app/` | the application (below) |
 | `docs/` | human-facing docs: child-privacy brief, curriculum outline |
 | `.ua/` | UA Framework project docs — status, positioning, analysis, specification |
-| `.claude/` | AI working material: [`HANDOFF.md`](.claude/HANDOFF.md), `plans/`, `design-reviews/`, launch config |
+| `.claude/` | AI working material: [`plans/`](.claude/plans/STAGES.md), `design-reviews/`, launch config |
 | `.devcontainer/` | GitHub Codespaces setup |
 
 ### Inside `app/`
@@ -57,6 +57,9 @@ stay server-side.
 ## Where things stand
 
 Living status: [`.ua/UA0-PROJECT-STATUS.md`](.ua/UA0-PROJECT-STATUS.md).
-Orientation for a new session: [`.claude/HANDOFF.md`](.claude/HANDOFF.md).
+What is being built and in what order: [`.claude/plans/STAGES.md`](.claude/plans/STAGES.md) —
+start here for a new session.
 AI system roadmap (stages, findings, walkthrough protocol):
 [`.claude/plans/AI-IMPROVEMENT-PLAN.md`](.claude/plans/AI-IMPROVEMENT-PLAN.md).
+Open question for the course itself: [`docs/ai-written-content-options.md`](docs/ai-written-content-options.md)
+— how much of the content the AI writes, and who checks it.

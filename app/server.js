@@ -28,7 +28,7 @@ const ROOT = __dirname;
 // ---- AI providers (keys stay server-side, never sent to the browser) ----
 // Multiple agents (coder / tutor / quiz / grader) each get their own model, set in .env.
 // A model spec is "<provider>:<model>", e.g. "ollama:qwen2.5-coder:7b",
-// "openrouter:qwen/qwen-2.5-coder-7b", "anthropic:claude-3-5-sonnet-latest".
+// "openrouter:qwen/qwen-2.5-coder-7b", "anthropic:claude-sonnet-5".
 // No prefix => DEFAULT_PROVIDER is used. Everything works on local Ollama or on OpenRouter.
 const DEFAULT_PROVIDER = process.env.AI_PROVIDER || 'ollama';
 const OLLAMA_URL = process.env.OLLAMA_URL || 'http://localhost:11434/api/chat';
@@ -58,7 +58,7 @@ const AGENT_TOOLS = {
 };
 const MAX_TOOL_ROUNDS = Number(process.env.AI_TOOL_ROUNDS || 4);
 const ANTHROPIC_KEY = process.env.ANTHROPIC_API_KEY || '';
-const ANTHROPIC_MODEL = process.env.ANTHROPIC_MODEL || 'claude-3-5-sonnet-latest';
+const ANTHROPIC_MODEL = process.env.ANTHROPIC_MODEL || 'claude-sonnet-5';
 const OPENROUTER_KEY = process.env.OPENROUTER_API_KEY || '';
 const OPENROUTER_MODEL = process.env.OPENROUTER_MODEL || '';
 const OPENROUTER_URL = 'https://openrouter.ai/api/v1/chat/completions';
@@ -510,6 +510,10 @@ const FALLBACK_AGENT_SYSTEMS = {
   quiz: 'You write short comprehension questions for kids (11-15) learning to code. Output ONLY a JSON object.',
   grader: 'You check a student\'s answer or code change for a kids coding course. Output ONLY a JSON object with {"pass": true/false, "hint": "..."}.'
 };
+
+/* A quiz question is checked before a child sees it, the same way the coder's ops are.
+   Lives in ai/quiz-check.js so it can be tested on its own — see tools/check-quiz.js. */
+const cleanQuizQuestion = require('./ai/quiz-check').cleanQuizQuestion;
 /* One turn with the model. Returns { content, assistant, toolCalls } — toolCalls is empty
    unless tools were offered and the model chose to use one. `msgs` is the running conversation
    (history, the new message, and any tool traffic already exchanged). */
@@ -668,13 +672,22 @@ app.post('/api/ai', async (req, res) => {
     return res.json({ reply: (raw || '').trim() || 'Hmm, I am not sure — try rephrasing.' });
   }
 
-  // QUIZ / GRADER (scaffold): return whatever JSON the model produced.
+  // QUIZ / GRADER. The grader's JSON is passed through (nothing calls it yet); the quiz's is
+  // checked first, because that one is shown to a child as if it were correct.
   if (agent === 'quiz' || agent === 'grader') {
     let raw;
     const agentSystem = ai.buildPrompt(agent, ctx) || FALLBACK_AGENT_SYSTEMS[agent];
     try { raw = await callAI(spec, agentSystem, message, true, [], agentTools); }
     catch (e) { return res.status(502).json({ error: 'The ' + agent + ' agent is not reachable (' + e.message + ').' }); }
-    return res.json({ result: extractJSON(raw) || {} });
+    const parsedAgent = extractJSON(raw) || {};
+    if (agent === 'quiz') {
+      const q = cleanQuizQuestion(parsedAgent);
+      // `{}` on purpose rather than an error: the browser already skips a question it cannot use,
+      // and a silently absent bonus question is the correct outcome, not a failure to report.
+      if (!q) console.warn('[ai] dropped a malformed quiz question: ' + JSON.stringify(parsedAgent).slice(0, 300));
+      return res.json({ result: q || {} });
+    }
+    return res.json({ result: parsedAgent });
   }
 
   // CODER (default): return ops the browser applies to game.js.
