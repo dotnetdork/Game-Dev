@@ -261,7 +261,15 @@ const SKEY = 'leagueProgress';
    the working state of a lab instead — the code as they left it, whether they have committed to a
    guess, how many runs have failed — keyed "<lessonId>:<widgetKey>". A 50-minute class gets
    interrupted; coming back to an empty editor is how you lose a 12-year-old. */
-const DEFAULT_STATE = { v: SCHEMA.progress, xp: 0, stars: 250, done: {}, modDone: {}, unlocked: {}, published: [], activities: {}, labs: {} };
+/* `badges` is new, and it is not a cosmetic addition. Every one of the 22 lessons ends with a
+   your-turn step whose card says "Doing this unlocks <X> badge — you cannot buy it with Stars",
+   and until now nothing anywhere awarded, stored or displayed one. The app made a specific promise
+   to a child twenty-two times and kept it zero times.
+   Shape: badge name -> { at: <when>, lesson: "<mi.li>" }. Keyed by name because the question a
+   student asks is "have I got the Bug Hunter badge", not "what did lesson 3.2 give me".
+   No schema bump needed: loadState() merges DEFAULT_STATE first, so an older save gains the key
+   with an empty object — which is exactly the case check-state.js already covers. */
+const DEFAULT_STATE = { v: SCHEMA.progress, xp: 0, stars: 250, done: {}, modDone: {}, unlocked: {}, published: [], activities: {}, labs: {}, badges: {} };
 function loadState() {
   const raw = Storage.read(SKEY);
   if (!raw) return Object.assign({}, DEFAULT_STATE);
@@ -304,6 +312,23 @@ function clearLabState(lessonId, key) {
   if (state.labs) delete state.labs[labKey(lessonId, key)];
   saveState();
 }
+/* ---------- badges ----------
+   Earned by doing the technique in your OWN game, which is why they cannot be bought with Stars:
+   Stars buy art, badges record that you did something. Awarding is idempotent — a student who
+   re-opens a finished lesson does not earn it twice and does not get told about it again. */
+function hasBadge(name) { return !!(state.badges && state.badges[name]); }
+function badgeCount() { return state.badges ? Object.keys(state.badges).length : 0; }
+function awardBadge(name, lessonId) {
+  const n = String(name == null ? '' : name).trim();
+  if (!n) return false;
+  if (!state.badges) state.badges = {};
+  if (state.badges[n]) return false;                 // already earned
+  state.badges[n] = { at: Date.now(), lesson: lessonId || '' };
+  saveState();
+  emit(EV.BADGE_EARNED, { name: n, lesson: lessonId || '' });
+  return true;
+}
+
 function markActivity(lessonId, key) {
   if (!lessonId || !key) return false;
   if (!state.activities) state.activities = {};
@@ -320,6 +345,7 @@ function saveState() { Storage.writeJSON(SKEY, state); emit(EV.PROGRESS_CHANGED,
 function renderFooter() {
   const lvl = Math.floor(state.xp / 1000) + 1; const into = state.xp % 1000;
   $('xpVal').textContent = state.xp; $('starVal').textContent = state.stars; $('lvlVal').textContent = lvl;
+  const bv = $('badgeVal'); if (bv) bv.textContent = badgeCount();
   // scaleX rather than width: the bar is full-width and squashed, so growing it costs no reflow
   // in the status bar. See .progress > div in styles.css.
   $('xpBar').style.transform = 'scaleX(' + (into / 1000) + ')';

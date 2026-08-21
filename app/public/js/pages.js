@@ -219,6 +219,74 @@ function renderHelp() {
     + '<h3><span class="mdi mdi-restart"></span>Testing</h3><p>Reset all saved progress (XP, Stars, unlocked assets, completed lessons) to try the app from scratch.</p>'
     + '<button class="gbtn" id="resetBtn"><span class="mdi mdi-delete-outline"></span>Reset my progress</button></div>';
 }
+/* ---------- the trophy case ----------
+   Shows every badge in the course, not only the earned ones. A case with no empty slots tells a
+   student nothing about what is still there to get, and the empty slots are most of the point —
+   each one names the lesson that awards it, so it reads as a map rather than a scoreboard.
+   Locked rows deliberately do NOT say how to earn it beyond the lesson name: that is the lesson's
+   job, and spoiling it here would make the your-turn step redundant. */
+/* Every badge name ends in "badge", and repeating that 22 times inside a panel headed "Your
+   badges" is 22 words of noise. Stripped for display only — the stored key keeps the full name. */
+function badgeShortName(name) { return String(name).replace(/\s*badges?\s*$/i, '').trim() || String(name); }
+
+function badgeGroups() {
+  return course.modules.map(function (m, mi) {
+    const badges = [];
+    m.lessons.forEach(function (l, li) {
+      if (l.reward) badges.push({ name: l.reward, lesson: l.t, id: mi + '.' + li });
+    });
+    return { name: m.name, accent: moduleAccent(mi), badges: badges };
+  }).filter(function (g) { return g.badges.length; });
+}
+
+function renderBadgeCase() {
+  const groups = badgeGroups();
+  const all = groups.reduce(function (a, g) { return a.concat(g.badges); }, []);
+  if (!all.length) return '<p class="case-none">This course has no badges in it yet.</p>';
+
+  const earned = all.filter(function (b) { return hasBadge(b.name); }).length;
+
+  /* Grouped by module rather than listed flat. Twenty-two identical rows in one column tells a
+     student nothing about shape or progress; a module with three of four filled tells them
+     exactly where they are and what is one step away. */
+  const sections = groups.map(function (g) {
+    const got = g.badges.filter(function (b) { return hasBadge(b.name); }).length;
+    const tiles = g.badges.map(function (b) {
+      const has = hasBadge(b.name);
+      return '<li class="case-badge' + (has ? ' got' : '') + '">'
+        + '<span class="case-ico mdi ' + (has ? 'mdi-medal' : 'mdi-lock') + '" aria-hidden="true"></span>'
+        + '<span class="case-txt">'
+        + '<b>' + esc(badgeShortName(b.name)) + '</b>'
+        // Locked names the lesson that awards it, so the case reads as a map. It stops there:
+        // HOW to earn it is the lesson's job, and saying it here makes the lesson redundant.
+        + '<span class="case-sub">' + esc(has ? 'Earned' : b.lesson) + '</span>'
+        + '</span>'
+        + '<span class="sr-only">' + (has ? ' (earned)' : ' (not earned yet)') + '</span>'
+        + '</li>';
+    }).join('');
+    return '<section class="case-mod' + (got === g.badges.length ? ' complete' : '') + '"'
+      + ' style="--acc:' + g.accent + '">'
+      + '<header class="case-mod-hd">'
+      + '<h4>' + esc(g.name) + '</h4>'
+      + '<span class="case-mod-n">' + got + '<span>/' + g.badges.length + '</span></span>'
+      + '</header>'
+      + '<ul class="case-grid">' + tiles + '</ul>'
+      + '</section>';
+  }).join('');
+
+  return '<div class="case-top">'
+    + '<div class="case-score"><b>' + earned + '</b><span>of ' + all.length + ' earned</span></div>'
+    + '<div class="case-bar" role="progressbar" aria-valuenow="' + earned + '" aria-valuemin="0" aria-valuemax="' + all.length + '">'
+    + '<i style="transform:scaleX(' + (earned / all.length) + ')"></i></div>'
+    + '</div>'
+    + '<p class="case-note">Badges come from doing a technique in <b>your own game</b>. Stars cannot buy them.</p>'
+    + '<div class="case-body">' + sections + '</div>';
+}
+function showBadgeCase() {
+  modal({ title: 'Your badges', html: renderBadgeCase(), okLabel: 'Close', hideCancel: true, wide: true });
+}
+if ($('badgeBtn')) $('badgeBtn').addEventListener('click', showBadgeCase);
+
 function resetProgress() {
   modal({ title: 'Reset progress?', message: 'This clears all XP, Stars, unlocked assets, and completed lessons on this browser. This cannot be undone.', okLabel: 'Reset everything',
     onOk: function () { Storage.remove(SKEY); location.reload(); } });

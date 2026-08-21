@@ -13,7 +13,7 @@
 #
 # The v1 course (47 shorter lessons) is kept in content/_archive-v1/ .
 id: course1
-name: "CodeQuest — Level 1"
+name: "Game Dev — Level 1"
 library: Phaser
 modules:
   - id: engines

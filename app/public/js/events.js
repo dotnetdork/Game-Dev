@@ -51,5 +51,6 @@ const EV = {
   MODULE_DONE: 'module:done',        // detail: { moduleIndex, stars }
   PROGRESS_CHANGED: 'progress:changed',  // XP, Stars or unlocks moved
   PROJECT_CHANGED: 'project:changed',    // the student's files were edited or saved
-  LESSON_OPENED: 'lesson:opened'     // detail: { index, id }
+  LESSON_OPENED: 'lesson:opened',    // detail: { index, id }
+  BADGE_EARNED: 'badge:earned'       // detail: { name, lesson }
 };

@@ -998,11 +998,23 @@ function renderYourTurnCells(root) {
       c.steps.forEach(function (s) { const li = document.createElement('li'); li.innerHTML = inlineMd(s); ol.appendChild(li); });
       body.appendChild(ol);
     }
+    /* The reward line. It used to promise a badge that nothing in the app awarded, stored or
+       displayed — the promise is kept now, and once it is kept the line says so rather than
+       still telling a student about something they already have. */
+    let rewardEl = null;
+    function paintReward() {
+      if (!rewardEl || !c.reward) return;
+      const earned = hasBadge(c.reward);
+      rewardEl.className = 'yt-reward' + (earned ? ' earned' : '');
+      rewardEl.innerHTML = earned
+        ? '<span class="mdi mdi-medal" aria-hidden="true"></span>Earned: <b>' + esc(c.reward) + '</b>'
+        : '<span class="mdi mdi-lock-open-variant-outline" aria-hidden="true"></span>'
+          + 'Doing this unlocks <b>' + esc(c.reward) + '</b> — you cannot buy it with Stars.';
+    }
     if (c.reward) {
-      const r = document.createElement('p'); r.className = 'yt-reward';
-      r.innerHTML = '<span class="mdi mdi-lock-open-variant-outline" aria-hidden="true"></span>'
-        + 'Doing this unlocks <b>' + esc(c.reward) + '</b> — you cannot buy it with Stars.';
-      body.appendChild(r);
+      rewardEl = document.createElement('p');
+      body.appendChild(rewardEl);
+      paintReward();
     }
     cell.appendChild(body);
 
@@ -1022,7 +1034,17 @@ function renderYourTurnCells(root) {
       mark.disabled = true; mark.hidden = true;
     }
     if (done) settle();
-    mark.addEventListener('click', function () { settle(); resolveActivity(key); });
+    mark.addEventListener('click', function () {
+      settle();
+      /* The badge before the activity: resolveActivity can complete the lesson, which starts the
+         countdown to the next one, and the student should have been told what they earned before
+         anything starts moving them along. */
+      if (c.reward && awardBadge(c.reward, lessonId)) {
+        paintReward();
+        toast('Badge earned: ' + c.reward);
+      }
+      resolveActivity(key);
+    });
 
     foot.appendChild(openCode); foot.appendChild(status); foot.appendChild(mark);
     cell.appendChild(foot);
@@ -1045,6 +1067,7 @@ function selectLesson(idx) {
   if (openLabRef) closeLab();
   labPendingAdvance = null;
   curIdx = idx; const f = flat[idx];
+  revealModuleFor(idx);        // the module this lesson lives in opens; nothing else is touched
   const token = ++lessonToken;
   $('crumb').dataset.lesson = f.m.name + ': ' + f.l.t;
   cancelAdvance();

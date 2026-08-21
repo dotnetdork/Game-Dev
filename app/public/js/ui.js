@@ -2,16 +2,25 @@
 /* ---------- toast + modal ---------- */
 let toastTimer;
 function toast(msg) { const t = $('toast'); t.textContent = msg; t.classList.add('show'); clearTimeout(toastTimer); toastTimer = setTimeout(function () { t.classList.remove('show'); }, 3200); }
+/* opts: title, message (plain sentence, wrapped in a <p>), html (block markup, NOT wrapped —
+   `message` goes inside a <p>, so a grid or a list in there gets broken out of it by the parser),
+   input, placeholder, okLabel, hideCancel (for a dialog that only closes), wide (for content that
+   needs columns rather than one 420px lane), onOk. */
 function modal(opts) {
   const back = $('modalBack');
-  back.innerHTML = '<div class="modal"><h3>' + opts.title + '</h3>' + (opts.message ? '<p>' + opts.message + '</p>' : '')
+  back.innerHTML = '<div class="modal' + (opts.wide ? ' wide' : '') + '"><h3>' + opts.title + '</h3>'
+    + (opts.message ? '<p>' + opts.message + '</p>' : '')
+    + (opts.html || '')
     + (opts.input ? '<input id="modalInput" placeholder="' + (opts.placeholder || '') + '">' : '')
-    + '<div class="acts"><button class="cancel" id="modalCancel">Cancel</button><button class="ok" id="modalOk">' + (opts.okLabel || 'OK') + '</button></div></div>';
+    + '<div class="acts">'
+    + (opts.hideCancel ? '' : '<button class="cancel" id="modalCancel">Cancel</button>')
+    + '<button class="ok" id="modalOk">' + (opts.okLabel || 'OK') + '</button></div></div>';
   back.hidden = false; const inp = $('modalInput'); if (inp) inp.focus();
   function close() { back.hidden = true; back.innerHTML = ''; }
-  $('modalCancel').addEventListener('click', close);
+  if ($('modalCancel')) $('modalCancel').addEventListener('click', close);
   $('modalOk').addEventListener('click', function () { const v = inp ? inp.value : null; close(); if (opts.onOk) opts.onOk(v); });
   if (inp) inp.addEventListener('keydown', function (e) { if (e.key === 'Enter') $('modalOk').click(); });
+  if (!inp) $('modalOk').focus();
 }
 
 /* ---------- resizers (grow-only) ---------- */

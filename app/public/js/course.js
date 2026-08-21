@@ -29,7 +29,9 @@ function loadCourse() {
       course.modules.push(module);
       (mod.lessons || []).forEach(function (l) {
         // `id` is new: the body fetch needs the filename, which used to be implicit in load order.
-        module.lessons.push({ id: l.id, t: l.title, xp: l.xp, d: l.summary, ai: l.ai, body: null });
+        // `reward` is the badge this lesson's your-turn step awards, so the trophy case can list
+        // every badge in the course rather than only the ones already earned.
+        module.lessons.push({ id: l.id, t: l.title, xp: l.xp, d: l.summary, ai: l.ai, reward: l.reward || '', body: null });
       });
     });
     buildFlat();
@@ -71,6 +73,22 @@ function lessonUnlocked(idx) {
    focusable elements and zero ARIA roles across every lesson and module, so a child using a
    keyboard or a screen reader could not reach a single lesson — not "with difficulty", at all. */
 const tree = $('tree'); let curIdx = 0;
+
+/* ---------- which modules are open ----------
+   The whole tree is rebuilt from scratch on every lesson click. Only LOCKED modules used to be
+   collapsed, so every unlocked one sprang back open on each rebuild — which is why clicking one
+   lesson appeared to open all five, and why collapsing a module never stuck for more than a click.
+   Remembered here instead: module index -> open. An entry only exists once the student has said
+   something about that module, so the default below stays in charge until they do. */
+const secOpen = {};
+function moduleOfLesson(idx) { return flat[idx] ? flat[idx].mi : 0; }
+/* Only the module being worked in. Five modules open at once is 22 rows in a 280px column with
+   the current lesson somewhere in the middle of it. */
+function moduleOpenByDefault(mi) { return mi === moduleOfLesson(curIdx); }
+/* Called when the lesson changes: the module it lives in opens, so the active row is never hidden
+   inside a collapsed section. Deliberately does not close anything the student opened themselves. */
+function revealModuleFor(idx) { secOpen[moduleOfLesson(idx)] = true; }
+
 function renderOutline() {
   tree.innerHTML = '';
   tree.setAttribute('role', 'tree');
@@ -78,17 +96,18 @@ function renderOutline() {
   course.modules.forEach(function (m, mi) {
     const firstIdx = flat.findIndex(function (f) { return f.mi === mi; });
     const modLocked = !lessonUnlocked(firstIdx);
-    const sec = document.createElement('div'); sec.className = 'sec';
+    const open = !modLocked && (secOpen[mi] === undefined ? moduleOpenByDefault(mi) : !!secOpen[mi]);
+    const sec = document.createElement('div'); sec.className = 'sec' + (open ? '' : ' collapsed');
     const head = document.createElement('button'); head.type = 'button';
     head.className = 'sec-head' + (modLocked ? ' locked' : '');
     head.setAttribute('role', 'treeitem');
-    head.setAttribute('aria-expanded', modLocked ? 'false' : 'true');
+    head.setAttribute('aria-expanded', open ? 'true' : 'false');
     if (modLocked) head.setAttribute('aria-disabled', 'true');
-    head.innerHTML = '<span class="tri" aria-hidden="true">' + (modLocked ? '▸' : '▾') + '</span><span class="mdi ' + (modLocked ? 'mdi-lock' : 'mdi-folder') + '" aria-hidden="true"' + (modLocked ? '' : ' style="color:' + moduleAccent(mi) + '"') + '></span><span class="lbl">' + esc(m.name) + '</span>';
-    if (modLocked) sec.classList.add('collapsed');
+    head.innerHTML = '<span class="tri" aria-hidden="true">' + (open ? '▾' : '▸') + '</span><span class="mdi ' + (modLocked ? 'mdi-lock' : 'mdi-folder') + '" aria-hidden="true"' + (modLocked ? '' : ' style="color:' + moduleAccent(mi) + '"') + '></span><span class="lbl">' + esc(m.name) + '</span>';
     head.addEventListener('click', function () {
       if (modLocked) { toast('Finish the previous module to unlock this one.'); return; }
       const nowCollapsed = sec.classList.toggle('collapsed');
+      secOpen[mi] = !nowCollapsed;                 // remembered, so the next rebuild honours it
       head.querySelector('.tri').textContent = nowCollapsed ? '▸' : '▾';
       head.setAttribute('aria-expanded', nowCollapsed ? 'false' : 'true');
     });

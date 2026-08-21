@@ -1,4 +1,7 @@
-# CodeQuest: architecture review and the build plan
+# Game Dev: architecture review and the build plan
+
+> Written while the course was called **CodeQuest**; renamed back to **Game Dev** on
+> 21 Aug 2026. Same product, same plan — only the name changed.
 
 **Date:** 17 August 2026
 **Decisions locked** (Jay, this session):

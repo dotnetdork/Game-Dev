@@ -191,19 +191,35 @@ function frontMatter(raw) {
   try { return yaml.load(m[1]) || {}; } catch (e) { return {}; }
 }
 
+/* The badge a lesson's your-turn step awards. Authored inside the ```yourturn block as `reward:`,
+   which is the only place that key appears in a lesson. Pulled out here because the app needs to
+   show a student every badge in the course — the ones still to earn as much as the ones they have,
+   since a trophy case with no empty slots is not much of an incentive. The file is already being
+   read in full for its front-matter, so this costs one regex and no extra I/O. */
+function rewardOf(raw) {
+  const m = String(raw).match(/^reward:\s*(.+?)\s*$/m);
+  if (!m) return '';
+  return m[1].replace(/^(['"])([\s\S]*)\1$/, '$2').trim();   // unwrap a quoted value
+}
+
 function buildIndex() {
   const data = yaml.load(fs.readFileSync(path.join(CONTENT, 'course.yaml'), 'utf8')) || {};
   const modules = (data.modules || []).map((mod) => {
     const lessons = (mod.lessons || []).map((id) => {
-      let meta = {};
-      try { meta = frontMatter(fs.readFileSync(path.join(LESSON_DIR, id + '.md'), 'utf8')); }
-      catch (e) { return { id: id, title: id, xp: 0, summary: '', ai: 'full', missing: true }; }
+      let meta = {}, reward = '';
+      try {
+        const raw = fs.readFileSync(path.join(LESSON_DIR, id + '.md'), 'utf8');
+        meta = frontMatter(raw);
+        reward = rewardOf(raw);
+      }
+      catch (e) { return { id: id, title: id, xp: 0, summary: '', ai: 'full', reward: '', missing: true }; }
       return {
         id: id,
         title: meta.title || id,
         xp: meta.xp || 0,
         summary: meta.summary || '',
-        ai: meta.ai || 'full'
+        ai: meta.ai || 'full',
+        reward: reward
       };
     });
     return { id: mod.id, name: mod.name, stars: mod.stars || 0, lessons: lessons };

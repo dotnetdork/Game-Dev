@@ -3,7 +3,7 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
-<title>LEAGUE - CodeQuest</title>
+<title>LEAGUE - Game Dev</title>
 <!-- League branding assets, self-hosted under public/img/. -->
 <link rel="icon" type="image/png" sizes="32x32" href="img/favicon-32x32.png">
 <link rel="icon" type="image/png" sizes="16x16" href="img/favicon-16x16.png">
@@ -24,7 +24,7 @@
 <body>
   <a class="skiplink" href="#view-learn">Skip to the lesson</a>
   <header class="topbar">
-    <div class="brand"><img class="brand-logo" src="img/wordmark.png" alt="The League of Amazing Programmers"><span class="brand-tag">CodeQuest</span></div>
+    <div class="brand"><img class="brand-logo" src="img/wordmark.png" alt="The League of Amazing Programmers"><span class="brand-tag">Game Dev</span></div>
     <nav class="topnav" aria-label="Sections">
       <button class="navitem on" data-page="courses"><span class="mdi mdi-school"></span>Courses</button>
       <button class="navitem" data-page="store"><span class="mdi mdi-cart-outline"></span>Store</button>
@@ -175,8 +175,11 @@
   </div>
 
   <footer class="statusbar">
-    <span class="sb-left">CodeQuest — v0.1.0</span>
+    <span class="sb-left">Game Dev — v0.1.0</span>
     <div class="sb-mid">
+      <!-- The trophy case. A badge is earned by doing a technique in your own game, so it sits
+           beside the Stars it deliberately cannot be bought with. -->
+      <button class="sb-badges" id="badgeBtn" title="Your badges"><span class="mdi mdi-medal" aria-hidden="true"></span> <b id="badgeVal">0</b></button>
       <span><span class="mdi mdi-star st"></span> <b id="starVal">0</b></span>
       <div class="progress" title="XP to next level"><div id="xpBar"></div></div>
       <span class="xp"><img class="xp-bolt" src="img/bolt.png" alt="XP"> <b id="xpVal">0</b> XP</span>

@@ -102,6 +102,11 @@ function checkQuiz(where, src) {
   }
 }
 
+/* Badge names, so two lessons cannot award the same one. Badges are stored keyed by name, so a
+   duplicate means the second lesson silently awards nothing — the student does the work and the
+   card still says "unlocks". */
+const rewards = {};
+
 function checkYourTurn(where, src) {
   let c;
   try { c = yaml.load(src); }
@@ -116,6 +121,17 @@ function checkYourTurn(where, src) {
   }
   if (Array.isArray(c.steps) && c.steps.some(function (s) { return typeof s !== 'string' || !s.trim(); })) {
     fail(where, 'has a blank entry in `steps:`');
+  }
+  if (c.reward !== undefined) {
+    if (typeof c.reward !== 'string' || !c.reward.trim()) {
+      fail(where, '`reward:` is present but not a name, so the card would promise a blank badge');
+    } else {
+      const name = c.reward.trim();
+      if (rewards[name]) {
+        fail(where, 'awards "' + name + '", which ' + rewards[name] + ' already awards.'
+          + ' Badges are stored by name, so the second one would silently award nothing.');
+      } else rewards[name] = where;
+    }
   }
 }
 

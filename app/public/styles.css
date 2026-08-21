@@ -478,6 +478,9 @@ body{background:var(--bg);color:var(--ink);font-family:var(--font);font-size:14p
 .toast.show{opacity:1;transform:translateX(-50%) translateY(0);}
 .modal-backdrop{position:fixed;inset:0;background:rgba(4,10,20,.6);display:flex;align-items:center;justify-content:center;z-index:200;}
 .modal{background:var(--panel);border:1px solid var(--line);border-radius:14px;width:420px;max-width:90%;padding:22px;box-shadow:0 20px 60px rgba(0,0,0,.6);}
+/* For content that needs columns instead of one 420px lane — the badge case in particular, which
+   at 420 was 22 identical rows stacked in a single file. */
+.modal.wide{width:min(780px,92vw);}
 .modal h3{margin:0 0 8px;font-size:19px;}
 .modal p{margin:0 0 14px;color:var(--muted);font-size:13.5px;line-height:1.5;}
 .modal input{width:100%;background:var(--bg);border:1px solid var(--line);border-radius:8px;color:var(--ink);padding:9px 11px;font-family:var(--font);font-size:14px;outline:none;margin-bottom:16px;}
@@ -753,6 +756,64 @@ body{background:var(--bg);color:var(--ink);font-family:var(--font);font-size:14p
   /* Vertical room is the scarce thing here; the log is worth more than a shortcut reminder. */
   .lab-keys{display:none;}
 }
+
+/* ---------- badges ----------
+   The status-bar chip, and the case behind it. A badge records that a student did something in
+   their own game, so it sits beside the Stars it deliberately cannot be bought with. */
+.sb-badges{display:inline-flex;align-items:center;gap:5px;background:transparent;border:0;
+  padding:2px 6px;border-radius:6px;color:inherit;font:inherit;cursor:pointer;}
+.sb-badges:hover{background:#173456;}
+.sb-badges .mdi{color:var(--gold);font-size:14px;}
+
+/* The case. Grouped by module, because 22 rows in one lane says nothing about progress, while
+   "three of four" in a named module says exactly where you are. */
+.case-none{margin:0;color:var(--dim);font-size:13px;}
+
+/* The score reads as one thing: a big number against the total, with the bar underneath. */
+.case-top{display:flex;align-items:baseline;gap:14px;margin-bottom:8px;}
+.case-score{display:flex;align-items:baseline;gap:7px;flex:none;}
+.case-score b{font-size:30px;line-height:1;font-weight:700;color:var(--gold);
+  font-variant-numeric:tabular-nums;}
+.case-score span{font-size:12.5px;color:var(--muted);}
+.case-bar{flex:1;min-width:60px;height:6px;border-radius:4px;background:#0a1728;
+  border:1px solid var(--line);overflow:hidden;align-self:center;}
+.case-bar > i{display:block;height:100%;width:100%;transform-origin:left center;
+  background:linear-gradient(90deg,var(--gold),var(--brand));}
+.case-note{margin:0 0 16px !important;color:var(--dim);font-size:12.5px;line-height:1.5;}
+.case-note b{color:var(--muted);}
+
+.case-body{display:flex;flex-direction:column;gap:16px;
+  max-height:min(52vh,430px);overflow-y:auto;margin:0 -4px;padding:0 4px 2px;}
+
+.case-mod-hd{display:flex;align-items:center;gap:9px;margin-bottom:7px;}
+/* The accent bar is the module's colour and it is how you tell the groups apart at a glance —
+   it belongs to the heading, not to a card edge. */
+.case-mod-hd::before{content:"";width:3px;height:13px;border-radius:2px;background:var(--acc);flex:none;}
+.case-mod-hd h4{margin:0;font-size:12px;font-weight:700;letter-spacing:1.2px;text-transform:uppercase;
+  color:var(--muted);min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;}
+.case-mod-n{margin-left:auto;flex:none;font-family:Consolas,monospace;font-size:12px;
+  font-variant-numeric:tabular-nums;color:var(--dim);}
+.case-mod-n span{color:#4c5f77;}
+.case-mod.complete .case-mod-hd h4{color:var(--acc);}
+.case-mod.complete .case-mod-n{color:var(--acc);}
+
+.case-grid{list-style:none;margin:0;padding:0;display:grid;
+  grid-template-columns:repeat(auto-fill,minmax(196px,1fr));gap:7px;}
+.case-badge{display:flex;align-items:center;gap:10px;padding:9px 11px;border-radius:9px;
+  background:#0b1c31;border:1px solid #1a3352;min-width:0;}
+.case-badge.got{background:#122f4d;border-color:var(--acc);}
+.case-ico{font-size:19px;flex:none;color:#3d5773;}
+.case-badge.got .case-ico{color:var(--acc);}
+.case-txt{display:flex;flex-direction:column;min-width:0;gap:2px;}
+.case-txt b{font-size:13.5px;font-weight:600;color:#6d8099;
+  overflow:hidden;text-overflow:ellipsis;white-space:nowrap;}
+.case-badge.got .case-txt b{color:var(--ink);}
+.case-sub{font-size:11px;color:#4c5f77;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;}
+.case-badge.got .case-sub{color:var(--acc);font-weight:600;}
+
+/* The reward line on a your-turn card, once it has actually been earned. */
+.yt-reward.earned{color:#c9f5dc;}
+.yt-reward.earned .mdi{color:var(--gold);}
 
 /* ---- "your turn": the same technique, in the student's own game ----
    Deliberately the warmest card on the page. The lab is the course's bench; this is where the

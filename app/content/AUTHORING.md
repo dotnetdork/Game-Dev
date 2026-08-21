@@ -129,6 +129,29 @@ Two rules that are easy to get wrong:
   the value the student is supposed to change will spin forever while it is still 0. Count ticks
   and stop with a hint (see `why-javascript-phaser.md`).
 
+## Your turn (```yourturn)
+The bridge from the lab to the student's own game: same technique, their code, by hand.
+
+    ```yourturn
+    title: Find the loop in your own game
+    task: Your game has this exact loop in it. Go and find it.
+    steps:
+      - Open the Code tab and open game.js.
+      - 'Add `console.log("frame")` as the first line of `update`.'
+    reward: Engine Room badge
+    ```
+
+`reward:` **awards a real badge.** It is recorded against the student, shown in the trophy case in
+the status bar, and cannot be bought with Stars — that is the whole point of it. Two rules:
+
+- **Every reward name must be unique across the whole course.** Badges are stored by name, so a
+  duplicate means the second lesson awards nothing while still promising it. `npm test` fails on
+  this.
+- Name it after the skill, not the lesson ("Bug Hunter badge", not "Lesson 14 badge").
+
+Checking is the student's word for now — they press "I've done this". A future stage verifies it
+against their actual project, and only this step changes.
+
 ## Prose
 Standard Markdown (headings, lists, **bold**, images, > quotes) renders normally. Plain code
 blocks are syntax-highlighted with the same theme as the Code tab.
