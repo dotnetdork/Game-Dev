@@ -220,8 +220,9 @@ body[data-tier="narrow"] .dock.left{--floatw:min(300px,84vw);}
 #view-learn{background:var(--bg);overflow:auto;display:block;}
 .lesson{max-width:none;margin:0;padding:0 0 50px;background:transparent;border:0;box-shadow:none;border-radius:0;}
 .lesson-hero{padding:28px 0 22px;background:linear-gradient(135deg,var(--mod,#143561),#0d2440);border-bottom:1px solid var(--line);}
-.hero-inner{max-width:820px;margin:0 auto;padding:0 40px;}
-.lesson-content{max-width:820px;margin:0 auto;padding:28px 40px 0;font-size:16.5px;line-height:1.75;}
+/* .hero-inner and .lesson-content are both declared once, further down, with the two-width
+   reading system. They used to be declared here too, at 820px — and the later rule overrode the
+   width but not the type, so the reading measure lived in one place and the font size in another. */
 .lesson h1{font-size:32px;margin:0;letter-spacing:-.3px;}
 .lesson .lead{color:#b7c8dc;font-size:16px;line-height:1.6;margin:10px 0 0;}
 .lesson-meta{display:flex;gap:8px;margin-top:16px;flex-wrap:wrap;}
@@ -501,12 +502,6 @@ body[data-tier="narrow"] .dock.left{--floatw:min(300px,84vw);}
 .runcell iframe.runsandbox{position:absolute;width:0;height:0;border:0;opacity:0;pointer-events:none;}
 .runcell{position:relative;}
 .quizcell{margin:20px 0;border:1px solid var(--line);border-radius:12px;background:var(--panel);overflow:hidden;}
-.quiz-h{display:flex;align-items:center;gap:10px;padding:12px 16px;border-bottom:1px solid var(--line);background:#0d2440;}
-.quiz-q{display:flex;align-items:center;gap:9px;font-size:16px;font-weight:600;line-height:1.45;color:var(--ink);}
-.quiz-count{margin-left:auto;flex:none;font-size:11.5px;font-weight:600;color:#cfe0f2;background:rgba(255,255,255,.06);border:1px solid rgba(255,255,255,.14);border-radius:999px;padding:3px 10px;}
-.quiz-tick{margin-left:auto;flex:none;color:var(--green);font-size:18px;}
-.quiz-count + .quiz-tick{margin-left:8px;}
-.quiz-q .mdi{font-size:18px;color:var(--azure);flex:none;}
 .quiz-body{display:flex;flex-direction:column;gap:8px;padding:14px 16px;}
 .mcq-list{display:flex;flex-direction:column;gap:8px;}
 .mcq-opt{display:flex;align-items:flex-start;gap:10px;padding:10px 12px;border:1px solid var(--line);border-radius:8px;cursor:pointer;background:#0d2440;transition:border-color .1s,background .1s;width:100%;text-align:left;font-size:15px;line-height:1.45;color:#c3d3e6;}
@@ -538,11 +533,10 @@ body[data-tier="narrow"] .dock.left{--floatw:min(300px,84vw);}
 .parsons-row.unused{opacity:.55;background:#08121f;}
 .parsons-row.unused .p-text{text-decoration:line-through;}
 .parsons-row.unused .p-pos{visibility:hidden;}
-.quiz-foot{display:flex;align-items:center;gap:12px;margin-top:2px;}
-.quiz-check{flex:none;margin-left:auto;}
 /* flex + gap, not a trailing space inside content: CSS collapses that space, so the tick sat
    flush against the word. */
-.quiz-result{display:flex;align-items:baseline;gap:7px;font-size:13.5px;font-weight:600;line-height:1.45;}
+.quiz-result{display:flex;align-items:baseline;gap:7px;font-size:13.5px;font-weight:600;line-height:1.45;
+  margin-top:2px;}
 .quiz-result:empty{display:none;}
 .quiz-result.ok,.quiz-result.no{animation:quizsay .18s ease-out;}
 @keyframes quizsay{from{opacity:0;transform:translateY(-2px);}to{opacity:1;transform:none;}}
@@ -698,26 +692,16 @@ body[data-tier="narrow"] .dock.left{--floatw:min(300px,84vw);}
 .ch-head{display:flex;align-items:center;gap:10px;padding:12px 16px;background:#12304f;
   border-bottom:1px solid var(--line);}
 .ch-head .mdi{color:var(--brand);font-size:19px;}
-.ch-title{font-size:16px;font-weight:600;color:var(--ink);}
 .ch-body{padding:14px 16px;display:flex;flex-direction:column;gap:12px;}
 .ch-task{color:var(--muted);font-size:15px;line-height:1.65;}
-.ch-editor{border:1px solid var(--line);border-radius:8px;overflow:hidden;}
-.ch-editor .CodeMirror{height:auto;min-height:120px;font-family:Consolas,monospace;font-size:13px;line-height:1.6;}
-.ch-editor .CodeMirror-scroll{min-height:120px;}
 .ch-code{width:100%;background:#08121f;border:0;color:#cfe0f2;font-family:Consolas,monospace;
   font-size:13px;line-height:1.6;padding:10px 12px;resize:vertical;display:block;}
-.ch-stage{width:100%;height:210px;border:1px solid var(--line);border-radius:8px;background:#08121f;display:block;}
 .ch-foot{display:flex;align-items:center;gap:12px;padding:12px 16px;border-top:1px solid var(--line);background:#0d2038;}
-.ch-status{font-size:13.5px;font-weight:600;color:var(--muted);display:flex;align-items:center;gap:6px;margin-right:auto;}
-.ch-status.ok{color:var(--green);} .ch-status.no{color:var(--gold);}
-.ch-status:empty{display:none;}
-.ch-run{flex:none;margin-left:auto;}
 
 /* ---------- the lab: the course's bench, not the student's game ----------
    Everything here exists to answer one question before it is asked: whose code is this? The header
    names it, the note says it outright, and Reset sits in the header rather than hidden in a menu,
    so breaking it never feels dangerous. */
-.ch-head .ch-reset{margin-left:auto;flex:none;padding:5px 11px;font-size:12px;}
 .ch-note{display:flex;align-items:flex-start;gap:8px;margin:0;color:var(--dim);font-size:12.5px;line-height:1.5;}
 .ch-note > span:last-child{flex:1;min-width:0;}
 .ch-note .mdi{font-size:15px;flex:none;color:var(--azure);line-height:1.4;}
@@ -906,7 +890,6 @@ body[data-tier="narrow"] .dock.left{--floatw:min(300px,84vw);}
 .yt-head{display:flex;align-items:center;gap:10px;padding:12px 16px;background:#2a1c10;
   border-bottom:1px solid rgba(245,130,10,.35);}
 .yt-head .mdi{color:var(--brand);font-size:19px;flex:none;line-height:1;}
-.yt-title{font-size:16px;font-weight:700;color:var(--ink);line-height:1.4;}
 .yt-body{padding:14px 16px;display:flex;flex-direction:column;gap:10px;}
 .yt-task{margin:0;color:#e6d6c2;font-size:15px;line-height:1.65;}
 .yt-steps{margin:0;padding-left:22px;color:var(--muted);font-size:14.5px;line-height:1.7;}
@@ -988,6 +971,8 @@ body[data-tier="narrow"] .dock.left{--floatw:min(300px,84vw);}
   margin:0 auto;
   padding:44px var(--gutter) 0;
   display:block;
+  font-size:16.5px;
+  line-height:1.75;
 }
 .lesson-content > p,
 .lesson-content > ul,
@@ -1048,7 +1033,6 @@ body[data-tier="narrow"] .dock.left{--floatw:min(300px,84vw);}
 .lesson-content > .challenge-mini{--kind:var(--teal);}
 .lesson-content > .yourturn{--kind:var(--brand);}
 
-.lesson-content > .quizcell > .quiz-h,
 .lesson-content > .challenge-mini > .ch-head,
 .lesson-content > .yourturn > .yt-head{background:none;border:0;padding:0 0 12px;}
 .lesson-content > .quizcell > .quiz-body,
@@ -1057,9 +1041,6 @@ body[data-tier="narrow"] .dock.left{--floatw:min(300px,84vw);}
 .lesson-content > .challenge-mini > .ch-foot,
 .lesson-content > .yourturn > .yt-foot{background:none;border:0;padding:14px 0 0;}
 .lesson-content > .runcell > .runbar{background:none;padding:8px 0 0;}
-/* The heading carries the block's identity now that the frame is gone, so it gets its accent. */
-.lesson-content > .quizcell > .quiz-h .quiz-q{color:var(--ink);}
-.lesson-content > .yourturn > .yt-head .yt-title{color:#ffc27a;}
 
 /* ---------- pictures and diagrams ----------
    A diagram is one of the "wide" things: it earns the full block, not the prose measure, because
