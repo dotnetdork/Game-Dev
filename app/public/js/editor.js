@@ -130,6 +130,10 @@ function switchView(view) {
   const titleFor = { learn: 'Course Outline', code: 'Files', play: 'Game Info' };
   ['panel-outline', 'panel-files', 'panel-info'].forEach(function (p) { $(p).hidden = (p !== panelFor[view]); });
   $('leftTitle').textContent = titleFor[view];
+  /* At a narrow width the left dock slides in from a button, and that button opens whichever panel
+     this tab shows — so it says so rather than always claiming "Course outline". */
+  const ob = $('outlineBtn');
+  if (ob) { ob.title = titleFor[view]; ob.querySelector('.sr-only').textContent = 'Show the ' + titleFor[view].toLowerCase(); }
   if (view === 'learn') $('crumb').textContent = $('crumb').dataset.lesson || 'Lesson';
   if (view === 'code') { upgradeEditor(); $('crumb').textContent = currentFile; refreshFiles(); loadCode(); setTimeout(function () { codeEditor.refresh(); }, 0); }
   if (view === 'play') { $('crumb').textContent = 'Playing: ' + course.name; startGame(); loadSettings(); } else { stopGame(); }

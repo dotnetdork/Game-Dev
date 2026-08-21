@@ -1068,6 +1068,9 @@ function selectLesson(idx) {
   labPendingAdvance = null;
   curIdx = idx; const f = flat[idx];
   revealModuleFor(idx);        // the module this lesson lives in opens; nothing else is touched
+  // At a narrow width the outline is floating over the lesson. Picking one is the end of that job,
+  // so it gets out of the way rather than sitting on top of what was just opened.
+  if (typeof floatOpen !== 'undefined' && floatOpen === 'left') closeFloating();
   const token = ++lessonToken;
   $('crumb').dataset.lesson = f.m.name + ': ' + f.l.t;
   cancelAdvance();

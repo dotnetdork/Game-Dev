@@ -63,6 +63,9 @@
 
       <main class="center">
         <div class="viewbar">
+          <!-- Only reachable below 1180px, where the outline becomes a slide-over instead of a
+               permanent column. Above that the outline is always on screen and this is hidden. -->
+          <button class="outline-btn" id="outlineBtn" aria-expanded="false" aria-controls="panel-outline" title="Course outline"><span class="mdi mdi-book-open-page-variant" aria-hidden="true"></span><span class="sr-only">Show the course outline</span></button>
           <span class="crumb" id="crumb">Welcome</span>
           <div class="vtabs" role="tablist" aria-label="Lesson view">
             <button class="vtab on" data-view="learn" role="tab" aria-selected="true" aria-controls="view-learn"><span class="mdi mdi-book-open-page-variant"></span>Learn</button>
@@ -121,6 +124,9 @@
         </div>
       </aside>
     </div>
+
+    <!-- Dims and closes whichever dock is floating over the content at a narrow width. -->
+    <div class="dock-scrim" id="dockScrim" hidden></div>
 
     <div class="page" id="page" hidden></div>
 

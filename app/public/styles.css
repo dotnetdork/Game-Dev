@@ -5,7 +5,14 @@
      sits on — both dock headers, the whole status bar, the quiz number badges, the Parsons
      positions and the cursor readout. #8b9db1 clears it everywhere: 4.83:1 worst case. */
   --ink:#eaf1f8;--muted:#9fb2cc;--dim:#8b9db1;--azure:#3e8fd6;--gold:#f5b02e;--teal:#2fd0b6;--green:#3ddc84;--sel:#1b4b78;
-  --lock:#7d8ea3;--brand:#f5820a;--brand-ink:#241300;--focus:#7cc4ff;--font:Segoe UI, Roboto, Arial, sans-serif;--leftw:280px;--rightw:320px;}
+  --lock:#7d8ea3;--brand:#f5820a;--brand-ink:#241300;--focus:#7cc4ff;--font:Segoe UI, Roboto, Arial, sans-serif;
+  /* ---- how wide text and pages are allowed to get ----
+     One reading measure and one page width, instead of the four different caps that were in use
+     (820 / 820 / 1080 / unbounded). `--measure` is the width of the TEXT; the gutter sits outside
+     it, so the column does not get narrower as the gutter grows. Measured at 16.5px this lands
+     around 68 characters per line — the old 820px cap measured 92, and comfortable for an
+     11-to-14-year-old is nearer 55-70. */
+  --measure:480px;--wide:780px;--gutter:clamp(20px,4vw,56px);--page-max:1200px;}
 :focus-visible{outline:2px solid var(--focus);outline-offset:2px;border-radius:4px;}
 *{box-sizing:border-box;}
 button{font:inherit;color:inherit;}
@@ -32,9 +39,51 @@ body{background:var(--bg);color:var(--ink);font-family:var(--font);font-size:14p
 .topright{margin-left:auto;display:flex;align-items:center;gap:2px;}
 
 .stage-wrap{min-height:0;position:relative;overflow:hidden;}
-.editor{display:grid;grid-template-columns:var(--leftw) 1fr var(--rightw);height:100%;min-height:0;}
+
+/* ---------- how much room each region gets ----------
+   The two docks used to claim a constant 600px at every width. Measured: that is 44% of a 1366
+   Chromebook and 59% of a 1024 screen before any content, leaving the lesson 424px — and the
+   resizer floors meant a student could not reclaim it either.
+   Three tiers, set on <body> by layoutTier() in js/ui.js so the CSS and the floating-button state
+   can never disagree about which one is in force:
+     wide    >=1440   both docks are columns
+     mid     1180+    the outline is a column, the assistant floats in over the content
+     narrow  <1180    both float in; the centre gets the whole width
+   A dock that floats is the same element in the same place in the DOM — only its positioning
+   changes — so nothing about focus order or the outline's tree semantics moves. */
+.editor{--leftw:280px;--rightw:320px;
+  display:grid;grid-template-columns:var(--leftw) 1fr var(--rightw);
+  height:100%;min-height:0;position:relative;}
 .dock{position:relative;background:var(--panel);border-right:1px solid var(--line);display:flex;flex-direction:column;min-height:0;min-width:0;}
 .dock.right{border-right:none;border-left:1px solid var(--line);overflow:hidden;}
+
+/* The assistant, hidden by its own chevron. A class rather than an inline width, so the tier
+   rules below still apply when it comes back. */
+.editor.ai-hidden{--rightw:0px;}
+
+/* ---- a floating dock ---- */
+.editor .dock.floating{position:absolute;top:0;bottom:0;z-index:26;width:var(--floatw,300px);
+  box-shadow:0 0 44px rgba(0,0,0,.6);transition:transform .18s ease;}
+.editor .dock.left.floating{left:0;border-right:1px solid var(--line);transform:translateX(-100%);}
+.editor .dock.right.floating{right:0;transform:translateX(100%);}
+.editor .dock.floating.open{transform:translateX(0);}
+/* The drag handle is meaningless on a dock that floats at a fixed width. */
+.editor .dock.floating .res{display:none;}
+.dock-scrim{position:absolute;inset:0;z-index:25;background:rgba(4,10,20,.55);}
+
+body[data-tier="mid"] .editor{--leftw:260px;--rightw:0px;}
+body[data-tier="narrow"] .editor{--leftw:0px;--rightw:0px;}
+body[data-tier="mid"] .dock.right{--floatw:min(340px,86vw);}
+body[data-tier="narrow"] .dock.right{--floatw:min(340px,86vw);}
+body[data-tier="narrow"] .dock.left{--floatw:min(300px,84vw);}
+
+/* The outline button only exists where the outline is not permanently on screen. */
+.outline-btn{display:none;align-items:center;justify-content:center;width:30px;height:26px;flex:none;
+  margin-right:8px;background:var(--panel2);border:1px solid var(--line);border-radius:7px;
+  color:var(--muted);cursor:pointer;}
+.outline-btn:hover{color:var(--ink);background:#1b4470;}
+.outline-btn .mdi{font-size:16px;}
+body[data-tier="narrow"] .outline-btn{display:inline-flex;}
 .res{position:absolute;top:0;height:100%;width:6px;cursor:col-resize;z-index:5;}
 .res.r{right:-3px;} .res.l{left:-3px;}
 .res:hover{background:#2b4a6e;}
@@ -132,7 +181,13 @@ body{background:var(--bg);color:var(--ink);font-family:var(--font);font-size:14p
 .setrow{display:flex;justify-content:space-between;padding:7px 12px;border-bottom:1px solid #16304e;color:var(--muted);font-size:13px;}
 .setrow b{color:var(--ink);font-family:Consolas,monospace;}
 
-.center{display:flex;flex-direction:column;min-width:0;background:var(--bg);}
+/* Each region names its own grid column. Without this, a dock that floats is absolutely positioned
+   and so leaves the flow — which made `main` the FIRST in-flow item, so it was auto-placed into
+   column one and rendered 0px wide at the narrow tier. Naming the tracks means the centre keeps
+   the middle one however many of its siblings are currently floating. */
+.center{grid-column:2;display:flex;flex-direction:column;min-width:0;background:var(--bg);}
+.dock.left{grid-column:1;}
+.dock.right{grid-column:3;}
 .viewbar{display:flex;align-items:center;justify-content:space-between;padding:0 10px;height:38px;border-bottom:1px solid var(--line);background:var(--panel);}
 .crumb{color:var(--muted);font-weight:600;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;}
 .vtabs{display:flex;gap:4px;flex:none;}
@@ -247,6 +302,9 @@ body{background:var(--bg);color:var(--ink);font-family:var(--font);font-size:14p
 
 /* generic pages */
 .page{height:100%;overflow:auto;padding:34px 44px;}
+/* One page width for every full-page view. Before this the Store grid ran 1822px wide with six
+   columns at 1920 while the Docs page beside it capped at 820 — same app, no shared rule. */
+.page > *{max-width:var(--page-max);margin-left:auto;margin-right:auto;}
 .page .phead{display:flex;align-items:flex-end;justify-content:space-between;gap:16px;margin-bottom:22px;}
 .page h2{font-size:28px;margin:0 0 4px;display:flex;align-items:center;gap:10px;}
 .page h2 .mdi{color:var(--azure);}
@@ -310,7 +368,7 @@ body{background:var(--bg);color:var(--ink);font-family:var(--font);font-size:14p
 .sec-head{border-radius:8px;transition:background .1s;}
 
 /* leaderboard */
-.board{max-width:1080px;margin:0 auto;}
+.board{max-width:var(--page-max);margin:0 auto;}
 .board-controls{display:flex;align-items:center;gap:12px;flex-wrap:wrap;margin-bottom:20px;}
 .seg{display:inline-flex;background:var(--panel);border:1px solid var(--line);border-radius:9px;overflow:hidden;}
 .seg button{background:none;border:0;color:var(--muted);padding:9px 16px;font-weight:700;cursor:pointer;font-size:12.5px;font-family:var(--font);transition:background .12s,color .12s;}
@@ -368,7 +426,8 @@ body{background:var(--bg);color:var(--ink);font-family:var(--font);font-size:14p
 @media(max-width:900px){.lb-body{grid-template-columns:1fr;}.rail{flex-direction:row;flex-wrap:wrap;}.rail .card{flex:1;min-width:240px;}.podium{grid-template-columns:1fr;}.pod.p1{order:-1;}}
 
 .doclink{color:var(--azure);font-weight:600;text-decoration:none;}
-.help-body{max-width:780px;line-height:1.7;}
+/* Prose, so it gets the reading measure the lessons get rather than a width of its own. */
+.help-body{max-width:var(--measure);margin:0 !important;line-height:1.7;}
 .help-body h3{margin:22px 0 6px;color:var(--teal);font-size:16px;display:flex;align-items:center;gap:8px;}
 .help-body p,.help-body li{color:var(--muted);}
 
@@ -892,17 +951,28 @@ body{background:var(--bg);color:var(--ink);font-family:var(--font);font-size:14p
    anything with its own internal layout — a table, a code block, a lab, a quiz — is allowed to be
    wider, because squeezing an editor to the width of a paragraph helps nobody. Both are centred on
    the same axis, so the page still reads as one column. */
-/* One centred column, text filling it, with margins that grow with the window. The earlier
-   version split this into a narrow prose strip with wider cards, which left paragraphs floating in
-   a column that was mostly empty — the page has to feel like it fits the space it is in. 780px of
-   block gives roughly 80 characters a line: a little past the classic 65-75, and the right call
-   here because the surface also carries tables, code and editors that a narrow strip strangles. */
+/* Two widths sharing one left edge, which is the thing the two earlier attempts each got half of.
+   A single 780px column gave paragraphs ~88 characters a line (comfortable is nearer 55-70), and
+   the attempt before that put prose in a narrow strip while cards floated wider, so the page read
+   as two competing columns.
+   So: the BLOCK is wide enough for the things that have their own internal layout — tables, code,
+   a lab, a quiz — and PROSE is capped at the reading measure inside it. Everything starts at the
+   same left edge, so it still reads as one column, and nothing is strangled to the width of a
+   paragraph. Still display:block, deliberately: switching to grid would stop adjacent margins
+   collapsing and quietly change the vertical rhythm of all 22 lessons. */
 .lesson-content{
-  max-width:780px;
+  max-width:calc(var(--wide) + 2 * var(--gutter));
   margin:0 auto;
-  padding:44px clamp(28px,4vw,68px) 0;
+  padding:44px var(--gutter) 0;
   display:block;
 }
+.lesson-content > p,
+.lesson-content > ul,
+.lesson-content > ol,
+.lesson-content > h2,
+.lesson-content > h3,
+.lesson-content > blockquote,
+.lesson-content > .tip{max-width:var(--measure);}
 
 /* ---- tables ----
    There was no rule for these at all, and the course uses them constantly to compare three things
@@ -972,5 +1042,7 @@ body{background:var(--bg);color:var(--ink);font-family:var(--font);font-size:14p
    and continues on another. */
 /* The hero mirrors the body block exactly — same max-width, same centring, same gutter — so the
    title sits on the same axis as the first paragraph. */
-.hero-inner{max-width:780px;margin:0 auto;padding:0 clamp(28px,4vw,68px);}
+/* Same block width and gutter as the body, so the <h1> starts on the same left edge as the first
+   paragraph rather than on an axis of its own. */
+.hero-inner{max-width:calc(var(--wide) + 2 * var(--gutter));margin:0 auto;padding:0 var(--gutter);}
 .lesson-hero{padding:40px 0 32px;}

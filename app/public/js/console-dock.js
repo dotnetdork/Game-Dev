@@ -73,15 +73,6 @@ function resetGame() {
 }
 if ($('resetGameBtn')) $('resetGameBtn').addEventListener('click', resetGame);
 
-/* ---------- collapsible AI dock ---------- */
-let aiCollapsed = false;
-// Hidden on the full-page views and while a lab has the screen — in both cases the assistant it
-// would open is behind something else, so the button would do nothing a student could see.
-function updateFab() {
-  const fab = $('aiFab'); if (!fab) return;
-  const labOpen = typeof openLabRef !== 'undefined' && !!openLabRef;
-  fab.hidden = !(aiCollapsed && $('page') && $('page').hidden && !labOpen);
-}
-function setAICollapsed(c) { aiCollapsed = c; const ed = $('editor'); if (ed) ed.style.setProperty('--rightw', c ? '0px' : '320px'); updateFab(); }
-if ($('aiCollapse')) $('aiCollapse').addEventListener('click', function () { setAICollapsed(true); });
-if ($('aiFab')) $('aiFab').addEventListener('click', function () { setAICollapsed(false); });
+/* Showing and hiding the assistant now lives with the rest of the layout in js/ui.js — hideAI(),
+   showAI() and updateFab() — because whether it is a column or a panel floating over the content
+   depends on the width tier, and one place has to own that decision. */
