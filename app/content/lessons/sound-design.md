@@ -54,6 +54,23 @@ explain: A sound effect fires again and again. Short and unobtrusive survives re
 
 ## Music sets the room
 
+<figure class="shot">
+  <img src="/content/images/shots/minecraft-nether.jpg" alt="The Minecraft Nether: a cavernous red landscape of netherrack with lava falls and fire">
+  <figcaption>The best-known example of music setting a room is this place. Minecraft's overworld
+  music is warm and sparse; the Nether's is a drone with no melody and no rhythm you can hold onto.
+  Same game, same controls, same player — and everyone describes walking in here as frightening. The
+  picture is doing maybe half of that work.
+  <cite><b>Minecraft</b> — Xbox México, CC BY 3.0.</cite></figcaption>
+</figure>
+
+<figure class="shot aside">
+  <img src="/content/images/shots/minecraft-creeper.png" alt="A Minecraft creeper, the green four-legged monster, seen close up">
+  <figcaption>And the most efficient sound effect ever written: a short hiss. No music sting, no
+  warning text, no health bar. Players learn it once and then panic every time. That is what a sound
+  effect is <em>for</em>.
+  <cite><b>Minecraft</b> — Xbox México, CC BY 3.0.</cite></figcaption>
+</figure>
+
 Music does a completely different job. A sound effect says *that happened*; music says *this is
 what kind of place you are in*.
 

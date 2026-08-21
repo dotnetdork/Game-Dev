@@ -29,6 +29,17 @@ you can't practise any other way.
 
 ## The last-mile checklist
 
+<figure class="art aside">
+  <div class="art-row">
+    <span class="art-cell"><img src="/assets/signExit.png" alt="An exit sign"><b>a way out</b></span>
+    <span class="art-cell"><img src="/assets/flagGreen.png" alt="A green flag"><b>an end</b></span>
+    <span class="art-cell"><img src="/assets/check-on.png" alt="A ticked checkbox"><b>it works</b></span>
+  </div>
+  <figcaption>The three things a player needs that you will forget, because you already know your
+  own game: a way out, somewhere it ends, and the confidence that pressing things does something.
+  <cite><b>Kenney</b> — Platformer &amp; UI packs, public domain (CC0).</cite></figcaption>
+</figure>
+
 The gap between "works for me" and "works for someone else" is almost always the same short list:
 
 - **Can they tell what to do?** You know the controls. They don't. Put them on the screen.
@@ -58,6 +69,15 @@ explain: Feature freeze is the decision to stop adding and start finishing. With
 
 ## Watching somebody else play
 
+<figure class="shot aside">
+  <img src="/content/images/shots/asteroids-cabinet.jpg" alt="An Asteroids arcade cabinet, with its illustrated side art and control panel">
+  <figcaption>The original playtest rig. An arcade cabinet earned money or it did not, and the
+  designer could stand behind it and watch. You have the better version of this: a friend, a
+  browser tab, and the discipline to say nothing while they play.
+  <cite><b>Asteroids</b> cabinet — Atari. Used for teaching commentary; see
+  CREDITS.md.</cite></figcaption>
+</figure>
+
 Here is the most valuable twenty minutes available to you, and almost nobody does it.
 
 Sit someone in front of your game. **Say nothing.** Not one word, however much it hurts.
@@ -73,6 +93,15 @@ Write down what you saw, not what you'd like to be true. Then fix the top two th
 > If you have to explain it, it isn't explained.
 
 ## Putting your name on it
+
+<figure class="shot">
+  <img src="/content/images/shots/endless-sky-title.jpg" alt="The Endless Sky title screen: a spaceship over a planet with the game's name and a menu">
+  <figcaption>A title screen is the cheapest thing in this list and the one that most changes whether
+  a game looks finished. A name, a picture, and one button. Endless Sky is made by volunteers and
+  given away free, and it still has this — because a game that opens straight into play reads as a
+  demo, however good the play is.
+  <cite><b>Endless Sky</b> 0.9.12 — Endless Sky developers, GPLv3.</cite></figcaption>
+</figure>
 
 Now the part that has nothing to do with code.
 

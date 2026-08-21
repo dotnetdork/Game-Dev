@@ -26,6 +26,20 @@ and pushing on is obviously correct. No uncertainty and it isn't a choice at all
 
 ## You already know a dozen of these
 
+<figure class="art aside">
+  <div class="art-row">
+    <span class="art-cell"><img src="/assets/coinBronze.png" alt="A bronze coin"><b>safe</b></span>
+    <span class="art-cell"><img src="/assets/coinSilver.png" alt="A silver coin"><b>a reach</b></span>
+    <span class="art-cell"><img src="/assets/gemRed.png" alt="A red gem"><b>risky</b></span>
+    <span class="art-op">·</span>
+    <span class="art-cell"><img src="/assets/spikes.png" alt="A row of spikes"><b>why</b></span>
+  </div>
+  <figcaption>The same idea, told with art instead of numbers. A player reads this row before they
+  read any label: bronze is on the path, the gem is somewhere you would rather not stand. Put the
+  spikes where the player can see them <em>and</em> see the gem, and you have made a decision
+  instead of a trap. <cite><b>Kenney</b> — Platformer Pack, public domain (CC0).</cite></figcaption>
+</figure>
+
 - **Minecraft at night** — more ore down there, but you're a long way from your chest.
 - **Fortnite's storm** — that loot is good, but the circle is closing.
 - **Mario's warp pipes** — skip ahead, but you'll be underlevelled and short of coins.
@@ -34,6 +48,23 @@ and pushing on is obviously correct. No uncertainty and it isn't a choice at all
 Different games, same machine every time: *more, if you're willing to risk what you have.*
 
 ## Why "what you're carrying" matters
+
+<figure class="shot">
+  <img src="/content/images/shots/minecraft-end.jpg" alt="The Minecraft End dimension: floating pale islands in a black void with tall obsidian pillars">
+  <figcaption>The clearest risk-and-reward in any game most students have played. You arrive here
+  carrying everything you own, and dying means losing all of it in a place you cannot easily get back
+  to. Nothing about the monsters changed — what changed is <em>what you brought with you</em>. That is
+  the whole lesson, and Minecraft charges you nothing to learn it.
+  <cite><b>Minecraft</b> — Xbox México, CC BY 3.0.</cite></figcaption>
+</figure>
+
+<figure class="shot aside">
+  <img src="/content/images/shots/asteroids-gameplay.png" alt="Asteroids: a small triangular ship among drifting rocks on a black screen">
+  <figcaption>Asteroids charges you for greed too. Shooting a big rock breaks it into faster small
+  ones, so every point you take makes the screen more dangerous. The reward <em>is</em> the risk.
+  <cite><b>Asteroids</b> (1979) — Atari. Used for teaching commentary; see
+  CREDITS.md.</cite></figcaption>
+</figure>
 
 Notice how many of those examples involve **losing something you already earned**.
 

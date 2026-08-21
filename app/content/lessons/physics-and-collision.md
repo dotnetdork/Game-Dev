@@ -75,6 +75,14 @@ explain: Walls working proves the physics system is fine. If one specific pair d
 
 ## Why games fake it
 
+<figure class="shot aside">
+  <img src="/content/images/shots/jumper-platformer.png" alt="A simple 2D platformer level made of rectangular blocks, with a small character standing on one">
+  <figcaption>Look at how square everything is. That is not laziness — a world built out of rectangles
+  is a world where "did these two things touch?" is four comparisons instead of real geometry. The
+  art can be any shape it likes; the boxes underneath stay boxes.
+  <cite><b>Jumper</b> — Depicklator, CC BY-SA 2.0.</cite></figcaption>
+</figure>
+
 Real physics is expensive to calculate and, more importantly, **not much fun**.
 
 Mario's jump is nothing like a real jump. He rises too fast, hangs slightly at the top, and falls

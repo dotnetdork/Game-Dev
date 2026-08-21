@@ -1,0 +1,68 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 720 320" role="img"
+     aria-label="An error message broken into four parts: the kind of problem, the thing that was wrong, the file it happened in, and the line number. Every error tells you all four.">
+  <title>Every error message tells you the same four things</title>
+
+  <g font-family="Segoe UI, Roboto, Arial, sans-serif">
+
+    <text x="24" y="28" fill="#8b9db1" font-size="12.5" font-weight="600">THE WHOLE MESSAGE</text>
+
+    <!-- the message itself, as the console prints it -->
+    <rect x="24" y="40" width="672" height="52" rx="8" fill="#2e1414" stroke="#7a3030" stroke-width="1.5"/>
+    <g font-family="Consolas, monospace" font-size="14">
+      <text x="42" y="72">
+        <tspan fill="#ff9a9a" font-weight="700">TypeError</tspan><tspan fill="#e6b8b8">: </tspan><tspan fill="#ffd08a" font-weight="700">Cannot read properties of undefined</tspan><tspan fill="#e6b8b8"> (reading </tspan><tspan fill="#9ecbff">'x'</tspan><tspan fill="#e6b8b8">)</tspan>
+      </text>
+      <text x="42" y="88" fill="#8b9db1" font-size="12">    at movePlayer (<tspan fill="#3ddc84">player.js</tspan>:<tspan fill="#3ddc84">31</tspan>)</text>
+    </g>
+
+    <!-- pointers down to the four parts -->
+    <g stroke="#5f7893" stroke-width="1" stroke-dasharray="3 3">
+      <line x1="86" y1="92" x2="86" y2="128"/>
+      <line x1="300" y1="92" x2="300" y2="128"/>
+      <line x1="470" y1="96" x2="470" y2="128"/>
+      <line x1="520" y1="96" x2="520" y2="128"/>
+    </g>
+
+    <!-- 1: the kind -->
+    <rect x="24" y="132" width="150" height="86" rx="9" fill="#0d2440" stroke="#2a4a6f"/>
+    <circle cx="42" cy="152" r="9" fill="#3e8fd6"/>
+    <text x="42" y="157" text-anchor="middle" fill="#06101c" font-size="12" font-weight="700">1</text>
+    <text x="58" y="157" fill="#eaf1f8" font-size="13" font-weight="600">The kind</text>
+    <text x="36" y="180" fill="#9fb2cc" font-size="12">Not a judgement.</text>
+    <text x="36" y="196" fill="#9fb2cc" font-size="12">A category, like</text>
+    <text x="36" y="212" fill="#9fb2cc" font-size="12">"wrong type".</text>
+
+    <!-- 2: what was wrong -->
+    <rect x="186" y="132" width="234" height="86" rx="9" fill="#0d2440" stroke="#2a4a6f"/>
+    <circle cx="204" cy="152" r="9" fill="#3e8fd6"/>
+    <text x="204" y="157" text-anchor="middle" fill="#06101c" font-size="12" font-weight="700">2</text>
+    <text x="220" y="157" fill="#eaf1f8" font-size="13" font-weight="600">What it wanted</text>
+    <text x="198" y="180" fill="#9fb2cc" font-size="12">Something was <tspan fill="#ffd08a" font-family="Consolas, monospace">undefined</tspan></text>
+    <text x="198" y="196" fill="#9fb2cc" font-size="12">and you asked it for <tspan fill="#9ecbff" font-family="Consolas, monospace">.x</tspan></text>
+    <text x="198" y="212" fill="#9fb2cc" font-size="12">This is the useful part.</text>
+
+    <!-- 3: which file -->
+    <rect x="432" y="132" width="126" height="86" rx="9" fill="#0f2e22" stroke="#3ddc84"/>
+    <circle cx="450" cy="152" r="9" fill="#3ddc84"/>
+    <text x="450" y="157" text-anchor="middle" fill="#06101c" font-size="12" font-weight="700">3</text>
+    <text x="466" y="157" fill="#c9f5dc" font-size="13" font-weight="600">Which file</text>
+    <text x="444" y="180" fill="#9fd8b4" font-size="12">Go there first.</text>
+    <text x="444" y="196" fill="#9fd8b4" font-size="12">Not the file you</text>
+    <text x="444" y="212" fill="#9fd8b4" font-size="12">were thinking of.</text>
+
+    <!-- 4: which line -->
+    <rect x="570" y="132" width="126" height="86" rx="9" fill="#0f2e22" stroke="#3ddc84"/>
+    <circle cx="588" cy="152" r="9" fill="#3ddc84"/>
+    <text x="588" y="157" text-anchor="middle" fill="#06101c" font-size="12" font-weight="700">4</text>
+    <text x="604" y="157" fill="#c9f5dc" font-size="13" font-weight="600">Which line</text>
+    <text x="582" y="180" fill="#9fd8b4" font-size="12">Where it broke —</text>
+    <text x="582" y="196" fill="#9fd8b4" font-size="12">often one line</text>
+    <text x="582" y="212" fill="#9fd8b4" font-size="12">after the mistake.</text>
+
+    <!-- the habit this diagram is trying to build -->
+    <rect x="24" y="238" width="672" height="62" rx="9" fill="#241d0e" stroke="#4a3c18"/>
+    <text x="44" y="262" fill="#ffd08a" font-size="13" font-weight="700">Read it backwards.</text>
+    <text x="168" y="262" fill="#e6d8b8" font-size="13">File and line first, then what it wanted, then the kind.</text>
+    <text x="44" y="284" fill="#c2b48f" font-size="12.5">Almost nobody does. It is why "I have no idea what this means" is usually "I read the first word and stopped".</text>
+  </g>
+</svg>

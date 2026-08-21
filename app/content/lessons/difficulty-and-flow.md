@@ -25,6 +25,15 @@ started.
 > Good difficulty isn't a setting. It's a slope that climbs at roughly the speed the player
 > improves.
 
+<figure class="shot aside">
+  <img src="/content/images/shots/space-invaders.gif" alt="Space Invaders: rows of aliens descending towards a cannon at the bottom of the screen">
+  <figcaption>Space Invaders has one difficulty dial and it turns itself: the fewer aliens are left,
+  the faster they move. Nobody designed a level three. The game gets harder <em>because you are
+  winning</em>, which is the cheapest good difficulty curve ever built.
+  <cite><b>Space Invaders</b> (1978) — Taito. Used for teaching commentary; see
+  CREDITS.md.</cite></figcaption>
+</figure>
+
 ## How Mario teaches you, without words
 
 Watch the first fifteen seconds of 1-1 in your head:
@@ -63,6 +72,15 @@ explain: New ideas are introduced alone, in safe places, and only combined once 
 </figure>
 
 ## Three dials you can turn
+
+<figure class="shot">
+  <img src="/content/images/shots/supertux-level.jpg" alt="A SuperTux level: Tux running along a grassy platform with floating blocks, coins and a snowball enemy ahead">
+  <figcaption>A platformer teaching you without a word of text, exactly the way Mario does it. The
+  first enemy is slow and on flat ground with room to retreat. The coins are placed where they lead
+  you somewhere. Nothing here can kill you before you understand it — and every one of those is a
+  dial someone chose to leave turned down.
+  <cite><b>SuperTux</b> — SuperTux developers, screenshot by Liikiill, GPLv3.</cite></figcaption>
+</figure>
 
 You don't need clever code to control difficulty. You need numbers you can adjust:
 

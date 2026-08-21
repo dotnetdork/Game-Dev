@@ -77,6 +77,23 @@ part is yours.
 
 ## Same job, different clothes
 
+<figure class="shot">
+  <img src="/content/images/shots/halo4-multiplayer.jpg" alt="A Halo 4 multiplayer match seen from the player's view, with a heads-up display showing shields, ammunition and a motion tracker">
+  <figcaption>This and Pac-Man are the same three steps. Read what the player is doing, work out what
+  changed, draw it — sixty times a second. Everything that looks like a difference between these two
+  games happens <em>inside</em> the "work out what changed" step. The loop does not get more
+  sophisticated; the game inside it does.
+  <cite><b>Halo 4</b> — Xbox MENA, CC BY 3.0.</cite></figcaption>
+</figure>
+
+<figure class="shot aside">
+  <img src="/content/images/shots/fido2-gameplay.png" alt="Fido 2, a very simple 1980s game with blocky low-resolution graphics on a black background">
+  <figcaption>1985, a few kilobytes, and the same three steps again. If your engine ever feels like
+  magic, remember that this ran on a machine with less memory than one of the screenshots on this
+  page. <cite><b>Fido 2</b> (1985) — Firebird Software, S. Wilson and J. D. Woodcock. Public
+  domain.</cite></figcaption>
+</figure>
+
 Unity, Unreal, Godot and Phaser all do the list above. They look wildly different and they argue
 about details, but underneath they are the same machine.
 

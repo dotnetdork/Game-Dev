@@ -12,6 +12,20 @@ is those three. The game you're building is those three.
 
 ## Reading the keys
 
+<figure class="art aside">
+  <div class="art-row">
+    <span class="art-cell"><img src="/assets/arrow-left.png" alt="Left arrow key"><b>left</b></span>
+    <span class="art-cell"><img src="/assets/arrow-up.png" alt="Up arrow key"><b>up</b></span>
+    <span class="art-cell"><img src="/assets/arrow-right.png" alt="Right arrow key"><b>right</b></span>
+    <span class="art-op">→</span>
+    <span class="art-cell"><img src="/assets/p1_jump.png" alt="The player in a jumping pose"><b>jump</b></span>
+  </div>
+  <figcaption>Three keys and one pose. The engine hands you nothing but "is left held down right
+  now?" — everything the player experiences as <em>movement</em> is you turning that answer into a
+  number, sixty times a second.
+  <cite><b>Kenney</b> — Platformer Pack, public domain (CC0).</cite></figcaption>
+</figure>
+
 In `create()`, you ask Phaser to watch the arrow keys once:
 
 ```

@@ -1,0 +1,43 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 320 340" role="img"
+     aria-label="A variable drawn as a labelled box. The name on the label never changes. What is inside the box changes as the game runs.">
+  <title>A variable is a labelled box: the name stays, the contents change</title>
+
+  <defs>
+    <marker id="bx-arrow" viewBox="0 0 10 10" refX="8" refY="5" markerWidth="6" markerHeight="6" orient="auto-start-reverse">
+      <path d="M0 0 L10 5 L0 10 z" fill="#5f7893"/>
+    </marker>
+  </defs>
+
+  <g font-family="Segoe UI, Roboto, Arial, sans-serif">
+
+    <!-- the label: written once -->
+    <text x="160" y="26" text-anchor="middle" fill="#8b9db1" font-size="12" font-weight="600">THE NAME — WRITTEN ONCE</text>
+    <rect x="70" y="38" width="180" height="34" rx="8" fill="#12304f" stroke="#3e8fd6" stroke-width="1.5"/>
+    <text x="160" y="61" text-anchor="middle" fill="#9ecbff" font-size="15" font-weight="700"
+          font-family="Consolas, monospace">score</text>
+
+    <line x1="160" y1="72" x2="160" y2="100" stroke="#5f7893" stroke-width="2" marker-end="url(#bx-arrow)"/>
+
+    <!-- the box, over time -->
+    <text x="160" y="120" text-anchor="middle" fill="#8b9db1" font-size="12" font-weight="600">WHAT IS IN IT — CHANGES</text>
+
+    <g font-family="Consolas, monospace">
+      <rect x="70" y="132" width="180" height="42" rx="8" fill="#0d2440" stroke="#2a4a6f"/>
+      <text x="90" y="159" fill="#5f7893" font-size="12">at the start</text>
+      <text x="230" y="159" text-anchor="end" fill="#cfe0f2" font-size="17" font-weight="700">0</text>
+
+      <rect x="70" y="180" width="180" height="42" rx="8" fill="#0d2440" stroke="#2a4a6f"/>
+      <text x="90" y="207" fill="#5f7893" font-size="12">one coin</text>
+      <text x="230" y="207" text-anchor="end" fill="#cfe0f2" font-size="17" font-weight="700">1</text>
+
+      <rect x="70" y="228" width="180" height="42" rx="8" fill="#0f2e22" stroke="#3ddc84" stroke-width="1.5"/>
+      <text x="90" y="255" fill="#7fb99a" font-size="12">five coins</text>
+      <text x="230" y="255" text-anchor="end" fill="#3ddc84" font-size="17" font-weight="700">5</text>
+    </g>
+
+    <!-- the point -->
+    <rect x="24" y="288" width="272" height="42" rx="8" fill="#241d0e" stroke="#4a3c18"/>
+    <text x="160" y="307" text-anchor="middle" fill="#e6d8b8" font-size="12.5">You never rename the box.</text>
+    <text x="160" y="323" text-anchor="middle" fill="#c2b48f" font-size="12.5">You put something else in it.</text>
+  </g>
+</svg>

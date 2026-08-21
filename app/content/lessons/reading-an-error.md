@@ -22,6 +22,12 @@ Read it. It's shorter than it looks, and only two parts matter.
 
 ## Where it happened, and what it expected
 
+<figure class="diagram">
+  <img src="/content/images/error-anatomy.svg" alt="An error message broken into four labelled parts: the kind of problem, what it wanted, which file, and which line. Read it backwards, starting from the file and line.">
+  <figcaption>The same four parts are in every error message you will ever see, in every language.
+  Learn to find them once and errors stop being shouting and start being a map.</figcaption>
+</figure>
+
 Take this:
 
 ```

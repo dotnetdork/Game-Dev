@@ -12,6 +12,17 @@ what to do with them. Minecraft is a few hundred textures and a rulebook.
 
 ## Sprites and sprite sheets
 
+<figure class="art aside">
+  <div class="art-row">
+    <span class="art-cell"><img src="/assets/player.png" alt="The player character standing"><b>player</b></span>
+    <span class="art-cell"><img src="/assets/coin-gold.png" alt="A gold coin"><b>coin-gold</b></span>
+    <span class="art-cell"><img src="/assets/slimeGreen.png" alt="A green slime enemy"><b>slimeGreen</b></span>
+    <span class="art-cell"><img src="/assets/heart.png" alt="A red heart, used for lives"><b>heart</b></span>
+  </div>
+  <figcaption>Four sprites your game already owns. The name under each one is what you type to
+  load it. <cite><b>Kenney</b> — Platformer Pack, public domain (CC0).</cite></figcaption>
+</figure>
+
 A **sprite** is a picture you can move around. Your player, a coin, an enemy — all sprites.
 
 Drawing Mario walking takes several pictures shown in order. Rather than store each as a separate
@@ -21,6 +32,22 @@ Why bother? Because asking for one file is much faster than asking for twenty. A
 separate tiny images spends most of its loading time on the *asking*, not the downloading.
 
 > One 200 KB sheet beats twenty 10 KB files, every time.
+
+<figure class="art">
+  <div class="art-row tiles">
+    <img src="/assets/grassLeft.png" alt="A grass tile with a finished left edge">
+    <img src="/assets/grass.png" alt="A middle grass tile">
+    <img src="/assets/grass.png" alt="A middle grass tile">
+    <img src="/assets/grass.png" alt="A middle grass tile">
+    <img src="/assets/grass.png" alt="A middle grass tile">
+    <img src="/assets/grassRight.png" alt="A grass tile with a finished right edge">
+  </div>
+  <figcaption>The floor in your game is not one long picture. It is three tiles — a left end, a
+  middle repeated as many times as you need, a right end — butted together with no gap. That is why
+  <code>grass</code> appears four times above, and why the ground can be any length you like
+  without anyone drawing a new picture.
+  <cite><b>Kenney</b> — Platformer Pack, public domain (CC0).</cite></figcaption>
+</figure>
 
 ## Sound and music
 

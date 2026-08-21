@@ -29,6 +29,15 @@ every effect stripped out. Same rules, same difficulty, completely dead.
   <figcaption>The code doing the damage is identical in both. Everything juice adds sits <b>around</b> the rule — which is why you can add all of it without touching how your game actually works.</figcaption>
 </figure>
 
+<figure class="shot aside">
+  <img src="/content/images/shots/supertuxkart-race.jpg" alt="A SuperTuxKart race in progress: karts on a track with speed lines, item boxes and a position display">
+  <figcaption>Count the juice: the speed blur, the dust behind the wheels, the position counter, the
+  item box glow. Take every one of them out and the karts still move at exactly the same speed — it
+  just stops feeling fast.
+  <cite><b>SuperTuxKart</b> — SuperTuxKart team, screenshot by QwertyChouskie, CC BY-SA
+  4.0.</cite></figcaption>
+</figure>
+
 ## Screen shake, and how much is too much
 
 Shaking the whole screen for a few frames is the single most effective effect for its cost. Three

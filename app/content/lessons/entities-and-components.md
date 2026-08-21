@@ -34,6 +34,23 @@ That's the whole idea:
 
 ## What they all share
 
+<figure class="art">
+  <div class="art-row">
+    <span class="art-cell"><img src="/assets/bee.png" alt="A bee enemy"><b>bee</b></span>
+    <span class="art-cell"><img src="/assets/slimeGreen.png" alt="A green slime enemy"><b>slimeGreen</b></span>
+    <span class="art-cell"><img src="/assets/ghost.png" alt="A ghost enemy"><b>ghost</b></span>
+    <span class="art-cell"><img src="/assets/snail.png" alt="A snail enemy"><b>snail</b></span>
+    <span class="art-cell"><img src="/assets/fishGreen.png" alt="A green fish enemy"><b>fishGreen</b></span>
+    <span class="art-note">Five enemies. Not five kinds of code — one kind, wearing five
+    pictures.</span>
+  </div>
+  <figcaption>Every one of these has a position, a picture, a speed and a way to be hit. That is
+  four components. The bee flies, the snail crawls and the ghost passes through walls, so each one
+  <em>also</em> has something the others don't — but the shared four are why adding a sixth enemy is
+  an afternoon rather than a rewrite.
+  <cite><b>Kenney</b> — Platformer Pack, public domain (CC0).</cite></figcaption>
+</figure>
+
 Almost everything in your game needs the same small handful:
 
 - **Position** — where it is.
@@ -60,6 +77,15 @@ explain: An entity is defined by the components it has. Add health and damage to
 ```
 
 ## What makes each one different
+
+<figure class="shot">
+  <img src="/content/images/shots/supertuxkart-select.jpg" alt="The SuperTuxKart character selection screen: a grid of different drivers to choose from">
+  <figcaption>Every kart on this screen runs the same code. What differs is a handful of numbers —
+  speed, weight, grip — and a picture. That is components, in a screen a player actually sees:
+  choosing a character is choosing a set of values, not a set of behaviour.
+  <cite><b>SuperTuxKart</b> — SuperTuxKart team, screenshot by QwertyChouskie, CC BY-SA
+  4.0.</cite></figcaption>
+</figure>
 
 Once the shared foundation exists, each kind is a short list of extras:
 

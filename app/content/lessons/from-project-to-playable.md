@@ -52,6 +52,14 @@ explain: A build turns a working folder into the shape a particular platform exp
 
 ## Why the web doesn't
 
+<figure class="diagram">
+  <img src="/content/images/one-page.svg" alt="Six project files are glued together in order into a single page, with main.js last, and the browser opens that page directly. Nothing is compiled and nothing is installed.">
+  <figcaption>Your whole build, drawn. Six files become one page, in the order the file tree shows,
+  with <code>main.js</code> last because it starts the engine and everything else has to exist by
+  then. There is no compiler anywhere in this picture — which is exactly why the same file runs on a
+  Chromebook, a Mac and a phone.</figcaption>
+</figure>
+
 Here's the good news about the choice you've already made. A browser **already knows** how to run
 JavaScript, show pictures and play sounds. It is the runtime.
 

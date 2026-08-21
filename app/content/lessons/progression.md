@@ -12,6 +12,19 @@ They all answer one question: *why should I play again tomorrow?*
 
 ## Progression is a promise
 
+<figure class="art aside">
+  <div class="art-row">
+    <span class="art-cell"><img src="/assets/keyYellow.png" alt="A yellow key"><b>keyYellow</b></span>
+    <span class="art-op">→</span>
+    <span class="art-cell"><img src="/assets/door_closedMid.png" alt="A closed door"><b>closed</b></span>
+    <span class="art-op">→</span>
+    <span class="art-cell"><img src="/assets/door_openMid.png" alt="An open door"><b>open</b></span>
+  </div>
+  <figcaption>Progression in three pictures. The door is visible long before the key is findable —
+  that is the promise. Show a player a locked door and they will remember where it was for an hour.
+  <cite><b>Kenney</b> — Platformer Pack, public domain (CC0).</cite></figcaption>
+</figure>
+
 The core loop gives you something to do right now. Feedback tells you it worked. Difficulty keeps
 it interesting. **Progression** is the part that says: *keep doing this and you will end up
 somewhere better.*
@@ -30,6 +43,24 @@ Power is the strongest for young players, because it changes what they can actua
 the weakest on its own — but it's the one that lasts longest once everything is unlocked.
 
 ## Why a visible bar matters so much
+
+<figure class="shot">
+  <img src="/content/images/shots/supertux-worldmap.jpg" alt="A SuperTux world map: a winding path of levels across an island, with completed levels marked and the path continuing off to the right">
+  <figcaption>Progression made into a picture you can point at. Every dot is a level, the path
+  behind you is finished, and the path ahead is <em>visible before you can reach it</em>. A player
+  looking at this knows exactly how far they have come and roughly how much is left — which is the
+  entire job. A percentage in a menu does the same arithmetic and none of the work.
+  <cite><b>SuperTux</b> — SuperTux Development Team, screenshot by Dexxor, GPL. Open source, so you
+  can go and read how this screen is built.</cite></figcaption>
+</figure>
+
+<figure class="shot aside">
+  <img src="/content/images/shots/runescape-classic.jpg" alt="A small, low-resolution RuneScape Classic combat scene with chat text and skill panels">
+  <figcaption>The other end of the same idea. RuneScape made the numbers themselves the reward, and
+  people gave it years. That is a promise kept — and also a warning: the grind <em>is</em> the game
+  here, which only works if the moment-to-moment is already good.
+  <cite><b>RuneScape Classic</b> — Jagex. Used for teaching commentary; see CREDITS.md.</cite></figcaption>
+</figure>
 
 Fill in the blank: RuneScape doesn't just tell you your level. It shows you **exactly how far into
 the next one you are.**

@@ -12,6 +12,11 @@ running. In code, that's a **variable**.
 
 ## A box with a name on it
 
+<figure class="diagram aside narrow">
+  <img src="/content/images/a-box-with-a-name.svg" alt="A variable drawn as a labelled box. The label, score, is written once. What is inside the box changes from 0 to 1 to 5 as the game runs.">
+  <figcaption>The name is written once. What is in the box changes as often as you like.</figcaption>
+</figure>
+
 A variable is a labelled box. You put something in it, and later you can look at it or swap it for
 something else.
 

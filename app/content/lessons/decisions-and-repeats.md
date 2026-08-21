@@ -96,6 +96,14 @@ Code full of well-named functions reads like a description of the game. That's t
 
 ## Putting the three together
 
+<figure class="diagram">
+  <img src="/content/images/if-and-loop.svg" alt="Two shapes side by side. An if is a fork: the code goes one way or the other and then carries on. A for loop is a ring: the code comes back to the same question until the answer changes.">
+  <figcaption>An <code>if</code> is a fork — you go one way and carry on. A loop is a ring — you come
+  back to the same question. Almost every bug in this lesson is one of those two shapes being the
+  wrong one, and a loop whose answer never changes is how you freeze the whole
+  game.</figcaption>
+</figure>
+
 Almost everything is these three stacked up: a **loop** that goes through the enemies, an **if**
 that checks each one, and a **function** saying what to do when it matches.
 

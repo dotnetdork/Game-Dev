@@ -10,6 +10,14 @@ Menu. Playing. Paused. Dead.
 A traffic light has exactly the same problem your game does, and solves it the same way: at any
 moment it is doing **one** thing, and which thing decides everything else.
 
+<figure class="shot aside">
+  <img src="/content/images/shots/supertux-menu.jpg" alt="The SuperTux main menu: a title screen with Start Game, Options and Quit over a snowy background">
+  <figcaption>The game is not paused here and it is not playing either. It is in a third state, with
+  its own rules about what the keys do. Every game you have played has this screen, and every one of
+  them needed a word for the state it is in.
+  <cite><b>SuperTux 0.5.1</b> — SuperTux Development Team, GPL.</cite></figcaption>
+</figure>
+
 ## One question, a few answers
 
 Your game is always in exactly one **state**. Not two. Not none.
@@ -89,6 +97,16 @@ out of `gameover`? If there's no arrow leaving a state, the player is stuck ther
 </figure>
 
 ## Where the rules live
+
+<figure class="shot">
+  <img src="/content/images/shots/runescape-hud.jpg" alt="The RuneScape interface: a game view with panels for inventory, skills, combat and a chat box">
+  <figcaption>Count the states this one screen implies: walking, in combat, in a menu, typing in
+  chat, trading. Typing "attack" into the chat box must not swing your sword — and that rule only
+  exists because somewhere in there, something knows which state the player is in. A pile of
+  true/false flags is how this becomes unfixable.
+  <cite><b>RuneScape</b> — Jagex. Used for teaching commentary; see
+  CREDITS.md.</cite></figcaption>
+</figure>
 
 Once you have a state, `update()` gets a clear shape:
 

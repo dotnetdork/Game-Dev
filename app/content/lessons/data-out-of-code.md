@@ -93,6 +93,25 @@ balance the whole thing without touching anything that can break.
 
 ## How real games do it
 
+<figure class="shot">
+  <img src="/content/images/shots/minecraft-crafting.jpg" alt="The Minecraft crafting table interface, with items arranged in a three-by-three grid producing a wooden sword">
+  <figcaption>Every recipe in Minecraft is a row in a data file — a shape of ingredients and what it
+  makes. Nobody wrote <code>if (twoPlanksAndAStick) makeSword()</code>. That is why the game can add
+  a hundred recipes in an update without touching the crafting code, and why the modding community
+  can add ten thousand more without being allowed near it.
+  <cite><b>Minecraft</b> — Xbox México, CC BY 3.0.</cite></figcaption>
+</figure>
+
+<figure class="shot">
+  <img src="/content/images/shots/supertux-editor.jpg" alt="The SuperTux level editor: a level being built by placing tiles from a palette on the right onto a grid">
+  <figcaption>The same idea, one level up. This is a level being <em>drawn</em>, not programmed —
+  what comes out is a file listing which tile goes where. The game reads it. Get this right and
+  designing a new level stops needing a programmer, which is the moment your friends can build
+  things for your game.
+  <cite><b>SuperTux</b> level editor — SuperTux Development Team, level by Daniel Alston, screenshot
+  by PantheraLeo1359531, CC BY-SA 3.0.</cite></figcaption>
+</figure>
+
 Every game you've played does this, usually much further than a single file.
 
 Minecraft's blocks, recipes and mobs are data files. Modders change them without a compiler, which

@@ -25,6 +25,20 @@ Three completely different games, all doing the same job: **you did a thing, her
 
 ## Four ways to say "that worked"
 
+<figure class="art aside">
+  <div class="art-row">
+    <span class="art-cell on"><img src="/assets/coin-gold.png" alt="A gold coin"><b>the coin</b></span>
+    <span class="art-op">→</span>
+    <span class="art-cell"><img src="/assets/star.png" alt="A star, used as a burst effect"><b>a flash</b></span>
+    <span class="art-cell"><img src="/assets/ui-star.png" alt="A filled star in the interface"><b>a counter</b></span>
+    <span class="art-cell"><img src="/assets/heart.png" alt="A red heart"><b>a meter</b></span>
+  </div>
+  <figcaption>One action, three answers. The coin vanishing is the game's <em>only</em> obligation —
+  the flash, the counter ticking up and the meter moving are all optional, and they are the entire
+  difference between a game that feels responsive and one that feels dead.
+  <cite><b>Kenney</b> — Platformer &amp; UI packs, public domain (CC0).</cite></figcaption>
+</figure>
+
 You have four channels, and the good ones use several at once:
 
 | Channel | Example |
@@ -57,6 +71,14 @@ explain: Changing a value is not the same as communicating it. Without a flash, 
 ```
 
 ## Fast beats fancy
+
+<figure class="shot aside">
+  <img src="/content/images/shots/liero-gameplay.png" alt="Liero: two small worms firing weapons at each other through a destructible earth landscape">
+  <figcaption>A 316-pixel-wide game from 1998 that people still play. Every shot digs a real hole in
+  the ground — the feedback <em>is</em> the level changing shape. No particles, no shaders, no sound
+  budget. Fast beat fancy by about twenty-five years.
+  <cite><b>Liero</b> — Joosa Riekkinen, WTFPL.</cite></figcaption>
+</figure>
 
 The most important thing about feedback is not how impressive it is. It's **how quickly it
 arrives**.

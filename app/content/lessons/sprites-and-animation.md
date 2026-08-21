@@ -64,6 +64,15 @@ explain: An animation is a list of frames and a speed. The engine swaps which on
 
 ## Speed changes everything
 
+<figure class="shot">
+  <img src="/content/images/shots/flinthook-level.jpg" alt="A Flinthook level: a small hooded character swinging through a spaceship interior full of platforms, chains and enemies">
+  <figcaption>A modern 2D game where the animation <em>is</em> the selling point. Every enemy, every
+  chain, every flicker of the character's cape is a handful of frames on a sheet, cycling at a speed
+  somebody chose by eye. Nothing here is 3D and nothing here is expensive — it is frame counts and
+  timing, which is exactly what you are about to change in your own game.
+  <cite><b>Flinthook</b> — Tribute Games, CC BY-SA 3.0.</cite></figcaption>
+</figure>
+
 `frameRate` is how many pictures per second, and it does more work than you'd expect.
 
 The same four walking frames at different speeds give you completely different characters:

@@ -1,0 +1,69 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 720 300" role="img"
+     aria-label="Two shapes side by side. An if is a fork: the code goes one way or the other and carries on. A loop is a ring: the code comes back to the same question until the answer changes.">
+  <title>An if is a fork; a loop is a ring</title>
+
+  <defs>
+    <marker id="fl-arrow" viewBox="0 0 10 10" refX="8" refY="5" markerWidth="6" markerHeight="6" orient="auto-start-reverse">
+      <path d="M0 0 L10 5 L0 10 z" fill="#5f7893"/>
+    </marker>
+    <marker id="fl-arrow-g" viewBox="0 0 10 10" refX="8" refY="5" markerWidth="6" markerHeight="6" orient="auto-start-reverse">
+      <path d="M0 0 L10 5 L0 10 z" fill="#3ddc84"/>
+    </marker>
+  </defs>
+
+  <g font-family="Segoe UI, Roboto, Arial, sans-serif">
+
+    <!-- ============ if: a fork ============ -->
+    <text x="24" y="28" fill="#3e8fd6" font-size="13" font-weight="700"
+          font-family="Consolas, monospace">if</text>
+    <text x="48" y="28" fill="#8b9db1" font-size="12.5">— goes one way, then carries on</text>
+
+    <line x1="40" y1="120" x2="86" y2="120" stroke="#5f7893" stroke-width="2" marker-end="url(#fl-arrow)"/>
+
+    <!-- the question -->
+    <path d="M150 88 L206 120 L150 152 L94 120 z" fill="#12304f" stroke="#3e8fd6" stroke-width="1.5"/>
+    <text x="150" y="117" text-anchor="middle" fill="#9ecbff" font-size="11.5" font-family="Consolas, monospace">on the</text>
+    <text x="150" y="131" text-anchor="middle" fill="#9ecbff" font-size="11.5" font-family="Consolas, monospace">ground?</text>
+
+    <!-- yes branch -->
+    <path d="M150 88 L150 58 L246 58" fill="none" stroke="#3ddc84" stroke-width="2" marker-end="url(#fl-arrow-g)"/>
+    <text x="158" y="52" fill="#3ddc84" font-size="11.5" font-weight="600">yes</text>
+    <rect x="254" y="40" width="112" height="36" rx="8" fill="#0f2e22" stroke="#3ddc84"/>
+    <text x="310" y="63" text-anchor="middle" fill="#c9f5dc" font-size="12.5">jump</text>
+
+    <!-- no branch -->
+    <path d="M150 152 L150 182 L246 182" fill="none" stroke="#5f7893" stroke-width="2" marker-end="url(#fl-arrow)"/>
+    <text x="158" y="200" fill="#8b9db1" font-size="11.5" font-weight="600">no</text>
+    <rect x="254" y="164" width="112" height="36" rx="8" fill="#0d2440" stroke="#2a4a6f"/>
+    <text x="310" y="187" text-anchor="middle" fill="#8b9db1" font-size="12.5">do nothing</text>
+
+    <!-- both rejoin and continue -->
+    <path d="M366 58 L392 58 L392 120 L392 182 L366 182" fill="none" stroke="#5f7893" stroke-width="2"/>
+    <line x1="392" y1="120" x2="440" y2="120" stroke="#5f7893" stroke-width="2" marker-end="url(#fl-arrow)"/>
+    <text x="448" y="117" fill="#eaf1f8" font-size="12.5" font-weight="600">on with</text>
+    <text x="448" y="133" fill="#eaf1f8" font-size="12.5" font-weight="600">the frame</text>
+
+    <!-- divider -->
+    <line x1="536" y1="20" x2="536" y2="252" stroke="#20344d" stroke-width="1"/>
+
+    <!-- ============ loop: a ring ============ -->
+    <text x="562" y="28" fill="#f5820a" font-size="13" font-weight="700"
+          font-family="Consolas, monospace">for</text>
+    <text x="592" y="28" fill="#8b9db1" font-size="12.5">— comes back round</text>
+
+    <!-- the ring -->
+    <path d="M626 78 A 46 46 0 1 1 625 78" fill="none" stroke="#f5820a" stroke-width="2.5"
+          marker-end="url(#fl-arrow)" stroke-linecap="round"/>
+    <rect x="586" y="104" width="82" height="34" rx="8" fill="#2a1c10" stroke="#f5820a"/>
+    <text x="627" y="126" text-anchor="middle" fill="#ffc27a" font-size="12">one coin</text>
+    <text x="627" y="70" text-anchor="middle" fill="#8b9db1" font-size="11.5">again?</text>
+
+    <text x="627" y="186" text-anchor="middle" fill="#eaf1f8" font-size="12.5" font-weight="600">5 coins,</text>
+    <text x="627" y="203" text-anchor="middle" fill="#eaf1f8" font-size="12.5" font-weight="600">one line of code</text>
+    <text x="627" y="226" text-anchor="middle" fill="#9fb2cc" font-size="11.5">not five copies</text>
+
+    <!-- the trap -->
+    <rect x="24" y="256" width="672" height="34" rx="8" fill="#241d0e" stroke="#4a3c18"/>
+    <text x="360" y="278" text-anchor="middle" fill="#e6d8b8" font-size="13">A loop whose answer never changes never stops — and the whole game freezes with it.</text>
+  </g>
+</svg>

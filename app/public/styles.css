@@ -1111,6 +1111,65 @@ body[data-tier="narrow"] .dock.left{--floatw:min(300px,84vw);}
 /* A diagram narrow enough that full width would blow it up past its natural size. */
 .lesson-content > figure.narrow{max-width:520px;}
 
+/* ---------- a figure built from the course's own game art ----------
+   Not a drawing of a sprite — the actual PNG the student's game loads, at the size the game draws
+   it. That is the whole value: "this is a sprite" is abstract, and `player.png` sitting next to the
+   word is not. It also means every one of these is licensed, because it is art already in the repo.
+   Composed in HTML rather than as an .svg file on disk, deliberately: an SVG loaded through <img>
+   cannot fetch external images, so a standalone .svg referencing /assets/*.png would draw nothing.
+   Inline HTML has no such restriction and survives the sanitiser as ordinary markup. */
+.lesson-content > figure.art .art-row{display:flex;flex-wrap:wrap;gap:10px;align-items:flex-end;
+  padding:16px;background:#0a1626;border:1px solid var(--line);border-radius:10px;}
+.lesson-content > figure.art .art-cell{display:flex;flex-direction:column;align-items:center;gap:7px;
+  min-width:0;}
+.lesson-content > figure.art .art-cell img{display:block;width:auto;height:56px;max-width:100%;}
+/* The label under each sprite. Monospace because these are asset keys — the exact string the
+   student types into load.image() — and a name you have to retype should look like code. */
+.lesson-content > figure.art .art-cell b{font-family:Consolas,monospace;font-size:11px;font-weight:500;
+  color:var(--dim);letter-spacing:0;white-space:nowrap;}
+.lesson-content > figure.art .art-cell.on b{color:var(--acc);}
+/* A tile strip butts its tiles together, because the gap IS the thing being explained: a row of
+   ground is one image repeated with no seam. */
+.lesson-content > figure.art .art-row.tiles{gap:0;align-items:flex-end;}
+.lesson-content > figure.art .art-row.tiles img{height:52px;}
+/* An arrow or a plus between two sprites, for "this, then this". */
+.lesson-content > figure.art .art-op{align-self:center;color:var(--dim);font-size:18px;padding:0 4px;}
+.lesson-content > figure.art .art-note{align-self:center;color:var(--muted);font-size:13px;
+  line-height:1.5;max-width:200px;}
+body[data-tier="wide"] .lesson-content > figure.art.aside .art-row,
+body[data-tier="mid"] .lesson-content > figure.art.aside .art-row{padding:12px;gap:8px;}
+body[data-tier="wide"] .lesson-content > figure.art.aside .art-cell img,
+body[data-tier="mid"] .lesson-content > figure.art.aside .art-cell img{height:44px;}
+
+/* ---------- a picture beside the text, not under it ----------
+   Prose is capped at 480px inside a 780px block, so on a wide screen there is a 300px column of
+   nothing down the right of every paragraph. A figure that belongs to a specific paragraph goes
+   there: text and picture are read together instead of the picture arriving after the point it
+   illustrates has already been made.
+   A float rather than a grid, because .lesson-content must stay display:block — see the note
+   above; turning it into a grid stops adjacent margins collapsing and changes the vertical rhythm
+   of all 22 lessons. Following the figure.narrow pattern: one extra class in the lesson file.
+   Only from the mid tier up. Below that the docks have already eaten the room the float would
+   need, and a 300px picture beside a 180px paragraph is worse than a picture on its own line. */
+body[data-tier="wide"] .lesson-content > figure.aside,
+body[data-tier="mid"] .lesson-content > figure.aside{
+  float:right;width:300px;margin:6px 0 20px 40px;clear:right;}
+/* The caption belongs to the picture here, not to the reading measure, or it would run 480px wide
+   under a 300px image and back out into the text column. */
+body[data-tier="wide"] .lesson-content > figure.aside figcaption,
+body[data-tier="mid"] .lesson-content > figure.aside figcaption{max-width:none;font-size:13px;}
+/* Nothing structural may wrap around a float: a heading pulled up beside a picture reads as that
+   picture's title, and an activity block would have its stripe cut short by the float's edge. */
+.lesson-content > h2,
+.lesson-content > h3,
+.lesson-content > .quizcell,
+.lesson-content > .challenge-mini,
+.lesson-content > .yourturn,
+.lesson-content > .runcell,
+.lesson-content > figure:not(.aside),
+.lesson-content > table,
+.lesson-content > pre{clear:both;}
+
 /* The callout. Documented in AUTHORING.md and styled since before any lesson used one.
    A tinted panel with a border to match, which is how this app already draws an emphasised aside
    (see .ch-hint in the lab) — rather than a stripe down one edge, which would have made it a
