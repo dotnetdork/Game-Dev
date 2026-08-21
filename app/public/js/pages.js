@@ -1,6 +1,9 @@
 /* pages.js — Full-page views outside the editor: Store, Gallery, Leaderboards, Docs and Help, plus the top-bar router. */
 /* ---------- page router ---------- */
 function showPage(page) {
+  // The lab makes the top bar inert while it is open, so this should be unreachable then. Belt
+  // and braces: leaving the bench on top of the Store would be baffling and hard to get out of.
+  if (typeof openLabRef !== 'undefined' && openLabRef) closeLab();
   document.querySelectorAll('.navitem').forEach(function (b) { b.classList.toggle('on', b.getAttribute('data-page') === page); });
   if (page === 'courses') { $('editor').hidden = false; $('page').hidden = true; updateFab(); return; }
   stopGame(); $('editor').hidden = true; $('page').hidden = false;

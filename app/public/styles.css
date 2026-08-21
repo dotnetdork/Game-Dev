@@ -638,6 +638,75 @@ body{background:var(--bg);color:var(--ink);font-family:var(--font);font-size:14p
 .ch-solve-done{color:#c9f5dc !important;}
 
 
+/* ---------- the lab launcher (in the lesson) ----------
+   The card in the lesson no longer holds the working surface; it announces the lab and opens it.
+   That keeps the lesson a thing you read and the lab a thing you do, and it means the editor is
+   never squeezed into a 760px reading column. */
+.ch-open{flex:none;margin-left:auto;}
+.ch-launch{display:flex;align-items:center;gap:12px;flex-wrap:wrap;}
+.ch-launch .ch-status{margin-right:0;}
+.ch-solved{display:inline-flex;align-items:center;gap:6px;color:var(--green);font-size:13.5px;font-weight:600;}
+.ch-solved .mdi{font-size:16px;}
+
+/* ---------- the lab, full window ----------
+   Covers the stage — both docks and the viewport — but deliberately not the top bar or the status
+   bar. The student stays oriented: same app, same XP counter, one way back. */
+.lab-view{position:absolute;inset:0;z-index:30;background:var(--bg);
+  display:flex;flex-direction:column;min-height:0;}
+
+.lab-bar{display:flex;align-items:center;gap:12px;flex-wrap:wrap;padding:9px 14px;
+  background:var(--head);border-bottom:1px solid var(--line);}
+.lab-back{display:inline-flex;align-items:center;gap:7px;flex:none;background:var(--panel2);
+  border:1px solid var(--line);border-radius:7px;color:var(--ink);font-family:var(--font);
+  font-size:13px;font-weight:600;padding:6px 12px;cursor:pointer;}
+.lab-back:hover{background:#1b4470;}
+.lab-back .mdi{font-size:16px;}
+.lab-bar .lab-flask{color:var(--brand);font-size:19px;flex:none;margin-left:4px;}
+.lab-title{font-size:15.5px;font-weight:600;color:var(--ink);min-width:0;
+  overflow:hidden;text-overflow:ellipsis;white-space:nowrap;}
+/* Says whose code this is in the chrome itself, so it is true even when the note has scrolled by. */
+.lab-owner{font-size:12px;color:var(--dim);flex:none;}
+.lab-reset{flex:none;margin-left:auto;padding:5px 11px;font-size:12px;}
+
+/* Capped and scrollable. The task, the hint and the worked answer can all be on screen at once,
+   and on a 700px-tall screen that trio would otherwise squeeze the editor down to nothing. */
+.lab-brief{display:flex;flex-direction:column;gap:10px;padding:14px 18px;flex:none;
+  max-height:30vh;overflow-y:auto;
+  border-bottom:1px solid var(--line);background:var(--panel);}
+.lab-brief:empty{display:none;}
+.lab-brief .ch-task{font-size:15.5px;color:#c3d3e6;max-width:90ch;}
+.lab-brief .ch-hint,.lab-brief .ch-solve{max-width:90ch;}
+
+.lab-panes{flex:1;min-height:0;display:grid;grid-template-columns:1fr minmax(300px,38%);
+  gap:1px;background:var(--line);}
+.lab-pane{display:flex;flex-direction:column;min-width:0;min-height:0;background:var(--panel);}
+.lab-pane-hd{display:flex;align-items:center;gap:7px;margin:0;padding:8px 14px;
+  font-size:11px;font-weight:700;letter-spacing:1.5px;text-transform:uppercase;color:var(--dim);
+  background:var(--panel2);border-bottom:1px solid var(--line);}
+.lab-pane-hd .mdi{font-size:14px;letter-spacing:0;}
+.lab-editor{flex:1;min-height:0;overflow:hidden;}
+.lab-editor .CodeMirror{height:100%;font-family:Consolas,monospace;font-size:14px;line-height:1.65;}
+.lab-editor textarea.ch-code{height:100%;resize:none;}
+.lab-stage{flex:1;min-height:0;background:#08121f;}
+.lab-stage iframe{width:100%;height:100%;border:0;display:block;}
+
+.lab-foot{display:flex;align-items:center;gap:12px;padding:11px 16px;
+  border-top:1px solid var(--line);background:#0d2038;}
+.lab-status{font-size:14px;font-weight:600;color:var(--muted);display:flex;align-items:center;
+  gap:7px;margin-right:auto;min-width:0;}
+.lab-status .mdi{font-size:17px;flex:none;}
+.lab-status.ok{color:var(--green);} .lab-status.no{color:var(--gold);}
+.lab-run{flex:none;padding:8px 20px;}
+
+/* Below this the two panes cannot both be useful side by side, so they stack — code first, the
+   same order the in-lesson card used, and for the same reason: you read it before you watch it. */
+@media (max-width:900px){
+  /* The game gets exactly the canvas it draws (200px plus a little), and the editor gets
+     everything else — at 820x700 that is the difference between seven visible lines and ten. */
+  .lab-panes{grid-template-columns:1fr;grid-template-rows:minmax(0,1fr) 210px;}
+  .lab-owner{display:none;}
+}
+
 /* ---- "your turn": the same technique, in the student's own game ----
    Deliberately the warmest card on the page. The lab is the course's bench; this is where the
    lesson stops being about the example and starts being about the thing they are building. Brand

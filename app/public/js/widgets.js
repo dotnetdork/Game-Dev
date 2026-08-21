@@ -502,6 +502,243 @@ function inlineMd(text) {
 const LAB_HINT_AFTER = 1;     // failed runs before the hint appears
 const LAB_REVEAL_AFTER = 4;   // failed runs before the worked answer is offered
 
+/* ---------- launcher in the lesson, working surface in its own window ----------
+   The lab used to live inside the lesson column, which is about 760px on a school Chromebook and
+   424px on a smaller screen. Code beside a running game does not fit there, and a big editor
+   embedded mid-lesson interrupts the reading either way. So the lesson keeps a card that says what
+   the lab is and opens it; the lab itself takes the whole stage.
+
+   Going somewhere and coming back is also the point, not a side effect: it marks the lab as a
+   thing you do rather than more of the page you were reading, and returning marks it finished.
+
+   The card is a launcher only — the editor and the frame are built when the lab opens and thrown
+   away when it closes. Nothing is moved between the two, which avoids a whole class of bug (an
+   iframe reloads when it changes parent, a CodeMirror instance needs measuring again), and it
+   costs nothing because the code was always saved through the activity ledger anyway. */
+let openLabRef = null;          // the lab on screen, or null
+let labReturnFocus = null;      // what gets focus back when it closes
+let labPendingAdvance = null;   // a lesson that finished while the bench was open
+
+/* The document a lab runs in. Deliberately tiny: a 300x200 canvas, its 2D context, and win().
+   No game engine and no owned artwork — which is what lets a lab appear in modules before Phaser
+   is introduced, and lets tools/check-challenges.js run all 22 of them without a browser. A lab
+   that runs a real Phaser game needs the harness startGame() builds AND a browser to check it in;
+   see Stage 2 in .claude/plans/STAGES.md for why that is reserved for a handful of authored ones. */
+function labDoc(tok, userCode) {
+  const safe = String(userCode).replace(/<\/(script)/gi, '<\\/$1');
+  return '<!doctype html><body style="margin:0;background:#08121f;display:flex;align-items:center;justify-content:center;height:100vh"><canvas id="c" width="300" height="200" style="background:#0d2137;border-radius:8px"></canvas><scr' + 'ipt>var canvas=document.getElementById("c"),ctx=canvas.getContext("2d"),__w=false;function win(){if(__w)return;__w=true;try{parent.postMessage({__cm:true,tok:"' + tok + '",win:true},"*");}catch(e){}}window.onerror=function(m){try{parent.postMessage({__cm:true,tok:"' + tok + '",err:String(m)},"*");}catch(e){}};try{\n' + safe + '\n}catch(e){window.onerror(e.message);}<\/scr' + 'ipt></body>';
+}
+
+function labSave(lab, patch) { saveLabState(lab.lessonId, lab.key, patch); }
+
+/* What the card in the lesson says. Never "you have not started this" — a lab is not homework. */
+function paintLabCard(lab) {
+  const k = lab.card; if (!k) return;
+  k.done.hidden = !lab.solved;
+  if (lab.solved) {
+    k.done.innerHTML = '<span class="mdi mdi-check-circle" aria-hidden="true"></span>'
+      + (lab.revealed ? 'Working — you read the answer' : 'Fixed it!');
+  }
+  const label = lab.solved ? 'Open it again'
+    : (lab.touched || lab.fails ? 'Carry on with the lab' : 'Start the lab');
+  k.open.innerHTML = '<span class="mdi ' + (lab.solved ? 'mdi-flask-outline' : 'mdi-play') + '" aria-hidden="true"></span>' + label;
+}
+
+/* Running first, then an error, then solved — so re-running a lab that already works shows
+   "Running…" and settles back to "Fixed it!" instead of looking like nothing happened. */
+function paintLabStatus(lab) {
+  const el = $('labStatus'); if (!el || openLabRef !== lab) return;
+  if (lab.running) { el.className = 'lab-status'; el.textContent = 'Running…'; return; }
+  /* The most common outcome for a lab that is still broken: it ran, it threw nothing, and it did
+     not win. Saying so is the honest answer. Before this the status simply read "Running…" and
+     stayed there, which reads as the app having hung rather than as the code not working yet. */
+  if (lab.settled && !lab.solved) {
+    el.className = 'lab-status no';
+    el.textContent = 'It ran, but the goal is not met yet — read what it does and try again.';
+    return;
+  }
+  if (lab.error) {
+    // textContent, not innerHTML: this string is whatever the student's own code threw.
+    el.className = 'lab-status no';
+    el.textContent = 'Error: ' + lab.error;
+    return;
+  }
+  if (lab.solved) {
+    el.className = 'lab-status ok';
+    el.innerHTML = '<span class="mdi mdi-check-circle" aria-hidden="true"></span>'
+      + (lab.revealed ? 'Working — now you have seen why.' : 'Fixed it!');
+    return;
+  }
+  el.className = 'lab-status'; el.textContent = '';
+}
+
+/* ---------- getting stuck ----------
+   The same shape as the quiz retry rule the student already knows: a nudge after the first
+   failure, the answer offered after several. Twenty minutes stuck is not perseverance, it is a
+   child who has stopped learning and needs a door. */
+function labShowHint(lab) {
+  const ui = lab.ui; if (!ui || ui.hintEl || !lab.c.hint) return;
+  const el = document.createElement('p'); el.className = 'ch-hint';
+  el.innerHTML = '<span class="mdi mdi-lightbulb-on-outline" aria-hidden="true"></span><span>' + inlineMd(lab.c.hint) + '</span>';
+  ui.brief.appendChild(el); ui.hintEl = el;
+}
+function labOfferSolution(lab) {
+  const ui = lab.ui; if (!ui || ui.solveEl || !lab.c.solution) return;
+  const wrap = document.createElement('div'); wrap.className = 'ch-solve';
+  const p = document.createElement('p');
+  p.textContent = 'Stuck on this one? You can put the working version in and read it instead.';
+  const b = document.createElement('button'); b.type = 'button'; b.className = 'btn btn-secondary';
+  b.textContent = 'Show me the working version';
+  b.addEventListener('click', function () {
+    ui.write(lab.c.solution);
+    lab.code = lab.c.solution; lab.revealed = true; lab.touched = true;
+    labSave(lab, { revealed: true, code: lab.code });
+    wrap.innerHTML = '<p class="ch-solve-done">Here it is. Read it, run it, and see what it does '
+      + 'differently — that is the bit worth remembering.</p>';
+  });
+  wrap.appendChild(p); wrap.appendChild(b);
+  ui.brief.appendChild(wrap); ui.solveEl = wrap;
+}
+function labFail(lab) {
+  lab.fails++;
+  if (lab.ui) lab.code = lab.ui.read();
+  labSave(lab, { fails: lab.fails, code: lab.code });
+  if (lab.fails >= LAB_HINT_AFTER) labShowHint(lab);
+  if (lab.fails >= LAB_REVEAL_AFTER && !lab.revealed) labOfferSolution(lab);
+}
+
+/* The dialog claims to be modal, so it has to actually be modal — otherwise everything behind it
+   is still reachable by Tab and still announced, and a student using the keyboard falls out of the
+   bench into a lesson they cannot see. `inert` does this without a hand-written focus trap. */
+function labIsolate(on) {
+  ['.topbar', '#editor', '#page', '.statusbar'].forEach(function (sel) {
+    const el = document.querySelector(sel);
+    if (el && 'inert' in el) el.inert = on;
+  });
+}
+
+function openLab(lab) {
+  const view = $('labView'); if (!view) return;
+  if (openLabRef) closeLab();
+  openLabRef = lab;
+  labReturnFocus = (lab.card && lab.card.open) || null;
+
+  $('labTitle').textContent = lab.c.title || 'Lab';
+
+  const brief = $('labBrief'); brief.innerHTML = '';
+  if (lab.c.task) {
+    const t = document.createElement('div'); t.className = 'ch-task';
+    t.innerHTML = inlineMd(lab.c.task); brief.appendChild(t);
+  }
+
+  const stage = $('labStage'); stage.innerHTML = '';
+  const frame = document.createElement('iframe');
+  frame.setAttribute('sandbox', 'allow-scripts');       // opaque origin: lab code cannot reach the app
+  frame.setAttribute('title', 'Lab output');
+  stage.appendChild(frame);
+
+  const host = $('labEditor'); host.innerHTML = '';
+  let editor = null, ta = null;
+  if (typeof CodeMirror === 'function') {
+    editor = CodeMirror(host, {
+      value: lab.code, mode: 'javascript', theme: 'material-darker',
+      lineNumbers: true, tabSize: 2, indentUnit: 2, matchBrackets: true, autoCloseBrackets: true
+    });
+  } else {
+    ta = document.createElement('textarea'); ta.className = 'ch-code';
+    ta.spellcheck = false; ta.value = lab.code; host.appendChild(ta);
+  }
+
+  lab.ui = {
+    frame: frame, brief: brief, hintEl: null, solveEl: null,
+    read: function () { return editor ? editor.getValue() : ta.value; },
+    write: function (v) { if (editor) editor.setValue(v); else ta.value = v; }
+  };
+  const keep = function () { lab.code = lab.ui.read(); lab.touched = true; labSave(lab, { code: lab.code }); };
+  if (editor) editor.on('blur', keep); else ta.addEventListener('blur', keep);
+
+  // Anything already earned is on screen before the first run, not re-earned.
+  if (lab.fails >= LAB_HINT_AFTER) labShowHint(lab);
+  if (lab.fails >= LAB_REVEAL_AFTER && !lab.revealed) labOfferSolution(lab);
+
+  view.hidden = false;
+  labIsolate(true);
+  updateFab();
+  paintLabStatus(lab);
+  // The editor gets focus: it is what the student came here to do, and the task is right above it.
+  if (editor) { editor.refresh(); editor.focus(); } else if (ta) ta.focus();
+}
+
+function closeLab() {
+  const lab = openLabRef; if (!lab) return;
+  clearTimeout(lab.settleTimer);
+  if (lab.ui) { lab.code = lab.ui.read(); labSave(lab, { code: lab.code }); }
+  lab.ui = null; lab.running = false; lab.error = ''; lab.settled = false;
+  openLabRef = null;
+
+  $('labEditor').innerHTML = '';
+  $('labStage').innerHTML = '';        // drops the frame, which stops whatever it was running
+  $('labBrief').innerHTML = '';
+  $('labView').hidden = true;
+  labIsolate(false);
+  updateFab();
+  paintLabCard(lab);
+
+  if (labReturnFocus) { try { labReturnFocus.focus(); } catch (e) {} }
+  labReturnFocus = null;
+
+  /* A lab can be the last thing a lesson needed. The move to the next lesson waits until the
+     student is back looking at the lesson, rather than happening behind the bench. */
+  if (labPendingAdvance) { const f = labPendingAdvance; labPendingAdvance = null; startAdvance(f); }
+}
+
+function labRun() {
+  const lab = openLabRef; if (!lab || !lab.ui) return;
+  /* When does a run count as failed? Not "did it win within 900ms" — one lab animates a ship
+     across the screen and needs about 1.4 seconds, so that question marked a CORRECT answer as a
+     failure. A run counts as failed when the student runs AGAIN without having won in between:
+     honest, and it can never mislabel a slow success. A thrown error counts straight away. */
+  if (lab.attemptOpen) labFail(lab);
+  lab.attemptOpen = true;
+  lab.running = true; lab.error = ''; lab.settled = false;
+  lab.code = lab.ui.read(); lab.touched = true;
+  labSave(lab, { code: lab.code });
+  paintLabStatus(lab);
+  lab.ui.frame.srcdoc = labDoc(lab.tok, lab.code);
+
+  /* Long enough that a slow-but-correct lab is never called unfinished — one of these animates a
+     ship across the screen and takes about 1.4 seconds to win. This only changes what the status
+     line says; whether a run counts as FAILED is still decided by the student running again. */
+  clearTimeout(lab.settleTimer);
+  lab.settleTimer = setTimeout(function () {
+    if (openLabRef !== lab || !lab.running) return;
+    lab.running = false; lab.settled = true;
+    paintLabStatus(lab);
+  }, 2200);
+}
+
+function labResetToStart() {
+  const lab = openLabRef; if (!lab || !lab.ui) return;
+  lab.ui.write(lab.startCode);
+  lab.code = lab.startCode;
+  clearTimeout(lab.settleTimer);
+  lab.fails = 0; lab.revealed = false; lab.attemptOpen = false;
+  lab.running = false; lab.error = ''; lab.settled = false; lab.touched = false;
+  if (lab.ui.hintEl) { lab.ui.hintEl.remove(); lab.ui.hintEl = null; }
+  if (lab.ui.solveEl) { lab.ui.solveEl.remove(); lab.ui.solveEl = null; }
+  lab.ui.frame.removeAttribute('srcdoc');
+  clearLabState(lab.lessonId, lab.key);
+  paintLabStatus(lab);
+  toast('Example reset.');
+}
+
+if ($('labRun')) $('labRun').addEventListener('click', labRun);
+if ($('labReset')) $('labReset').addEventListener('click', labResetToStart);
+if ($('labBack')) $('labBack').addEventListener('click', closeLab);
+document.addEventListener('keydown', function (e) {
+  if (e.key === 'Escape' && openLabRef) { closeLab(); e.preventDefault(); }
+});
+
 function renderChallengeCells(root) {
   root.querySelectorAll('pre > code.language-challenge').forEach(function (code) {
     const pre = code.parentNode;
@@ -510,9 +747,20 @@ function renderChallengeCells(root) {
     const lessonId = lessonWidgetId;
     const saved = labState(lessonId, key) || {};
     const startCode = c.code || '';
-    const solved = activityDone(lessonId, key);
-    let fails = saved.fails || 0;
-    let revealed = !!saved.revealed;
+
+    /* Everything about this lab in one object, so the card in the lesson and the full-window
+       bench are two views of the same thing and cannot drift apart. */
+    const lab = {
+      c: c, key: key, tok: tok, lessonId: lessonId,
+      startCode: startCode,
+      code: typeof saved.code === 'string' ? saved.code : startCode,
+      fails: saved.fails || 0,
+      revealed: !!saved.revealed,
+      solved: activityDone(lessonId, key),
+      touched: typeof saved.code === 'string' && saved.code !== startCode,
+      running: false, error: '', attemptOpen: false,
+      ui: null, card: null
+    };
 
     /* Classes are ch-*, not cm-*: the lesson root carries CodeMirror's `cm-s-material-darker`
        theme class, and a widget naming its own parts cm-anything is one rename from colliding. */
@@ -521,11 +769,6 @@ function renderChallengeCells(root) {
     const head = document.createElement('div'); head.className = 'ch-head';
     head.innerHTML = '<span class="mdi mdi-flask-outline" aria-hidden="true"></span>'
       + '<span class="ch-title">' + esc(c.title || 'Lab') + '</span>';
-    const reset = document.createElement('button'); reset.type = 'button';
-    reset.className = 'btn btn-secondary ch-reset';
-    reset.innerHTML = '<span class="mdi mdi-restore" aria-hidden="true"></span>Reset';
-    reset.title = 'Put the example back the way it started';
-    head.appendChild(reset);
     cell.appendChild(head);
 
     const bodyEl = document.createElement('div'); bodyEl.className = 'ch-body'; cell.appendChild(bodyEl);
@@ -533,129 +776,45 @@ function renderChallengeCells(root) {
     /* Says whose this is, every time, so the student never has to remember. */
     const note = document.createElement('p'); note.className = 'ch-note';
     note.innerHTML = '<span class="mdi mdi-information-outline" aria-hidden="true"></span>'
-      + '<span>This is the course’s example, not your game. Break it as much as you like — Reset puts it back.</span>';
+      + '<span>This is the course’s example, not your game. It opens on its own so there is room '
+      + 'to work — break it as much as you like, and Reset puts it back.</span>';
     bodyEl.appendChild(note);
 
     if (c.task) { const t = document.createElement('div'); t.className = 'ch-task'; t.innerHTML = inlineMd(c.task); bodyEl.appendChild(t); }
 
-    const host = document.createElement('div'); host.className = 'ch-editor';
-    const ta = document.createElement('textarea'); ta.spellcheck = false;
-    let editor = null;
-
-    const stage = document.createElement('iframe'); stage.className = 'ch-stage'; stage.setAttribute('sandbox', 'allow-scripts');
-    stage.setAttribute('title', 'Lab output');
-
-    bodyEl.appendChild(host);       // code first
-    bodyEl.appendChild(stage);      // then what it does
-
-    const bar = document.createElement('div'); bar.className = 'ch-foot';
-    const status = document.createElement('div'); status.className = 'ch-status'; status.setAttribute('aria-live', 'polite');
-    const run = document.createElement('button'); run.type = 'button'; run.className = 'btn btn-primary-role ch-run';
-    run.innerHTML = '<span class="mdi mdi-play"></span>Run';
-    bar.appendChild(status); bar.appendChild(run);
+    const bar = document.createElement('div'); bar.className = 'ch-foot ch-launch';
+    const done = document.createElement('span'); done.className = 'ch-solved'; done.hidden = true;
+    const open = document.createElement('button'); open.type = 'button';
+    open.className = 'btn btn-primary-role ch-open';
+    bar.appendChild(done); bar.appendChild(open);
     cell.appendChild(bar);
 
-    function readCode() { return editor ? editor.getValue() : ta.value; }
-    function writeCode(v) { if (editor) editor.setValue(v); else ta.value = v; }
+    lab.card = { done: done, open: open };
+    paintLabCard(lab);
+    open.addEventListener('click', function () { openLab(lab); });
 
-    function build(userCode) {
-      const safe = userCode.replace(/<\/(script)/gi, '<\\/$1');
-      return '<!doctype html><body style="margin:0;background:#08121f;display:flex;align-items:center;justify-content:center;height:100vh"><canvas id="c" width="300" height="200" style="background:#0d2137;border-radius:8px"></canvas><scr' + 'ipt>var canvas=document.getElementById("c"),ctx=canvas.getContext("2d"),__w=false;function win(){if(__w)return;__w=true;try{parent.postMessage({__cm:true,tok:"' + tok + '",win:true},"*");}catch(e){}}window.onerror=function(m){try{parent.postMessage({__cm:true,tok:"' + tok + '",err:String(m)},"*");}catch(e){}};try{\n' + safe + '\n}catch(e){window.onerror(e.message);}<\/scr' + 'ipt></body>';
-    }
-
-    /* ---------- getting stuck ----------
-       Same shape as the quiz retry rule the student already knows: a nudge after the first failure,
-       and the answer offered after several. Twenty minutes stuck is not perseverance, it is a child
-       who has stopped learning and needs a door. */
-    let hintEl = null;
-    function showHint() {
-      if (hintEl || !c.hint) return;
-      hintEl = document.createElement('p'); hintEl.className = 'ch-hint';
-      hintEl.innerHTML = '<span class="mdi mdi-lightbulb-on-outline" aria-hidden="true"></span><span>' + inlineMd(c.hint) + '</span>';
-      bodyEl.insertBefore(hintEl, host);
-    }
-    let solveEl = null;
-    function offerSolution() {
-      if (solveEl || !c.solution) return;
-      solveEl = document.createElement('div'); solveEl.className = 'ch-solve';
-      const p = document.createElement('p');
-      p.textContent = 'Stuck on this one? You can put the working version in and read it instead.';
-      const b = document.createElement('button'); b.type = 'button'; b.className = 'btn btn-secondary';
-      b.textContent = 'Show me the working version';
-      b.addEventListener('click', function () {
-        writeCode(c.solution);
-        revealed = true;
-        saveLabState(lessonId, key, { revealed: true, code: c.solution });
-        solveEl.innerHTML = '<p class="ch-solve-done">Here it is. Read it, run it, and see what it does '
-          + 'differently — that is the bit worth remembering.</p>';
-      });
-      solveEl.appendChild(p); solveEl.appendChild(b);
-      bodyEl.insertBefore(solveEl, host);
-    }
-    function afterFail() {
-      fails++;
-      saveLabState(lessonId, key, { fails: fails, code: readCode() });
-      if (fails >= LAB_HINT_AFTER) showHint();
-      if (fails >= LAB_REVEAL_AFTER && !revealed) offerSolution();
-    }
-
-    function markSolved() {
-      status.className = 'ch-status ok';
-      status.innerHTML = '<span class="mdi mdi-check-circle"></span>'
-        + (revealed ? 'Working — now you have seen why.' : 'Fixed it!');
-    }
-    if (solved) markSolved();
-
+    /* One handler per lab, registered once. It updates the lab's own state either way, so the
+       card is correct whether or not the bench happens to be open when the message arrives. */
     widgetHandlers[tok] = function (d) {
       if (!d.__cm) return;
-      if (d.win) { attemptOpen = false; markSolved(); saveLabState(lessonId, key, { code: readCode() }); resolveActivity(key); }
-      else if (d.err) { attemptOpen = false; status.className = 'ch-status no'; status.textContent = 'Error: ' + d.err; afterFail(); }
+      if (d.win) {
+        clearTimeout(lab.settleTimer);
+        lab.attemptOpen = false; lab.running = false; lab.error = ''; lab.settled = false;
+        lab.solved = true;
+        if (lab.ui) lab.code = lab.ui.read();
+        labSave(lab, { code: lab.code });
+        paintLabStatus(lab); paintLabCard(lab);
+        resolveActivity(lab.key);
+      } else if (d.err) {
+        clearTimeout(lab.settleTimer);
+        lab.attemptOpen = false; lab.running = false; lab.settled = false;
+        lab.error = String(d.err).slice(0, 300);
+        labFail(lab);
+        paintLabStatus(lab); paintLabCard(lab);
+      }
     };
 
-    /* When does a run count as failed?
-       Not "did it win within 900ms" — this lab animates a ship across the screen and needs about
-       1.4 seconds, so that question marked a CORRECT answer as a failure. A run counts as failed
-       when the student runs AGAIN without having won in between: honest, and it can never mislabel
-       a slow success. A thrown error is counted straight away, since that one is not ambiguous. */
-    let attemptOpen = false;
-    run.addEventListener('click', function () {
-      if (attemptOpen) afterFail();
-      attemptOpen = true;
-      status.className = 'ch-status'; status.textContent = 'Running…';
-      saveLabState(lessonId, key, { code: readCode() });
-      stage.srcdoc = build(readCode());
-    });
-
-    reset.addEventListener('click', function () {
-      writeCode(startCode);
-      fails = 0; revealed = false; attemptOpen = false;
-      if (hintEl) { hintEl.remove(); hintEl = null; }
-      if (solveEl) { solveEl.remove(); solveEl = null; }
-      status.className = 'ch-status'; status.textContent = '';
-      stage.removeAttribute('srcdoc');
-      clearLabState(lessonId, key);
-      toast('Example reset.');
-    });
-
     pre.parentNode.replaceChild(cell, pre);
-
-    /* Built after replaceChild: CodeMirror mounts into a detached node otherwise and renders as an
-       empty frame. */
-    const initial = typeof saved.code === 'string' ? saved.code : startCode;
-    if (typeof CodeMirror === 'function') {
-      editor = CodeMirror(host, {
-        value: initial, mode: 'javascript', theme: 'material-darker',
-        lineNumbers: true, tabSize: 2, indentUnit: 2, matchBrackets: true,
-        autoCloseBrackets: true, viewportMargin: Infinity
-      });
-      editor.on('blur', function () { saveLabState(lessonId, key, { code: readCode() }); });
-      editor.refresh();
-    } else {
-      ta.className = 'ch-code'; ta.value = initial; host.appendChild(ta);
-      ta.addEventListener('blur', function () { saveLabState(lessonId, key, { code: readCode() }); });
-    }
-    if (fails >= LAB_HINT_AFTER) showHint();
-    if (fails >= LAB_REVEAL_AFTER && !revealed) offerSolution();
   });
 }
 
@@ -732,6 +891,10 @@ function moduleAccent(mi) { return MODULE_ACCENT[mi % MODULE_ACCENT.length]; }
    the newest request is allowed to paint, so a slow earlier fetch cannot land on top of it. */
 let lessonToken = 0;
 function selectLesson(idx) {
+  /* Changing lesson tears down every widget in the old one, including the handler the open bench
+     is talking to. Close it first rather than leaving it on screen wired to a lesson that is gone. */
+  if (openLabRef) closeLab();
+  labPendingAdvance = null;
   curIdx = idx; const f = flat[idx];
   const token = ++lessonToken;
   $('crumb').dataset.lesson = f.m.name + ': ' + f.l.t;
@@ -877,7 +1040,13 @@ function completeLesson() {
 function wireLessonEvents() {
   on(EV.LESSON_DONE, function (d) { renderLessonProgress(d.lesson); });   // the reward, in place
   on(EV.LESSON_DONE, function () { renderOutline(); });                   // tick the row, unlock the next
-  on(EV.LESSON_DONE, function (d) { startAdvance(d.lesson); });           // offer the next lesson
+  /* Offer the next lesson — but not while the bench is open. Solving a lab can be the last thing
+     a lesson needed, and moving the lesson on underneath the student takes the reward away from
+     them before they have seen it. closeLab() picks this up when they come back. */
+  on(EV.LESSON_DONE, function (d) {
+    if (openLabRef) { labPendingAdvance = d.lesson; return; }
+    startAdvance(d.lesson);
+  });
   on(EV.PROGRESS_CHANGED, function () { renderFooter(); });               // XP bar, stars, level
 }
 wireLessonEvents();

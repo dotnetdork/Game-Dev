@@ -123,6 +123,37 @@
     </div>
 
     <div class="page" id="page" hidden></div>
+
+    <!-- The lab, full window. A lab is the course's example on a bench, and it needs the room:
+         the lesson column is ~760px on a school Chromebook, which cannot hold code beside a
+         running game. This covers the stage (both docks and the viewport) but not the top bar or
+         the status bar, so the student can see they are still inside the same app and the way
+         back is one obvious button. Built by openLab() in js/widgets.js. -->
+    <div class="lab-view" id="labView" hidden role="dialog" aria-modal="true" aria-labelledby="labTitle">
+      <div class="lab-bar">
+        <!-- The lesson's own icon rather than a back arrow: it names where the button goes. -->
+        <button class="lab-back" id="labBack"><span class="mdi mdi-book-open-page-variant" aria-hidden="true"></span>Back to the lesson</button>
+        <span class="lab-flask mdi mdi-flask-outline" aria-hidden="true"></span>
+        <span class="lab-title" id="labTitle"></span>
+        <span class="lab-owner">the course&rsquo;s example &mdash; not your game</span>
+        <button class="btn btn-secondary lab-reset" id="labReset" title="Put the example back the way it started"><span class="mdi mdi-restore" aria-hidden="true"></span>Reset</button>
+      </div>
+      <div class="lab-brief" id="labBrief"></div>
+      <div class="lab-panes">
+        <section class="lab-pane lab-pane-code" aria-label="The code">
+          <h2 class="lab-pane-hd"><span class="mdi mdi-code-tags" aria-hidden="true"></span>The code</h2>
+          <div class="lab-editor" id="labEditor"></div>
+        </section>
+        <section class="lab-pane lab-pane-game" aria-label="What it does">
+          <h2 class="lab-pane-hd"><span class="mdi mdi-play-circle" aria-hidden="true"></span>What it does</h2>
+          <div class="lab-stage" id="labStage"></div>
+        </section>
+      </div>
+      <div class="lab-foot">
+        <div class="lab-status" id="labStatus" aria-live="polite"></div>
+        <button class="btn btn-primary-role lab-run" id="labRun"><span class="mdi mdi-play" aria-hidden="true"></span>Run</button>
+      </div>
+    </div>
   </div>
 
   <footer class="statusbar">
