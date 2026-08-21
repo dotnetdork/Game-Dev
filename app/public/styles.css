@@ -989,10 +989,13 @@ body[data-tier="narrow"] .outline-btn{display:inline-flex;}
 /* A diagram narrow enough that full width would blow it up past its natural size. */
 .lesson-content > figure.narrow{max-width:520px;}
 
-/* The callout. Documented in AUTHORING.md and styled since before any lesson used one. */
-.lesson-content > .tip{display:flex;gap:11px;margin:22px 0;padding:13px 15px;
-  background:#0d2440;border:1px solid var(--line);border-left:3px solid var(--azure);
-  border-radius:10px;color:#c3d3e6;font-size:15px;line-height:1.6;}
+/* The callout. Documented in AUTHORING.md and styled since before any lesson used one.
+   A tinted panel with a border to match, which is how this app already draws an emphasised aside
+   (see .ch-hint in the lab) — rather than a stripe down one edge, which would have made it a
+   fourth thing on a surface that only needs one. */
+.lesson-content > .tip{display:flex;gap:11px;margin:22px 0;padding:13px 16px;
+  background:#0e2742;border:1px solid #2a4a6f;
+  border-radius:10px;color:#cfe0f2;font-size:15px;line-height:1.6;max-width:var(--measure);}
 
 /* ---- tables ----
    There was no rule for these at all, and the course uses them constantly to compare three things
