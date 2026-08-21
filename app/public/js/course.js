@@ -179,14 +179,14 @@ function renderLessonProgress(f, dwellFrac, advanceSecs) {
     el.className = 'lesson-progress reading';
     el.innerHTML = '<span class="mdi mdi-book-open-page-variant"></span>'
       + '<span class="lp-label">Read to the end to finish this lesson</span>'
-      + '<span class="lp-bar"><i style="width:' + pct + '%"></i></span>';
+      + '<span class="lp-bar"><i style="transform:scaleX(' + (pct / 100) + ')"></i></span>';
     return;
   }
   const n = activityProgress();
   el.className = 'lesson-progress';
   el.innerHTML = '<span class="mdi mdi-target"></span>'
     + '<span class="lp-label">' + n + ' of ' + lessonPlan.total + ' done</span>'
-    + '<span class="lp-bar"><i style="width:' + Math.round(n / lessonPlan.total * 100) + '%"></i></span>'
+    + '<span class="lp-bar"><i style="transform:scaleX(' + (n / lessonPlan.total) + ')"></i></span>'
     + '<span class="lp-xp">+' + f.l.xp + ' XP</span>';
 }
 let currentAIMode = 'full';   // the current lesson's coder policy: full | guided | off

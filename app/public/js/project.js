@@ -320,5 +320,7 @@ function saveState() { Storage.writeJSON(SKEY, state); emit(EV.PROGRESS_CHANGED,
 function renderFooter() {
   const lvl = Math.floor(state.xp / 1000) + 1; const into = state.xp % 1000;
   $('xpVal').textContent = state.xp; $('starVal').textContent = state.stars; $('lvlVal').textContent = lvl;
-  $('xpBar').style.width = (into / 1000 * 100) + '%';
+  // scaleX rather than width: the bar is full-width and squashed, so growing it costs no reflow
+  // in the status bar. See .progress > div in styles.css.
+  $('xpBar').style.transform = 'scaleX(' + (into / 1000) + ')';
 }

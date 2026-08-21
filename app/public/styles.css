@@ -381,7 +381,10 @@ body{background:var(--bg);color:var(--ink);font-family:var(--font);font-size:14p
 .sb-mid .st{color:var(--gold);} .sb-mid .xp{color:var(--teal);} .sb-mid b{color:var(--ink);}
 .sb-mid .xp-bolt{height:13px;width:auto;vertical-align:-2px;}
 .progress{width:200px;height:7px;background:#0d2440;border:1px solid var(--line);border-radius:5px;overflow:hidden;}
-.progress > div{height:100%;width:0;background:linear-gradient(90deg,var(--teal),var(--green));transition:width .4s ease;}
+/* Grown with transform, not width: animating width reflows the status bar on every XP change.
+   Same sweep, no layout work. transform-origin keeps it filling from the left. */
+.progress > div{height:100%;width:100%;transform:scaleX(0);transform-origin:left center;
+  background:linear-gradient(90deg,var(--teal),var(--green));transition:transform .4s ease;}
 .doc-card{background:var(--panel);border:1px solid var(--line);border-radius:12px;padding:16px 18px;}
 .doc-card h3{margin:0 0 8px;font-size:15px;display:flex;align-items:center;gap:8px;}
 .doc-card h3 .mdi{color:var(--azure);}
@@ -467,7 +470,10 @@ body{background:var(--bg);color:var(--ink);font-family:var(--font);font-size:14p
 .quiz-result.ok{color:var(--green);} .quiz-result.no{color:var(--gold);}
 
 .toast{position:fixed;left:50%;bottom:56px;transform:translateX(-50%) translateY(20px);background:var(--panel2);color:var(--ink);
-  border:1px solid var(--line);border-left:4px solid var(--teal);border-radius:10px;padding:12px 18px;font-size:13.5px;font-weight:600;
+  /* No accent stripe. It was always teal, and a toast says "lesson complete", "example reset" AND
+     "your browser is out of space" — a fixed success colour on a storage warning is a lie. The
+     toast is already unmistakable from its position, and the words carry the meaning. */
+  border:1px solid var(--line);border-radius:10px;padding:12px 18px;font-size:13.5px;font-weight:600;
   box-shadow:0 10px 30px rgba(0,0,0,.5);opacity:0;pointer-events:none;transition:opacity .2s,transform .2s;z-index:100;max-width:80%;}
 .toast.show{opacity:1;transform:translateX(-50%) translateY(0);}
 .modal-backdrop{position:fixed;inset:0;background:rgba(4,10,20,.6);display:flex;align-items:center;justify-content:center;z-index:200;}
@@ -504,7 +510,9 @@ body{background:var(--bg);color:var(--ink);font-family:var(--font);font-size:14p
 .prop-state.declined{color:var(--dim);}
 
 /* ---------- quick check after an applied change ---------- */
-.msg.quizcard{max-width:100%;width:100%;background:var(--panel2);border:1px solid var(--line);border-left:3px solid var(--azure);padding:10px 12px;}
+/* The azure header below already marks this out from the chat bubbles around it, so the card does
+   not also need an accent stripe down its edge. */
+.msg.quizcard{max-width:100%;width:100%;background:var(--panel2);border:1px solid var(--line);padding:10px 12px;}
 .qc-h{display:flex;align-items:center;gap:6px;font-size:11px;letter-spacing:1px;text-transform:uppercase;color:var(--azure);font-weight:700;margin-bottom:7px;}
 .qc-q{color:var(--ink);font-size:13px;line-height:1.5;margin-bottom:9px;}
 .qc-opt{display:block;width:100%;text-align:left;background:#0d2440;border:1px solid var(--line);border-radius:8px;color:#c3d3e6;
@@ -570,7 +578,9 @@ body{background:var(--bg);color:var(--ink);font-family:var(--font);font-size:14p
 .lesson-progress .mdi{font-size:18px;color:var(--gold);flex:none;}
 .lesson-progress .lp-label{flex:none;font-weight:600;color:#c3d3e6;}
 .lesson-progress .lp-bar{flex:1;min-width:60px;height:7px;border-radius:4px;background:#0a1728;border:1px solid var(--line);overflow:hidden;}
-.lesson-progress .lp-bar > i{display:block;height:100%;background:linear-gradient(90deg,var(--teal),var(--green));transition:width .35s ease;}
+.lesson-progress .lp-bar > i{display:block;height:100%;width:100%;transform:scaleX(0);
+  transform-origin:left center;background:linear-gradient(90deg,var(--teal),var(--green));
+  transition:transform .35s ease;}
 .lesson-progress .lp-xp{flex:none;font-weight:700;color:var(--teal);}
 .lesson-progress.reading .mdi{color:var(--azure);}
 .lesson-progress.done{border-color:var(--green);background:#0f2e22;color:#c9f5dc;}
