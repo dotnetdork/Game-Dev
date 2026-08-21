@@ -92,6 +92,28 @@ lessons render. Write `question:` in anything new.)
     explain: Read, update, draw — input is read at the top of each frame.
     ```
 
+**Write the right answer first — `answer: 0` — and don't worry about where it appears.**
+The app shuffles the options before drawing them, so the authored position carries no
+information. Every one of the 44 questions in the course was written `answer: 0`, which is the
+natural way to write one: put the right answer down, then invent the wrong ones. Unshuffled,
+that teaches "click the top one" inside three lessons — and since clicking an option now answers
+it outright, it would be a free pass on the whole course.
+
+Two things that follow from the shuffle:
+
+- **Never refer to an option by position.** No "the first answer", no "all of the above", no
+  "both A and B". They will not be in that order on screen.
+- **`feedback:` is matched to `options:` by position** and is reordered with them, so a feedback
+  line always travels with the option it explains. Give one per option or none at all —
+  `check-lessons.js` fails a list that has slipped out of step.
+
+The order a student sees is stable: it is seeded on the lesson and the question, not random, so
+it is the same every time they open it and an already-answered card redraws correctly. Two
+different students can see different orders.
+
+`findbug` and `parsons` are **not** shuffled — in one the options are lines of code and the order
+is the program, and in the other a scrambled order is the whole puzzle.
+
 Types:
 - type: mcq        options + answer + optional feedback[] per option
 - type: predict    like mcq but shows read-only `code:` first (predict the output)

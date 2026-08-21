@@ -125,6 +125,33 @@ function shuffleOrder(n) {
   while (a.every(function (v, i) { return v === i; }) && tries < 12);
   return a;
 }
+
+/* ---------- a stable shuffle, for the answer options ----------
+   All 44 multiple-choice questions in the course are authored `answer: 0`. Every correct answer is
+   the first option. That is the natural thing to write — you put the right answer down and then
+   think up the wrong ones — and it is fine until the options are drawn in that order, at which
+   point the course teaches "click the top one" within about three lessons. Now that clicking an
+   option IS answering it, that would be a free pass on every question in the course.
+   Shuffling at render fixes it for all 44 at once, and does not need 44 files edited or an author
+   to remember. Seeded on the lesson and the question rather than Math.random, so:
+     - the order is the same every time this student opens this question, which matters because a
+       card that has already been answered is redrawn from the saved answer;
+     - and two students, or one student and the answer key, do not have to agree on an order.
+   Deliberately NOT used for find-the-bug, where the "options" are lines of code and the order is
+   the program, or for put-in-order, where a random order is the whole puzzle. */
+function seedFrom(str) {
+  let h = 2166136261;
+  for (let i = 0; i < str.length; i++) { h ^= str.charCodeAt(i); h = Math.imul(h, 16777619); }
+  return (h >>> 0) || 1;
+}
+function seededOrder(n, seed) {
+  const a = []; for (let i = 0; i < n; i++) a.push(i);
+  if (n < 2) return a;
+  let s = seed || 1;
+  const rnd = function () { s ^= s << 13; s >>>= 0; s ^= s >>> 17; s ^= s << 5; s >>>= 0; return s / 4294967296; };
+  for (let i = a.length - 1; i > 0; i--) { const j = Math.floor(rnd() * (i + 1)); const t = a[i]; a[i] = a[j]; a[j] = t; }
+  return a;
+}
 /* The YAML inside a widget fence. A parse failure used to be swallowed silently and the widget
    built from an empty object — which renders a card with a heading, no question and no options,
    looking merely sparse rather than broken. Three quiz blocks and two your-turn steps shipped
@@ -301,7 +328,14 @@ function markQuizDone(ctx, restoring) {
 }
 function buildMCQ(q, body, ctx, isPredict) {
   if (isPredict && q.code) { const pc = document.createElement('pre'); pc.className = 'quiz-code'; pc.textContent = q.code; body.appendChild(pc); }
-  const opts = q.options || [], fb = q.feedback || [], rows = [];
+  /* The options are shuffled, so `right` is where the authored answer LANDED rather than what the
+     author wrote. Per-option feedback rides along in the same order — it is indexed by option, so
+     reordering one without the other would explain the wrong answer. */
+  const opts0 = q.options || [], fb0 = q.feedback || [];
+  const order = seededOrder(opts0.length, seedFrom(widgetToken(ctx.key)));
+  const opts = order.map(function (i) { return opts0[i]; });
+  const fb = order.map(function (i) { return fb0[i]; });
+  const rows = [];
   let chosen = -1;
 
   const list = document.createElement('div'); list.className = 'mcq-list';
@@ -343,7 +377,16 @@ function buildMCQ(q, body, ctx, isPredict) {
     const why = document.createElement('span'); why.className = 'mcq-why'; why.textContent = fb[i];
     row.querySelector('.mcq-text').appendChild(why);
   }
-  const right = Number(q.answer);
+  /* An authored answer outside the option list would shuffle to -1, which no click can ever equal —
+     a question where every answer is wrong and nothing on screen says so. Say it out loud and fall
+     back to the first option, because a wrong-but-answerable question costs a moment and an
+     unanswerable one blocks the lesson from ever completing. */
+  let right = order.indexOf(Number(q.answer));
+  if (right < 0) {
+    console.warn('[league] quiz ' + ctx.key + ' has answer: ' + q.answer + ' but only '
+      + opts0.length + ' options, so no answer could ever be right. Falling back to the first one.');
+    right = order.indexOf(0);
+  }
   ctx.restore = function () { rows.forEach(function (r, i) { r.disabled = true; if (i === right) r.classList.add('correct'); }); };
 
   function grade() {

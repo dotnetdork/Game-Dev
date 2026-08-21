@@ -29,6 +29,9 @@ const KNOWN_TYPES = ['mcq', 'predict', 'parsons', 'fillblank', 'findbug'];
 
 const problems = [];
 let quizzes = 0, yourturns = 0, challenges = 0;
+/* How many multiple-choice answers sit at each authored position, tallied for the position-bias
+   report at the bottom of this file. */
+const answerAt = {};
 
 function fail(where, msg) { problems.push(where + ': ' + msg); }
 
@@ -62,6 +65,8 @@ function checkQuiz(where, src) {
     const n = q.options.length;
     if (!Number.isInteger(q.answer) || q.answer < 0 || q.answer >= n) {
       fail(where, '`answer: ' + JSON.stringify(q.answer) + '` is not a position in the ' + n + ' options (0 to ' + (n - 1) + '), so no option can be marked right');
+    } else {
+      answerAt['answer=' + q.answer] = (answerAt['answer=' + q.answer] || 0) + 1;
     }
     // Not fatal, but a feedback list that has slipped out of step teaches the wrong option.
     if (Array.isArray(q.feedback) && q.feedback.length !== n) {
@@ -252,4 +257,26 @@ if (!quizzes) {
   console.error('FAIL  no ```quiz blocks found in ' + DIR + ' — the course has quizzes, so this is a bug in this script.');
   process.exit(1);
 }
+
+/* ---- position bias ----
+   Every one of the 44 multiple-choice questions was authored `answer: 0`, because writing the
+   right answer down first and then inventing the wrong ones is the natural way to write one. The
+   renderer shuffles the options now, so this is no longer a bug a student can exploit — but if
+   that shuffle is ever removed or bypassed, the course silently becomes "always click the top
+   one" again. Reported rather than failed: the authored position stopped mattering the moment
+   the options were shuffled, so failing the build over it would be demanding busywork.
+   It fails only if the shuffle is gone, which is the thing actually worth catching. */
+const RENDERER = path.join(__dirname, '..', 'public', 'js', 'widgets.js');
+const shuffles = fs.existsSync(RENDERER)
+  && /seededOrder\(\s*opts0\.length/.test(fs.readFileSync(RENDERER, 'utf8'));
+const spread = Object.keys(answerAt).length;
+if (!shuffles) {
+  console.error('FAIL  buildMCQ no longer shuffles its options, and ' + spread + ' distinct answer '
+    + 'position(s) are authored across the course. Without the shuffle, the correct answer sits in '
+    + 'the same place every time and a student learns the position instead of the material.');
+  process.exit(1);
+}
+console.log('answer positions authored: '
+  + Object.keys(answerAt).sort().map(function (k) { return k + '×' + answerAt[k]; }).join(', ')
+  + '  (shuffled at render, so position carries no information)');
 console.log('every quiz, lab and your-turn step renders with something to answer');
