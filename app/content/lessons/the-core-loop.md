@@ -57,6 +57,11 @@ feedback:
 explain: A core loop is the short set of actions a player repeats, where finishing one go sets up the next.
 ```
 
+<figure class="diagram">
+  <img src="/content/images/core-loop.svg" alt="Left: goal, action and reward joined in a circle that keeps turning. Right: the same circle with the reward replaced by nothing, so it stops after one turn.">
+  <figcaption>Take away any one of the three and the circle stops being a circle. The reward is the part people forget, and it is the part that makes a player want a <b>second</b> go.</figcaption>
+</figure>
+
 ## Loops inside loops
 
 Bigger games stack loops. RuneScape is a good example because the stacking is so obvious:

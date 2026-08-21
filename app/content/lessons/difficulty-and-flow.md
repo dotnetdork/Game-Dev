@@ -57,6 +57,11 @@ feedback:
 explain: New ideas are introduced alone, in safe places, and only combined once each piece is understood.
 ```
 
+<figure class="diagram">
+  <img src="/content/images/flow-channel.svg" alt="A graph of difficulty against player skill. A diagonal band through the middle is the zone; above it the game is too hard, below it too easy. An orange stepped line climbs through the band.">
+  <figcaption>The orange line is a game doing this well: flat stretches where the player practises, then a step up where you ask for something new. Leave the band upward and they quit; drift out of it downward and they get bored.</figcaption>
+</figure>
+
 ## Three dials you can turn
 
 You don't need clever code to control difficulty. You need numbers you can adjust:

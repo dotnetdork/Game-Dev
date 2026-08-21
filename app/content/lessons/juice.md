@@ -24,6 +24,11 @@ every effect stripped out. Same rules, same difficulty, completely dead.
 
 > Juice is the difference between pressing a button and *doing something*.
 
+<figure class="diagram">
+  <img src="/content/images/juice-layers.svg" alt="The same line of code twice. Alone on the left. On the right, surrounded by five added layers: a flash, a knockback, particles, a screen shake and a sound.">
+  <figcaption>The code doing the damage is identical in both. Everything juice adds sits <b>around</b> the rule — which is why you can add all of it without touching how your game actually works.</figcaption>
+</figure>
+
 ## Screen shake, and how much is too much
 
 Shaking the whole screen for a few frames is the single most effective effect for its cost. Three

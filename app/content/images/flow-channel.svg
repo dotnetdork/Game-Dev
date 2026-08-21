@@ -1,0 +1,47 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 720 340" role="img"
+     aria-label="A graph with the player's skill rising along the bottom and difficulty rising up the side. A diagonal band through the middle is the zone. Above the band the game is too hard and the player quits; below it the game is too easy and the player gets bored. A stepped line rises through the band, showing difficulty raised in steps as skill grows.">
+  <title>The zone: difficulty raised in steps as skill grows</title>
+
+  <defs>
+    <marker id="fl-a" viewBox="0 0 10 10" refX="8" refY="5" markerWidth="6" markerHeight="6" orient="auto-start-reverse">
+      <path d="M0 0 L10 5 L0 10 z" fill="#8b9db1"/>
+    </marker>
+  </defs>
+
+  <g font-family="Segoe UI, Roboto, Arial, sans-serif">
+
+    <!-- the two regions outside the band -->
+    <path d="M72 268 L72 40 L648 40 Z" fill="#2e1414" opacity="0.55"/>
+    <path d="M72 268 L648 268 L648 40 Z" fill="#241d0e" opacity="0.45"/>
+
+    <!-- the zone itself -->
+    <path d="M72 268 L432 40 L648 40 L648 92 L288 268 Z" fill="#0f2e22" opacity="0.9"/>
+    <path d="M72 268 L432 40" stroke="#3ddc84" stroke-width="1.5" stroke-dasharray="5 4" fill="none"/>
+    <path d="M288 268 L648 40" stroke="#3ddc84" stroke-width="1.5" stroke-dasharray="5 4" fill="none"/>
+
+    <!-- axes -->
+    <line x1="72" y1="268" x2="660" y2="268" stroke="#8b9db1" stroke-width="1.5" marker-end="url(#fl-a)"/>
+    <line x1="72" y1="268" x2="72" y2="32" stroke="#8b9db1" stroke-width="1.5" marker-end="url(#fl-a)"/>
+    <text x="366" y="296" text-anchor="middle" fill="#c3d3e6" font-size="13.5">how good the player has got &#8594;</text>
+    <text x="0" y="0" transform="translate(46,150) rotate(-90)" text-anchor="middle" fill="#c3d3e6" font-size="13.5">how hard it is &#8594;</text>
+
+    <!-- region labels -->
+    <text x="176" y="76" fill="#f0b8b8" font-size="14" font-weight="600">Too hard</text>
+    <text x="176" y="96" fill="#c99" font-size="12.5">they stop playing</text>
+    <text x="516" y="234" fill="#e6d8b8" font-size="14" font-weight="600">Too easy</text>
+    <text x="516" y="254" fill="#b8ab8a" font-size="12.5">they stop caring</text>
+    <text x="330" y="162" fill="#3ddc84" font-size="15" font-weight="700" letter-spacing="1.2">THE ZONE</text>
+
+    <!-- difficulty raised in steps, not a smooth ramp -->
+    <path d="M96 250 L168 250 L168 208 L252 208 L252 166 L348 166 L348 124 L456 124 L456 82 L576 82"
+          fill="none" stroke="#f5820a" stroke-width="2.5"/>
+    <g fill="#f5820a">
+      <circle cx="168" cy="250" r="4"/><circle cx="252" cy="208" r="4"/>
+      <circle cx="348" cy="166" r="4"/><circle cx="456" cy="124" r="4"/><circle cx="576" cy="82" r="4"/>
+    </g>
+    <text x="596" y="76" fill="#f5820a" font-size="12.5" font-weight="600">a new idea</text>
+    <text x="596" y="92" fill="#f5820a" font-size="12.5" font-weight="600">each step</text>
+
+    <text x="360" y="324" text-anchor="middle" fill="#9fb2cc" font-size="13">Each flat stretch is where they practise. Each step up is where you ask for more.</text>
+  </g>
+</svg>

@@ -57,6 +57,11 @@ feedback:
 explain: An animation is a list of frames and a speed. The engine swaps which one is drawn.
 ```
 
+<figure class="diagram">
+  <img src="/content/images/sprite-sheet.svg" alt="One image file divided into six numbered cells, each holding a frame of a walking character. Below it, a single panel showing those frames playing one after another.">
+  <figcaption>One file, six frames, swapped on a timer. Nothing walks — you are looking at still pictures being replaced, which is the same trick as the game loop one module ago.</figcaption>
+</figure>
+
 ## Speed changes everything
 
 `frameRate` is how many pictures per second, and it does more work than you'd expect.

@@ -1,0 +1,69 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 720 300" role="img"
+     aria-label="One image holding six frames of a walking character in a row, numbered zero to five. Below it, the same frames shown as an animation playing one at a time, with the frame number changing.">
+  <title>A sprite sheet: one picture, many frames, played in order</title>
+
+  <g font-family="Segoe UI, Roboto, Arial, sans-serif">
+
+    <text x="24" y="30" fill="#8b9db1" font-size="12.5" font-weight="700" letter-spacing="1.3">ONE IMAGE FILE</text>
+
+    <!-- the sheet: six cells in a row -->
+    <g>
+      <rect x="24" y="42" width="672" height="96" rx="8" fill="#08121f" stroke="#223a58" stroke-width="1.5"/>
+      <g stroke="#223a58" stroke-width="1">
+        <line x1="136" y1="42" x2="136" y2="138"/><line x1="248" y1="42" x2="248" y2="138"/>
+        <line x1="360" y1="42" x2="360" y2="138"/><line x1="472" y1="42" x2="472" y2="138"/>
+        <line x1="584" y1="42" x2="584" y2="138"/>
+      </g>
+
+      <!-- a little walker, legs changing per cell -->
+      <g fill="#3e8fd6">
+        <g><circle cx="80" cy="72" r="9"/><rect x="74" y="83" width="12" height="24" rx="3"/><rect x="70" y="107" width="6" height="18" rx="2"/><rect x="84" y="107" width="6" height="18" rx="2"/></g>
+        <g><circle cx="192" cy="72" r="9"/><rect x="186" y="83" width="12" height="24" rx="3"/><rect x="178" y="107" width="6" height="18" rx="2"/><rect x="196" y="107" width="6" height="18" rx="2"/></g>
+        <g><circle cx="304" cy="70" r="9"/><rect x="298" y="81" width="12" height="24" rx="3"/><rect x="292" y="105" width="6" height="20" rx="2"/><rect x="306" y="105" width="6" height="20" rx="2"/></g>
+        <g><circle cx="416" cy="72" r="9"/><rect x="410" y="83" width="12" height="24" rx="3"/><rect x="418" y="107" width="6" height="18" rx="2"/><rect x="400" y="107" width="6" height="18" rx="2"/></g>
+        <g><circle cx="528" cy="72" r="9"/><rect x="522" y="83" width="12" height="24" rx="3"/><rect x="514" y="107" width="6" height="18" rx="2"/><rect x="532" y="107" width="6" height="18" rx="2"/></g>
+        <g><circle cx="640" cy="70" r="9"/><rect x="634" y="81" width="12" height="24" rx="3"/><rect x="628" y="105" width="6" height="20" rx="2"/><rect x="642" y="105" width="6" height="20" rx="2"/></g>
+      </g>
+
+      <g fill="#5f7893" font-family="Consolas, monospace" font-size="11.5" text-anchor="middle">
+        <text x="80" y="132">0</text><text x="192" y="132">1</text><text x="304" y="132">2</text>
+        <text x="416" y="132">3</text><text x="528" y="132">4</text><text x="640" y="132">5</text>
+      </g>
+    </g>
+
+    <text x="24" y="176" fill="#8b9db1" font-size="12.5" font-weight="700" letter-spacing="1.3">PLAYED IN ORDER, ON A TIMER</text>
+
+    <!-- the animation: one cell, cycling. The movement IS the idea here. -->
+    <g>
+      <rect x="24" y="188" width="112" height="96" rx="8" fill="#0d2137" stroke="#3ddc84" stroke-width="1.5"/>
+      <g class="ss-play" fill="#3ddc84">
+        <g><circle cx="80" cy="218" r="9"/><rect x="74" y="229" width="12" height="24" rx="3"/><rect x="70" y="253" width="6" height="18" rx="2"/><rect x="84" y="253" width="6" height="18" rx="2"/>
+          <animate attributeName="opacity" values="1;1;0;0;0;0;0;0;0;0;0;1" dur="0.72s" repeatCount="indefinite"/></g>
+        <g opacity="0"><circle cx="80" cy="218" r="9"/><rect x="74" y="229" width="12" height="24" rx="3"/><rect x="66" y="253" width="6" height="18" rx="2"/><rect x="90" y="253" width="6" height="18" rx="2"/>
+          <animate attributeName="opacity" values="0;0;1;1;0;0;0;0;0;0;0;0" dur="0.72s" repeatCount="indefinite"/></g>
+        <g opacity="0"><circle cx="80" cy="216" r="9"/><rect x="74" y="227" width="12" height="24" rx="3"/><rect x="68" y="251" width="6" height="20" rx="2"/><rect x="86" y="251" width="6" height="20" rx="2"/>
+          <animate attributeName="opacity" values="0;0;0;0;1;1;0;0;0;0;0;0" dur="0.72s" repeatCount="indefinite"/></g>
+        <g opacity="0"><circle cx="80" cy="218" r="9"/><rect x="74" y="229" width="12" height="24" rx="3"/><rect x="90" y="253" width="6" height="18" rx="2"/><rect x="66" y="253" width="6" height="18" rx="2"/>
+          <animate attributeName="opacity" values="0;0;0;0;0;0;1;1;0;0;0;0" dur="0.72s" repeatCount="indefinite"/></g>
+      </g>
+      <!-- shown only when motion is switched off, so the panel is never empty -->
+      <g class="ss-still" fill="#3ddc84" opacity="0">
+        <circle cx="80" cy="218" r="9"/><rect x="74" y="229" width="12" height="24" rx="3"/>
+        <rect x="70" y="253" width="6" height="18" rx="2"/><rect x="84" y="253" width="6" height="18" rx="2"/>
+      </g>
+      <text x="80" y="278" text-anchor="middle" fill="#5f7893" font-family="Consolas, monospace" font-size="11">frame 0-5</text>
+    </g>
+
+    <text x="164" y="216" fill="#eaf1f8" font-size="14.5" font-weight="600">Nothing actually walks.</text>
+    <text x="164" y="238" fill="#9fb2cc" font-size="13.5">Six still pictures, swapped about eight times a second,</text>
+    <text x="164" y="257" fill="#9fb2cc" font-size="13.5">and your eyes do the rest — the same trick as the game loop.</text>
+    <text x="164" y="279" fill="#8b9db1" font-size="12.5">Swap them faster and they run. Slower and they trudge.</text>
+  </g>
+
+  <style>
+    @media (prefers-reduced-motion: reduce) {
+      .ss-play { display: none; }
+      .ss-still { opacity: 1; }
+    }
+  </style>
+</svg>
