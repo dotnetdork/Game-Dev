@@ -135,7 +135,6 @@
         <button class="lab-back" id="labBack"><span class="mdi mdi-book-open-page-variant" aria-hidden="true"></span>Back to the lesson</button>
         <span class="lab-flask mdi mdi-flask-outline" aria-hidden="true"></span>
         <span class="lab-title" id="labTitle"></span>
-        <span class="lab-owner">the course&rsquo;s example &mdash; not your game</span>
         <button class="btn btn-secondary lab-reset" id="labReset" title="Put the example back the way it started"><span class="mdi mdi-restore" aria-hidden="true"></span>Reset</button>
       </div>
       <div class="lab-brief" id="labBrief"></div>
@@ -146,11 +145,28 @@
         </section>
         <section class="lab-pane lab-pane-game" aria-label="What it does">
           <h2 class="lab-pane-hd"><span class="mdi mdi-play-circle" aria-hidden="true"></span>What it does</h2>
-          <div class="lab-stage" id="labStage"></div>
+          <div class="lab-stage" id="labStage">
+            <div class="lab-screen" id="labScreen"></div>
+            <p class="lab-screen-cap">300 &times; 200</p>
+          </div>
         </section>
+      </div>
+      <!-- Shared by both panes, because what the code printed belongs to the whole bench and not
+           to one side of it. Same markup and classes as the game console under the Play tab, so
+           a student meets one console in this app rather than two that look different. -->
+      <div class="lab-console collapsed" id="labConsole">
+        <div class="console-head">
+          <button class="con-toggle" id="labConToggle" title="Show or hide the log"><span class="mdi mdi-chevron-down" aria-hidden="true"></span></button>
+          <span class="con-title"><span class="mdi mdi-console-line" aria-hidden="true"></span>Console</span>
+          <span class="lab-con-count" id="labConCount"></span>
+          <button class="con-clear" id="labConClear">Clear</button>
+        </div>
+        <div class="console-body" id="labConBody"></div>
       </div>
       <div class="lab-foot">
         <div class="lab-status" id="labStatus" aria-live="polite"></div>
+        <span class="lab-cursor" id="labCursor">Ln 1, Col 1</span>
+        <span class="lab-keys"><kbd>Ctrl</kbd>+<kbd>Enter</kbd> to run</span>
         <button class="btn btn-primary-role lab-run" id="labRun"><span class="mdi mdi-play" aria-hidden="true"></span>Run</button>
       </div>
     </div>

@@ -524,9 +524,81 @@ let labPendingAdvance = null;   // a lesson that finished while the bench was op
    is introduced, and lets tools/check-challenges.js run all 22 of them without a browser. A lab
    that runs a real Phaser game needs the harness startGame() builds AND a browser to check it in;
    see Stage 2 in .claude/plans/STAGES.md for why that is reserved for a handful of authored ones. */
+/* console.log inside a lab used to go nowhere. That is a strange thing to withhold from a student
+   in a lesson about reading errors — printing a value to see what it actually is IS the technique
+   being taught. Every log, warning and error now travels out to the bench's own console.
+   Runs before the student's code, so a log on the very first line is caught. */
+function labConsoleShim(tok) {
+  return '<' + 'script>(function(){'
+    + 'function f(a){return [].slice.call(a).map(function(v){'
+    + 'if(typeof v==="string")return v;try{return JSON.stringify(v);}catch(e){return String(v);}'
+    + '}).join(" ");}'
+    + 'function s(l,a){try{parent.postMessage({__cm:true,tok:"' + tok + '",log:{level:l,text:f(a)}},"*");}catch(e){}}'
+    + 'var c=console;["log","info","debug","warn","error"].forEach(function(n){'
+    + 'var o=c[n]?c[n].bind(c):function(){};'
+    + 'c[n]=function(){o.apply(c,arguments);s(n==="warn"?"warn":(n==="error"?"error":"log"),arguments);};});'
+    + '})();<' + '/script>';
+}
+
 function labDoc(tok, userCode) {
   const safe = String(userCode).replace(/<\/(script)/gi, '<\\/$1');
-  return '<!doctype html><body style="margin:0;background:#08121f;display:flex;align-items:center;justify-content:center;height:100vh"><canvas id="c" width="300" height="200" style="background:#0d2137;border-radius:8px"></canvas><scr' + 'ipt>var canvas=document.getElementById("c"),ctx=canvas.getContext("2d"),__w=false;function win(){if(__w)return;__w=true;try{parent.postMessage({__cm:true,tok:"' + tok + '",win:true},"*");}catch(e){}}window.onerror=function(m){try{parent.postMessage({__cm:true,tok:"' + tok + '",err:String(m)},"*");}catch(e){}};try{\n' + safe + '\n}catch(e){window.onerror(e.message);}<\/scr' + 'ipt></body>';
+  return '<!doctype html><body style="margin:0;background:#08121f;display:flex;align-items:center;justify-content:center;height:100vh"><canvas id="c" width="300" height="200" style="background:#0d2137;border-radius:8px"></canvas>'
+    + labConsoleShim(tok)
+    + '<scr' + 'ipt>var canvas=document.getElementById("c"),ctx=canvas.getContext("2d"),__w=false;function win(){if(__w)return;__w=true;try{parent.postMessage({__cm:true,tok:"' + tok + '",win:true},"*");}catch(e){}}window.onerror=function(m){try{parent.postMessage({__cm:true,tok:"' + tok + '",err:String(m)},"*");}catch(e){}};try{\n' + safe + '\n}catch(e){window.onerror(e.message);}<\/scr' + 'ipt></body>';
+}
+
+/* ---------- the bench console ----------
+   Same markup, classes and behaviour as the game console under the Play tab, so a student meets
+   one console in this app rather than two that behave differently. Identical consecutive lines are
+   counted rather than repeated, because a log inside an animation frame fires sixty times a second
+   and would otherwise be the entire log. */
+const LAB_LOG_MAX = 80;
+let labLog = [];
+/* Set when the student collapses the log themselves. Output opens the log — printing a value to
+   see what it is is the whole technique, and a badge they have to notice and click is not seeing
+   it. But once they have deliberately closed it, it stays closed for anything short of an error. */
+let labConsoleShut = false;
+
+function labConsoleClear() {
+  labLog = [];
+  const b = $('labConBody');
+  if (b) b.innerHTML = '<div class="cl cl-empty">Anything your code prints appears here.</div>';
+  labConsoleCount();
+}
+function labConsoleCount() {
+  const el = $('labConCount'); if (!el) return;
+  const box = $('labConsole');
+  const collapsed = box && box.classList.contains('collapsed');
+  const n = labLog.reduce(function (t, l) { return t + l.n; }, 0);
+  el.textContent = (collapsed && n) ? n + (n === 1 ? ' line' : ' lines') : '';
+}
+function labConsoleOpen(open) {
+  const box = $('labConsole'); if (!box) return;
+  box.classList.toggle('collapsed', !open);
+  labConsoleCount();
+}
+function labConsoleLine(level, text) {
+  const lvl = ['log', 'warn', 'error'].indexOf(level) >= 0 ? level : 'log';
+  const last = labLog[labLog.length - 1];
+  if (last && last.level === lvl && last.text === text) {
+    last.n++;
+    if (last.el) last.el.textContent = text + '   (' + last.n + '×)';
+  } else {
+    const body = $('labConBody'); if (!body) return;
+    const empty = body.querySelector('.cl-empty'); if (empty) empty.remove();
+    const d = document.createElement('div');
+    d.className = 'cl' + (lvl === 'error' ? ' err' : (lvl === 'warn' ? ' warn' : ''));
+    d.textContent = text;                                  // whatever the student's code printed
+    body.appendChild(d); body.scrollTop = body.scrollHeight;
+    labLog.push({ level: lvl, text: text, n: 1, el: d });
+    if (labLog.length > LAB_LOG_MAX) {
+      const gone = labLog.shift();
+      if (gone.el && gone.el.parentNode) gone.el.parentNode.removeChild(gone.el);
+    }
+  }
+  // An error always opens the log; ordinary output opens it unless they closed it on purpose.
+  if (lvl === 'error' || !labConsoleShut) labConsoleOpen(true);
+  labConsoleCount();
 }
 
 function labSave(lab, patch) { saveLabState(lab.lessonId, lab.key, patch); }
@@ -631,18 +703,45 @@ function openLab(lab) {
     t.innerHTML = inlineMd(lab.c.task); brief.appendChild(t);
   }
 
-  const stage = $('labStage'); stage.innerHTML = '';
+  const screen = $('labScreen'); screen.innerHTML = '';
   const frame = document.createElement('iframe');
   frame.setAttribute('sandbox', 'allow-scripts');       // opaque origin: lab code cannot reach the app
   frame.setAttribute('title', 'Lab output');
-  stage.appendChild(frame);
+  screen.appendChild(frame);
+
+  labConsoleClear();
+  labConsoleOpen(false);
 
   const host = $('labEditor'); host.innerHTML = '';
   let editor = null, ta = null;
   if (typeof CodeMirror === 'function') {
+    /* The gutters are declared up front even though the addons that fill them arrive later —
+       CodeMirror needs the gutter to exist before foldGutter or the lint markers can use it. Same
+       reasoning as the Code tab's editor in js/editor.js. */
     editor = CodeMirror(host, {
       value: lab.code, mode: 'javascript', theme: 'material-darker',
-      lineNumbers: true, tabSize: 2, indentUnit: 2, matchBrackets: true, autoCloseBrackets: true
+      lineNumbers: true, tabSize: 2, indentUnit: 2, matchBrackets: true, autoCloseBrackets: true,
+      gutters: ['CodeMirror-lint-markers', 'CodeMirror-linenumbers', 'CodeMirror-foldgutter'],
+      extraKeys: {
+        'Ctrl-Enter': function () { labRun(); }, 'Cmd-Enter': function () { labRun(); },
+        'Ctrl-Space': 'autocomplete',
+        'Ctrl-/': 'toggleComment', 'Cmd-/': 'toggleComment',
+        'Ctrl-F': 'findPersistent', 'Cmd-F': 'findPersistent'
+      }
+    });
+    const cursor = $('labCursor');
+    if (cursor) {
+      const showPos = function (cm) {
+        const p = cm.getCursor();
+        cursor.textContent = 'Ln ' + (p.line + 1) + ', Col ' + (p.ch + 1);
+      };
+      editor.on('cursorActivity', showPos); showPos(editor);
+    }
+    // Suggest as you type, the same way the Code tab does.
+    editor.on('inputRead', function (cm, e) {
+      if (e.text && /[\w.]/.test(e.text[0]) && !cm.state.completionActive && CodeMirror.hint && CodeMirror.hint.anyword) {
+        cm.showHint({ hint: CodeMirror.hint.anyword, completeSingle: false });
+      }
     });
   } else {
     ta = document.createElement('textarea'); ta.className = 'ch-code';
@@ -650,12 +749,29 @@ function openLab(lab) {
   }
 
   lab.ui = {
-    frame: frame, brief: brief, hintEl: null, solveEl: null,
+    frame: frame, brief: brief, editor: editor, hintEl: null, solveEl: null,
     read: function () { return editor ? editor.getValue() : ta.value; },
     write: function (v) { if (editor) editor.setValue(v); else ta.value = v; }
   };
   const keep = function () { lab.code = lab.ui.read(); lab.touched = true; labSave(lab, { code: lab.code }); };
   if (editor) editor.on('blur', keep); else ta.addEventListener('blur', keep);
+
+  /* The linter, the folding, the search dialog and the hint addons are about 2 MB and do not load
+     at boot (js/lazy.js). The bench opens immediately with a plain editor and upgrades in place
+     when they arrive — a lab about reading an error deserves the same squiggles as the Code tab,
+     but not at the cost of waiting for them. A failure here leaves a working editor, because being
+     unable to lint is much better than being unable to type. */
+  if (editor && typeof loadCodeTools === 'function') {
+    loadCodeTools().then(function () {
+      if (openLabRef !== lab || !lab.ui || lab.ui.editor !== editor) return;   // they left already
+      editor.setOption('styleActiveLine', true);
+      editor.setOption('foldGutter', true);
+      if (typeof LINT_OPTS !== 'undefined') editor.setOption('lint', LINT_OPTS);
+      editor.refresh();
+    }).catch(function (e) {
+      console.warn('[league] the lab editor is running without its extras:', e.message);
+    });
+  }
 
   // Anything already earned is on screen before the first run, not re-earned.
   if (lab.fails >= LAB_HINT_AFTER) labShowHint(lab);
@@ -677,8 +793,10 @@ function closeLab() {
   openLabRef = null;
 
   $('labEditor').innerHTML = '';
-  $('labStage').innerHTML = '';        // drops the frame, which stops whatever it was running
+  $('labScreen').innerHTML = '';        // drops the frame, which stops whatever it was running
   $('labBrief').innerHTML = '';
+  labConsoleClear();
+  labConsoleOpen(false);
   $('labView').hidden = true;
   labIsolate(false);
   updateFab();
@@ -704,6 +822,8 @@ function labRun() {
   lab.code = lab.ui.read(); lab.touched = true;
   labSave(lab, { code: lab.code });
   paintLabStatus(lab);
+  // Each run starts with a clean log, so what is on screen belongs to the run being looked at.
+  labConsoleClear();
   lab.ui.frame.srcdoc = labDoc(lab.tok, lab.code);
 
   /* Long enough that a slow-but-correct lab is never called unfinished — one of these animates a
@@ -727,6 +847,7 @@ function labResetToStart() {
   if (lab.ui.hintEl) { lab.ui.hintEl.remove(); lab.ui.hintEl = null; }
   if (lab.ui.solveEl) { lab.ui.solveEl.remove(); lab.ui.solveEl = null; }
   lab.ui.frame.removeAttribute('srcdoc');
+  labConsoleClear();
   clearLabState(lab.lessonId, lab.key);
   paintLabStatus(lab);
   toast('Example reset.');
@@ -735,6 +856,13 @@ function labResetToStart() {
 if ($('labRun')) $('labRun').addEventListener('click', labRun);
 if ($('labReset')) $('labReset').addEventListener('click', labResetToStart);
 if ($('labBack')) $('labBack').addEventListener('click', closeLab);
+if ($('labConToggle')) $('labConToggle').addEventListener('click', function () {
+  const opening = $('labConsole').classList.contains('collapsed');
+  labConsoleShut = !opening;              // closing it by hand is a preference, and it sticks
+  labConsoleOpen(opening);
+});
+if ($('labConClear')) $('labConClear').addEventListener('click', labConsoleClear);
+labConsoleClear();
 document.addEventListener('keydown', function (e) {
   if (e.key === 'Escape' && openLabRef) { closeLab(); e.preventDefault(); }
 });
@@ -773,11 +901,12 @@ function renderChallengeCells(root) {
 
     const bodyEl = document.createElement('div'); bodyEl.className = 'ch-body'; cell.appendChild(bodyEl);
 
-    /* Says whose this is, every time, so the student never has to remember. */
+    /* Said once, here, where the student is deciding whether to click. It used to be repeated in
+       the bench's own header too, which was one reminder too many — the bench is titled "Lab" and
+       has Reset in plain sight, so it does not need telling twice. */
     const note = document.createElement('p'); note.className = 'ch-note';
     note.innerHTML = '<span class="mdi mdi-information-outline" aria-hidden="true"></span>'
-      + '<span>This is the course’s example, not your game. It opens on its own so there is room '
-      + 'to work — break it as much as you like, and Reset puts it back.</span>';
+      + '<span>The course’s example, not your game — break it as much as you like.</span>';
     bodyEl.appendChild(note);
 
     if (c.task) { const t = document.createElement('div'); t.className = 'ch-task'; t.innerHTML = inlineMd(c.task); bodyEl.appendChild(t); }
@@ -797,6 +926,8 @@ function renderChallengeCells(root) {
        card is correct whether or not the bench happens to be open when the message arrives. */
     widgetHandlers[tok] = function (d) {
       if (!d.__cm) return;
+      // Only the bench has a console, so a log arriving for a lab that is not open is dropped.
+      if (d.log) { if (openLabRef === lab) labConsoleLine(d.log.level, String(d.log.text || '')); return; }
       if (d.win) {
         clearTimeout(lab.settleTimer);
         lab.attemptOpen = false; lab.running = false; lab.error = ''; lab.settled = false;
@@ -809,6 +940,9 @@ function renderChallengeCells(root) {
         clearTimeout(lab.settleTimer);
         lab.attemptOpen = false; lab.running = false; lab.settled = false;
         lab.error = String(d.err).slice(0, 300);
+        // In the log as well as on the status line: the status line is the verdict, the log is the
+        // record, and a student comparing two runs needs the record.
+        if (openLabRef === lab) labConsoleLine('error', lab.error);
         labFail(lab);
         paintLabStatus(lab); paintLabCard(lab);
       }
