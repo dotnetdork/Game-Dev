@@ -5,7 +5,17 @@ function showPage(page) {
   // and braces: leaving the bench on top of the Store would be baffling and hard to get out of.
   if (typeof openLabRef !== 'undefined' && openLabRef) closeLab();
   document.querySelectorAll('.navitem').forEach(function (b) { b.classList.toggle('on', b.getAttribute('data-page') === page); });
-  if (page === 'courses') { $('editor').hidden = false; $('page').hidden = true; updateFab(); return; }
+  if (page === 'courses') {
+    $('editor').hidden = false; $('page').hidden = true;
+    /* Restart the game if Play is the tab we are coming back to.
+       Leaving for any full page calls stopGame() below, which drops the iframe's srcdoc — but the
+       Play TAB stays selected inside the hidden editor. So without this, a student on Play who looks
+       at the Store and comes back finds an empty stage, and nothing on screen suggests why or offers
+       a way to fix it. The console toggle appeared to be the culprit only because resizing a blank
+       frame is when you notice it is blank. */
+    if (!$('view-play').hidden && typeof startGame === 'function') startGame();
+    updateFab(); return;
+  }
   stopGame(); $('editor').hidden = true; $('page').hidden = false;
   const pg = $('page');
   if (page === 'store') pg.innerHTML = renderStore();

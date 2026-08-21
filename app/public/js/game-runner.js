@@ -37,7 +37,10 @@ function assetInjectScript() {
     + '}catch(e){}}};'
     + 'if(window.__leagueMute===undefined)window.__leagueMute=true;'
     + '(function(){if(!window.Phaser||!Phaser.Game||Phaser.Game.prototype.__audioHook)return;Phaser.Game.prototype.__audioHook=1;'
+    // Tell the app the game actually started. It is the only reliable way to know: the frame is
+    // sandboxed, so nothing out here can look inside it and check for a canvas.
     + 'var bp=Phaser.Game.prototype.boot;Phaser.Game.prototype.boot=function(){var r=bp.apply(this,arguments);var self=this;window.__leagueGame=self;'
+    + 'try{parent.postMessage({__gameboot:true},"*");}catch(e){}'
     + 'function ap(){try{self.sound.mute=window.__leagueMute!==false;var v=(typeof window.__leagueVol==="number")?window.__leagueVol:0.5;if(self.sound.setVolume)self.sound.setVolume(v);else self.sound.volume=v;}catch(e){}}'
     + 'try{self.events.once("ready",ap);}catch(e){}try{ap();}catch(e){}return r;};})();'
     + 'window.addEventListener("message",function(ev){var d=ev&&ev.data&&ev.data.__leagueAudio;if(!d)return;if("mute" in d)window.__leagueMute=!!d.mute;if(typeof d.volume==="number")window.__leagueVol=d.volume;var g=window.__leagueGame;if(g&&g.sound){try{g.sound.mute=window.__leagueMute;if(g.sound.setVolume)g.sound.setVolume(window.__leagueVol);else g.sound.volume=window.__leagueVol;}catch(e){}}});'
@@ -83,13 +86,55 @@ function startGame() { // build a self-contained page from the browser-side proj
     + assetInjectScript()
     + scripts + '\n</body></html>';
   fitStage();
+  watchGameBoot();
   const gl = $('gameLoading'); if (gl) gl.classList.remove('hidden');
   const gf = $('gameFrame'); gf.onload = function () { const g = $('gameLoading'); if (g) g.classList.add('hidden'); fitStage(); try { gf.contentWindow.focus(); } catch (e) {} if (typeof postGameAudio === 'function') postGameAudio(); };
   // Set per run rather than in the markup, so toggling it takes effect on the next Play.
   if (sandboxGame()) gf.setAttribute('sandbox', 'allow-scripts'); else gf.removeAttribute('sandbox');
   gf.removeAttribute('src'); gf.srcdoc = html;
 }
-function stopGame() { const f = $('gameFrame'); if (f) { f.removeAttribute('srcdoc'); f.removeAttribute('src'); } }
+function stopGame() { clearBootWatch(); showGameFailed(false); const f = $('gameFrame'); if (f) { f.removeAttribute('srcdoc'); f.removeAttribute('src'); } }
+
+/* ---------- did the game actually start? ----------
+   A mistake INSIDE create() or update() is handled well: errorReporterScript catches it, the log
+   says "Your create() stopped: ..." and the game keeps drawing. A SYNTAX error is different in kind.
+   The browser abandons that whole <script> block before running a line of it, so CONFIG or a
+   function the rest of the game needs simply never exists, Phaser never starts, and the stage is a
+   black rectangle. The log does say why — but the stage, which is where the student is looking,
+   says nothing at all.
+   So: the game announces itself when Phaser boots (see assetInjectScript). No announcement means it
+   never ran, and the stage says so in words instead of going dark. */
+let gameBooted = false, bootWatch = null;
+function clearBootWatch() { if (bootWatch) { clearTimeout(bootWatch); bootWatch = null; } }
+function showGameFailed(on, detail) {
+  const el = $('gameFailed'); if (!el) return;
+  el.classList.toggle('hidden', !on);
+  if (!on) return;
+  const d = el.querySelector('.gf-detail');
+  if (d) { d.textContent = detail || ''; d.hidden = !detail; }
+}
+function watchGameBoot() {
+  clearBootWatch();
+  gameBooted = false;
+  showGameFailed(false);
+  /* Generous, because a big pile of Store assets on a school connection is slow and a game that is
+     merely late is not a game that is broken. A boot arriving after this clears the message again,
+     so being wrong here corrects itself. */
+  bootWatch = setTimeout(function () {
+    bootWatch = null;
+    if (!gameBooted) showGameFailed(true);
+  }, 4000);
+}
+window.addEventListener('message', function (e) {
+  const d = e && e.data; if (!d) return;
+  if (d.__gameboot) { gameBooted = true; clearBootWatch(); showGameFailed(false); return; }
+  /* An error before the game has booted is the syntax-error case, and there is no point waiting out
+     the timer when the browser has already told us what is wrong. Quote it on the stage: the log is
+     open by now (console-dock opens it on any game error), but the stage is where they are looking. */
+  if (d.__gamelog && d.level === 'error' && !gameBooted && $('view-play') && !$('view-play').hidden) {
+    showGameFailed(true, String(d.text || '').slice(0, 200));
+  }
+});
 /* Sizing the stage is CSS's job now (see .stage / .stage-frame in styles.css): the frame is the
    largest 4:3 box that fits its container, worked out by the browser whenever anything changes
    size. This used to be measured by hand after a requestAnimationFrame from three separate

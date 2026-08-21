@@ -98,6 +98,18 @@
                      can be toggled without an edit. See SANDBOX_GAME there for why. -->
                 <iframe id="gameFrame" title="Game viewport"></iframe>
                 <div class="game-loading hidden" id="gameLoading"><span class="spin"></span>Building your game…</div>
+                <!-- Shown when the game never started at all — a syntax error stops the whole file
+                     running, so Phaser never boots and the stage would otherwise just be black. -->
+                <div class="game-failed hidden" id="gameFailed" role="status">
+                  <!-- mdi-bug, not an alert triangle: this is a bug to find, not an emergency, and
+                       the course already calls it that ("Bug Hunter"). Also already in the icon
+                       subset, so it needs no font rebuild. -->
+                  <span class="mdi mdi-bug" aria-hidden="true"></span>
+                  <b>Your game did not start.</b>
+                  <span>There is a typo somewhere in your code — the log below says where. Nothing
+                    you wrote is lost: fix it and press Play again.</span>
+                  <code class="gf-detail" hidden></code>
+                </div>
               </div>
             </div>
           </div>

@@ -294,6 +294,19 @@ body[data-tier="narrow"] .dock.left{--floatw:min(300px,84vw);}
 .game-loading .spin{width:18px;height:18px;border:2px solid rgba(255,255,255,.2);border-top-color:var(--brand);border-radius:50%;animation:spin .8s linear infinite;}
 @keyframes spin{to{transform:rotate(360deg)}}
 @media (prefers-reduced-motion: reduce){ .game-loading .spin{animation:none;} }
+/* "Your game did not start." A black rectangle is the one thing the stage must never be without
+   saying why — a student reads the stage, not the log, and a syntax error stops Phaser booting at
+   all. Deliberately not styled as an alarm: this is the most ordinary event in programming. */
+.game-failed{position:absolute;inset:0;z-index:5;display:flex;flex-direction:column;
+  align-items:center;justify-content:center;gap:9px;text-align:center;
+  padding:24px;background:#06101c;color:var(--muted);font-size:13.5px;line-height:1.6;}
+.game-failed.hidden{display:none;}
+.game-failed .mdi{font-size:30px;color:var(--gold);line-height:1;}
+.game-failed b{color:var(--ink);font-size:15.5px;font-weight:700;}
+.game-failed > span{max-width:380px;}
+.game-failed .gf-detail{max-width:420px;padding:7px 11px;background:#2e1414;border:1px solid #7a3030;
+  border-radius:7px;color:#ffb4b4;font-family:Consolas,monospace;font-size:12px;line-height:1.5;
+  word-break:break-word;}
 .console{flex:none;display:flex;flex-direction:column;border-top:1px solid var(--line);background:#0a1524;height:34%;}
 .console.collapsed{height:auto;}
 .console.collapsed .console-body{display:none;}
