@@ -12,7 +12,7 @@
      it, so the column does not get narrower as the gutter grows. Measured at 16.5px this lands
      around 68 characters per line — the old 820px cap measured 92, and comfortable for an
      11-to-14-year-old is nearer 55-70. */
-  --measure:480px;--wide:780px;--gutter:clamp(20px,4vw,56px);--page-max:1200px;}
+  --measure:480px;--wide:780px;--gutter:clamp(20px,4vw,56px);}
 :focus-visible{outline:2px solid var(--focus);outline-offset:2px;border-radius:4px;}
 *{box-sizing:border-box;}
 button{font:inherit;color:inherit;}
@@ -77,22 +77,28 @@ body[data-tier="mid"] .dock.right{--floatw:min(340px,86vw);}
 body[data-tier="narrow"] .dock.right{--floatw:min(340px,86vw);}
 body[data-tier="narrow"] .dock.left{--floatw:min(300px,84vw);}
 
-/* One button, two jobs, and which one depends on whether the outline is a column at this width:
-   where it is, this collapses and restores the column; where it is not, it slides the panel in and
-   out. Same control, same icon, same mental model — "show me the outline" — so a student who
-   resizes the window does not have to learn a second thing. */
+/* Hiding the outline mirrors hiding the assistant exactly: a chevron in the panel's own header
+   sends it away, and a button outside brings it back. The chevron points the way the panel goes —
+   the assistant's points right because it leaves to the right, so this one is flipped. */
+.dock-collapse{display:inline-flex;align-items:center;justify-content:center;width:24px;height:24px;
+  flex:none;background:none;border:0;color:var(--dim);cursor:pointer;padding:0;}
+.dock-collapse:hover{color:var(--ink);}
+.dock-collapse .mdi{font-size:18px;transform:rotate(180deg);}
+
+/* Only on screen while the outline is not, so it never sits beside the thing it opens. */
 .outline-btn{display:inline-flex;align-items:center;justify-content:center;width:30px;height:26px;flex:none;
-  margin-right:8px;background:var(--panel2);border:1px solid var(--line);border-radius:7px;
+  margin-right:10px;background:var(--panel2);border:1px solid var(--line);border-radius:7px;
   color:var(--muted);cursor:pointer;}
 .outline-btn:hover{color:var(--ink);background:#1b4470;}
 .outline-btn .mdi{font-size:16px;}
-/* Lit while the outline is showing, so the button reports the state it is in rather than only
-   being a thing you press. */
-.outline-btn[aria-expanded="true"]{color:var(--azure);border-color:var(--azure);}
 
 .editor.outline-hidden{--leftw:0px;}
+/* Without this the panel's contents spill out of a zero-width column and sit on top of the lesson:
+   the right dock has always had it, which is why collapsing THAT one looked clean. */
+.dock.left{overflow:hidden;}
 /* A drag handle on a column with no width is a 6px strip that resizes something invisible. */
-.editor.outline-hidden .dock.left .res{display:none;}
+.editor.outline-hidden .dock.left .res,
+.editor.outline-hidden .dock.left .dock-head{display:none;}
 .res{position:absolute;top:0;height:100%;width:6px;cursor:col-resize;z-index:5;}
 .res.r{right:-3px;} .res.l{left:-3px;}
 .res:hover{background:#2b4a6e;}
@@ -198,7 +204,10 @@ body[data-tier="narrow"] .dock.left{--floatw:min(300px,84vw);}
 .dock.left{grid-column:1;}
 .dock.right{grid-column:3;}
 .viewbar{display:flex;align-items:center;justify-content:space-between;padding:0 10px;height:38px;border-bottom:1px solid var(--line);background:var(--panel);}
-.crumb{color:var(--muted);font-weight:600;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;}
+/* Takes the slack, so it stays pinned left whether or not the outline's restore button is beside
+   it. Without this, space-between shared the row out and the breadcrumb drifted to the middle the
+   moment a third control appeared. */
+.crumb{flex:1;min-width:0;color:var(--muted);font-weight:600;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;}
 .vtabs{display:flex;gap:4px;flex:none;}
 .vtab{display:flex;align-items:center;gap:6px;padding:5px 13px;border:none;border-radius:6px;background:transparent;color:var(--muted);font-weight:600;font-family:var(--font);font-size:13px;cursor:pointer;}
 .vtab .mdi{font-size:15px;}
@@ -310,10 +319,12 @@ body[data-tier="narrow"] .dock.left{--floatw:min(300px,84vw);}
 .ai-input button{flex:none;background:var(--gold);color:#2a1c00;border:none;border-radius:7px;padding:8px 12px;font-weight:700;cursor:pointer;font-family:var(--font);display:flex;align-items:center;}
 
 /* generic pages */
+/* REVERTED: this used to cap and centre every child at --page-max. On a 1920 screen that left a
+   360px void down the left of the Store and the Gallery, which read as the page having slid out of
+   place rather than as a considered measure. These pages are grids that reflow — they are designed
+   to use the room they are given, and the audit's "one content width" was the wrong medicine for
+   them. The reading measure still applies to prose, which is where it belongs. */
 .page{height:100%;overflow:auto;padding:34px 44px;}
-/* One page width for every full-page view. Before this the Store grid ran 1822px wide with six
-   columns at 1920 while the Docs page beside it capped at 820 — same app, no shared rule. */
-.page > *{max-width:var(--page-max);margin-left:auto;margin-right:auto;}
 .page .phead{display:flex;align-items:flex-end;justify-content:space-between;gap:16px;margin-bottom:22px;}
 .page h2{font-size:28px;margin:0 0 4px;display:flex;align-items:center;gap:10px;}
 .page h2 .mdi{color:var(--azure);}
@@ -377,7 +388,7 @@ body[data-tier="narrow"] .dock.left{--floatw:min(300px,84vw);}
 .sec-head{border-radius:8px;transition:background .1s;}
 
 /* leaderboard */
-.board{max-width:var(--page-max);margin:0 auto;}
+.board{max-width:1080px;margin:0 auto;}
 .board-controls{display:flex;align-items:center;gap:12px;flex-wrap:wrap;margin-bottom:20px;}
 .seg{display:inline-flex;background:var(--panel);border:1px solid var(--line);border-radius:9px;overflow:hidden;}
 .seg button{background:none;border:0;color:var(--muted);padding:9px 16px;font-weight:700;cursor:pointer;font-size:12.5px;font-family:var(--font);transition:background .12s,color .12s;}
@@ -435,8 +446,9 @@ body[data-tier="narrow"] .dock.left{--floatw:min(300px,84vw);}
 @media(max-width:900px){.lb-body{grid-template-columns:1fr;}.rail{flex-direction:row;flex-wrap:wrap;}.rail .card{flex:1;min-width:240px;}.podium{grid-template-columns:1fr;}.pod.p1{order:-1;}}
 
 .doclink{color:var(--azure);font-weight:600;text-decoration:none;}
-/* Prose, so it gets the reading measure the lessons get rather than a width of its own. */
-.help-body{max-width:var(--measure);margin:0 !important;line-height:1.7;}
+/* Prose, so it gets the reading measure the lessons get rather than a width of its own. Left
+   aligned, like the heading above it — not centred. */
+.help-body{max-width:var(--measure);line-height:1.7;}
 .help-body h3{margin:22px 0 6px;color:var(--teal);font-size:16px;display:flex;align-items:center;gap:8px;}
 .help-body p,.help-body li{color:var(--muted);}
 
@@ -631,10 +643,12 @@ body[data-tier="narrow"] .dock.left{--floatw:min(300px,84vw);}
   border-radius:8px;font-family:var(--font);cursor:pointer;transition:filter .12s,border-color .12s,background .12s,transform .05s;}
 .btn:active:not(:disabled){transform:translateY(1px);}
 .btn:disabled{cursor:default;opacity:.7;}
-.btn-primary-role{background:var(--brand);color:var(--brand-ink);font-size:14px;font-weight:700;padding:10px 18px;
+/* Both roles the same height and the same type size, so a row of them lines up instead of one
+   towering over the other. They were 14px/10-18 against 13px/8-14. */
+.btn-primary-role{background:var(--brand);color:var(--brand-ink);font-size:13px;font-weight:700;padding:8px 16px;
   box-shadow:0 2px 12px rgba(245,130,10,.35);}
 .btn-primary-role:hover:not(:disabled){filter:brightness(1.06);}
-.btn-secondary{background:var(--panel2);color:var(--ink);border-color:var(--line);font-size:13px;font-weight:600;padding:8px 14px;}
+.btn-secondary{background:var(--panel2);color:var(--ink);border-color:var(--line);font-size:13px;font-weight:600;padding:8px 16px;}
 .btn-secondary:hover:not(:disabled){border-color:var(--azure);background:#17395c;}
 .btn-secondary:disabled{background:transparent;color:var(--dim);border-color:var(--line);}
 
@@ -1003,8 +1017,36 @@ body[data-tier="narrow"] .dock.left{--floatw:min(300px,84vw);}
   margin:28px 0;padding:20px 0 0;}
 /* Prose once it is not a card, so it takes the reading measure like everything else. The lab
    launcher and the run cell keep the full block: one has a button row, the other has code. */
+/* All three are prose with a control or two, so they take the reading measure. The lab launcher
+   used to keep the full block, which put its button three hundred pixels to the right of its own
+   sentence. Only the run cell stays wide, because it holds code. */
 .lesson-content > .quizcell,
+.lesson-content > .challenge-mini,
 .lesson-content > .yourturn{max-width:var(--measure);}
+
+/* ---------- one header for every in-lesson activity ----------
+   Three block types had three different conventions: a quiz used the question AS its heading with
+   no label at all, a lab put its label inside the title behind an em-dash ("Lab — the world that
+   will not tick"), and a your-turn step had a title and no label. So nothing told a student what
+   KIND of thing they had arrived at except an icon.
+   Now: a label saying what kind it is, and a heading saying what this one is. The label is coloured
+   per kind, which reinforces it — the word does the work, so a student who cannot tell the colours
+   apart loses nothing. */
+.block-hd{display:grid;grid-template-columns:minmax(0,1fr) auto;gap:2px 12px;margin:0 0 14px;}
+.block-kind{grid-column:1;font-size:11px;font-weight:700;letter-spacing:1.5px;text-transform:uppercase;
+  color:var(--kind,var(--azure));}
+.block-title{grid-column:1;margin:0;font-size:17px;font-weight:600;line-height:1.42;color:var(--ink);
+  letter-spacing:-.1px;text-wrap:balance;}
+.block-note{grid-column:2;grid-row:1 / span 2;align-self:center;flex:none;
+  font-size:11.5px;font-weight:600;color:#cfe0f2;background:rgba(255,255,255,.06);
+  border:1px solid rgba(255,255,255,.14);border-radius:999px;padding:3px 10px;white-space:nowrap;}
+.block-note:empty{display:none;}
+.block-tick{grid-column:2;grid-row:1 / span 2;align-self:center;color:var(--green);font-size:18px;}
+.block-note + .block-tick{grid-column:2;}
+
+.lesson-content > .quizcell{--kind:var(--azure);}
+.lesson-content > .challenge-mini{--kind:var(--teal);}
+.lesson-content > .yourturn{--kind:var(--brand);}
 
 .lesson-content > .quizcell > .quiz-h,
 .lesson-content > .challenge-mini > .ch-head,

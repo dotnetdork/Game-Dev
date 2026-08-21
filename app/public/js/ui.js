@@ -83,27 +83,38 @@ function updateFab() {
   const aiVisible = tier === 'wide' ? !aiCollapsed : floatOpen === 'right';
   fab.hidden = aiVisible || pageShowing || labOpen;
 }
-/* The outline button. Where the outline is a column it collapses and restores that column; where it
-   is not, it slides the panel in and out. `aria-expanded` says which way it currently is in both
-   cases, so the button reports its state rather than just being pressable. */
+/* Hiding the outline mirrors hiding the assistant: the chevron in the panel's own header sends it
+   away, and the button in the view bar brings it back. That button is on screen ONLY while the
+   outline is not — otherwise it sits next to the thing it opens, and it pushes the breadcrumb off
+   centre for no reason. */
 function outlineShowing() {
   return tier === 'narrow' ? floatOpen === 'left' : !outlineCollapsed;
 }
 function paintOutlineBtn() {
   const b = $('outlineBtn'); if (!b) return;
   const on = outlineShowing();
+  b.hidden = on;
   b.setAttribute('aria-expanded', on ? 'true' : 'false');
-  b.title = (on ? 'Hide the ' : 'Show the ') + ($('leftTitle') ? $('leftTitle').textContent.toLowerCase() : 'outline');
+  const what = $('leftTitle') ? $('leftTitle').textContent.toLowerCase() : 'outline';
+  b.title = 'Show the ' + what;
+  const c = $('outlineCollapse');
+  if (c) c.title = 'Hide the ' + what;
 }
-function toggleOutline() {
-  if (tier === 'narrow') {
-    if (floatOpen === 'left') closeFloating(); else openFloating('left');
-    return;                                     // those two already repaint the button
-  }
-  outlineCollapsed = !outlineCollapsed;
-  $('editor').classList.toggle('outline-hidden', outlineCollapsed);
+function showOutline() {
+  if (tier === 'narrow') { openFloating('left'); return; }   // that repaints the button itself
+  outlineCollapsed = false;
+  $('editor').classList.remove('outline-hidden');
   paintOutlineBtn();
   if (typeof fitStage === 'function') requestAnimationFrame(fitStage);
+}
+function hideOutline() {
+  if (tier === 'narrow') { closeFloating(); return; }
+  outlineCollapsed = true;
+  $('editor').classList.add('outline-hidden');
+  paintOutlineBtn();
+  if (typeof fitStage === 'function') requestAnimationFrame(fitStage);
+  const b = $('outlineBtn');
+  if (b && !b.hidden) { try { b.focus(); } catch (e) {} }    // focus was inside what just closed
 }
 
 function hideAI() {
@@ -172,7 +183,8 @@ makeResizer($('resLeft'), 'left'); makeResizer($('resRight'), 'right');
 
 if ($('aiCollapse')) $('aiCollapse').addEventListener('click', hideAI);
 if ($('aiFab')) $('aiFab').addEventListener('click', showAI);
-if ($('outlineBtn')) $('outlineBtn').addEventListener('click', toggleOutline);
+if ($('outlineBtn')) $('outlineBtn').addEventListener('click', showOutline);
+if ($('outlineCollapse')) $('outlineCollapse').addEventListener('click', hideOutline);
 if ($('dockScrim')) $('dockScrim').addEventListener('click', closeFloating);
 document.addEventListener('keydown', function (e) {
   // After the lab's own handler, which returns early unless a lab is open.

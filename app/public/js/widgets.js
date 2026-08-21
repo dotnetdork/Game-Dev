@@ -145,6 +145,32 @@ function parseWidgetYaml(kind, text, key) {
   }
 }
 
+/* ---------- one header for every in-lesson activity ----------
+   A label saying what KIND of thing this is, then a heading saying what THIS one is. Before this,
+   three block types had three conventions: a quiz used its question as the heading with no label, a
+   lab hid its label inside the title behind an em-dash, and a practice step had a title and no
+   label. Nothing told a student what they had arrived at except an icon.
+   `note` is the "2 of 2" chip. The title goes through inlineMd, so a question that names real code
+   ("what does `if (lives <= 0)` ask?") shows the code rather than the backticks — which it did
+   not before. */
+function blockHeader(kind, title, note) {
+  const h = document.createElement('div'); h.className = 'block-hd';
+  const k = document.createElement('span'); k.className = 'block-kind'; k.textContent = kind;
+  const t = document.createElement('h3'); t.className = 'block-title'; t.innerHTML = inlineMd(title);
+  h.appendChild(k); h.appendChild(t);
+  if (note) { const n = document.createElement('span'); n.className = 'block-note'; n.textContent = note; h.appendChild(n); }
+  return h;
+}
+
+/* Authored lab titles read "Lab — the world that will not tick". The label carries "Lab" now, so
+   the prefix would say it twice. Stripped here rather than edited across 22 files — the same
+   approach as badge names losing their trailing "badge". */
+function blockTitleOf(raw, kind) {
+  let s = String(raw == null ? '' : raw).trim();
+  s = s.replace(new RegExp('^' + kind + '\\s*(?:[\\u2014\\u2013:-]\\s*)?', 'i'), '').trim();
+  return s ? s.charAt(0).toUpperCase() + s.slice(1) : '';
+}
+
 /* The question itself. Authored as `question:`; the v1 course used `prompt:` and both are
    accepted, because a renamed key that only the renderer knows about is how all 44 quizzes in
    the course came to display the words "Quick check" instead of anything a student could answer.
@@ -166,14 +192,8 @@ function renderQuizCells(root) {
     const cell = document.createElement('div'); cell.className = 'quizcell'; cell.setAttribute('role', 'group');
 
     // Header: the question is the strongest thing in the card, with its place in the lesson.
-    const head = document.createElement('div'); head.className = 'quiz-h';
-    const qText = document.createElement('div'); qText.className = 'quiz-q';
-    qText.innerHTML = '<span class="mdi mdi-help-circle-outline"></span>';
-    qText.appendChild(document.createTextNode(quizPrompt(q) || 'Quick check'));
-    head.appendChild(qText);
-    const badge = document.createElement('span'); badge.className = 'quiz-count';
-    badge.textContent = total > 1 ? (idx + 1) + ' of ' + total : '';
-    if (total > 1) head.appendChild(badge);
+    const head = blockHeader('Quiz', quizPrompt(q) || 'Quick check',
+      total > 1 ? (idx + 1) + ' of ' + total : '');
     cell.appendChild(head);
 
     const body = document.createElement('div'); body.className = 'quiz-body'; cell.appendChild(body);
@@ -230,8 +250,8 @@ function markQuizDone(ctx, restoring) {
   ctx.check.disabled = true;
   ctx.check.textContent = 'Answered';
   ctx.cell.classList.add('answered');
-  if (!ctx.head.querySelector('.quiz-tick')) {
-    const tick = document.createElement('span'); tick.className = 'quiz-tick mdi mdi-check-circle';
+  if (!ctx.head.querySelector('.block-tick')) {
+    const tick = document.createElement('span'); tick.className = 'block-tick mdi mdi-check-circle';
     tick.title = 'Answered';
     ctx.head.appendChild(tick);
   }
@@ -626,8 +646,8 @@ function paintLabCard(lab) {
     k.done.innerHTML = '<span class="mdi mdi-check-circle" aria-hidden="true"></span>'
       + (lab.revealed ? 'Working — you read the answer' : 'Fixed it!');
   }
-  const label = lab.solved ? 'Open it again'
-    : (lab.touched || lab.fails ? 'Carry on with the lab' : 'Start the lab');
+  // Short, because the label above already says "LAB" — "Start the lab" said it twice.
+  const label = lab.solved ? 'Open' : (lab.touched || lab.fails ? 'Continue' : 'Start');
   k.open.innerHTML = '<span class="mdi ' + (lab.solved ? 'mdi-flask-outline' : 'mdi-play') + '" aria-hidden="true"></span>' + label;
 }
 
@@ -675,7 +695,7 @@ function labOfferSolution(lab) {
   const p = document.createElement('p');
   p.textContent = 'Stuck on this one? You can put the working version in and read it instead.';
   const b = document.createElement('button'); b.type = 'button'; b.className = 'btn btn-secondary';
-  b.textContent = 'Show me the working version';
+  b.textContent = 'Show the answer';
   b.addEventListener('click', function () {
     ui.write(lab.c.solution);
     lab.code = lab.c.solution; lab.revealed = true; lab.touched = true;
@@ -909,9 +929,8 @@ function renderChallengeCells(root) {
        theme class, and a widget naming its own parts cm-anything is one rename from colliding. */
     const cell = document.createElement('div'); cell.className = 'challenge-mini';
 
-    const head = document.createElement('div'); head.className = 'ch-head';
-    head.innerHTML = '<span class="mdi mdi-flask-outline" aria-hidden="true"></span>'
-      + '<span class="ch-title">' + esc(c.title || 'Lab') + '</span>';
+    const head = blockHeader('Lab', blockTitleOf(c.title, 'Lab') || 'The course’s example');
+    head.classList.add('ch-head');
     cell.appendChild(head);
 
     const bodyEl = document.createElement('div'); bodyEl.className = 'ch-body'; cell.appendChild(bodyEl);
@@ -984,9 +1003,11 @@ function renderYourTurnCells(root) {
     const done = activityDone(lessonId, key);
 
     const cell = document.createElement('div'); cell.className = 'yourturn';
-    const head = document.createElement('div'); head.className = 'yt-head';
-    head.innerHTML = '<span class="mdi mdi-rocket-launch-outline" aria-hidden="true"></span>'
-      + '<span class="yt-title">' + esc(c.title || 'Your turn') + '</span>';
+    /* "Practice" rather than "Your turn": one word, it sits beside Quiz and Lab as a short noun
+       naming the kind of activity, and it is honest about what this is — the independent practice
+       that follows the lab's worked example. Not "Build", which is already the AI's other mode. */
+    const head = blockHeader('Practice', blockTitleOf(c.title, 'Practice') || 'In your own game');
+    head.classList.add('yt-head');
     cell.appendChild(head);
 
     const body = document.createElement('div'); body.className = 'yt-body';
@@ -1026,7 +1047,7 @@ function renderYourTurnCells(root) {
     const status = document.createElement('span'); status.className = 'yt-status'; status.setAttribute('aria-live', 'polite');
     const mark = document.createElement('button'); mark.type = 'button';
     mark.className = 'btn btn-primary-role yt-done';
-    mark.innerHTML = '<span class="mdi mdi-check" aria-hidden="true"></span>I’ve done this';
+    mark.innerHTML = '<span class="mdi mdi-check" aria-hidden="true"></span>Done';
 
     function settle() {
       status.className = 'yt-status ok';
