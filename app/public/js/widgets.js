@@ -540,11 +540,26 @@ function labConsoleShim(tok) {
     + '})();<' + '/script>';
 }
 
+/* A lab draws in a 300x200 coordinate space — that is the authored contract, every lab uses those
+   literals, and tools/check-challenges.js stubs `canvas` as exactly that.
+   The picture is much bigger than 300x200 on screen, so the canvas ELEMENT is three times that and
+   the context is pre-scaled to match. Everything the student writes still uses 300x200, and the
+   result is crisp at full size instead of a 300px bitmap smeared across 900px.
+   `canvas` is handed over as a small stand-in reporting the logical size, so `canvas.width` is 300
+   in the browser AND 300 in the offline checker. One truth in both places — a mismatch there is
+   exactly the kind of gap that hid a blank lab for three commits. */
+const LAB_W = 300, LAB_H = 200, LAB_SCALE = 3;
+
 function labDoc(tok, userCode) {
   const safe = String(userCode).replace(/<\/(script)/gi, '<\\/$1');
-  return '<!doctype html><body style="margin:0;background:#08121f;display:flex;align-items:center;justify-content:center;height:100vh"><canvas id="c" width="300" height="200" style="background:#0d2137;border-radius:8px"></canvas>'
+  return '<!doctype html><body style="margin:0;background:#0d2137;overflow:hidden">'
+    + '<canvas id="c" width="' + (LAB_W * LAB_SCALE) + '" height="' + (LAB_H * LAB_SCALE) + '"'
+    + ' style="width:100%;height:100vh;display:block"></canvas>'
     + labConsoleShim(tok)
-    + '<scr' + 'ipt>var canvas=document.getElementById("c"),ctx=canvas.getContext("2d"),__w=false;function win(){if(__w)return;__w=true;try{parent.postMessage({__cm:true,tok:"' + tok + '",win:true},"*");}catch(e){}}window.onerror=function(m){try{parent.postMessage({__cm:true,tok:"' + tok + '",err:String(m)},"*");}catch(e){}};try{\n' + safe + '\n}catch(e){window.onerror(e.message);}<\/scr' + 'ipt></body>';
+    + '<scr' + 'ipt>var __el=document.getElementById("c"),ctx=__el.getContext("2d");'
+    + 'ctx.scale(' + LAB_SCALE + ',' + LAB_SCALE + ');'
+    + 'var canvas={width:' + LAB_W + ',height:' + LAB_H + ',getContext:function(){return ctx;}};'
+    + 'var __w=false;function win(){if(__w)return;__w=true;try{parent.postMessage({__cm:true,tok:"' + tok + '",win:true},"*");}catch(e){}}window.onerror=function(m){try{parent.postMessage({__cm:true,tok:"' + tok + '",err:String(m)},"*");}catch(e){}};try{\n' + safe + '\n}catch(e){window.onerror(e.message);}<\/scr' + 'ipt></body>';
 }
 
 /* ---------- the bench console ----------

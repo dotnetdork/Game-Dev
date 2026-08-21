@@ -142,12 +142,15 @@
         <section class="lab-pane lab-pane-code" aria-label="The code">
           <h2 class="lab-pane-hd"><span class="mdi mdi-code-tags" aria-hidden="true"></span>The code</h2>
           <div class="lab-editor" id="labEditor"></div>
+          <!-- The cursor position belongs in the editor, the same way it does on the Code tab, and
+               uses that tab's own statusbar class so the two look identical. A sibling rather than
+               a child of #labEditor, because building the editor clears that element's contents. -->
+          <div class="cm-statusbar" id="labCursor">Ln 1, Col 1</div>
         </section>
         <section class="lab-pane lab-pane-game" aria-label="What it does">
           <h2 class="lab-pane-hd"><span class="mdi mdi-play-circle" aria-hidden="true"></span>What it does</h2>
           <div class="lab-stage" id="labStage">
             <div class="lab-screen" id="labScreen"></div>
-            <p class="lab-screen-cap">300 &times; 200</p>
           </div>
         </section>
       </div>
@@ -165,7 +168,6 @@
       </div>
       <div class="lab-foot">
         <div class="lab-status" id="labStatus" aria-live="polite"></div>
-        <span class="lab-cursor" id="labCursor">Ln 1, Col 1</span>
         <span class="lab-keys"><kbd>Ctrl</kbd>+<kbd>Enter</kbd> to run</span>
         <button class="btn btn-primary-role lab-run" id="labRun"><span class="mdi mdi-play" aria-hidden="true"></span>Run</button>
       </div>

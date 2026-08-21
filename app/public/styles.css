@@ -677,9 +677,12 @@ body{background:var(--bg);color:var(--ink);font-family:var(--font);font-size:14p
 .lab-brief .ch-task{font-size:15.5px;color:#c3d3e6;max-width:90ch;}
 .lab-brief .ch-hint,.lab-brief .ch-solve{max-width:90ch;}
 
-.lab-panes{flex:1;min-height:0;display:grid;grid-template-columns:1fr minmax(300px,38%);
+/* Down the middle. The code and the thing the code does are equally the point of a lab, and an
+   uneven split just looked like one side had been given what was left over. */
+.lab-panes{flex:1;min-height:0;display:grid;grid-template-columns:1fr 1fr;
   gap:1px;background:var(--line);}
 .lab-pane{display:flex;flex-direction:column;min-width:0;min-height:0;background:var(--panel);}
+.lab-pane-code{position:relative;}   /* so the cursor readout can sit over the editor's corner */
 .lab-pane-hd{display:flex;align-items:center;gap:7px;margin:0;padding:8px 14px;
   font-size:11px;font-weight:700;letter-spacing:1.5px;text-transform:uppercase;color:var(--dim);
   background:var(--panel2);border-bottom:1px solid var(--line);}
@@ -688,18 +691,20 @@ body{background:var(--bg);color:var(--ink);font-family:var(--font);font-size:14p
 .lab-editor .CodeMirror{height:100%;font-family:Consolas,monospace;font-size:14px;line-height:1.65;}
 .lab-editor textarea.ch-code{height:100%;resize:none;}
 
-/* The lab draws on a 300x200 canvas, so it is presented as a screen of that size rather than
-   stretched to fill the pane — scaling a 300x200 bitmap up just makes it soft. Framed the same way
-   the Play tab frames the game (border, radius, deep shadow) so a small screen in a large pane
-   reads as a deliberate thing on a bench, not as leftover space. The caption states the size,
-   which is the honest answer to "why is it small". */
-.lab-stage{flex:1;min-height:0;background:#08121f;display:flex;flex-direction:column;
-  align-items:center;justify-content:center;gap:10px;padding:16px;overflow:auto;}
-.lab-screen{flex:none;width:300px;height:200px;border:1px solid var(--line);border-radius:12px;
-  overflow:hidden;background:#0d2137;box-shadow:0 14px 40px rgba(0,0,0,.5);}
+/* The screen fills its half of the bench: the largest 3:2 box that fits, worked out by the browser
+   rather than measured by hand — the same container-query trick the Play tab uses for the game.
+   It was a fixed 300x200 postage stamp floating in a large dark pane, which was the weakest thing
+   on screen. The canvas behind it is drawn at three times the logical size (see labDoc), so this
+   is genuinely sharp at full width instead of a small bitmap smeared across it — hence the cap at
+   the size it actually has the pixels for. */
+.lab-stage{flex:1;min-height:0;background:#08121f;padding:18px;container-type:size;
+  display:flex;align-items:center;justify-content:center;}
+.lab-screen{aspect-ratio:3/2;
+  width:min(100cqw, calc(100cqh * 3 / 2), 900px);
+  height:auto;max-width:100%;max-height:100%;
+  border:1px solid var(--line);border-radius:12px;overflow:hidden;background:#0d2137;
+  box-shadow:0 14px 40px rgba(0,0,0,.5);}
 .lab-screen iframe{width:100%;height:100%;border:0;display:block;}
-.lab-screen-cap{margin:0;flex:none;color:var(--dim);font-family:Consolas,monospace;font-size:11px;
-  letter-spacing:.5px;}
 
 /* ---- the bench console: the same one as the Play tab, sharing its classes ---- */
 /* Sized so the editor keeps the room. A percentage alone took 180px out of a 502px column on a
@@ -718,7 +723,6 @@ body{background:var(--bg);color:var(--ink);font-family:var(--font);font-size:14p
   gap:7px;margin-right:auto;min-width:0;}
 .lab-status .mdi{font-size:17px;flex:none;}
 .lab-status.ok{color:var(--green);} .lab-status.no{color:var(--gold);}
-.lab-cursor{flex:none;color:var(--dim);font-family:Consolas,monospace;font-size:11.5px;}
 .lab-keys{flex:none;color:var(--dim);font-size:11.5px;display:flex;align-items:center;gap:4px;}
 .lab-keys kbd{font-family:Consolas,monospace;font-size:10.5px;color:var(--muted);
   background:var(--panel);border:1px solid var(--line);border-radius:4px;padding:1px 5px;}
@@ -735,7 +739,7 @@ body{background:var(--bg);color:var(--ink);font-family:var(--font);font-size:14p
 @media (max-width:900px){
   .lab-panes{grid-template-columns:1fr;grid-template-rows:auto auto;overflow-y:auto;}
   .lab-editor{flex:none;height:300px;}
-  .lab-stage{flex:none;height:250px;}
+  .lab-stage{flex:none;height:260px;}
   /* Vertical room is the scarce thing here; the log is worth more than a shortcut reminder. */
   .lab-keys{display:none;}
 }
