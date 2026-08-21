@@ -183,6 +183,62 @@ For an aside, use a `tip` div — it renders as a callout:
 
     <div class="tip">Sprites are just pictures the game can move around.</div>
 
+## Showing a real game
+
+A screenshot or a few seconds of footage. Use `class="shot"` for a still and `class="clip"` for
+video, and **credit it in a `<cite>`** — `npm test` fails without one:
+
+    <figure class="shot">
+      <img src="/content/images/celeste-dash.png" alt="The player mid-dash, with a trail of afterimages behind them.">
+      <figcaption>Three frames of afterimage is all it takes to make a dash feel fast.
+        <cite><b>Celeste</b> — Maddy Makes Games, 2018. Screenshot used to discuss its game feel.</cite>
+      </figcaption>
+    </figure>
+
+    <figure class="clip">
+      <video src="/content/images/screen-shake.webm" autoplay loop muted playsinline></video>
+      <figcaption>The same hit, with and without shake.
+        <cite>Recorded from the course's own starter game.</cite>
+      </figcaption>
+    </figure>
+
+- **Video, not GIF.** A five-second GIF is often several megabytes; the same clip as `.webm` is
+  tens of kilobytes, and this runs on school wi-fi with twenty-five students booting at once.
+  `muted` is required — `npm test` checks for it, and browsers block unmuted autoplay anyway.
+- Clips stop and grow controls for a student whose machine asks for reduced motion, so write them
+  to make sense as a still frame too.
+- Keep stills under ~200 KB. Crop to the thing you are talking about rather than showing a whole
+  screen at full resolution.
+
+### Where the pictures may come from
+
+Four sources, and it is worth knowing which one you are using:
+
+1. **Ours.** The starter game, the labs, a student's published game (with the consent the privacy
+   brief describes). No question at all.
+2. **Openly licensed or public-domain games.** Plenty exist, and the licence usually asks only for
+   the credit you are writing anyway.
+3. **An official press kit.** Many studios publish screenshots explicitly cleared for editorial
+   use. If a game has one, use it — it is the cleanest possible footing.
+4. **A screenshot of a commercial game, used to discuss that game.** This is the interesting one.
+
+On (4), one distinction is worth being precise about, because it is easy to get backwards:
+**crediting the author is not what makes it lawful.** Attribution and permission are separate
+things — a credit line does not grant a licence.
+
+What does the work is **fair use**: a small excerpt, used for teaching and commentary, in a way
+that does not substitute for the original. A course that shows one screenshot of a platformer in
+order to explain how its jump feels is close to the textbook shape of that — educational purpose,
+transformative use, a tiny portion of the work, and nobody skips buying the game because they saw
+a still of it. The credit still matters, because a use with no attribution is much harder to
+defend as commentary, and because it is the right thing to do.
+
+So: **the risk here is genuinely low, and the reason is fair use rather than the credit.** Prefer
+(1) to (3) when there is a choice, because they need no argument at all. Since this is the League's
+material rather than any one author's, it is worth one line to whoever handles the organisation's
+legal questions — the same route the child-privacy brief went down — so the position is recorded
+rather than assumed.
+
 ## Prose
 Standard Markdown (headings, lists, **bold**, images, > quotes) renders normally. Plain code
 blocks are syntax-highlighted with the same theme as the Code tab.

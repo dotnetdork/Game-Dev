@@ -133,7 +133,11 @@ function switchView(view) {
   /* At a narrow width the left dock slides in from a button, and that button opens whichever panel
      this tab shows — so it says so rather than always claiming "Course outline". */
   const ob = $('outlineBtn');
-  if (ob) { ob.title = titleFor[view]; ob.querySelector('.sr-only').textContent = 'Show the ' + titleFor[view].toLowerCase(); }
+  if (ob) {
+    ob.querySelector('.sr-only').textContent = titleFor[view];
+    // One owner for the title, since it also has to say whether the panel is currently showing.
+    if (typeof paintOutlineBtn === 'function') paintOutlineBtn();
+  }
   if (view === 'learn') $('crumb').textContent = $('crumb').dataset.lesson || 'Lesson';
   if (view === 'code') { upgradeEditor(); $('crumb').textContent = currentFile; refreshFiles(); loadCode(); setTimeout(function () { codeEditor.refresh(); }, 0); }
   if (view === 'play') { $('crumb').textContent = 'Playing: ' + course.name; startGame(); loadSettings(); } else { stopGame(); }

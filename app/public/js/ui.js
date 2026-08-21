@@ -38,8 +38,9 @@ const TIER_WIDE = 1440, TIER_MID = 1180;
 const dockLeft = document.querySelector('.dock.left');
 const dockRight = document.querySelector('.dock.right');
 let tier = '';
-let aiCollapsed = false;     // the student's own choice, which only the wide tier can honour
-let floatOpen = null;        // 'left' | 'right' | null
+let aiCollapsed = false;         // the student's own choice, which only the wide tier can honour
+let outlineCollapsed = false;    // ditto, for the outline column
+let floatOpen = null;            // 'left' | 'right' | null
 
 /* Drag limits per tier, so the handle can give the centre column its space back on a small screen
    instead of being pinned to a floor set for a 1920 monitor. */
@@ -57,10 +58,9 @@ function closeFloating() {
   if (!floatOpen) return;
   const d = floatOpen === 'left' ? dockLeft : dockRight;
   d.classList.remove('open');
-  if (floatOpen === 'left' && $('outlineBtn')) $('outlineBtn').setAttribute('aria-expanded', 'false');
   const back = floatOpen === 'left' ? $('outlineBtn') : $('aiFab');
   floatOpen = null;
-  paintScrim(); updateFab();
+  paintScrim(); updateFab(); paintOutlineBtn();
   if (back && !back.hidden) { try { back.focus(); } catch (e) {} }
 }
 function openFloating(which) {
@@ -69,8 +69,7 @@ function openFloating(which) {
   if (floatOpen && floatOpen !== which) closeFloating();
   d.classList.add('open');
   floatOpen = which;
-  if (which === 'left' && $('outlineBtn')) $('outlineBtn').setAttribute('aria-expanded', 'true');
-  paintScrim(); updateFab();
+  paintScrim(); updateFab(); paintOutlineBtn();
   const first = d.querySelector('button:not([hidden]), input:not([disabled])');
   if (first) { try { first.focus(); } catch (e) {} }
 }
@@ -84,6 +83,29 @@ function updateFab() {
   const aiVisible = tier === 'wide' ? !aiCollapsed : floatOpen === 'right';
   fab.hidden = aiVisible || pageShowing || labOpen;
 }
+/* The outline button. Where the outline is a column it collapses and restores that column; where it
+   is not, it slides the panel in and out. `aria-expanded` says which way it currently is in both
+   cases, so the button reports its state rather than just being pressable. */
+function outlineShowing() {
+  return tier === 'narrow' ? floatOpen === 'left' : !outlineCollapsed;
+}
+function paintOutlineBtn() {
+  const b = $('outlineBtn'); if (!b) return;
+  const on = outlineShowing();
+  b.setAttribute('aria-expanded', on ? 'true' : 'false');
+  b.title = (on ? 'Hide the ' : 'Show the ') + ($('leftTitle') ? $('leftTitle').textContent.toLowerCase() : 'outline');
+}
+function toggleOutline() {
+  if (tier === 'narrow') {
+    if (floatOpen === 'left') closeFloating(); else openFloating('left');
+    return;                                     // those two already repaint the button
+  }
+  outlineCollapsed = !outlineCollapsed;
+  $('editor').classList.toggle('outline-hidden', outlineCollapsed);
+  paintOutlineBtn();
+  if (typeof fitStage === 'function') requestAnimationFrame(fitStage);
+}
+
 function hideAI() {
   if (tier === 'wide') { aiCollapsed = true; $('editor').classList.add('ai-hidden'); }
   else closeFloating();
@@ -121,9 +143,12 @@ function applyTier() {
   if (t === 'wide') dockRight.classList.remove('open');
   if ((floatOpen === 'left' && t !== 'narrow') || (floatOpen === 'right' && t === 'wide')) floatOpen = null;
   $('editor').classList.toggle('ai-hidden', t === 'wide' && aiCollapsed);
+  // Collapsing a column only means anything where there IS a column to collapse.
+  $('editor').classList.toggle('outline-hidden', t !== 'narrow' && outlineCollapsed);
   clampDockWidths();
   paintScrim();
   updateFab();
+  paintOutlineBtn();
   if (typeof fitStage === 'function') requestAnimationFrame(fitStage);
 }
 
@@ -147,9 +172,7 @@ makeResizer($('resLeft'), 'left'); makeResizer($('resRight'), 'right');
 
 if ($('aiCollapse')) $('aiCollapse').addEventListener('click', hideAI);
 if ($('aiFab')) $('aiFab').addEventListener('click', showAI);
-if ($('outlineBtn')) $('outlineBtn').addEventListener('click', function () {
-  if (floatOpen === 'left') closeFloating(); else openFloating('left');
-});
+if ($('outlineBtn')) $('outlineBtn').addEventListener('click', toggleOutline);
 if ($('dockScrim')) $('dockScrim').addEventListener('click', closeFloating);
 document.addEventListener('keydown', function (e) {
   // After the lab's own handler, which returns early unless a lab is open.

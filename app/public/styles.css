@@ -77,13 +77,22 @@ body[data-tier="mid"] .dock.right{--floatw:min(340px,86vw);}
 body[data-tier="narrow"] .dock.right{--floatw:min(340px,86vw);}
 body[data-tier="narrow"] .dock.left{--floatw:min(300px,84vw);}
 
-/* The outline button only exists where the outline is not permanently on screen. */
-.outline-btn{display:none;align-items:center;justify-content:center;width:30px;height:26px;flex:none;
+/* One button, two jobs, and which one depends on whether the outline is a column at this width:
+   where it is, this collapses and restores the column; where it is not, it slides the panel in and
+   out. Same control, same icon, same mental model — "show me the outline" — so a student who
+   resizes the window does not have to learn a second thing. */
+.outline-btn{display:inline-flex;align-items:center;justify-content:center;width:30px;height:26px;flex:none;
   margin-right:8px;background:var(--panel2);border:1px solid var(--line);border-radius:7px;
   color:var(--muted);cursor:pointer;}
 .outline-btn:hover{color:var(--ink);background:#1b4470;}
 .outline-btn .mdi{font-size:16px;}
-body[data-tier="narrow"] .outline-btn{display:inline-flex;}
+/* Lit while the outline is showing, so the button reports the state it is in rather than only
+   being a thing you press. */
+.outline-btn[aria-expanded="true"]{color:var(--azure);border-color:var(--azure);}
+
+.editor.outline-hidden{--leftw:0px;}
+/* A drag handle on a column with no width is a 6px strip that resizes something invisible. */
+.editor.outline-hidden .dock.left .res{display:none;}
 .res{position:absolute;top:0;height:100%;width:6px;cursor:col-resize;z-index:5;}
 .res.r{right:-3px;} .res.l{left:-3px;}
 .res:hover{background:#2b4a6e;}
@@ -974,18 +983,66 @@ body[data-tier="narrow"] .outline-btn{display:inline-flex;}
 .lesson-content > blockquote,
 .lesson-content > .tip{max-width:var(--measure);}
 
+/* ---------- the in-lesson blocks are not cards ----------
+   A quiz, a lab launcher, a your-turn step and a run cell were each a filled, bordered panel. Four
+   panels down a page of prose is four boxes competing with the words, and the diagrams made it
+   obvious: a drawing that already has its own dark ground sitting inside another dark ground reads
+   as a picture of a picture.
+   So the outer box goes. What is left is a hairline above, a coloured heading, and content on the
+   same left edge as the prose — which is enough to say "a new thing starts here" without drawing a
+   frame around it. The parts that a student actually clicks keep their own surfaces, because those
+   have to look pressable.
+   Scoped to direct children of .lesson-content on purpose: the same class names appear inside the
+   lab's full-window bench, where a panel IS the right answer. */
+.lesson-content > .quizcell,
+.lesson-content > .challenge-mini,
+.lesson-content > .yourturn,
+.lesson-content > .runcell{
+  background:none;border:0;border-radius:0;overflow:visible;
+  border-top:1px solid var(--line);
+  margin:28px 0;padding:20px 0 0;}
+/* Prose once it is not a card, so it takes the reading measure like everything else. The lab
+   launcher and the run cell keep the full block: one has a button row, the other has code. */
+.lesson-content > .quizcell,
+.lesson-content > .yourturn{max-width:var(--measure);}
+
+.lesson-content > .quizcell > .quiz-h,
+.lesson-content > .challenge-mini > .ch-head,
+.lesson-content > .yourturn > .yt-head{background:none;border:0;padding:0 0 12px;}
+.lesson-content > .quizcell > .quiz-body,
+.lesson-content > .challenge-mini > .ch-body,
+.lesson-content > .yourturn > .yt-body{padding:0;}
+.lesson-content > .challenge-mini > .ch-foot,
+.lesson-content > .yourturn > .yt-foot{background:none;border:0;padding:14px 0 0;}
+.lesson-content > .runcell > .runbar{background:none;padding:8px 0 0;}
+/* The heading carries the block's identity now that the frame is gone, so it gets its accent. */
+.lesson-content > .quizcell > .quiz-h .quiz-q{color:var(--ink);}
+.lesson-content > .yourturn > .yt-head .yt-title{color:#ffc27a;}
+
 /* ---------- pictures and diagrams ----------
    A diagram is one of the "wide" things: it earns the full block, not the prose measure, because
    shrinking a drawing to the width of a paragraph is how diagrams become unreadable. The caption
    is the part that does the teaching work twice, so it gets real type rather than small print. */
 .lesson-content > figure{margin:26px 0;display:flex;flex-direction:column;gap:10px;}
-.diagram img,.diagram svg{display:block;width:100%;height:auto;max-width:100%;
-  background:#0a1a2e;border:1px solid var(--line);border-radius:12px;}
-/* A photo or screenshot is not a diagram: no panel behind it, and it keeps its own aspect. */
-.lesson-content > figure.shot img{border-radius:12px;border:1px solid var(--line);background:none;}
+/* No panel behind a diagram. The SVG paints its own ground, so a card around it was a second
+   background showing through as a border on a drawing that did not need one. */
+.diagram img,.diagram svg{display:block;width:100%;height:auto;max-width:100%;}
+/* ---- a screenshot or a clip of a real game ----
+   Unlike a diagram, this is someone else's picture, so it is framed as a quotation: a thin edge to
+   say where it starts and stops, and a credit line that is part of the figure rather than an
+   afterthought. Screenshots are usually 16:9 and letterboxing them in a panel looks worse than
+   letting them be their own shape. */
+.lesson-content > figure.shot img,
+.lesson-content > figure.clip video{display:block;width:100%;height:auto;max-width:100%;
+  border-radius:10px;border:1px solid var(--line);background:#06101c;}
 .lesson-content > figure figcaption{margin:0;color:var(--muted);font-size:14px;line-height:1.6;
   max-width:var(--measure);}
 .lesson-content > figure figcaption b{color:#c3d3e6;}
+/* The credit. Quiet, but never hidden — it is the thing that makes the figure honest about whose
+   work it is showing, so it is styled to be readable rather than to disappear. */
+.lesson-content > figure figcaption cite{display:block;margin-top:5px;font-style:normal;
+  font-size:12.5px;color:var(--dim);}
+.lesson-content > figure figcaption cite b{color:var(--muted);font-weight:600;}
 /* A diagram narrow enough that full width would blow it up past its natural size. */
 .lesson-content > figure.narrow{max-width:520px;}
 

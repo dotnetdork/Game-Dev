@@ -1052,6 +1052,21 @@ function renderYourTurnCells(root) {
   });
 }
 
+/* A clip of a real game loops on its own, which is right for showing what a mechanic feels like and
+   wrong for a student who has asked their machine for less movement. Autoplay is an attribute, so it
+   cannot be undone in CSS: the clip is stopped here and given controls, so it is still watchable by
+   choice rather than simply gone. */
+function calmClips(root) {
+  if (!root || !window.matchMedia) return;
+  let quiet = false;
+  try { quiet = window.matchMedia('(prefers-reduced-motion: reduce)').matches; } catch (e) { return; }
+  if (!quiet) return;
+  root.querySelectorAll('figure.clip video').forEach(function (v) {
+    v.autoplay = false; v.loop = false; v.controls = true;
+    try { v.pause(); } catch (e) {}
+  });
+}
+
 const MODULE_HERO = ['#143561', '#2f2a6b', '#1f5b63', '#5b3320', '#1f6b45', '#6b2a52', '#26456b', '#4a6b26', '#6b5320', '#33305b'];
 const MODULE_ACCENT = ['#3e8fd6', '#8b7cff', '#2fd0b6', '#f5820a', '#3ddc84', '#ff6b9d', '#59a5ff', '#a3d94a', '#f5b02e', '#7c9cff'];
 function moduleHero(mi) { return MODULE_HERO[mi % MODULE_HERO.length]; }
@@ -1094,6 +1109,7 @@ function paintLesson2(f, html) {
   renderQuizCells($('lessonBody'));
   renderChallengeCells($('lessonBody'));
   renderYourTurnCells($('lessonBody'));
+  calmClips($('lessonBody'));
   paintLesson($('lessonBody'));
   applyAIMode(f.l.ai);
   startLessonProgress(f);

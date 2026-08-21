@@ -171,7 +171,39 @@ function eachBlock(text, re, fn) {
    so a plain relative name resolves against the wrong place. Root-relative paths only. */
 const PUBLIC = path.join(__dirname, '..', 'public');
 const CONTENT = path.join(__dirname, '..', 'content');
-const IMG_SRC = /<img[^>]+src\s*=\s*["']([^"']+)["']|!\[[^\]]*\]\(([^)\s]+)/g;
+const IMG_SRC = /<(?:img|source)[^>]+src\s*=\s*["']([^"']+)["']|!\[[^\]]*\]\(([^)\s]+)/g;
+/* A figure showing someone else's game must say whose it is. The credit is not what makes using it
+   lawful — that is fair use, or a press-kit licence, or the game being openly licensed — but a
+   screenshot with no attribution is indefensible on any of those footings, and it is the one part
+   a program can actually check. So: `shot` and `clip` figures need a <cite>. Diagrams we drew do
+   not, which is why the rule keys off the class rather than applying to every figure. */
+const FIGURE = /<figure\b([^>]*)>([\s\S]*?)<\/figure>/g;
+
+function checkFigures(file, text) {
+  FIGURE.lastIndex = 0;
+  let m, i = 0;
+  while ((m = FIGURE.exec(text))) {
+    const attrs = m[1] || '', inner = m[2] || '', where = file + ' figure ' + i;
+    i++;
+    const borrowed = /\bclass\s*=\s*["'][^"']*\b(shot|clip)\b/.test(attrs);
+    if (!/<figcaption\b/.test(inner)) {
+      fail(where, 'has no <figcaption>. The picture and the caption teach together; a picture with'
+        + ' no caption is decoration.');
+    }
+    if (borrowed && !/<cite\b/.test(inner)) {
+      fail(where, 'shows someone else\'s game and has no <cite> credit. Name the game and who made'
+        + ' it — see AUTHORING.md for the shape and for where the images may come from.');
+    }
+    if (/<img\b/.test(inner) && !/<img[^>]+\balt\s*=/.test(inner)) {
+      fail(where, 'has an <img> with no alt text, so it is nothing at all to a student using a'
+        + ' screen reader.');
+    }
+    if (/<video\b/.test(inner) && !/\bmuted\b/.test(inner)) {
+      fail(where, 'has a <video> without `muted`. Sound that starts on its own in a classroom of'
+        + ' twenty-five is its own kind of problem, and browsers block unmuted autoplay anyway.');
+    }
+  }
+}
 
 function checkImages(file, text) {
   IMG_SRC.lastIndex = 0;
@@ -202,6 +234,7 @@ files.forEach(function (f) {
   // Normalised to \n first. A \r\n checkout is why check-challenges.js silently examined nothing.
   const text = fs.readFileSync(path.join(DIR, f), 'utf8').replace(/\r\n/g, '\n');
   checkImages(f, text);
+  checkFigures(f, text);
   quizzes += eachBlock(text, QUIZ, function (i, src) { checkQuiz(f + ' quiz ' + i, src); });
   yourturns += eachBlock(text, YOURTURN, function (i, src) { checkYourTurn(f + ' yourturn ' + i, src); });
   challenges += eachBlock(text, CHALLENGE, function (i, src) { checkChallenge(f + ' challenge ' + i, src); });
