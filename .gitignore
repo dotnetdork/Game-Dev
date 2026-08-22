@@ -12,7 +12,13 @@ secrets.env
 npm-debug.log*
 
 # editor / tool state
-.impeccable/
+# Impeccable keeps three different things in here and they do not belong on the same side of this
+# line. config.json is the SHARED design-detector config — which rules are ignored for this project
+# and why — so it is a project decision and belongs in the repo. config.local.json is explicitly
+# per-developer, and hook.cache.json is per-session scratch. Ignoring the whole directory meant a
+# "shared" ignore was never shared: it would not survive a fresh clone or a second machine.
+.impeccable/*
+!.impeccable/config.json
 
 # OS junk
 .DS_Store
