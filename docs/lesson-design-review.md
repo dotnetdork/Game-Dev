@@ -52,9 +52,15 @@ size/weight/line-height/colour, across **13 distinct font sizes**: 34, 21, 20, 1
 That is not a scale, it is accumulation. Three specific consequences, in order of how much they
 cost a student:
 
-**1a. Bullet lists are set smaller than prose.** `li` is 14.5px against `p` at 16.5px. Every
-lesson's **Recap** is a `ul` — so the most re-read, most revision-critical part of every lesson is
-set two points smaller than the paragraphs a student reads once. The hierarchy is inverted.
+**1a. Instruction lists are set smaller than prose.** `.yt-steps` — the numbered steps telling a
+student what to go and do in their own game — is 14.5px against `p` at 16.5px. The steps are the
+most *actionable* text in a lesson and they are the smallest prose on the page.
+
+> **Correction.** The first version of this section claimed all bullet lists were undersized and
+> named every lesson's Recap as the victim. That was wrong: prose `ul`/`ol` items measure 16.5px,
+> the same as body. The 14.5px list items I had measured were `.yt-steps` specifically. Checked
+> directly afterwards — every prose list in `the-core-loop` reports 16.5px/28.05px. The real problem
+> is narrower than first written, and the Recap was never affected.
 
 **1b. Quiz options are set smaller than prose.** `.mcq-opt` is 15px. The text a student must read
 most carefully — the one place where misreading a word costs them the answer — is smaller than the
@@ -71,11 +77,12 @@ times, not because they mean different things.
 | Display | 34px | Lesson title only |
 | Section | 21px | `h2` |
 | Block | 20px | `.block-title` |
-| Body | 16.5px | `p`, **`li`**, **`.mcq-opt`**, `.ch-task`, `.yt-task`, blockquote |
-| Support | 14px | captions, credits, hints, notes |
-| Micro | 12px | labels, chips, option numbers |
+| Body | 16.5px | `p`, prose `li`, **`.mcq-opt`**, **`.yt-steps`**, `.ch-task`, `.yt-task`, blockquote |
+| Support | 14px | captions, credits, hints, notes, tables, control labels |
+| Micro | 12px | kind labels, chips, option numbers, credits |
 
-The single highest-value line in this whole document is putting `li` and `.mcq-opt` at body size.
+The two changes a student would actually notice are `.mcq-opt` and `.yt-steps` reaching body size —
+the answer they must read carefully, and the instructions they must follow.
 
 ---
 

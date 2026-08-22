@@ -24,7 +24,14 @@ button{font:inherit;color:inherit;}
 .sr-only{position:absolute;width:1px;height:1px;padding:0;margin:-1px;overflow:hidden;clip:rect(0 0 0 0);white-space:nowrap;border:0;}
 html,body{margin:0;height:100%;}
 body{background:var(--bg);color:var(--ink);font-family:var(--font);font-size:14px;
-  display:grid;grid-template-rows:46px 1fr 30px;height:100vh;overflow:hidden;}
+  display:grid;grid-template-rows:46px 1fr 30px;height:100vh;overflow:hidden;
+  /* minmax(0,1fr), not the implicit `auto` column this used to have.
+     A grid track sized `auto` takes its MINIMUM from the widest unbreakable thing inside it, so a
+     table or a line of code in a lesson pushed this single column past the viewport and dragged
+     every ancestor with it. Measured at a 375px viewport: the column resolved to 769px and the
+     whole app scrolled sideways. minmax(0,...) lets the track be narrower than its content and
+     hands the overflow to the thing that actually overflows. */
+  grid-template-columns:minmax(0,1fr);}
 *::-webkit-scrollbar{width:10px;height:10px;}
 *::-webkit-scrollbar-track{background:transparent;}
 *::-webkit-scrollbar-thumb{background:#26456b;border-radius:6px;border:2px solid var(--bg);}
@@ -45,6 +52,22 @@ body{background:var(--bg);color:var(--ink);font-family:var(--font);font-size:14p
 
 .stage-wrap{min-height:0;position:relative;overflow:hidden;}
 
+/* ---------- how far through the lesson you are ----------
+   Two pixels of fill and a count. A lesson averages 4,700px — about six screens — and the only
+   progress readout was the strip at the very bottom, which a student reaches by finishing. So for
+   the entire scroll there was nothing that answered "how much is left", and no reward for being
+   two thirds through.
+   Deliberately not a big component: on a Read surface the content is the thing, and a progress bar
+   that draws attention to itself is competing with the paragraph it sits above. */
+.lesson-rail{position:relative;height:2px;background:#12243c;flex:none;}
+.lesson-rail > i{display:block;height:100%;width:100%;transform-origin:left;transform:scaleX(0);
+  background:linear-gradient(90deg,var(--azure),var(--teal));transition:transform .12s linear;}
+.rail-count{position:absolute;right:10px;top:6px;font-size:12px;font-weight:600;color:var(--dim);
+  background:var(--bg);padding:0 6px;border-radius:0 0 6px 6px;pointer-events:none;white-space:nowrap;}
+.rail-count:empty{display:none;}
+@media (prefers-reduced-motion: reduce){.lesson-rail > i{transition:none;}}
+
+
 /* ---------- how much room each region gets ----------
    The two docks used to claim a constant 600px at every width. Measured: that is 44% of a 1366
    Chromebook and 59% of a 1024 screen before any content, leaving the lesson 424px — and the
@@ -57,7 +80,10 @@ body{background:var(--bg);color:var(--ink);font-family:var(--font);font-size:14p
    A dock that floats is the same element in the same place in the DOM — only its positioning
    changes — so nothing about focus order or the outline's tree semantics moves. */
 .editor{--leftw:280px;--rightw:320px;
-  display:grid;grid-template-columns:var(--leftw) 1fr var(--rightw);
+  /* minmax(0,1fr) for the centre, for the same reason as body above: plain `1fr` is
+     minmax(auto,1fr), and that `auto` minimum is the content's min-content width. A wide table in a
+     lesson therefore widened the centre column instead of scrolling inside it. */
+  display:grid;grid-template-columns:var(--leftw) minmax(0,1fr) var(--rightw);
   height:100%;min-height:0;position:relative;}
 .dock{position:relative;background:var(--panel);border-right:1px solid var(--line);display:flex;flex-direction:column;min-height:0;min-width:0;}
 .dock.right{border-right:none;border-left:1px solid var(--line);overflow:hidden;}
@@ -141,12 +167,12 @@ body[data-tier="narrow"] .dock.left{--floatw:min(300px,84vw);}
 .fill-input{background:#08121f;border:1px solid var(--azure);border-radius:6px;color:var(--ink);font-family:Consolas,monospace;font-size:13px;padding:4px 9px;transition:border-color .12s,box-shadow .12s;}
 .fill-input:focus{outline:none;border-color:var(--azure);box-shadow:0 0 0 3px rgba(124,196,255,.18);}
 .fill-input::placeholder{color:var(--dim);font-style:italic;}
-.fill-code.prose{background:transparent;border:0;padding:0;font-family:var(--font);font-size:15px;color:var(--ink);line-height:2.1;}
+.fill-code.prose{background:transparent;border:0;padding:0;font-family:var(--font);font-size:16.5px;color:var(--ink);line-height:2.1;}
 .fill-code.prose .fill-input{font-family:var(--font);font-size:14px;}
 .fill-input.correct{border-color:var(--green);}
 .fill-input.wrong{border-color:var(--gold);}
 .findbug{display:flex;flex-direction:column;gap:4px;}
-.fb-lead{color:var(--muted);font-size:13.5px;margin-bottom:8px;}
+.fb-lead{color:var(--muted);font-size:14px;margin-bottom:8px;}
 .fb-row{display:flex;gap:12px;align-items:flex-start;padding:7px 10px;border:1px solid var(--line);border-radius:8px;cursor:pointer;font-family:Consolas,monospace;font-size:13px;color:#cfe0f2;background:#0d2440;width:100%;text-align:left;transition:border-color .12s,background .12s;}
 .fb-row:hover:not(:disabled){border-color:var(--azure);background:#12304f;}
 .fb-row:disabled{cursor:default;}
@@ -227,12 +253,17 @@ body[data-tier="narrow"] .dock.left{--floatw:min(300px,84vw);}
 /* .hero-inner and .lesson-content are both declared once, further down, with the two-width
    reading system. They used to be declared here too, at 820px — and the later rule overrode the
    width but not the type, so the reading measure lived in one place and the font size in another. */
-.lesson h1{font-size:32px;margin:0;letter-spacing:-.3px;}
-.lesson .lead{color:#b7c8dc;font-size:16px;line-height:1.6;margin:10px 0 0;}
+/* .lesson h1 and .lesson .lead are declared once, further down, with the reading measure. They were
+   declared here too — 32px and 16px — and the later pair overrode the size while this pair kept the
+   margins, so the type lived in one place and the spacing in another. Same duplication as
+   .lesson-content and .hero-inner had. Margins folded into the surviving rules. */
 .lesson-meta{display:flex;gap:8px;margin-top:16px;flex-wrap:wrap;}
-.lesson-meta .lchip{display:inline-flex;align-items:center;gap:5px;font-size:11.5px;font-weight:600;color:#cfe0f2;background:rgba(255,255,255,.06);border:1px solid rgba(255,255,255,.14);border-radius:999px;padding:3px 10px;}
+.lesson-meta .lchip{display:inline-flex;align-items:center;gap:5px;font-size:12px;font-weight:600;color:#cfe0f2;background:rgba(255,255,255,.06);border:1px solid rgba(255,255,255,.14);border-radius:999px;padding:3px 10px;}
 .lesson-meta .lchip .mdi{font-size:14px;color:var(--gold);}
-.lesson h2{font-size:20px;margin:26px 0 8px;color:var(--ink);}
+/* Size only. The margins are set once, further down, with the section rhythm — this rule used to
+   set 26px there too and lost to it, which is how a heading's size and its spacing came to live
+   seven hundred lines apart. */
+.lesson h2{font-size:21px;color:var(--ink);}
 .lesson p{color:#c3d3e6;line-height:1.7;margin:0 0 14px;}
 .lesson ul{color:#c3d3e6;line-height:1.7;margin:0 0 14px;padding-left:22px;}
 .lesson pre{background:#08121f;border:1px solid var(--line);border-radius:10px;padding:14px 16px;overflow:auto;color:#cfe0f2;font-family:Consolas,monospace;font-size:13px;line-height:1.6;}
@@ -521,9 +552,11 @@ body[data-tier="narrow"] .dock.left{--floatw:min(300px,84vw);}
 .quizcell{margin:20px 0;border:1px solid var(--line);border-radius:12px;background:var(--panel);overflow:hidden;}
 .quiz-body{display:flex;flex-direction:column;gap:8px;padding:14px 16px;}
 .mcq-list{display:flex;flex-direction:column;gap:8px;}
-.mcq-opt{display:flex;align-items:flex-start;gap:10px;padding:10px 12px;border:1px solid var(--line);border-radius:8px;cursor:pointer;background:#0d2440;transition:border-color .1s,background .1s;width:100%;text-align:left;font-size:15px;line-height:1.45;color:#c3d3e6;}
+/* Body size, not 15px. This is the text a student has to read most carefully — the one place where
+   misreading a word costs them the answer — and it was set smaller than the prose around it. */
+.mcq-opt{display:flex;align-items:flex-start;gap:10px;padding:11px 13px;border:1px solid var(--line);border-radius:8px;cursor:pointer;background:#0d2440;transition:border-color .1s,background .1s;width:100%;text-align:left;font-size:16.5px;line-height:1.45;color:#c3d3e6;}
 .mcq-text{display:flex;flex-direction:column;gap:3px;}
-.mcq-why{font-size:13px;color:var(--muted);font-weight:400;}
+.mcq-why{font-size:14px;color:var(--muted);font-weight:400;}
 .mcq-num{margin-left:auto;flex:none;font-family:Consolas,monospace;font-size:12px;color:var(--dim);border:1px solid var(--line);border-radius:5px;padding:0 7px;line-height:19px;}
 /* There is no selected-but-unchecked state any more: clicking an option answers it, so a row is
    either untouched, right or wrong. .sel had nothing left to describe. */
@@ -538,7 +571,7 @@ body[data-tier="narrow"] .dock.left{--floatw:min(300px,84vw);}
 .parsons-row{display:flex;align-items:center;gap:10px;background:#0d2440;border:1px solid var(--line);
   border-radius:8px;padding:8px 10px;transition:border-color .12s,background .12s;}
 .parsons-row:hover{border-color:var(--azure);}
-.parsons-row .p-text{color:var(--ink);font-size:15px;line-height:1.5;flex:1;min-width:0;}
+.parsons-row .p-text{color:var(--ink);font-size:16.5px;line-height:1.5;flex:1;min-width:0;}
 .parsons-row code.p-text{color:#cfe0f2;font-family:Consolas,monospace;font-size:13px;}
 /* The position number leads the row — in a "put these in order" question it IS the answer. */
 .p-pos{flex:none;min-width:22px;height:22px;display:inline-flex;align-items:center;justify-content:center;
@@ -555,7 +588,7 @@ body[data-tier="narrow"] .dock.left{--floatw:min(300px,84vw);}
 .parsons-row.unused .p-pos{visibility:hidden;}
 /* flex + gap, not a trailing space inside content: CSS collapses that space, so the tick sat
    flush against the word. */
-.quiz-result{display:flex;align-items:baseline;gap:7px;font-size:13.5px;font-weight:600;line-height:1.45;
+.quiz-result{display:flex;align-items:baseline;gap:7px;font-size:14px;font-weight:600;line-height:1.45;
   margin-top:2px;}
 .quiz-result:empty{display:none;}
 .quiz-result.ok,.quiz-result.no{animation:quizsay .18s ease-out;}
@@ -659,10 +692,10 @@ body[data-tier="narrow"] .dock.left{--floatw:min(300px,84vw);}
 .btn:disabled{cursor:default;opacity:.7;}
 /* Both roles the same height and the same type size, so a row of them lines up instead of one
    towering over the other. They were 14px/10-18 against 13px/8-14. */
-.btn-primary-role{background:var(--brand);color:var(--brand-ink);font-size:13px;font-weight:700;padding:8px 16px;
+.btn-primary-role{background:var(--brand);color:var(--brand-ink);font-size:14px;font-weight:700;padding:8px 16px;
   box-shadow:0 2px 12px rgba(245,130,10,.35);}
 .btn-primary-role:hover:not(:disabled){filter:brightness(1.06);}
-.btn-secondary{background:var(--panel2);color:var(--ink);border-color:var(--line);font-size:13px;font-weight:600;padding:8px 16px;}
+.btn-secondary{background:var(--panel2);color:var(--ink);border-color:var(--line);font-size:14px;font-weight:600;padding:8px 16px;}
 .btn-secondary:hover:not(:disabled){border-color:var(--azure);background:#17395c;}
 .btn-secondary:disabled{background:transparent;color:var(--dim);border-color:var(--line);}
 
@@ -673,7 +706,7 @@ body[data-tier="narrow"] .dock.left{--floatw:min(300px,84vw);}
 
 /* ---------- lesson progress strip (replaces the Complete button) ---------- */
 .lesson-progress{display:flex;align-items:center;gap:12px;margin:28px 0 8px;padding:12px 16px;
-  border:1px solid var(--line);border-radius:12px;background:#0d2038;color:var(--muted);font-size:13.5px;}
+  border:1px solid var(--line);border-radius:12px;background:#0d2038;color:var(--muted);font-size:14px;}
 .lesson-progress .mdi{font-size:18px;color:var(--gold);flex:none;}
 .lesson-progress .lp-label{flex:none;font-weight:600;color:#c3d3e6;}
 .lesson-progress .lp-bar{flex:1;min-width:60px;height:7px;border-radius:4px;background:#0a1728;border:1px solid var(--line);overflow:hidden;}
@@ -689,7 +722,7 @@ body[data-tier="narrow"] .dock.left{--floatw:min(300px,84vw);}
 .lesson-end-sentinel{height:1px;}
 
 /* ---------- lesson prose gaps that the richer rewrite will need ---------- */
-.lesson h3{font-size:17px;margin:22px 0 6px;color:var(--ink);font-weight:600;}
+.lesson h3{font-size:17px;color:var(--ink);font-weight:600;}
 .lesson ol{color:#c3d3e6;line-height:1.7;margin:0 0 14px;padding-left:22px;}
 .lesson li{margin:0 0 6px;}
 .lesson a{color:#7cc4ff;text-decoration:underline;text-underline-offset:2px;}
@@ -713,7 +746,7 @@ body[data-tier="narrow"] .dock.left{--floatw:min(300px,84vw);}
   border-bottom:1px solid var(--line);}
 .ch-head .mdi{color:var(--brand);font-size:19px;}
 .ch-body{padding:14px 16px;display:flex;flex-direction:column;gap:12px;}
-.ch-task{color:var(--muted);font-size:15px;line-height:1.65;}
+.ch-task{color:var(--muted);font-size:16.5px;line-height:1.65;}
 .ch-code{width:100%;background:#08121f;border:0;color:#cfe0f2;font-family:Consolas,monospace;
   font-size:13px;line-height:1.6;padding:10px 12px;resize:vertical;display:block;}
 .ch-foot{display:flex;align-items:center;gap:12px;padding:12px 16px;border-top:1px solid var(--line);background:#0d2038;}
@@ -722,7 +755,7 @@ body[data-tier="narrow"] .dock.left{--floatw:min(300px,84vw);}
    Everything here exists to answer one question before it is asked: whose code is this? The header
    names it, the note says it outright, and Reset sits in the header rather than hidden in a menu,
    so breaking it never feels dangerous. */
-.ch-note{display:flex;align-items:flex-start;gap:8px;margin:0;color:var(--dim);font-size:12.5px;line-height:1.5;}
+.ch-note{display:flex;align-items:flex-start;gap:8px;margin:0;color:var(--dim);font-size:14px;line-height:1.5;}
 .ch-note > span:last-child{flex:1;min-width:0;}
 .ch-note .mdi{font-size:15px;flex:none;color:var(--azure);line-height:1.4;}
 
@@ -743,7 +776,7 @@ body[data-tier="narrow"] .dock.left{--floatw:min(300px,84vw);}
    never squeezed into a 760px reading column. */
 /* "Fixed it!" sits beside the heading with the other block statuses, so it needs no row of its own
    and no auto margin pushing it anywhere. */
-.ch-solved{display:inline-flex;align-items:center;gap:6px;color:var(--green);font-size:13px;font-weight:600;
+.ch-solved{display:inline-flex;align-items:center;gap:6px;color:var(--green);font-size:14px;font-weight:600;
   white-space:nowrap;}
 .ch-solved .mdi{font-size:16px;}
 
@@ -911,16 +944,18 @@ body[data-tier="narrow"] .dock.left{--floatw:min(300px,84vw);}
   border-bottom:1px solid rgba(245,130,10,.35);}
 .yt-head .mdi{color:var(--brand);font-size:19px;flex:none;line-height:1;}
 .yt-body{padding:14px 16px;display:flex;flex-direction:column;gap:10px;}
-.yt-task{margin:0;color:#e6d6c2;font-size:15px;line-height:1.65;}
-.yt-steps{margin:0;padding-left:22px;color:var(--muted);font-size:14.5px;line-height:1.7;}
+.yt-task{margin:0;color:#e6d6c2;font-size:16.5px;line-height:1.65;}
+/* Body size. These are the instructions a student follows in their own game — the most actionable
+   text in a lesson — and at 14.5px they were the smallest prose on the page. */
+.yt-steps{margin:0;padding-left:24px;color:var(--muted);font-size:16.5px;line-height:1.65;}
 .yt-steps li{margin:0 0 6px;}
 .yt-reward{display:flex;align-items:center;gap:8px;margin:2px 0 0;color:var(--gold);
-  font-size:13px;line-height:1.5;}
+  font-size:14px;line-height:1.5;}
 .yt-reward .mdi{font-size:16px;flex:none;line-height:1;}
 .yt-reward b{color:#ffd98a;}
 .yt-foot{display:flex;align-items:center;gap:12px;flex-wrap:wrap;padding:12px 16px;
   border-top:1px solid rgba(245,130,10,.25);background:rgba(0,0,0,.16);}
-.yt-status{display:flex;align-items:center;gap:6px;font-size:13.5px;font-weight:600;color:var(--muted);}
+.yt-status{display:flex;align-items:center;gap:6px;font-size:14px;font-weight:600;color:var(--muted);}
 .yt-status:empty{display:none;}
 .yt-status.ok{color:var(--green);}
 /* The footer holds a link and a status now, both quiet, so it is a left-aligned row rather than a
@@ -930,7 +965,7 @@ body[data-tier="narrow"] .dock.left{--floatw:min(300px,84vw);}
    progress on the student's own game, not a mistake being reported. Gold, like the quiz's
    "not quite", rather than red. */
 .lesson-content > .yourturn > .yt-hint{margin:12px 0 0;max-width:var(--measure);
-  font-size:14.5px;line-height:1.6;color:var(--muted);white-space:pre-line;}
+  font-size:14px;line-height:1.6;color:var(--muted);white-space:pre-line;}
 .lesson-content > .yourturn > .yt-hint.no{color:#e6d8b8;}
 .lesson-content > .yourturn > .yt-hint code{font-family:Consolas,monospace;font-size:.9em;
   background:rgba(0,0,0,.3);border:1px solid rgba(245,130,10,.25);border-radius:4px;
@@ -1064,7 +1099,7 @@ body[data-tier="narrow"] .dock.left{--floatw:min(300px,84vw);}
    per kind, which reinforces it — the word does the work, so a student who cannot tell the colours
    apart loses nothing. */
 .block-hd{display:grid;grid-template-columns:minmax(0,1fr) auto;gap:3px 16px;margin:0 0 14px;}
-.block-kind{grid-column:1;font-size:12.5px;font-weight:700;letter-spacing:1.8px;text-transform:uppercase;
+.block-kind{grid-column:1;font-size:12px;font-weight:700;letter-spacing:1.8px;text-transform:uppercase;
   color:var(--kind,var(--azure));}
 /* .block-hd .block-title, not .block-title: the heading is an <h3>, and `.lesson h3` is one class
    plus one element, which outranks a single class. So this rule's font-size had never applied —
@@ -1080,14 +1115,14 @@ body[data-tier="narrow"] .dock.left{--floatw:min(300px,84vw);}
   display:flex;align-items:center;gap:10px;flex:none;}
 .block-side:empty{display:none;}
 .block-note{flex:none;
-  font-size:11.5px;font-weight:600;color:#cfe0f2;background:rgba(255,255,255,.06);
+  font-size:12px;font-weight:600;color:#cfe0f2;background:rgba(255,255,255,.06);
   border:1px solid rgba(255,255,255,.14);border-radius:999px;padding:3px 10px;white-space:nowrap;}
 .block-note:empty{display:none;}
 .block-tick{flex:none;color:var(--green);font-size:19px;line-height:1;}
 .block-act{flex:none;}
 /* The secondary action: a link, so it cannot compete with the one in the header. */
 .block-link{display:inline-flex;align-items:center;gap:6px;background:none;border:0;padding:0;
-  font-family:var(--font);font-size:13.5px;font-weight:600;color:var(--azure);cursor:pointer;
+  font-family:var(--font);font-size:14px;font-weight:600;color:var(--azure);cursor:pointer;
   text-decoration:underline;text-underline-offset:3px;text-decoration-thickness:1px;}
 .block-link:hover{color:var(--ink);}
 .block-link .mdi{font-size:16px;text-decoration:none;}
@@ -1145,7 +1180,7 @@ body[data-tier="narrow"] .dock.left{--floatw:min(300px,84vw);}
 /* The credit. Quiet, but never hidden — it is the thing that makes the figure honest about whose
    work it is showing, so it is styled to be readable rather than to disappear. */
 .lesson-content > figure figcaption cite{display:block;margin-top:5px;font-style:normal;
-  font-size:12.5px;color:var(--dim);}
+  font-size:12px;color:var(--dim);}
 .lesson-content > figure figcaption cite b{color:var(--muted);font-weight:600;}
 /* A diagram narrow enough that full width would blow it up past its natural size. */
 .lesson-content > figure.narrow{max-width:520px;}
@@ -1164,7 +1199,7 @@ body[data-tier="narrow"] .dock.left{--floatw:min(300px,84vw);}
 .lesson-content > figure.art .art-cell img{display:block;width:auto;height:56px;max-width:100%;}
 /* The label under each sprite. Monospace because these are asset keys — the exact string the
    student types into load.image() — and a name you have to retype should look like code. */
-.lesson-content > figure.art .art-cell b{font-family:Consolas,monospace;font-size:11px;font-weight:500;
+.lesson-content > figure.art .art-cell b{font-family:Consolas,monospace;font-size:12px;font-weight:500;
   color:var(--dim);letter-spacing:0;white-space:nowrap;}
 .lesson-content > figure.art .art-cell.on b{color:var(--acc);}
 /* A tile strip butts its tiles together, because the gap IS the thing being explained: a row of
@@ -1173,7 +1208,7 @@ body[data-tier="narrow"] .dock.left{--floatw:min(300px,84vw);}
 .lesson-content > figure.art .art-row.tiles img{height:52px;}
 /* An arrow or a plus between two sprites, for "this, then this". */
 .lesson-content > figure.art .art-op{align-self:center;color:var(--dim);font-size:18px;padding:0 4px;}
-.lesson-content > figure.art .art-note{align-self:center;color:var(--muted);font-size:13px;
+.lesson-content > figure.art .art-note{align-self:center;color:var(--muted);font-size:14px;
   line-height:1.5;max-width:200px;}
 body[data-tier="wide"] .lesson-content > figure.art.aside .art-row,
 body[data-tier="mid"] .lesson-content > figure.art.aside .art-row{padding:12px;gap:8px;}
@@ -1196,7 +1231,7 @@ body[data-tier="mid"] .lesson-content > figure.aside{
 /* The caption belongs to the picture here, not to the reading measure, or it would run 480px wide
    under a 300px image and back out into the text column. */
 body[data-tier="wide"] .lesson-content > figure.aside figcaption,
-body[data-tier="mid"] .lesson-content > figure.aside figcaption{max-width:none;font-size:13px;}
+body[data-tier="mid"] .lesson-content > figure.aside figcaption{max-width:none;font-size:14px;}
 /* Nothing structural may wrap around a float: a heading pulled up beside a picture reads as that
    picture's title, and an activity block would have its stripe cut short by the float's edge. */
 .lesson-content > h2,
@@ -1215,15 +1250,19 @@ body[data-tier="mid"] .lesson-content > figure.aside figcaption{max-width:none;f
    fourth thing on a surface that only needs one. */
 .lesson-content > .tip{display:flex;gap:11px;margin:22px 0;padding:13px 16px;
   background:#0e2742;border:1px solid #2a4a6f;
-  border-radius:10px;color:#cfe0f2;font-size:15px;line-height:1.6;max-width:var(--measure);}
+  border-radius:10px;color:#cfe0f2;font-size:16.5px;line-height:1.6;max-width:var(--measure);}
 
 /* ---- tables ----
    There was no rule for these at all, and the course uses them constantly to compare three things
    at a glance. Header row carries the weight; rows are separated by a hairline rather than boxed,
    so the eye runs along a row instead of stopping at every cell. */
-.lesson table{width:100%;border-collapse:collapse;margin:0 0 18px;font-size:14.5px;line-height:1.55;}
+/* A table is the widest thing a lesson contains and the one least able to reflow. Now that the grid
+   tracks no longer stretch to fit it, it has to take responsibility for its own overflow — so it
+   scrolls sideways inside its own box instead of making the page do it. */
+.lesson-content > table{display:block;overflow-x:auto;max-width:100%;}
+.lesson table{width:100%;border-collapse:collapse;margin:0 0 18px;font-size:14px;line-height:1.55;}
 .lesson thead th{text-align:left;padding:9px 14px 9px 0;color:var(--ink);font-weight:700;
-  font-size:12.5px;letter-spacing:.4px;text-transform:uppercase;
+  font-size:12px;letter-spacing:.4px;text-transform:uppercase;
   border-bottom:1px solid var(--azure);}
 .lesson tbody td{padding:11px 14px 11px 0;color:#c3d3e6;border-bottom:1px solid var(--line);
   vertical-align:top;overflow-wrap:anywhere;}
@@ -1237,20 +1276,31 @@ body[data-tier="mid"] .lesson-content > figure.aside figcaption{max-width:none;f
    Was a teal bar down the left edge, which is the single most recognisable "a machine made this"
    tell there is. These are the lines worth remembering in a lesson, so they get treated like a
    pulled quote: bigger, lighter, with a real quote mark doing the marking. */
+/* Body size, not 17px. A half-point above the prose is not a size difference, it is noise — the
+   quote mark and the lighter colour are what mark this as a pulled quote, and they do it on their
+   own. One less step on the scale for no loss. */
 .lesson blockquote{position:relative;margin:22px 0;padding:2px 0 2px 40px;border:0;background:none;
-  border-radius:0;color:#dbe7f4;font-size:17px;line-height:1.6;}
+  border-radius:0;color:#dbe7f4;font-size:16.5px;line-height:1.65;}
 .lesson blockquote::before{content:"\201C";position:absolute;left:0;top:-6px;
   font-family:Georgia,"Times New Roman",serif;font-size:46px;line-height:1;color:var(--azure);opacity:.55;}
 .lesson blockquote p{margin:0;color:inherit;font-size:inherit;line-height:inherit;}
 .lesson blockquote strong,.lesson blockquote b{color:#fff;}
 
+/* A section boundary has to be bigger than a block boundary, or it stops being a boundary.
+   figure→h2 was 38px and block→block 36px — near enough identical that a figure sitting between a
+   quiz and the next heading read as belonging to neither. 48px above an h2 makes the section the
+   larger division, which is what it is. */
 /* ---- prose rhythm ----
    Lists were inheriting paragraph spacing and reading as one block. */
 .lesson-content > ul,.lesson-content > ol{margin:0 0 18px;padding-left:24px;}
 .lesson li{margin:0 0 8px;padding-left:2px;}
 .lesson li:last-child{margin-bottom:0;}
 .lesson li > strong:first-child{color:var(--ink);}
-.lesson h2{margin:38px 0 10px;}
+/* 48px above a section heading, 10px below it. The asymmetry is the point: a heading belongs to
+   what follows, and the space above it is what makes a section a section. 38px was within 2px of
+   the 36px between activity blocks, so a figure between a quiz and the next heading read as
+   belonging to neither. */
+.lesson h2{margin:48px 0 10px;}
 .lesson h2:first-child{margin-top:0;}
 .lesson h3{margin:26px 0 8px;}
 .lesson-content > p{margin:0 0 18px;}
@@ -1269,8 +1319,9 @@ body[data-tier="mid"] .lesson-content > figure.aside figcaption{max-width:none;f
 /* ---- the hero ----
    The lesson title had the same left edge as the body text but none of its restraint. Tightening
    the tracking and capping the lead's measure makes the top of the page settle. */
-.lesson h1{font-size:34px;line-height:1.15;letter-spacing:-.6px;font-weight:700;max-width:20ch;}
-.lesson .lead{max-width:56ch;font-size:16.5px;line-height:1.55;color:#c2d4e8;}
+.lesson h1{font-size:34px;line-height:1.15;letter-spacing:-.6px;font-weight:700;max-width:20ch;
+  margin:0;}
+.lesson .lead{max-width:56ch;font-size:16.5px;line-height:1.55;color:#c2d4e8;margin:10px 0 0;}
 
 /* h2 no longer has a rail, so size, weight and space carry the hierarchy — which is what they
    should have been doing anyway. */
@@ -1289,3 +1340,38 @@ body[data-tier="mid"] .lesson-content > figure.aside figcaption{max-width:none;f
    paragraph rather than on an axis of its own. */
 .hero-inner{max-width:calc(var(--wide) + 2 * var(--gutter));margin:0 auto;padding:0 var(--gutter);}
 .lesson-hero{padding:40px 0 32px;}
+
+/* ---------- below 700px: stop the chrome pushing the page sideways ----------
+   The tier system's narrowest tier is `narrow` (<1180), built for Chromebook widths, and it does
+   that job. Nothing was ever built for a phone, and it showed: at 375px the top bar's two navs and
+   the status bar's middle group ran to x=741 and x=524, so the document measured 753px and the whole
+   app scrolled sideways. On a surface whose job is reading, that is the worst layout failure there
+   is.
+   This is not a phone tier. It is the narrow band of that work which removes the horizontal scroll,
+   so no width is actively broken while the rest is decided. The nav scrolls inside itself — a
+   scrolling tab strip, the ordinary mobile pattern — rather than being hidden, so every destination
+   stays reachable.
+   Placed at the END of this file deliberately: the first version sat up beside .topbar, where
+   `.sb-mid{display:flex}` four hundred lines later overrode it at equal specificity and the status
+   bar kept overflowing. Same lesson as the duplicate .lesson-content rules — in one long stylesheet,
+   position IS specificity. */
+@media (max-width: 700px){
+  .topbar{gap:8px;padding:0 8px;}
+  .brand .brand-tag{display:none;}          /* "Level 1" — the least load-bearing text on screen */
+  .topnav{flex:1;min-width:0;overflow-x:auto;scrollbar-width:none;-ms-overflow-style:none;}
+  .topnav::-webkit-scrollbar{display:none;}
+  .navitem{white-space:nowrap;flex:none;min-height:40px;}
+  .topright{margin-left:0;flex:none;}
+  /* The XP bar and level chip: the part of the status bar that is decoration rather than state. */
+  .statusbar .sb-mid{display:none;}
+  .statusbar{gap:10px;padding:0 10px;}
+  .statusbar .sb-left,.statusbar .sb-right{min-width:0;flex:1;overflow:hidden;
+    text-overflow:ellipsis;white-space:nowrap;}
+  /* Touch targets. 26-30px is fine for a trackpad and not for a finger. */
+  .vtab{min-height:40px;}
+  .viewbar{height:auto;min-height:44px;}
+  .outline-btn{min-width:40px;min-height:40px;}
+  /* A text link is still something a finger has to hit. Padding rather than min-height, so the
+     underline stays on the text instead of floating away from it. */
+  .block-link{padding:9px 0;}
+}

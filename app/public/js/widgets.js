@@ -1345,6 +1345,8 @@ function startLessonProgress(f) {
   lessonPlan = { keys: lessonActivityKeys(), total: 0, dwellTimer: null, dwellSeen: false };
   lessonPlan.total = lessonPlan.keys.length;
   renderLessonProgress(f);
+  wireLessonRail();
+  paintLessonRail();
   if (!lessonPlan.total && !state.done[f.id]) watchDwell(f);
 }
 function activityProgress() {
@@ -1352,11 +1354,45 @@ function activityProgress() {
   let n = 0; lessonPlan.keys.forEach(function (k) { if (done[k]) n++; });
   return n;
 }
+
+/* ---------- the reading rail ----------
+   Two pixels under the view bar saying how far down the lesson you are, and how many of its
+   activities are done. A lesson averages about six screens, and until this existed the only
+   progress readout was the strip at the very bottom — which you reach by finishing, so it could
+   never tell you anything on the way.
+   Driven from the scroll position rather than from IntersectionObserver on purpose: this is one
+   number about one scroll container, and a listener on that container cannot disagree with it. */
+let railWired = false;
+function paintLessonRail() {
+  const rail = $('lessonRail'), fill = $('lessonRailFill'), count = $('lessonRailCount');
+  if (!rail || !fill) return;
+  const view = $('view-learn');
+  const onLearn = !!view && !view.hidden;
+  rail.hidden = !onLearn;
+  if (!onLearn) return;
+  const max = view.scrollHeight - view.clientHeight;
+  // Nothing to scroll means the whole lesson is already on screen, which is 100% read, not 0%.
+  const pct = max > 8 ? Math.min(1, Math.max(0, view.scrollTop / max)) : 1;
+  fill.style.transform = 'scaleX(' + pct.toFixed(4) + ')';
+  if (count) {
+    count.textContent = lessonPlan.total
+      ? activityProgress() + ' of ' + lessonPlan.total + ' done'
+      : '';
+  }
+}
+function wireLessonRail() {
+  if (railWired) return;
+  const view = $('view-learn'); if (!view) return;
+  railWired = true;
+  view.addEventListener('scroll', paintLessonRail, { passive: true });
+  if (typeof window.addEventListener === 'function') window.addEventListener('resize', paintLessonRail);
+}
 /* Called by every widget the moment its work is genuinely finished. */
 function resolveActivity(key) {
   const f = flat[curIdx]; if (!f) return;
   markActivity(f.id, key);
   renderLessonProgress(f);
+  paintLessonRail();
   if (lessonPlan.total && activityProgress() >= lessonPlan.total) completeLesson();
 }
 /* Reading lessons: finish on reaching the end and staying there. The timer only runs while the

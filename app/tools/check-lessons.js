@@ -348,12 +348,67 @@ function checkImages(file, text) {
   }
 }
 
+/* ---- pacing ----
+   The complaint that started this was "it feels like a wall of text", and it turned out to be
+   measurable: across the 22 lessons the first activity averages 39% of the way down and the longest
+   unbroken run of prose averages 9 blocks. The worst lesson asks a student to scroll about 2,800
+   pixels before anything asks them to do something.
+   The course already contains the answer: decisions-and-repeats puts its first activity 10% in and
+   never runs more than 4 prose blocks together. It is not shorter than the others, it is
+   interleaved. So these two numbers describe a shape the course has already proven it can hit.
+   REPORTED, not failed. 18 of 22 lessons would fail today, and a check that fails everything on the
+   day it lands gets switched off rather than fixed. It becomes fatal once the list is empty — the
+   same way the position-bias report below stays a report while the shuffle covers it. */
+const PROSE_RUN_MAX = 6;
+const FIRST_ACT_MAX_PCT = 25;
+const ACT_FENCES = ['quiz', 'challenge', 'yourturn', 'run'];
+
+function pacingOf(text) {
+  const body = text.replace(/^---[\s\S]*?\n---\n/, '');
+  const lines = body.split('\n');
+  const kinds = [];
+  let i = 0;
+  while (i < lines.length) {
+    const ln = lines[i];
+    const fence = ln.match(/^```(\w*)/);
+    if (fence) {
+      let j = i + 1;
+      while (j < lines.length && !/^```\s*$/.test(lines[j])) j++;
+      kinds.push(ACT_FENCES.indexOf(fence[1]) >= 0 ? 'act' : 'prose');   // a plain ``` block is a code sample
+      i = j + 1; continue;
+    }
+    if (/^<figure\b/.test(ln)) {
+      let j = i;
+      while (j < lines.length && !/<\/figure>/.test(lines[j])) j++;
+      kinds.push('fig');
+      i = j + 1; continue;
+    }
+    if (!ln.trim()) { i++; continue; }
+    let j = i;
+    while (j < lines.length && lines[j].trim() && !/^```/.test(lines[j]) && !/^<figure\b/.test(lines[j])) j++;
+    kinds.push('prose');
+    i = j;
+  }
+  let run = 0, longest = 0;
+  kinds.forEach(function (k) { if (k === 'prose') { run++; if (run > longest) longest = run; } else run = 0; });
+  const first = kinds.indexOf('act');
+  return {
+    blocks: kinds.length,
+    longestProseRun: longest,
+    firstActivityPct: first < 0 ? null : Math.round(first / kinds.length * 100),
+    activities: kinds.filter(function (k) { return k === 'act'; }).length
+  };
+}
+
+const pacing = [];
+
 const files = fs.readdirSync(DIR).filter(function (f) { return f.endsWith('.md'); }).sort();
 files.forEach(function (f) {
   // Normalised to \n first. A \r\n checkout is why check-challenges.js silently examined nothing.
   const text = fs.readFileSync(path.join(DIR, f), 'utf8').replace(/\r\n/g, '\n');
   checkImages(f, text);
   checkFigures(f, text);
+  pacing.push(Object.assign({ file: f }, pacingOf(text)));
   quizzes += eachBlock(text, QUIZ, function (i, src) { checkQuiz(f + ' quiz ' + i, src); });
   yourturns += eachBlock(text, YOURTURN, function (i, src) { checkYourTurn(f + ' yourturn ' + i, src); });
   challenges += eachBlock(text, CHALLENGE, function (i, src) { checkChallenge(f + ' challenge ' + i, src); });
@@ -396,6 +451,27 @@ if (!shuffles) {
     + 'the same place every time and a student learns the position instead of the material.');
   process.exit(1);
 }
+/* ---- the pacing report ---- */
+const slow = pacing.filter(function (p) {
+  return p.longestProseRun > PROSE_RUN_MAX || p.firstActivityPct === null || p.firstActivityPct > FIRST_ACT_MAX_PCT;
+});
+const avgRun = (pacing.reduce(function (s, p) { return s + p.longestProseRun; }, 0) / (pacing.length || 1)).toFixed(1);
+const avgFirst = Math.round(pacing.reduce(function (s, p) { return s + (p.firstActivityPct || 100); }, 0) / (pacing.length || 1));
+console.log('pacing: longest prose run averages ' + avgRun + ' blocks (target ≤' + PROSE_RUN_MAX
+  + '), first activity averages ' + avgFirst + '% down (target ≤' + FIRST_ACT_MAX_PCT + '%)');
+if (slow.length) {
+  console.log('  ' + slow.length + ' of ' + pacing.length + ' lessons read as a wall of text — interleave, do not rewrite:');
+  slow.sort(function (a, b) { return b.longestProseRun - a.longestProseRun; }).forEach(function (p) {
+    const why = [];
+    if (p.longestProseRun > PROSE_RUN_MAX) why.push(p.longestProseRun + ' prose blocks in a row');
+    if (p.firstActivityPct === null) why.push('no activity at all');
+    else if (p.firstActivityPct > FIRST_ACT_MAX_PCT) why.push('first activity ' + p.firstActivityPct + '% down');
+    console.log('    ' + p.file.replace(/\.md$/, '').padEnd(26) + why.join(', '));
+  });
+} else {
+  console.log('  every lesson interleaves: nothing to do, and these targets can become hard failures now.');
+}
+
 console.log('answer positions authored: '
   + Object.keys(answerAt).sort().map(function (k) { return k + '×' + answerAt[k]; }).join(', ')
   + '  (shuffled at render, so position carries no information)');

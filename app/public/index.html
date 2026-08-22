@@ -79,6 +79,15 @@
             <button class="vtab" data-view="play" role="tab" aria-selected="false" aria-controls="view-play"><span class="mdi mdi-gamepad-variant"></span>Play</button>
           </div>
         </div>
+        <!-- How far through the lesson you are. A lesson is about six screens tall and the only
+             progress readout used to sit at the very bottom of it, so for the whole scroll there was
+             no answer to "how much of this is left". Outside the scrolling view on purpose: it is
+             always visible without needing position:sticky, and it survives the lesson body being
+             rebuilt on every navigation. -->
+        <div class="lesson-rail" id="lessonRail" hidden>
+          <i id="lessonRailFill"></i>
+          <span class="rail-count" id="lessonRailCount"></span>
+        </div>
         <div class="viewbody">
           <div class="view" id="view-learn" role="tabpanel" tabindex="-1"><div class="lesson" id="lessonBody"></div></div>
           <div class="view" id="view-code" role="tabpanel" tabindex="-1" hidden>

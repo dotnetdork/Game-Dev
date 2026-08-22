@@ -147,5 +147,7 @@ function switchView(view) {
   // the toggle (or explainLine, which is a tutor question by definition) changes it now.
   if (view === 'learn') showConsole(false); else if (view === 'code') showConsole(true, true); else showConsole(true, false); // log: open on Code, closed on Play
   if (view === 'play') requestAnimationFrame(fitStage);
+  // The reading rail belongs to the lesson, so it goes away with it.
+  if (typeof paintLessonRail === 'function') paintLessonRail();
 }
 document.querySelectorAll('.vtab').forEach(function (btn) { btn.addEventListener('click', function () { switchView(btn.getAttribute('data-view')); }); });
