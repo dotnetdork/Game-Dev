@@ -18,13 +18,131 @@ function resetWidgetHandlers() { Object.keys(widgetHandlers).forEach(function (k
 let lessonWidgetId = '';
 let widgetSeq = { q: 0, r: 0, c: 0, y: 0 };
 let goalRunKeys = [];        // run cells that declare @expect — the only ones that can be "finished"
-function beginLessonWidgets(lessonId) { lessonWidgetId = lessonId || ''; widgetSeq = { q: 0, r: 0, c: 0, y: 0 }; goalRunKeys = []; }
+function beginLessonWidgets(lessonId) {
+  lessonWidgetId = lessonId || ''; widgetSeq = { q: 0, r: 0, c: 0, y: 0 }; goalRunKeys = [];
+  pendingBuilds = []; revealQueue = [];
+  clearTimeout(revealFailsafe);
+}
 function nextWidgetKey(kind) { return kind + (widgetSeq[kind]++); }
 function widgetToken(key) { return (lessonWidgetId || 'l') + ':' + key; }
 
+/* ---------- building and revealing as the student scrolls ----------
+   Two jobs on one sweep: build the expensive blocks shortly before they are needed, and fade each
+   block in as it arrives.
+
+   Measured before writing any of this, because the version of this idea in the plan was wrong about
+   where the cost is. A lesson's whole widget build is 1.6ms for the-core-loop and 3.8ms for
+   data-out-of-code — nothing worth deferring. The exception is run cells, which cost ~15ms each
+   because every one creates a CodeMirror instance: decisions-and-repeats spends 46.6ms of its 48.7ms
+   there. Those numbers are from a fast desktop, so call it 150-250ms of jank on a school Chromebook.
+   So run cells are deferred and nothing else is. Quizzes, labs and practice steps stay eager, which
+   matters for more than speed: a practice step takes its "before" snapshot when it renders, and
+   deferring that to "when the student scrolls near it" would take the snapshot AFTER work they had
+   already done and fail exactly the student who did the task properly.
+
+   LOOKAHEAD is the whole trick. Everything happens well before the block is on screen, so nothing
+   the student is looking at changes size, and no text is ever withheld from someone who has already
+   scrolled to it. A reveal that makes you wait for the paragraph you are reading is worse than no
+   reveal at all. */
+const LOOKAHEAD = 600;      // build this far ahead of the viewport
+const REVEAL_AHEAD = 140;   // start the fade this far ahead, so it finishes before you arrive
+let pendingBuilds = [], revealQueue = [], revealFailsafe = 0;
+
+function deferBlock(el, build) { pendingBuilds.push({ el: el, build: build }); }
+
+function nearViewport(el, margin) {
+  const view = $('view-learn'); if (!view || !el || !el.isConnected) return true;
+  const vr = view.getBoundingClientRect(), r = el.getBoundingClientRect();
+  return r.top < vr.bottom + margin && r.bottom > vr.top - margin;
+}
+
+/* Read every position, THEN write every class. Never interleaved.
+   The first version did `getBoundingClientRect()` and `classList.add()` in the same loop, which
+   makes the browser re-layout on each iteration to answer the next measurement — thirty times over.
+   Measured: it turned a 1.6ms lesson build into 12.8ms, so the reveal cost more than the run cells
+   it was helping to defer. Batching the reads apart from the writes is the whole fix. */
+function sweepLesson() {
+  const view = $('view-learn'); if (!view) return;
+  const vr = view.getBoundingClientRect();
+  const near = function (el, margin) {
+    const r = el.getBoundingClientRect();
+    return r.top < vr.bottom + margin && r.bottom > vr.top - margin;
+  };
+
+  if (pendingBuilds.length) {
+    const due = [], keep = [];
+    pendingBuilds.forEach(function (p) {                       // read
+      if (!p.el || !p.el.isConnected) return;                  // the lesson changed under us
+      if (near(p.el, LOOKAHEAD)) due.push(p); else keep.push(p);
+    });
+    pendingBuilds = keep;
+    due.forEach(function (p) {                                 // write
+      // A build that throws must not take the sweep — and therefore every later block — with it.
+      try { p.build(); }
+      catch (e) { console.warn('[league] a lesson block failed to build: ' + (e && e.message)); }
+    });
+  }
+
+  if (revealQueue.length) {
+    const due = [], keep = [];
+    revealQueue.forEach(function (el) {                        // read
+      if (!el || !el.isConnected) return;
+      if (near(el, REVEAL_AHEAD)) due.push(el); else keep.push(el);
+    });
+    revealQueue = keep;
+    due.forEach(function (el) { el.classList.add('shown'); }); // write
+  }
+}
+/* Called straight from the scroll handler, NOT behind requestAnimationFrame.
+   rAF looks like the right tool for coalescing scroll work, and it was the first version — but rAF
+   does not fire in a browser that is not compositing (a background tab, or this project's own
+   preview pane), and a stalled sweep means a run cell that never becomes editable. The work being
+   coalesced is a handful of getBoundingClientRect calls against queues that drain to empty and then
+   cost nothing, so there was nothing worth the risk. */
+function queueSweep() { sweepLesson(); }
+/* Everything visible, unconditionally. The safety net: if the sweep never runs — a thrown error, a
+   browser that does not fire scroll the way we expect — a student must never be left looking at a
+   blank page because of an animation. */
+function revealAll() {
+  revealQueue.forEach(function (el) { if (el && el.isConnected) el.classList.add('shown'); });
+  revealQueue = [];
+}
+/* Arm the reveal: only blocks that start BELOW the fold animate. The first screen is shown
+   immediately, because a lesson that fades itself in every time you navigate to it is a lesson that
+   feels slow, and the effect the student asked for is one they see while scrolling. */
+function armReveal(root) {
+  const view = $('view-learn'); if (!view || !root) return;
+  const fold = view.getBoundingClientRect().bottom;
+  const kids = [].slice.call(root.children);
+  const below = [];
+  for (let i = 0; i < kids.length; i++) {                       // read phase, no writes at all
+    if (kids[i].getBoundingClientRect().top > fold) below.push(kids[i]);
+  }
+  for (let i = 0; i < below.length; i++) below[i].classList.add('willshow');   // write phase
+  revealQueue = below;
+  clearTimeout(revealFailsafe);
+  revealFailsafe = setTimeout(revealAll, 4000);
+  queueSweep();
+}
+
 /* ```run — editable JS cell. Directives (as // @lines): @goal: <text>, @expect: <substring>, @slider: name min max step value */
 function renderRunCells(root) {
-  root.querySelectorAll('pre > code.language-run').forEach(function (code) {
+  const codes = [].slice.call(root.querySelectorAll('pre > code.language-run'));
+  /* Keys and goal keys are allocated NOW, in document order, even though each cell is built when the
+     student scrolls near it. A key that depended on build order would differ between a student who
+     scrolls fast and one who scrolls slowly, which would silently orphan a saved answer — and
+     goalRunKeys decides how many activities the lesson has, so counting them lazily would make the
+     progress total climb while the student scrolled and the rail go backwards. */
+  codes.forEach(function (code) {
+    code.setAttribute('data-wkey', nextWidgetKey('r'));
+    if (/^\s*\/\/\s*@expect:\s*\S/m.test(code.textContent)) goalRunKeys.push(code.getAttribute('data-wkey'));
+  });
+  /* The un-built state needs no placeholder: a run cell's `pre` already shows the code as an
+     ordinary code block, which is exactly what it is until it becomes editable. */
+  codes.forEach(function (code) { deferBlock(code.parentNode, function () { buildRunCell(code); }); });
+}
+function buildRunCell(code) {
+  {
     const pre = code.parentNode; const raw = code.textContent;
     let goal = '', expect = ''; const sliders = []; const bodyLines = [];
     raw.split('\n').forEach(function (ln) {
@@ -37,7 +155,8 @@ function renderRunCells(root) {
     // Trailing blank lines too, not just leading: a fence's closing newline was showing up as an
     // extra empty line in the editor, which is most of the "gap under the code".
     const src = bodyLines.join('\n').replace(/^\s*\n/, '').replace(/\s+$/, '');
-    const key = nextWidgetKey('r'), tok = widgetToken(key);
+    // Stamped during the census above, so it is the key this cell would have had either way.
+    const key = code.getAttribute('data-wkey'), tok = widgetToken(key);
     const cell = document.createElement('div'); cell.className = 'runcell';
     if (goal) { const g = document.createElement('div'); g.className = 'run-goal'; g.innerHTML = '<span class="mdi mdi-target"></span>'; g.appendChild(document.createTextNode(goal)); cell.appendChild(g); }
     const sEls = {};
@@ -89,9 +208,8 @@ function renderRunCells(root) {
     function run() { out.srcdoc = buildDoc(readCode()); }
 
     if (expect) {
-      // A goal-checked run cell counts toward finishing the lesson; one without a goal cannot,
-      // because neither the student nor the app can tell whether anything was achieved.
-      goalRunKeys.push(key);
+      /* goalRunKeys is filled by the census in renderRunCells, not here — a cell that counts toward
+         finishing the lesson has to be counted whether or not it has been scrolled to yet. */
       if (activityDone(lessonWidgetId, key)) { status.className = 'run-status ok'; status.textContent = 'Goal met!'; }
     }
     widgetHandlers[tok] = function (d) {
@@ -115,7 +233,7 @@ function renderRunCells(root) {
     pre.parentNode.replaceChild(cell, pre);
     if (editor) editor.refresh();       // only now does it have a box to measure
     if (liveSliders) run();
-  });
+  }
 }
 function shuffleOrder(n) {
   let a = []; for (let i = 0; i < n; i++) a.push(i);
@@ -1304,6 +1422,9 @@ function paintLesson2(f, html) {
   paintLesson($('lessonBody'));
   applyAIMode(f.l.ai);
   startLessonProgress(f);
+  /* After startLessonProgress, because arming the reveal measures where each block sits and the
+     progress strip is one of them. */
+  armReveal($('lessonBody').querySelector('.lesson-content'));
   prefetchNextLesson(curIdx);
 }
 
@@ -1346,6 +1467,7 @@ function startLessonProgress(f) {
   lessonPlan.total = lessonPlan.keys.length;
   renderLessonProgress(f);
   wireLessonRail();
+  railHigh = 0;                 // a new lesson starts unread, whatever the last one reached
   paintLessonRail();
   if (!lessonPlan.total && !state.done[f.id]) watchDwell(f);
 }
@@ -1363,6 +1485,7 @@ function activityProgress() {
    Driven from the scroll position rather than from IntersectionObserver on purpose: this is one
    number about one scroll container, and a listener on that container cannot disagree with it. */
 let railWired = false;
+let railHigh = 0;          // the furthest this lesson has been read; reset per lesson
 function paintLessonRail() {
   const rail = $('lessonRail'), fill = $('lessonRailFill'), count = $('lessonRailCount');
   if (!rail || !fill) return;
@@ -1372,7 +1495,17 @@ function paintLessonRail() {
   if (!onLearn) return;
   const max = view.scrollHeight - view.clientHeight;
   // Nothing to scroll means the whole lesson is already on screen, which is 100% read, not 0%.
-  const pct = max > 8 ? Math.min(1, Math.max(0, view.scrollTop / max)) : 1;
+  let pct = max > 8 ? Math.min(1, Math.max(0, view.scrollTop / max)) : 1;
+  // At the bottom, say so. Sub-pixel rounding otherwise leaves it at 0.998 forever.
+  if (max > 8 && view.scrollTop + view.clientHeight >= view.scrollHeight - 2) pct = 1;
+  /* Never go backwards within a lesson.
+     A run cell is a plain code block until the student scrolls near it, and becoming an editor makes
+     it taller — so the page grows underneath them and the same scroll position becomes a smaller
+     fraction of it. Measured: the rail slid from 0.83 back to 0.80 near the bottom and never reached
+     the end. Clamping is the honest reading rather than a cover-up: the words did not change, only
+     when we chose to build them, and "how far through am I" should not answer "further back than a
+     moment ago" because of that. */
+  if (pct < railHigh) pct = railHigh; else railHigh = pct;
   fill.style.transform = 'scaleX(' + pct.toFixed(4) + ')';
   if (count) {
     count.textContent = lessonPlan.total
@@ -1384,8 +1517,12 @@ function wireLessonRail() {
   if (railWired) return;
   const view = $('view-learn'); if (!view) return;
   railWired = true;
-  view.addEventListener('scroll', paintLessonRail, { passive: true });
-  if (typeof window.addEventListener === 'function') window.addEventListener('resize', paintLessonRail);
+  /* One listener drives both the rail and the build/reveal sweep. Two event sources could disagree
+     about where the student is; one cannot. */
+  view.addEventListener('scroll', function () { paintLessonRail(); queueSweep(); }, { passive: true });
+  if (typeof window.addEventListener === 'function') {
+    window.addEventListener('resize', function () { paintLessonRail(); queueSweep(); });
+  }
 }
 /* Called by every widget the moment its work is genuinely finished. */
 function resolveActivity(key) {

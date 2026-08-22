@@ -52,6 +52,24 @@ body{background:var(--bg);color:var(--ink);font-family:var(--font);font-size:14p
 
 .stage-wrap{min-height:0;position:relative;overflow:hidden;}
 
+/* ---------- blocks arriving as you scroll ----------
+   A short fade and a small rise, once per block, never replayed. Only blocks that started below the
+   fold get the class at all: the first screen appears immediately, because a lesson that fades
+   itself in every time you navigate to it reads as slow, and the effect is one you are meant to see
+   while scrolling rather than on arrival.
+   The rise is 10px and the fade is 300ms on purpose. Anything longer and the block is still moving
+   when you reach it; anything further and the page feels like it is assembling itself around you.
+   armReveal() only tags blocks it is about to manage, and a 4-second failsafe reveals everything
+   regardless — an animation must never be the reason a student is looking at a blank page. */
+.lesson-content > .willshow{opacity:0;transform:translateY(10px);}
+.lesson-content > .willshow.shown{opacity:1;transform:none;
+  transition:opacity .3s ease,transform .3s cubic-bezier(.22,.7,.3,1);}
+/* Asked for less movement: no transform, no transition, nothing hidden waiting for a sweep. */
+@media (prefers-reduced-motion: reduce){
+  .lesson-content > .willshow{opacity:1;transform:none;}
+  .lesson-content > .willshow.shown{transition:none;}
+}
+
 /* ---------- how far through the lesson you are ----------
    Two pixels of fill and a count. A lesson averages 4,700px — about six screens — and the only
    progress readout was the strip at the very bottom, which a student reaches by finishing. So for

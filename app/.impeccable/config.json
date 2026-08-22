@@ -1,0 +1,26 @@
+{
+  "detector": {
+    "ignoreRules": [],
+    "ignoreFiles": [],
+    "ignoreValues": [
+      {
+        "rule": "broken-image",
+        "value": "*",
+        "files": [
+          "public/styles.css"
+        ],
+        "createdAt": "2026-08-21T19:08:06.505Z",
+        "reason": "false positive: the only <img> in this file is prose inside a CSS comment explaining that an SVG loaded through an img tag cannot fetch external images. No markup in a stylesheet."
+      },
+      {
+        "rule": "side-tab",
+        "value": "*",
+        "files": [
+          "public/styles.css"
+        ],
+        "createdAt": "2026-08-21T19:08:06.652Z",
+        "reason": "user confirmed: Jay chose the coloured left stripe from four presented options - 'I like the colored edge stripe option that you recommended' - as the way Quiz/Lab/Practice blocks separate from prose without being cards."
+      }
+    ]
+  }
+}
