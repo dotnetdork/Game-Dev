@@ -7,7 +7,7 @@
   "scripts": {
     "start": "node server.js",
     "dev": "node --watch server.js",
-    "test": "node tools/check-html.js && node tools/check-state.js && node tools/subset-icons.js --check && node tools/check-quiz.js && node tools/check-lessons.js && node tools/check-challenges.js && node tools/check-mcp.js && node tools/check-gamelog.js && node tools/check-boot.js",
+    "test": "node tools/check-encoding.js && node tools/check-html.js && node tools/check-state.js && node tools/subset-icons.js --check && node tools/check-quiz.js && node tools/check-lessons.js && node tools/check-challenges.js && node tools/check-mcp.js && node tools/check-gamelog.js && node tools/check-boot.js",
     "check:release": "node tools/check-release.js",
     "build:images": "python tools/resize-brand-images.py",
     "build:icons": "node tools/subset-icons.js"

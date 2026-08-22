@@ -463,7 +463,7 @@ function badKeysIn(ops, gameCode) {
   if (ops.editFile && typeof ops.editFile.code === 'string') {
     unregisteredKeys(ops.editFile.code).forEach(function (k) { bad[k] = true; });
   }
-  const inGame = opsCode(ops).replace(ops.editFile && ops.editFile.code ? ops.editFile.code : ' ', '');
+  const inGame = opsCode(ops).replace(ops.editFile && ops.editFile.code ? ops.editFile.code : '\0', '');
   if (inGame.trim()) unregisteredKeys(gameCode + '\n' + inGame).forEach(function (k) { bad[k] = true; });
   return Object.keys(bad);
 }
