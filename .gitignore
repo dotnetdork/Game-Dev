@@ -17,8 +17,12 @@ npm-debug.log*
 # and why — so it is a project decision and belongs in the repo. config.local.json is explicitly
 # per-developer, and hook.cache.json is per-session scratch. Ignoring the whole directory meant a
 # "shared" ignore was never shared: it would not survive a fresh clone or a second machine.
-.impeccable/*
-!.impeccable/config.json
+# `**/` because there is more than one of these: the detector writes beside whichever directory the
+# CLI was run from, so there is one at the repo root and one under app/. A root-anchored pattern
+# covered only the first, and the second was being held back by .git/info/exclude — which is local
+# to one clone and would not protect anybody else.
+**/.impeccable/*
+!**/.impeccable/config.json
 
 # OS junk
 .DS_Store
