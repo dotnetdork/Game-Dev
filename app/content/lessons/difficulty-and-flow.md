@@ -25,7 +25,7 @@ started.
 > Good difficulty isn't a setting. It's a slope that climbs at roughly the speed the player
 > improves.
 
-<figure class="shot aside">
+<figure class="shot aside pixel">
   <img src="/content/images/shots/space-invaders.gif" alt="Space Invaders: rows of aliens descending towards a cannon at the bottom of the screen">
   <figcaption>Space Invaders has one difficulty dial and it turns itself: the fewer aliens are left,
   the faster they move. Nobody designed a level three. The game gets harder <em>because you are

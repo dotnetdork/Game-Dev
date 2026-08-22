@@ -17,7 +17,7 @@ Not the story. Not the graphics. The **doing**.
 Five words each. That short list is the **core loop** — the handful of actions you repeat the
 entire time you play. Everything else in a game is decoration hung on top of it.
 
-<figure class="shot aside">
+<figure class="shot aside pixel">
   <img src="/content/images/shots/pacman-gameplay.png" alt="A Pac-Man maze with pellets, four ghosts and Pac-Man near the bottom">
   <figcaption>The shortest core loop ever shipped: <b>eat a dot, avoid a ghost, repeat</b>. No story,
   no upgrades, no menu. Forty-five years later people still play it, which is the strongest argument

@@ -184,12 +184,126 @@ const IMG_SRC = /<(?:img|source)[^>]+src\s*=\s*["']([^"']+)["']|!\[[^\]]*\]\(([^
    not, which is why the rule keys off the class rather than applying to every figure. */
 const FIGURE = /<figure\b([^>]*)>([\s\S]*?)<\/figure>/g;
 
+/* ---- how wide a figure is actually drawn ----
+   These have to match styles.css. A screenshot in the flow gets the full block; one marked `aside`
+   floats into the strip beside the prose. If either number changes there, change it here.  */
+const BLOCK_W = 780;
+const ASIDE_W = 300;
+
+/* Natural pixel size, straight out of the file header. No dependency: PNG, JPEG and GIF all
+   declare their dimensions in the first few bytes, and those are the only three formats the
+   lessons use. Returns null for anything else (SVG has no intrinsic size worth checking — it is
+   drawn to fit by design, which is the whole reason we use it for diagrams). */
+function imageSize(file) {
+  let buf;
+  try { buf = fs.readFileSync(file); } catch (e) { return null; }
+  // PNG: 8-byte signature, then an IHDR chunk whose width/height are big-endian at 16 and 20.
+  if (buf.length > 24 && buf.readUInt32BE(0) === 0x89504e47) {
+    return { w: buf.readUInt32BE(16), h: buf.readUInt32BE(20) };
+  }
+  // GIF: "GIF87a"/"GIF89a", then the logical screen size little-endian at 6 and 8.
+  if (buf.length > 10 && buf.toString('latin1', 0, 3) === 'GIF') {
+    return { w: buf.readUInt16LE(6), h: buf.readUInt16LE(8) };
+  }
+  // JPEG: walk the segment chain to the first start-of-frame, which carries the real size.
+  if (buf.length > 4 && buf[0] === 0xff && buf[1] === 0xd8) {
+    let p = 2;
+    while (p + 9 < buf.length) {
+      if (buf[p] !== 0xff) { p++; continue; }             // resync past padding
+      const marker = buf[p + 1];
+      if (marker === 0xd8 || marker === 0x01 || (marker >= 0xd0 && marker <= 0xd7)) { p += 2; continue; }
+      const len = buf.readUInt16BE(p + 2);
+      // SOF0/1/2/3/5/6/7/9..11/13..15 — every frame type except the DHT/DAC/DNL lookalikes.
+      const isSOF = (marker >= 0xc0 && marker <= 0xcf)
+        && marker !== 0xc4 && marker !== 0xc8 && marker !== 0xcc;
+      if (isSOF) return { h: buf.readUInt16BE(p + 5), w: buf.readUInt16BE(p + 7) };
+      p += 2 + len;
+    }
+  }
+  return null;
+}
+
+/* A wide landscape screenshot dropped into a 300px aside. Three were, before this check: 780x439
+   pictures drawn 169px tall, with captions asking the reader to look at detail — the dust behind a
+   kart, the items on a menu — that they could not possibly see at that size. This one is a hard
+   failure because it is never right: half the source resolution is being thrown away to produce a
+   picture too small to read. */
+const TINY_W = 200;
+const tiny = [];
+
+function checkFigureSizes(where, attrs, inner) {
+  const isShot = /\bclass\s*=\s*["'][^"']*\b(shot|clip)\b/.test(attrs);
+  if (!isShot) return;
+  const aside = /\bclass\s*=\s*["'][^"']*\baside\b/.test(attrs);
+
+  const re = /<img[^>]+src\s*=\s*["']([^"']+)["']/g;
+  let m;
+  while ((m = re.exec(inner))) {
+    const src = m[1];
+    if (src.charAt(0) !== '/' || /\.svg$/i.test(src)) continue;   // handled by checkImages
+    const rel = src.replace(/^\//, '').split('?')[0];
+    const onDisk = rel.indexOf('content/') === 0
+      ? path.join(CONTENT, rel.slice('content/'.length))
+      : path.join(PUBLIC, rel);
+    const size = imageSize(onDisk);
+    if (!size || !size.w) continue;
+
+    if (aside && size.w > 620) {
+      fail(where, '"' + src + '" is ' + size.w + 'x' + size.h + ' in an `aside` figure, so it is'
+        + ' squeezed into ' + ASIDE_W + 'px — about ' + Math.round(size.h * ASIDE_W / size.w)
+        + 'px tall. A landscape screenshot that size belongs in the flow at full width; drop'
+        + ' `aside`.');
+    }
+    /* Not a failure. Some of these sources are genuinely tiny — the RuneScape Classic capture is
+       160px because that is the only one that exists — and a small picture of an old game is
+       still worth showing. But it is worth an author knowing which ones will be stamp-sized. */
+    const drawn = Math.min(size.w, aside ? ASIDE_W : BLOCK_W);
+    if (drawn < TINY_W) tiny.push(where + ': ' + src.split('/').pop() + ' draws at ' + drawn + 'px');
+  }
+}
+
+/* The invariant that keeps the above honest, asserted against the stylesheet rather than trusted.
+   Screenshots must draw at their own size or smaller, never stretched. Two declarations do that
+   together, and BOTH are easy to lose in a refactor:
+     width:auto        - so a narrow image is not told to fill the column
+     align-self        - because the figure is a column flexbox, and align-items:stretch overrides
+                         width:auto without a word. Pac-Man rendered at 300px from a 224px source
+                         even with width:auto in place, until align-self was added.
+   That second one is the whole reason this check exists: the first fix looked correct, measured
+   wrong, and would have shipped. */
+function checkUpscaleGuard() {
+  const cssPath = path.join(PUBLIC, 'styles.css');
+  if (!fs.existsSync(cssPath)) { problems.push('styles.css: not found at ' + cssPath); return; }
+  const css = fs.readFileSync(cssPath, 'utf8');
+  const rule = css.match(/\.lesson-content > figure\.shot img[^{]*\{([^}]*)\}/);
+  if (!rule) {
+    problems.push('styles.css: cannot find the `.lesson-content > figure.shot img` rule, so'
+      + ' whether screenshots are being stretched can no longer be checked here.');
+    return;
+  }
+  /* Comments stripped FIRST, and that is not fussiness. The comment inside this very rule explains
+     why width:auto and align-self matter, so it contains both strings — which meant the first
+     version of this check passed happily with the declarations deleted, satisfied by the prose
+     describing them. A check that its own documentation can satisfy is not a check. */
+  const body = rule[1].replace(/\/\*[\s\S]*?\*\//g, '');
+  if (!/width\s*:\s*auto/.test(body)) {
+    problems.push('styles.css: `figure.shot img` no longer sets width:auto, so any screenshot'
+      + ' narrower than its column is stretched to fill it and rendered blurry.');
+  }
+  if (!/align-self/.test(body)) {
+    problems.push('styles.css: `figure.shot img` no longer sets align-self. The figure is a column'
+      + ' flexbox, so without it align-items:stretch silently overrides width:auto and every'
+      + ' screenshot is stretched again — which is exactly how this shipped the first time.');
+  }
+}
+
 function checkFigures(file, text) {
   FIGURE.lastIndex = 0;
   let m, i = 0;
   while ((m = FIGURE.exec(text))) {
     const attrs = m[1] || '', inner = m[2] || '', where = file + ' figure ' + i;
     i++;
+    checkFigureSizes(where, attrs, inner);
     const borrowed = /\bclass\s*=\s*["'][^"']*\b(shot|clip)\b/.test(attrs);
     if (!/<figcaption\b/.test(inner)) {
       fail(where, 'has no <figcaption>. The picture and the caption teach together; a picture with'
@@ -245,7 +359,13 @@ files.forEach(function (f) {
   challenges += eachBlock(text, CHALLENGE, function (i, src) { checkChallenge(f + ' challenge ' + i, src); });
 });
 
+checkUpscaleGuard();
+
 console.log(files.length + ' lessons: ' + quizzes + ' quizzes, ' + challenges + ' labs, ' + yourturns + ' your-turn steps');
+if (tiny.length) {
+  console.log('note: ' + tiny.length + ' screenshot(s) draw smaller than ' + TINY_W + 'px —');
+  tiny.forEach(function (t) { console.log('  ' + t); });
+}
 if (problems.length) {
   console.error('');
   problems.forEach(function (p) { console.error('FAIL  ' + p); });

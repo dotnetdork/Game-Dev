@@ -86,7 +86,7 @@ part is yours.
   <cite><b>Halo 4</b> — Xbox MENA, CC BY 3.0.</cite></figcaption>
 </figure>
 
-<figure class="shot aside">
+<figure class="shot aside pixel">
   <img src="/content/images/shots/fido2-gameplay.png" alt="Fido 2, a very simple 1980s game with blocky low-resolution graphics on a black background">
   <figcaption>1985, a few kilobytes, and the same three steps again. If your engine ever feels like
   magic, remember that this ran on a machine with less memory than one of the screenshots on this

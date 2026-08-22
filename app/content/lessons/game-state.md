@@ -10,7 +10,7 @@ Menu. Playing. Paused. Dead.
 A traffic light has exactly the same problem your game does, and solves it the same way: at any
 moment it is doing **one** thing, and which thing decides everything else.
 
-<figure class="shot aside">
+<figure class="shot">
   <img src="/content/images/shots/supertux-menu.jpg" alt="The SuperTux main menu: a title screen with Start Game, Options and Quit over a snowy background">
   <figcaption>The game is not paused here and it is not playing either. It is in a third state, with
   its own rules about what the keys do. Every game you have played has this screen, and every one of

@@ -74,7 +74,7 @@ happens once; applying it happens every frame, and Phaser does that part.
 
 ## The classic mistake
 
-<figure class="shot aside">
+<figure class="shot">
   <img src="/content/images/shots/supertux-boss.jpg" alt="A SuperTux boss fight: Tux facing a large enemy on a platform with a health indicator">
   <figcaption>A boss fight is <code>create()</code> and <code>update()</code> at their most obvious.
   The arena, the boss and its health bar are built once, on arrival. Everything after that — the

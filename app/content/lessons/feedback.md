@@ -72,7 +72,7 @@ explain: Changing a value is not the same as communicating it. Without a flash, 
 
 ## Fast beats fancy
 
-<figure class="shot aside">
+<figure class="shot aside pixel">
   <img src="/content/images/shots/liero-gameplay.png" alt="Liero: two small worms firing weapons at each other through a destructible earth landscape">
   <figcaption>A 316-pixel-wide game from 1998 that people still play. Every shot digs a real hole in
   the ground — the feedback <em>is</em> the level changing shape. No particles, no shaders, no sound

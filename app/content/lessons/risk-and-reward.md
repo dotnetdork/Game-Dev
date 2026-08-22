@@ -58,7 +58,7 @@ Different games, same machine every time: *more, if you're willing to risk what 
   <cite><b>Minecraft</b> — Xbox México, CC BY 3.0.</cite></figcaption>
 </figure>
 
-<figure class="shot aside">
+<figure class="shot aside pixel">
   <img src="/content/images/shots/asteroids-gameplay.png" alt="Asteroids: a small triangular ship among drifting rocks on a black screen">
   <figcaption>Asteroids charges you for greed too. Shooting a big rock breaks it into faster small
   ones, so every point you take makes the screen more dangerous. The reward <em>is</em> the risk.

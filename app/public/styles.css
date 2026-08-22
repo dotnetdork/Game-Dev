@@ -12,7 +12,12 @@
      it, so the column does not get narrower as the gutter grows. Measured at 16.5px this lands
      around 68 characters per line — the old 820px cap measured 92, and comfortable for an
      11-to-14-year-old is nearer 55-70. */
-  --measure:480px;--wide:780px;--gutter:clamp(20px,4vw,56px);}
+  /* --measure is the PROSE width; --wide is the block. 480px was ~62 characters, which read well
+     but left a 300px strip of empty page beside every paragraph that had no figure next to it —
+     and most paragraphs have no figure next to it. 540px is ~68 characters, still inside the
+     comfortable 55-75 range, and it gives that strip back. Text sitting beside a floated figure is
+     limited by the float rather than by this, so nothing next to a picture changes. */
+  --measure:540px;--wide:780px;--gutter:clamp(20px,4vw,56px);}
 :focus-visible{outline:2px solid var(--focus);outline-offset:2px;border-radius:4px;}
 *{box-sizing:border-box;}
 button{font:inherit;color:inherit;}
@@ -1110,9 +1115,21 @@ body[data-tier="narrow"] .dock.left{--floatw:min(300px,84vw);}
    say where it starts and stops, and a credit line that is part of the figure rather than an
    afterthought. Screenshots are usually 16:9 and letterboxing them in a panel looks worse than
    letting them be their own shape. */
+/* width:auto, NOT width:100%. A borrowed screenshot is whatever size it was published at, and
+   several of ours are small on purpose — Pac-Man is 224px wide, RuneScape Classic is 160px, the
+   Space Invaders capture is 217px. Filling the column stretched those by up to 1.9x, which is the
+   one operation guaranteed to make a low-resolution picture look worse than the original. Now an
+   image narrower than the column draws at its own size and a wider one still shrinks to fit. */
 .lesson-content > figure.shot img,
-.lesson-content > figure.clip video{display:block;width:100%;height:auto;max-width:100%;
+.lesson-content > figure.clip video{display:block;width:auto;height:auto;max-width:100%;
+  /* align-self is load-bearing, not tidying. The figure is a column flexbox, so its children
+     default to align-items:stretch — which stretched the image to the full column and silently
+     beat width:auto. Pac-Man still came out at 300px from a 224px source until this line existed. */
+  align-self:flex-start;
   border-radius:10px;border:1px solid var(--line);background:#06101c;}
+/* The games that are actually made of visible pixels. Smoothing a 1978 sprite reads as a mistake;
+   keeping the pixels hard reads as 1978, which is the point being made about it. */
+.lesson-content > figure.shot.pixel img{image-rendering:pixelated;}
 .lesson-content > figure figcaption{margin:0;color:var(--muted);font-size:14px;line-height:1.6;
   max-width:var(--measure);}
 .lesson-content > figure figcaption b{color:#c3d3e6;}
