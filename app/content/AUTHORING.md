@@ -171,8 +171,64 @@ the status bar, and cannot be bought with Stars — that is the whole point of i
   this.
 - Name it after the skill, not the lesson ("Bug Hunter badge", not "Lesson 14 badge").
 
-Checking is the student's word for now — they press "I've done this". A future stage verifies it
-against their actual project, and only this step changes.
+### Checking it — `check:` and `example:`
+
+There is **no "Done" button.** There used to be, and it recorded that the student *said* they had
+done it, so all twenty-two badges could be collected without opening the Code tab once. Pressing
+**Check my work** now reads their actual project.
+
+Two stages, in order:
+
+1. **Your `check:` rules run first**, in the browser. Instant, offline, free, and not arguable.
+2. **If they all pass, the grader reads the change** and decides whether it did what the task
+   asked. Rules prove the mechanics; only a judgement can tell whether the goal was met.
+
+A step with **no `check:` at all is fine** — it goes straight to the grader. Add rules where a
+program can be certain, not everywhere.
+
+    check:
+      - called_in_update: movePlayer
+        hint: "`movePlayer` is not being called inside `update()` yet."
+      - parses: true
+        hint: Something no longer parses — check the console.
+    example: let coinsCollected = 0;
+
+Every rule takes an optional `hint`, shown when that rule is the first to fail. Write it as the
+next thing to try, not as a verdict. Without one the app falls back to a plain description, which
+is correct but flat.
+
+| Rule | True when |
+|---|---|
+| `contains: {file, text}` | that text appears in that file (omit `file` to search the whole project) |
+| `matches: {file, regex}` | that pattern matches — remember YAML needs `\\` for a backslash |
+| `config_changed: jumpPower` | that CONFIG number is different from when they started (a list means any of them) |
+| `function_added: name` | a top-level function/const/let of that name exists now and did not before |
+| `function_kept: name` | it still exists (guards against deleting working code) |
+| `called_in_update: name` | that name appears **inside** `update()` — comments and strings skipped, so a commented-out call correctly fails |
+| `new_file: true` | the project has a file it did not start with |
+| `changed_at_least: 4` | at least that many lines differ from the snapshot |
+| `parses: true` | every file still parses as JavaScript |
+
+`example:` is shown only after a **third** failed try, and taking it is recorded — the same
+bookkeeping a lab does when a student reveals the answer. Passing after seeing it still counts.
+
+**Two things to get right, both about not punishing the correct answer:**
+
+- **Do not demand a change when the task is a read.** `scenes-create-update` asks the student to
+  check whether anything in `update()` belongs in `create()`. A student whose code was already
+  clean has done the task by changing nothing, so `changed_at_least` there would fail the person
+  who got it right. That block asserts only `parses: true`.
+- **Do not pin down *how*.** `config_changed: [jumpPower, gravity]` is right for "make the player
+  jump higher", because both are real answers. `config_changed: jumpPower` alone marks a student
+  wrong for solving it with gravity.
+
+The snapshot of "before" is taken the first time they press Check, not when the block renders — so
+reading a lesson, going away, building something and coming back still counts.
+
+Nothing here can tell a student they are wrong when the checker merely could not tell. An
+unreachable server, a reply the server refuses to vouch for, or a broken rule in your own YAML all
+resolve in the student's favour, and a broken rule is logged to the console for you rather than
+shown to them.
 
 ## Pictures and diagrams
 Put the file in `content/images/` and reference it **with a leading slash**:

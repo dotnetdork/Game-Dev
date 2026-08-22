@@ -91,6 +91,12 @@ function renderFiles(files) {
 /* The game's own console output. Two "nothing" cases mean opposite things and must never
    look the same: a game that ran silently is probably fine, a game that was never run tells
    you the student has not tried it yet. */
+/* The steps a practice task listed. Numbered, because the grader is being asked whether the goal
+   was met and the steps are the clearest statement of what the goal was. */
+function renderSteps(steps) {
+  if (!steps || !steps.length) return '(no steps were listed)';
+  return steps.map(function (s, i) { return '  ' + (i + 1) + '. ' + s; }).join('\n');
+}
 function renderGameLog(lines, ran) {
   if (!ran) return '(they have not run their game yet, so there is no output to go on)';
   if (!lines || !lines.length) return '(the game ran and printed nothing — no errors)';
@@ -141,7 +147,15 @@ function buildPrompt(agent, ctx) {
     fileName: c.fileName || 'game.js',
     lineNumber: c.lineNumber || '',
     line: c.line || '',
-    snippet: c.snippet || ''
+    snippet: c.snippet || '',
+    /* The grader's slots. Without these it had no placeholders at all, which meant fill() had
+       nothing to substitute and the whole context the server assembles was built and then thrown
+       away — the agent was judging a student's work having been told neither the task nor what
+       they changed. An unknown placeholder becomes '' silently (see fill), so a missing slot is
+       not an error anyone would notice; that is exactly how this went unspotted. */
+    taskTitle: c.taskTitle || '(no task given)',
+    taskSteps: renderSteps(c.taskSteps),
+    changedCode: c.changedCode || '(nothing appears to have changed)'
   });
 }
 

@@ -170,6 +170,14 @@ steps:
   - Before fixing it, say out loud what the message means in your own words.
   - Fix it, run again, and confirm it goes away. Now you have done the whole loop once, on purpose.
 reward: Bug Hunter badge
+check:
+  # The task is "break it, then fix it", so the end state has to be code that parses. A student who
+  # broke it and stopped has not finished; one who never touched it has changed nothing.
+  - changed_at_least: 2
+    hint: Nothing in your game has changed yet — go and misspell something on purpose first.
+  - parses: true
+    hint: Your game still has the mistake in it. Read the error, find the file and line, and fix it.
+example: player  // the spelling that was there before you broke it
 ```
 
 ## Recap

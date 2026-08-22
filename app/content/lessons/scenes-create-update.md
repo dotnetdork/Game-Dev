@@ -180,6 +180,13 @@ steps:
   - Move anything you find into `create()`, keeping a reference to it so update() can still change it.
   - Press Run and play for thirty seconds. It should feel exactly as fast at the end as at the start.
 reward: Scene Setter badge
+check:
+  # This task is a READ, so there is deliberately no rule saying "you must have moved something".
+  # A student whose update() was already clean has done exactly what was asked by changing nothing,
+  # and a rule demanding a change would punish the correct answer. The grader judges it instead;
+  # all this asserts is that whatever they did leaves a game that still runs.
+  - parses: true
+    hint: Something no longer parses — if you moved a line into create(), check the braces around it.
 ```
 
 ## Recap

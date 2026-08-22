@@ -155,6 +155,14 @@ steps:
   - Add 1 to it in the right place, then draw it with a text object so you can watch it work.
   - Press Run and check the number actually climbs.
 reward: Bookkeeper badge
+check:
+  # A new value means a new top-level declaration that was not there before. Which one they chose,
+  # and what they called it, is theirs — the grader judges whether it is actually being counted.
+  - matches: { regex: "^\\s*(let|var|const)\\s+[A-Za-z_$][\\w$]*\\s*=\\s*0" }
+    hint: I cannot see a new value starting at 0 yet. Add one near the top with `let`, outside any function.
+  - parses: true
+    hint: Something in your game no longer parses — check the console for the error before carrying on.
+example: let coinsCollected = 0;
 ```
 
 ## Recap

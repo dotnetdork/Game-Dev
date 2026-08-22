@@ -1074,9 +1074,15 @@ function renderChallengeCells(root) {
    game that is actually theirs, by hand. That order — worked example, then independent practice —
    is the point: copying the lab's code across would move the technique without teaching it.
 
-   YAML: title, task, steps (a list), and optionally `reward` naming an unlockable.
-   Checking is manual for now — the student says when they have done it. Stage 5 replaces that with
-   a verifier that reads their project, at which point only this function changes. */
+   YAML: title, task, steps (a list), optionally `reward` naming an unlockable, optionally a
+   `check:` list of rules and an `example:` to show after a third failed try.
+
+   There is no "Done" button. There used to be, and it recorded that the student SAID they had done
+   it — so twenty-two badges could be collected without opening the Code tab once. Now pressing
+   Check my work reads their actual project: the authored rules decide it wherever a program can be
+   certain (instantly, offline, no model call), and only the genuinely judgement-shaped tasks go to
+   the grader. Nothing here can tell a student they are wrong when the checker merely could not
+   tell — see gradePractice() in ai.js, where a null reply means "could not check". */
 function renderYourTurnCells(root) {
   root.querySelectorAll('pre > code.language-yourturn').forEach(function (code) {
     const pre = code.parentNode;
@@ -1089,7 +1095,7 @@ function renderYourTurnCells(root) {
     /* "Practice" rather than "Your turn": one word, it sits beside Quiz and Lab as a short noun
        naming the kind of activity, and it is honest about what this is — the independent practice
        that follows the lab's worked example. Not "Build", which is already the AI's other mode. */
-    const mark = blockAction('Done', 'check');
+    const mark = blockAction('Check my work', 'check');
     const head = blockHeader('Practice', blockTitleOf(c.title, 'Practice') || 'In your own game', '', mark);
     head.classList.add('yt-head');
     cell.appendChild(head);
@@ -1131,19 +1137,30 @@ function renderYourTurnCells(root) {
     openCode.addEventListener('click', function () { switchView('code'); });
     const status = document.createElement('span'); status.className = 'yt-status'; status.setAttribute('aria-live', 'polite');
 
-    function settle() {
+    /* The hint line, and the way out of being stuck. Both live under the steps rather than in the
+       header, because this is the part a student reads slowly. */
+    const hintEl = document.createElement('p'); hintEl.className = 'yt-hint'; hintEl.hidden = true;
+    const helpBtn = blockLink('talk it through with the assistant', 'chat-question-outline');
+    helpBtn.hidden = true;
+    helpBtn.addEventListener('click', function () {
+      if (typeof askAboutPractice === 'function') askAboutPractice({ title: c.title, steps: c.steps });
+    });
+
+    function settle(helped) {
       status.className = 'yt-status ok';
-      status.innerHTML = '<span class="mdi mdi-check-circle" aria-hidden="true"></span>Done in your game';
+      status.innerHTML = '<span class="mdi mdi-check-circle" aria-hidden="true"></span>'
+        + (helped ? 'Done — with a look at the answer' : 'Done in your game');
       mark.disabled = true; mark.hidden = true;
+      hintEl.hidden = true; helpBtn.hidden = true;
       // The header tick, so a finished practice step reads the same as a finished quiz.
       if (!head.querySelector('.block-tick')) {
         const tick = document.createElement('span'); tick.className = 'block-tick mdi mdi-check-circle';
         tick.title = 'Done'; blockSide(head).appendChild(tick);
       }
     }
-    if (done) settle();
-    mark.addEventListener('click', function () {
-      settle();
+    function award(helped) {
+      savePracticeState(lessonId, key, { passed: true, helped: !!helped });
+      settle(helped);
       /* The badge before the activity: resolveActivity can complete the lesson, which starts the
          countdown to the next one, and the student should have been told what they earned before
          anything starts moving them along. */
@@ -1152,10 +1169,76 @@ function renderYourTurnCells(root) {
         toast('Badge earned: ' + c.reward);
       }
       resolveActivity(key);
+    }
+    function say(kind, msg, showHelp) {
+      status.className = 'yt-status' + (kind ? ' ' + kind : '');
+      status.textContent = '';
+      hintEl.hidden = !msg;
+      hintEl.className = 'yt-hint' + (kind === 'no' ? ' no' : '');
+      hintEl.innerHTML = msg ? inlineMd(msg) : '';
+      if (showHelp) helpBtn.hidden = false;
+    }
+
+    if (done) settle((practiceState(lessonId, key) || {}).helped);
+
+    /* Snapshot NOW, as the step is rendered — the moment the student first sees the task, before
+       they have had a chance to do anything about it. Deferring it to the first press of Check
+       would take "before" from a project that already contains their work, so a rule like
+       `changed_at_least` would fail precisely the student who read the task, went and did it, and
+       then came back to be checked. It is written once and never overwritten. */
+    if (!done) practiceSnapshot(lessonId, key);
+
+    mark.addEventListener('click', function () {
+      if (mark.disabled) return;
+      const snap = practiceSnapshot(lessonId, key);
+      const p = savePracticeState(lessonId, key, { tries: (practiceState(lessonId, key) || {}).tries + 1 || 1 });
+      const tries = p.tries;
+
+      const ruled = checkPracticeRules(c.check, snap);
+      if (ruled.authoring.length) {
+        /* Our bug, not theirs. Never hold a student up for it: say so in the console for whoever
+           is authoring, and let them through. */
+        console.warn('[league] practice ' + key + ' has a broken `check:` — ' + ruled.authoring.join('; '));
+        award(false);
+        return;
+      }
+      if (ruled.pass === false) {
+        // A rule said no, and a rule is never a judgement call — so this is a real "not yet".
+        const extra = tries >= 2 ? ' Look in the file the steps name, near the top.' : '';
+        const shown = tries >= 3 && c.example;
+        say('no', ruled.hint + extra + (shown ? '\n\nHere is one way to do it:\n`' + String(c.example).replace(/`/g, '') + '`' : ''), tries >= 2);
+        if (shown) savePracticeState(lessonId, key, { helped: true });
+        return;
+      }
+
+      /* Either every rule passed, or none were authored. Both need the grader: passing the rules
+         proves the mechanics, not that the change does what the task asked. */
+      mark.disabled = true;
+      say('', 'Reading your game…', false);
+      const changed = practiceDiff(snap);
+      const task = { title: c.title, steps: c.steps };
+      const done2 = function (g) {
+        mark.disabled = false;
+        if (!g) {
+          /* Could not check — offline, a 502, or a reply the server refused to vouch for. If the
+             rules passed, that is enough on its own; if there were no rules, give them the benefit
+             of the doubt rather than blocking on our own plumbing. */
+          award((practiceState(lessonId, key) || {}).helped);
+          return;
+        }
+        if (g.pass) { award((practiceState(lessonId, key) || {}).helped); return; }
+        const shown = tries >= 3 && c.example;
+        say('no', g.hint + (shown ? '\n\nHere is one way to do it:\n`' + String(c.example).replace(/`/g, '') + '`' : ''), true);
+        if (shown) savePracticeState(lessonId, key, { helped: true });
+      };
+      if (typeof gradePractice === 'function') gradePractice(task, changed).then(done2);
+      else done2(null);
     });
 
     foot.appendChild(openCode); foot.appendChild(status);
+    cell.appendChild(hintEl);
     cell.appendChild(foot);
+    foot.appendChild(helpBtn);
     pre.parentNode.replaceChild(cell, pre);
   });
 }
@@ -1237,10 +1320,24 @@ function lessonActivityKeys() {
   const keys = [];
   for (let i = 0; i < widgetSeq.q; i++) keys.push('q' + i);
   for (let i = 0; i < widgetSeq.c; i++) keys.push('c' + i);
-  for (let i = 0; i < widgetSeq.y; i++) keys.push('y' + i);
+  /* Practice steps (`y*`) are deliberately NOT counted, though they used to be.
+     A practice step now checks the student's real game and cannot be waved through, which turns
+     "does this lesson count as finished?" into "has the checker been satisfied?" — and lessons
+     unlock in a straight line, so one student stuck on their own game, or one bug in a rule, would
+     wall off the rest of the course. Reading and questions finish a lesson. The practice steps are
+     counted by the module's checkpoint instead, which is the right place to insist: you cannot
+     arrive at the part where you build your own game having built nothing.
+     They still record and still award their badge — see renderYourTurnCells. */
   // only run cells with an @expect goal can be "finished"; the rest are for tinkering
   goalRunKeys.forEach(function (k) { keys.push(k); });
   return keys;
+}
+/* For the checkpoint gate, once checkpoints exist: how many practice steps in a lesson are done. */
+function practiceProgress(lessonId, count) {
+  const done = lessonActivities(lessonId);
+  let n = 0;
+  for (let i = 0; i < count; i++) if (done['y' + i]) n++;
+  return n;
 }
 function startLessonProgress(f) {
   cancelAdvance();

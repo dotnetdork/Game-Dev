@@ -182,6 +182,18 @@ steps:
   - Make it do something in update() — a dash, a second jump, dropping something.
   - Ask yourself whether it wants `isDown` or `JustDown`, then press Run and check it behaves.
 reward: Controls Engineer badge
+check:
+  # NOT `called_in_update: movePlayer` — the starter already does that, so the rule would pass
+  # before the student touched anything. A rule that is already true is worse than no rule: it
+  # awards the badge while looking rigorous.
+  # So: prove they changed something, prove they did not break movement while doing it, and leave
+  # "is that actually a second control?" to the grader, which is a judgement.
+  - changed_at_least: 2
+    hint: Nothing in your game has changed yet. Open player.js and add a key.
+  - function_kept: movePlayer
+    hint: "`movePlayer` has gone from your game — put it back before adding to it."
+  - parses: true
+    hint: Something in your game no longer parses. Check the console before trying again.
 ```
 
 ## Recap

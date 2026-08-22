@@ -926,6 +926,15 @@ body[data-tier="narrow"] .dock.left{--floatw:min(300px,84vw);}
 /* The footer holds a link and a status now, both quiet, so it is a left-aligned row rather than a
    bar with things pushed to both ends. */
 .lesson-content > .yourturn > .yt-foot{display:flex;align-items:center;gap:16px;flex-wrap:wrap;}
+/* What the checker said. Deliberately not styled as an error: this is a nudge about work in
+   progress on the student's own game, not a mistake being reported. Gold, like the quiz's
+   "not quite", rather than red. */
+.lesson-content > .yourturn > .yt-hint{margin:12px 0 0;max-width:var(--measure);
+  font-size:14.5px;line-height:1.6;color:var(--muted);white-space:pre-line;}
+.lesson-content > .yourturn > .yt-hint.no{color:#e6d8b8;}
+.lesson-content > .yourturn > .yt-hint code{font-family:Consolas,monospace;font-size:.9em;
+  background:rgba(0,0,0,.3);border:1px solid rgba(245,130,10,.25);border-radius:4px;
+  padding:1px 5px;color:#ffd9a8;}
 /* Inline code inside a step or task, e.g. `update`. Without this the backticks showed literally. */
 .yt-steps code,.yt-task code{font-family:Consolas,monospace;font-size:.9em;background:rgba(0,0,0,.3);
   border:1px solid rgba(245,130,10,.25);border-radius:4px;padding:1px 5px;color:#ffd9a8;}

@@ -530,6 +530,7 @@ const FALLBACK_AGENT_SYSTEMS = {
 /* A quiz question is checked before a child sees it, the same way the coder's ops are.
    Lives in ai/quiz-check.js so it can be tested on its own — see tools/check-quiz.js. */
 const cleanQuizQuestion = require('./ai/quiz-check').cleanQuizQuestion;
+const cleanGrade = require('./ai/grade-check').cleanGrade;
 /* One turn with the model. Returns { content, assistant, toolCalls } — toolCalls is empty
    unless tools were offered and the model chose to use one. `msgs` is the running conversation
    (history, the new message, and any tool traffic already exchanged). */
@@ -672,7 +673,15 @@ app.post('/api/ai', async (req, res) => {
       const level = ['log', 'warn', 'error'].indexOf(l && l.level) >= 0 ? l.level : 'log';
       const n = Math.max(1, Math.min(9999, parseInt((l && l.n) || 1, 10) || 1));
       return { level: level, text: String((l && l.text) || '').slice(0, 300), n: n };
-    }).filter(function (l) { return l.text; }) : []
+    }).filter(function (l) { return l.text; }) : [],
+    /* What a practice step asked for, and what the student changed in response. `changedCode` is a
+       diff rather than the whole project: the grader is judging one specific task, and handing it
+       6000 lines to find a two-line change in is how it ends up judging the wrong thing. */
+    taskTitle: String(b.taskTitle || '').slice(0, 200),
+    taskSteps: Array.isArray(b.taskSteps)
+      ? b.taskSteps.slice(0, 12).map(function (s) { return String(s || '').slice(0, 300); }).filter(Boolean)
+      : [],
+    changedCode: String(b.changedCode || '').slice(0, 6000)
   };
 
   // Tier 2: when this agent has tools switched on, it may look things up instead of guessing.
@@ -688,8 +697,8 @@ app.post('/api/ai', async (req, res) => {
     return res.json({ reply: (raw || '').trim() || 'Hmm, I am not sure — try rephrasing.' });
   }
 
-  // QUIZ / GRADER. The grader's JSON is passed through (nothing calls it yet); the quiz's is
-  // checked first, because that one is shown to a child as if it were correct.
+  // QUIZ / GRADER. Both are shown to a child as if they were correct, so neither is trusted:
+  // the quiz's answer key is checked, and the grader's verdict is checked against its own hint.
   if (agent === 'quiz' || agent === 'grader') {
     let raw;
     const agentSystem = ai.buildPrompt(agent, ctx) || FALLBACK_AGENT_SYSTEMS[agent];
@@ -703,7 +712,14 @@ app.post('/api/ai', async (req, res) => {
       if (!q) console.warn('[ai] dropped a malformed quiz question: ' + JSON.stringify(parsedAgent).slice(0, 300));
       return res.json({ result: q || {} });
     }
-    return res.json({ result: parsedAgent });
+    /* The grader is the one agent whose reply can tell a child their work is not good enough, so
+       it gets the strictest treatment of the three: a real boolean verdict, a hint, and the two
+       agreeing with each other. Anything else returns `{}`, which the browser reads as "I could
+       not check this" and never as a fail. Refusing a student who did the work is the expensive
+       mistake; letting one through is not. */
+    const g = cleanGrade(parsedAgent);
+    if (!g) console.warn('[ai] dropped a malformed grade: ' + JSON.stringify(parsedAgent).slice(0, 300));
+    return res.json({ result: g || {} });
   }
 
   // CODER (default): return ops the browser applies to game.js.

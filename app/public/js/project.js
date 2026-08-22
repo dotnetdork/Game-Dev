@@ -91,7 +91,55 @@ function fileNames() { const out = project.order.filter(function (n) { return pr
 const CONFIG_FILE = 'config.js';
 // Projects saved before the starter was split still keep CONFIG inside game.js.
 function configFile() { return typeof project.files[CONFIG_FILE] === 'string' ? CONFIG_FILE : 'game.js'; }
-function validJS(code) { try { new Function(code); return true; } catch (e) { return false; } } // parse-check only, never runs
+/* ---------- does this code look structurally whole? ----------
+   This used to be `try { new Function(code); return true } catch { return false }`, which reads
+   like the obvious answer and **never worked in the browser at all**.
+
+   The app's own Content Security Policy sets `script-src 'self' 'unsafe-inline'` with no
+   'unsafe-eval' (server.js), and `new Function` is eval. So every call threw EvalError, the catch
+   swallowed it, and validJS returned false for every input it was ever given — including code that
+   was perfectly fine. Two features quietly depended on it:
+     - ai.js:97  marked every proposed AI change as "broken code"
+     - ai.js:311 gated applying a CONFIG-only tweak, so those were never applied
+   Nothing looked broken from the outside, which is why it lasted. It only surfaced when a practice
+   rule started reporting a syntax error in a file that plainly had none.
+
+   So: a scanner instead of an evaluator. It walks the source skipping comments, strings and
+   template literals, and checks that (), [] and {} balance and that no string or block comment is
+   left open. That is not a parser and does not pretend to be — it will not notice `let 1x = 2`.
+   It does catch the errors that actually happen: an unclosed brace, a missing bracket, a quote
+   left open. Those are what a student produces and what a model truncating its output produces.
+
+   Deliberately conservative about what it calls broken, because a false "your game is broken"
+   blocks a student who has done nothing wrong. */
+function validJS(code) {
+  const s = String(code == null ? '' : code);
+  const want = { ')': '(', ']': '[', '}': '{' };
+  const stack = [];
+  let i = 0;
+  while (i < s.length) {
+    const c = s[i], n = s[i + 1];
+    if (c === '/' && n === '/') { const nl = s.indexOf('\n', i); if (nl < 0) break; i = nl + 1; continue; }
+    if (c === '/' && n === '*') { const e = s.indexOf('*/', i + 2); if (e < 0) return false; i = e + 2; continue; }
+    if (c === '"' || c === "'" || c === '`') {
+      const q = c; i++;
+      let closed = false;
+      while (i < s.length) {
+        if (s[i] === '\\') { i += 2; continue; }
+        if (s[i] === q) { closed = true; i++; break; }
+        // A plain quote does not survive a newline; a template literal does.
+        if (q !== '`' && s[i] === '\n') break;
+        i++;
+      }
+      if (!closed) return false;
+      continue;
+    }
+    if (c === '(' || c === '[' || c === '{') { stack.push(c); i++; continue; }
+    if (c === ')' || c === ']' || c === '}') { if (stack.pop() !== want[c]) return false; i++; continue; }
+    i++;
+  }
+  return stack.length === 0;
+}
 
 /* read the CONFIG object's numeric keys (client-side) */
 function parseConfig(code) {
@@ -269,7 +317,7 @@ const SKEY = 'leagueProgress';
    student asks is "have I got the Bug Hunter badge", not "what did lesson 3.2 give me".
    No schema bump needed: loadState() merges DEFAULT_STATE first, so an older save gains the key
    with an empty object — which is exactly the case check-state.js already covers. */
-const DEFAULT_STATE = { v: SCHEMA.progress, xp: 0, stars: 250, done: {}, modDone: {}, unlocked: {}, published: [], activities: {}, labs: {}, badges: {} };
+const DEFAULT_STATE = { v: SCHEMA.progress, xp: 0, stars: 250, done: {}, modDone: {}, unlocked: {}, published: [], activities: {}, labs: {}, badges: {}, practice: {} };
 function loadState() {
   const raw = Storage.read(SKEY);
   if (!raw) return Object.assign({}, DEFAULT_STATE);
@@ -311,6 +359,159 @@ function saveLabState(lessonId, key, patch) {
 function clearLabState(lessonId, key) {
   if (state.labs) delete state.labs[labKey(lessonId, key)];
   saveState();
+}
+
+/* ---------- practice state ----------
+   A practice step asks the student to change their OWN game, so unlike a quiz there is no answer
+   to compare against — only a before and an after. `snap` is their project as it stood when they
+   first opened the step, which is what makes "did anything actually change?" answerable at all.
+
+   No schema bump: this is a new key with an empty default, and loadState() merges DEFAULT_STATE
+   before the saved values, so an older save simply gains it. Same reasoning as badges above — a
+   migration is for a shape that CHANGED, and nothing here did. */
+function practiceKey(lessonId, key) { return (lessonId || 'l') + ':' + key; }
+function practiceState(lessonId, key) {
+  if (!state.practice) state.practice = {};
+  return state.practice[practiceKey(lessonId, key)] || null;
+}
+function savePracticeState(lessonId, key, patch) {
+  if (!state.practice) state.practice = {};
+  const k = practiceKey(lessonId, key);
+  state.practice[k] = Object.assign(
+    { snap: null, tries: 0, helped: false, passed: false }, state.practice[k], patch);
+  saveState();
+  return state.practice[k];
+}
+/* Taken once, when the step is first RENDERED — that is, when the student first sees the task —
+   and never overwritten afterwards.
+
+   Both halves of that matter. Taking it later, on the first press of Check, seems tidier and is
+   wrong: the ordinary way to do a practice step is to read it, go to the Code tab, do the work, and
+   then press Check. Snapshot at that press and "before" already contains their work, so
+   `changed_at_least` sees nothing changed and fails the student who did it properly.
+   Never overwriting matters for the opposite reason: re-rendering on every visit would keep moving
+   "before" forward, and work done in an earlier session would stop counting. */
+function practiceSnapshot(lessonId, key) {
+  const p = practiceState(lessonId, key);
+  if (p && p.snap) return p.snap;
+  const snap = {};
+  fileNames().forEach(function (n) { snap[n] = project.files[n]; });
+  return savePracticeState(lessonId, key, { snap: snap }).snap;
+}
+
+/* ---------- checking a practice step by reading the student's code ----------
+   Deterministic where a program can be certain, which is most of the time. This runs in the
+   browser, costs nothing, works with no network, and cannot be argued with — the AI is only asked
+   about the tasks where "did they do it?" is a genuine judgement.
+
+   Every rule is one key in a `check:` list in the lesson. Unknown rule names FAIL LOUDLY rather
+   than passing quietly: a typo in a rule name that silently means "yes" would hand out badges for
+   nothing, which is the exact failure this whole feature exists to remove. */
+function practiceRuleResult(rule, snap) {
+  const files = project.files;
+  const readFile = function (name) { return typeof files[name] === 'string' ? files[name] : ''; };
+  const allCode = function () { return fileNames().map(readFile).join('\n'); };
+
+  if (rule.contains) {
+    const f = rule.contains.file, t = String(rule.contains.text || '');
+    const hay = f ? readFile(f) : allCode();
+    return { ok: hay.indexOf(t) >= 0, why: 'nothing in ' + (f || 'your game') + ' contains "' + t + '" yet' };
+  }
+  if (rule.matches) {
+    const f = rule.matches.file, src = String(rule.matches.regex || '');
+    let re; try { re = new RegExp(src, 'm'); } catch (e) { return { ok: false, bad: 'the `matches:` pattern is not a valid regular expression: ' + src }; }
+    return { ok: re.test(f ? readFile(f) : allCode()), why: 'nothing in ' + (f || 'your game') + ' matches that pattern yet' };
+  }
+  if (rule.config_changed) {
+    const keys = Array.isArray(rule.config_changed) ? rule.config_changed : [rule.config_changed];
+    const cf = configFile();
+    const before = parseConfig(String((snap && snap[cf]) || '')), after = parseConfig(readFile(cf));
+    const moved = keys.filter(function (k) { return before[k] !== after[k]; });
+    return { ok: moved.length > 0, why: keys.join(' or ') + ' is still the number it started at' };
+  }
+  if (rule.function_added) {
+    const name = String(rule.function_added);
+    const had = topLevelNames(String((snap && Object.keys(snap).map(function (n) { return snap[n]; }).join('\n')) || ''));
+    const has = topLevelNames(allCode());
+    return { ok: has.indexOf(name) >= 0 && had.indexOf(name) < 0,
+      why: 'there is no new function called ' + name + ' yet' };
+  }
+  if (rule.function_kept) {
+    const name = String(rule.function_kept);
+    return { ok: topLevelNames(allCode()).indexOf(name) >= 0, why: name + ' is gone from your game' };
+  }
+  if (rule.called_in_update) {
+    /* Inside update(), not merely present in the file. fnBodyEnd skips strings and comments, so a
+       call that is commented out does not count — which is the difference between "I wrote it" and
+       "it runs". */
+    const name = String(rule.called_in_update);
+    const hit = fileNames().some(function (n) {
+      const code = readFile(n);
+      const end = fnBodyEnd(code, 'update');
+      if (end < 0) return false;
+      const open = code.indexOf('{', code.search(/function\s+update\s*\(/));
+      if (open < 0 || open >= end) return false;
+      return code.slice(open, end).indexOf(name) >= 0;
+    });
+    return { ok: hit, why: name + ' is not being called inside update() yet' };
+  }
+  if (rule.new_file) {
+    const before = snap ? Object.keys(snap) : [];
+    const added = fileNames().filter(function (n) { return before.indexOf(n) < 0; });
+    return { ok: added.length > 0, why: 'no new file has been added to your project yet' };
+  }
+  if (typeof rule.changed_at_least === 'number') {
+    let n = 0;
+    fileNames().forEach(function (name) {
+      const before = (snap && typeof snap[name] === 'string') ? snap[name] : '';
+      const rows = lineDiff(before, readFile(name));
+      if (rows) { const c = countChanges(rows); n += c.added + c.removed; }
+    });
+    return { ok: n >= rule.changed_at_least,
+      why: 'only ' + n + ' line(s) of your game have changed so far' };
+  }
+  if (rule.parses) {
+    const broken = fileNames().filter(function (n) { return !validJS(readFile(n)); });
+    return { ok: broken.length === 0, why: broken.length ? broken[0] + ' has a syntax error in it' : '' };
+  }
+  const named = Object.keys(rule).filter(function (k) { return k !== 'hint'; });
+  return { ok: false, bad: 'unknown check rule ' + JSON.stringify(named) + ' — see AUTHORING.md' };
+}
+
+/* What changed since the snapshot, as a diff, for the grader to read.
+   A diff rather than the whole project on purpose: the grader is judging one specific task, and
+   handing a model six thousand lines to find a two-line change in is how it ends up confidently
+   judging the wrong code. Per file, only the changed lines with a little context. */
+function practiceDiff(snap) {
+  const out = [];
+  fileNames().forEach(function (name) {
+    const before = (snap && typeof snap[name] === 'string') ? snap[name] : '';
+    const after = typeof project.files[name] === 'string' ? project.files[name] : '';
+    if (before === after) return;
+    const rows = lineDiff(before, after);
+    if (!rows) { out.push('--- ' + name + ' --- (too large to diff)'); return; }
+    const body = diffHunks(rows, 2)
+      .map(function (r) { return (r.t === '…' ? '…' : r.t + ' ' + r.text); }).join('\n');
+    out.push('--- ' + name + ' ---\n' + body);
+  });
+  return out.join('\n\n').slice(0, 6000);
+}
+
+/* Runs every rule and returns the first failure's hint, because a student given four things wrong
+   at once fixes none of them. `bad` is an authoring error, kept separate from a student's work not
+   being done yet: one is our bug and one is theirs, and telling them apart matters. */
+function checkPracticeRules(rules, snap) {
+  if (!Array.isArray(rules) || !rules.length) return { pass: null, hint: '', authoring: [] };
+  const authoring = [];
+  let firstFail = null;
+  rules.forEach(function (rule) {
+    if (!rule || typeof rule !== 'object') { authoring.push('a `check:` entry is not a set of keys'); return; }
+    const r = practiceRuleResult(rule, snap);
+    if (r.bad) { authoring.push(r.bad); return; }
+    if (!r.ok && !firstFail) firstFail = { hint: rule.hint || r.why };
+  });
+  if (authoring.length) return { pass: null, hint: '', authoring: authoring };
+  return { pass: !firstFail, hint: firstFail ? firstFail.hint : '', authoring: [] };
 }
 /* ---------- badges ----------
    Earned by doing the technique in your OWN game, which is why they cannot be bought with Stars:

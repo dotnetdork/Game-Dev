@@ -189,6 +189,44 @@ function maybeAskQuiz(en) {
     })
     .catch(function () { /* a check is a bonus, never an interruption */ });
 }
+/* ---------- grading a practice step ----------
+   Called only when the deterministic rules in project.js could not settle it — either the task has
+   no rules authored, or it has some and they passed but the goal itself needs judgement. Returns
+   { pass, hint } or null, where null means "could not check" and NEVER means fail. The server drops
+   any reply it cannot vouch for (ai/grade-check.js), so null arrives here as an empty result. */
+function gradePractice(task, changed) {
+  const c = aiContext();
+  return fetch('/api/ai', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({
+    studentId: studentId, agent: 'grader',
+    message: 'Decide whether the student has done the task. Answer with JSON only.',
+    taskTitle: task.title || '', taskSteps: task.steps || [],
+    changedCode: changed,
+    lessonTitle: c.lessonTitle, lessonContext: c.lessonContext,
+    code: (project.files && project.files['game.js']) || '', files: c.files
+  }) })
+    .then(function (r) { return r.json(); })
+    .then(function (d) {
+      const g = d && d.result;
+      // Second net, same as the quiz card above. A reply missing either half is not a verdict.
+      if (!g || typeof g.pass !== 'boolean' || typeof g.hint !== 'string' || !g.hint.trim()) return null;
+      return g;
+    })
+    .catch(function () { return null; });   // offline or a 502: could not check, so never a fail
+}
+
+/* Hand the practice task to the assistant with everything it needs already loaded, so a stuck
+   student can talk it through instead of guessing at what the checker wants. */
+function askAboutPractice(task) {
+  const steps = (task.steps || []).map(function (s, i) { return (i + 1) + '. ' + s; }).join('\n');
+  const msg = 'I am working on this in my own game and I think I have done it, but the check does '
+    + 'not agree:\n\n' + (task.title || '') + '\n' + steps
+    + '\n\nCan you look at my code and tell me what is missing?';
+  if (typeof showAI === 'function') showAI();
+  if (typeof setAIMode === 'function') setAIMode('tutor');
+  const box = $('aiText');
+  if (box) { box.value = msg; box.focus(); }
+}
+
 function renderQuizCard(en) {
   const wrap = document.createElement('div'); wrap.className = 'msg bot quizcard';
   const h = document.createElement('div'); h.className = 'qc-h';
