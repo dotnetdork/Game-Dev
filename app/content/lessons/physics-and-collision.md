@@ -100,6 +100,22 @@ The famous one is **tunnelling**. If a bullet moves 40 pixels a frame and a wall
 thick, then on one frame the bullet is in front of the wall and on the next it's behind it. It was
 never *inside* the wall, so nothing ever noticed a collision, and the bullet sails straight through.
 
+```run
+// @goal: Make the bullet fast enough to skip the wall. The wall fills 100 to 120.
+// @slider: speed 5 60 5 40
+let x = 0, frame = 0, everInside = false;
+while (x < 140 && frame < 60) {                  // keep going until it is past the wall
+  frame = frame + 1;
+  x = x + speed;
+  const inside = x > 100 && x < 120;
+  if (inside) everInside = true;
+  if (x > 60) console.log("frame " + frame + ": bullet at " + x + (inside ? "   <- inside the wall" : ""));
+}
+console.log(everInside
+  ? "It was inside the wall on a frame, so the collision check saw it. A hit."
+  : "Never inside the wall on any frame — nothing was ever there to notice. It tunnelled.");
+```
+
 If something fast is going through something thin, that's almost always why.
 
 ```challenge

@@ -27,6 +27,17 @@ game is open.
   <figcaption>The green dot is one <b>frame</b> going round. The dashed arrow back to the start is the whole trick: nothing would move without it.</figcaption>
 </figure>
 
+```run
+// @goal: Run the loop by hand. Change how many frames go by and watch the box travel.
+// @slider: frames 1 12 1 4
+let x = 0;
+for (let f = 1; f <= frames; f++) {
+  x = x + 4;                                     // update
+  console.log("frame " + f + " — read the keys, move the box to x=" + x + ", draw it");
+}
+console.log("after " + frames + " frames the box has moved " + x + " pixels");
+```
+
 That's it. Minecraft is doing that. Fortnite is doing that. The game you are about to build is
 doing that.
 

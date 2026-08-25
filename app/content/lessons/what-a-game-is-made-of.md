@@ -10,6 +10,16 @@ Open any game's folder and you'll find thousands of files. Almost none of them a
 A game is mostly **assets**: pictures, sounds, fonts, maps. The code is the small part that decides
 what to do with them. Minecraft is a few hundred textures and a rulebook.
 
+```run
+// @goal: Change how much art the game has, and watch what happens to the share that is code.
+// @slider: assetFiles 20 3000 20 1200
+const codeFiles = 40;
+const total = assetFiles + codeFiles;
+console.log("pictures, sounds and maps: " + assetFiles);
+console.log("files of code:             " + codeFiles);
+console.log("code is " + (codeFiles / total * 100).toFixed(1) + "% of this game");
+```
+
 ## Sprites and sprite sheets
 
 <figure class="art aside">
@@ -88,6 +98,19 @@ isn't a picture; it's a list of numbers saying which tile goes where.
 It has a second benefit that matters more today: a tilemap is **data**, so a level can be edited,
 generated, or loaded from a file without touching any code. Minecraft is this idea taken to its
 logical extreme.
+
+```run
+// @goal: A level is a list of numbers. Change how wide it is and read both the data and the picture.
+// @slider: width 4 16 1 10
+const tiles = ["sky", "grass", "brick"];
+let level = [];
+for (let i = 0; i < width; i++) {
+  level.push(i === 0 || i === width - 1 ? 2 : (i % 3 === 0 ? 1 : 0));
+}
+console.log("stored as data:  " + level.join(" "));
+console.log("drawn as tiles:  " + level.map(function (n) { return tiles[n]; }).join(", "));
+console.log("that whole level is " + level.length + " numbers, not a picture");
+```
 
 ## Why file size matters
 

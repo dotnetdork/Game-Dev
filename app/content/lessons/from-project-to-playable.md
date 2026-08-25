@@ -20,6 +20,18 @@ into one thing another person can actually open:
 - Shrink the pictures and pack them up.
 - Bundle it into whatever shape the target platform expects.
 
+```run
+// @goal: Build the same game two ways. Change how much art it has and compare what comes out.
+// @slider: artMB 1 40 1 8
+const codeKB = 240;                              // your files, with every comment and space
+const squashedKB = Math.round(codeKB * 0.4);     // what is left after a build squashes them
+const web = artMB + squashedKB / 1024;
+const engineMB = 55;                             // a native build carries the engine inside it
+console.log("your code: " + codeKB + " KB  ->  " + squashedKB + " KB once built");
+console.log("web build:    " + web.toFixed(1) + " MB   (the browser is already the runtime)");
+console.log("native build: " + (web + engineMB).toFixed(1) + " MB   (your game plus a whole engine)");
+```
+
 The build is not your project. It's a *copy*, arranged for a stranger.
 
 ## Why Windows wants an .exe
@@ -68,6 +80,16 @@ So a web build is just: files on a server, and a link. No installer, no download
 
 That's why this course uses Phaser. Not because it's the most powerful engine — it isn't — but
 because the distance between "it works on my machine" and "my cousin is playing it" is one link.
+
+```run
+// @goal: Count the steps between "finished" and "somebody is playing".
+// @slider: downloadMB 5 400 5 120
+const web = ["click the link", "playing"];
+const native = ["download " + downloadMB + " MB", "unzip it", "click past the warning", "install", "playing"];
+console.log("web:    " + web.join("  ->  "));
+console.log("native: " + native.join("  ->  "));
+console.log(native.length - web.length + " extra steps, and every one of them is people who stop.");
+```
 
 ## The trade-off you are choosing
 
