@@ -166,7 +166,14 @@ function buildRunCell(code) {
     // Stamped during the census above, so it is the key this cell would have had either way.
     const key = code.getAttribute('data-wkey'), tok = widgetToken(key);
     const cell = document.createElement('div'); cell.className = 'runcell';
-    if (goal) { const g = document.createElement('div'); g.className = 'run-goal'; g.innerHTML = '<span class="mdi mdi-target"></span>'; g.appendChild(document.createTextNode(goal)); cell.appendChild(g); }
+    /* The goal line is also the cell's header row, and Run sits at the right of it — the same shape
+       as every other block: what this is on the left, what to do about it on the right. It used to
+       have a bar of its own between the code and the output, which put the one button in the cell
+       halfway down it with the answer appearing below. */
+    const head = document.createElement('div'); head.className = 'run-goal';
+    if (goal) { head.innerHTML = '<span class="mdi mdi-target"></span>'; head.appendChild(document.createTextNode(goal)); }
+    const side = document.createElement('div'); side.className = 'run-side';
+    head.appendChild(side);
     const sEls = {};
     if (sliders.length) {
       const sw = document.createElement('div'); sw.className = 'run-sliders';
@@ -195,7 +202,6 @@ function buildRunCell(code) {
     } else { ta.rows = Math.max(1, src.split('\n').length); host.appendChild(ta); }
     const readCode = function () { return editor ? editor.getValue() : ta.value; };
 
-    const bar = document.createElement('div'); bar.className = 'runbar';
     const btn = document.createElement('button'); btn.type = 'button'; btn.className = 'runbtn'; btn.innerHTML = '<span class="mdi mdi-play"></span>Run';
     const status = document.createElement('span'); status.className = 'run-status';
     /* The iframe is here to RUN the code safely, not to show it. A run cell only ever produces
@@ -234,9 +240,12 @@ function buildRunCell(code) {
        press Run. Sliders re-run on input, so the button is noise — and the cell starts already
        run, so there is something to watch change. */
     const liveSliders = sliders.length > 0 && !expect;
-    if (!liveSliders) { btn.addEventListener('click', run); bar.appendChild(btn); }
-    bar.appendChild(status);
-    cell.appendChild(host); if (!liveSliders) cell.appendChild(bar);
+    side.appendChild(status);
+    if (!liveSliders) { btn.addEventListener('click', run); side.appendChild(btn); }
+    /* A header with neither a goal nor a button is an empty bar, so it is left out entirely. That is
+       a live-slider cell with no @goal: it runs itself and has nothing to announce. */
+    if (goal || !liveSliders) cell.insertBefore(head, cell.firstChild);
+    cell.appendChild(host);
     cell.appendChild(outText); cell.appendChild(out);
     pre.parentNode.replaceChild(cell, pre);
     if (editor) editor.refresh();       // only now does it have a box to measure

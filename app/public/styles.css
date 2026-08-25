@@ -195,13 +195,20 @@ body[data-tier="narrow"] .dock.left{--floatw:min(300px,84vw);}
 .parsons-row{cursor:grab;user-select:none;}
 .parsons-row.dragging{opacity:.45;}
 .parsons-row.over{border-color:var(--azure);box-shadow:inset 0 0 0 1px var(--azure);}
-.run-goal{display:flex;align-items:center;gap:8px;padding:8px 12px;background:#0d2440;border-bottom:1px solid var(--line);font-size:13px;color:#c3d3e6;}
+/* The goal line is the cell's header row: what this is on the left, what to do about it on the
+   right. Same shape as .block-hd, for the same reason — an action belongs beside the thing it acts
+   on, not on a strip of its own halfway down the block. */
+.run-goal{display:flex;align-items:center;gap:8px;padding:6px 12px;background:#0d2440;border-bottom:1px solid var(--line);font-size:13px;color:#c3d3e6;min-height:38px;}
 .run-goal .mdi{color:var(--gold);}
+.run-goal .mdi:first-child{flex:none;}
+.run-side{margin-left:auto;display:flex;align-items:center;gap:10px;flex:none;}
 .run-sliders{padding:8px 12px;border-bottom:1px solid var(--line);display:flex;flex-direction:column;gap:8px;background:#0d2440;}
 .run-slider{display:flex;align-items:center;gap:10px;font-size:12.5px;color:#c3d3e6;}
 .run-slider .rs-name{min-width:130px;} .run-slider .rs-name b{color:var(--teal);}
 .run-slider input[type=range]{flex:1;}
-.run-status{font-size:12.5px;margin-left:8px;align-self:center;} .run-status.ok{color:var(--green);} .run-status.no{color:var(--gold);}
+/* No margin: it sits in .run-side, whose gap already spaces it from the button. */
+.run-status{font-size:12.5px;align-self:center;} .run-status.ok{color:var(--green);} .run-status.no{color:var(--gold);}
+.run-status:empty{display:none;}
 .quiz-code{background:#08121f;border:1px solid var(--line);border-radius:8px;padding:10px 12px;font-family:Consolas,monospace;font-size:13px;color:#cfe0f2;white-space:pre-wrap;margin:0 0 4px;overflow-x:auto;}
 .parsons-hint{font-size:12.5px;color:var(--dim);margin-top:6px;line-height:1.5;}
 .fill-code{background:#08121f;border:1px solid var(--line);border-radius:8px;padding:10px 12px;font-family:Consolas,monospace;font-size:13px;color:#cfe0f2;white-space:pre-wrap;}
@@ -680,7 +687,6 @@ body.resizing-v #gameFrame{pointer-events:none;}
 .runcell .run-editor .CodeMirror-scroll{min-height:0;}
 .runcell .run-editor .CodeMirror-lines{padding:2px 0;}
 .runcell textarea{width:100%;border:0;background:#08121f;color:#cfe0f2;font-family:Consolas,monospace;font-size:13px;line-height:1.6;padding:10px 12px;resize:vertical;display:block;}
-.runcell .runbar{display:flex;justify-content:flex-end;padding:6px 8px;background:var(--panel2);}
 .runcell .runbtn{background:var(--teal);color:#04231d;border:0;border-radius:6px;padding:5px 12px;font-weight:600;cursor:pointer;display:inline-flex;align-items:center;gap:6px;}
 /* Output is rendered in the page, so it is sized by its own content and can never scroll
    inside a box of its own.
@@ -1293,7 +1299,6 @@ body.resizing-v #gameFrame{pointer-events:none;}
 .lesson-content > .challenge-mini > .ch-body,
 .lesson-content > .yourturn > .yt-body{padding:0;}
 .lesson-content > .yourturn > .yt-foot{background:none;border:0;padding:14px 0 0;}
-.lesson-content > .runcell > .runbar{background:none;padding:8px 0 0;}
 
 /* ---------- pictures and diagrams ----------
    A diagram is one of the "wide" things: it earns the full block, not the prose measure, because
