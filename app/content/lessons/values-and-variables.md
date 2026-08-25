@@ -48,6 +48,16 @@ Three kinds cover almost everything a game needs:
 | **Text** | `"Game Over"`, `"player"` | Names, messages, asset keys |
 | **True/false** | `true`, `false` | Is the door open? Is the player alive? |
 
+```run
+// @goal: All three kinds from one number. Change the score and watch them all react.
+// @slider: score 0 20 1 12
+const message = score >= 10 ? "You win!" : "Keep going";
+const hasWon = score >= 10;
+console.log("number:      " + score);
+console.log("text:        \"" + message + "\"");
+console.log("true/false:  " + hasWon);
+```
+
 The true/false one is called a **boolean**, and beginners under-use it. If your code says
 `let doorState = 1` and you have to remember that 1 means open, use `let doorOpen = true` instead.
 
@@ -77,6 +87,20 @@ Three words make a variable, and the difference matters:
 
 Prefer `const` where you can. If a value shouldn't change halfway through, saying so means the
 computer catches you when you accidentally change it — instead of you finding out from a bug.
+
+```run
+// @goal: Change a let, then try to change a const. One of these is refused, and that is the point.
+let score = 0;
+const startingLives = 3;
+score = score + 10;
+console.log("score changed to " + score + "   (let — allowed)");
+try {
+  startingLives = 99;
+  console.log("lives changed to " + startingLives);
+} catch (e) {
+  console.log("lives refused to change   (const — " + e.message + ")");
+}
+```
 
 ## Names you will thank yourself for
 

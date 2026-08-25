@@ -10,6 +10,19 @@ Read the controls. Move things. Notice when they touch.
 Nearly every game ever made is those three, arranged differently. Mario is those three. Minecraft
 is those three. The game you're building is those three.
 
+```run
+// @goal: All three verbs, one frame at a time. Change how long the left key is held.
+// @slider: framesHeld 0 20 1 12
+let x = 200;
+for (let f = 1; f <= 20; f++) {
+  const leftIsDown = f <= framesHeld;            // read
+  if (leftIsDown) x = x - 12;                    // move
+  if (x <= 0) { console.log("frame " + f + ": touched the wall, stopped"); x = 0; break; }
+}
+console.log("left held for " + framesHeld + " of 20 frames");
+console.log("the player ended up at x = " + x);
+```
+
 ## Reading the keys
 
 <figure class="art aside">
@@ -45,6 +58,21 @@ the player jump sixty times a second.
 
 > Walking wants **isDown**. Jumping wants **JustDown**. Mixing them up is why a player sometimes
 > flies off the top of the screen.
+
+```run
+// @goal: Hold the jump key down. Count the jumps each way and see why one of them launches you.
+// @slider: framesHeld 1 30 1 20
+let withIsDown = 0, withJustDown = 0, wasDown = false;
+for (let f = 1; f <= 30; f++) {
+  const down = f <= framesHeld;
+  if (down) withIsDown = withIsDown + 1;
+  if (down && !wasDown) withJustDown = withJustDown + 1;
+  wasDown = down;
+}
+console.log("jump key held for " + framesHeld + " frames");
+console.log("isDown   -> " + withIsDown + " jumps");
+console.log("JustDown -> " + withJustDown + " jump");
+```
 
 ## Moving with velocity
 
@@ -92,6 +120,22 @@ Coins want `overlap`: you walk into them and they vanish. Floors want `collider`
 and stop.
 
 Both go in `create()`. You're registering the rule once; Phaser applies it every frame after that.
+
+```run
+// @goal: The same touch, under both rules. Switch between them.
+// @slider: useCollider 0 1 1 0
+let playerX = 95;
+const thingStartsAt = 100;
+console.log("player at x = " + playerX + ", the thing starts at x = " + thingStartsAt);
+console.log("do they touch? " + (playerX + 20 > thingStartsAt));
+if (useCollider === 1) {
+  playerX = thingStartsAt - 20;
+  console.log("collider: noticed AND pushed apart — stopped at x = " + playerX);
+} else {
+  playerX = playerX + 10;
+  console.log("overlap:  noticed, and let straight through — now at x = " + playerX);
+}
+```
 
 ## Overlap or collide?
 

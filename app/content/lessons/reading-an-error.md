@@ -20,6 +20,20 @@ the exact line where I got stuck, and here is what I was expecting instead.*
 
 Read it. It's shorter than it looks, and only two parts matter.
 
+```run
+// @goal: Cause a real error on purpose, then read it. Slide to 1 to make the player exist.
+// @slider: makeThePlayer 0 1 1 0
+let player;
+if (makeThePlayer === 1) player = { x: 120 };
+try {
+  console.log("the player is at x = " + player.x);
+} catch (e) {
+  console.log(e.name + ": " + e.message);
+  console.log("WHAT: something is undefined, and the code asked it for .x");
+  console.log("WHERE: the line just above — which is where to look first.");
+}
+```
+
 ## Where it happened, and what it expected
 
 <figure class="diagram">
@@ -74,6 +88,19 @@ The method is boring and it always works:
 2. **Make a guess.** "I think `player` is undefined because it's created in the wrong function."
 3. **Check the guess** — one change, or one `console.log`, that would prove it true or false.
 4. **Repeat.** A wrong guess is progress: you've eliminated something.
+
+```run
+// @goal: Two suspects, one check each. Change which one you look at.
+// @slider: suspect 1 2 1 1
+const player = { x: 40 };
+let enemy;                                   // never created
+const looking = suspect === 1 ? player : enemy;
+console.log("guess: suspect " + suspect + " is the undefined one");
+console.log("check: it is " + (looking === undefined ? "undefined   <- found it" : JSON.stringify(looking)));
+console.log(looking === undefined
+  ? "One log, one answer."
+  : "Guess was wrong — and you have still eliminated one of the two. That is progress.");
+```
 
 The single most useful tool here is `console.log`. Put it just before the broken line and print the
 thing you suspect:
