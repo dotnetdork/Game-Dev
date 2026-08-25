@@ -19,6 +19,18 @@ number that swells and shrinks instead of just changing.
 
 None of it affects whether you win. All of it affects whether you want to keep playing.
 
+```run
+// @goal: Add layers of juice to one hit. Watch the rule underneath refuse to change.
+// @slider: layers 0 5 1 0
+const all = ["a flash", "knockback", "particles", "a screen shake", "a sound"];
+const added = all.slice(0, layers);
+console.log("the rule:      enemy.health = enemy.health - 10");
+console.log("wrapped in:    " + (added.length ? added.join(", ") : "nothing"));
+console.log("damage dealt:  10        (identical every time)");
+console.log(layers === 0 ? "Correct, and completely dead."
+  : layers + " layer(s) around a rule that did not change by one character.");
+```
+
 The clearest way to see it: play Vampire Survivors, or a Mario game, and imagine the same game with
 every effect stripped out. Same rules, same difficulty, completely dead.
 
@@ -93,6 +105,17 @@ where their points went.
 
 The one to be careful with is **duration**. Anything the player is waiting on should be under about
 200ms. Decoration can be slower. A tween that makes someone wait is not juice, it's lag.
+
+```run
+// @goal: Tween a coin toward the score. Change how long it takes to get there.
+// @slider: durationMs 50 800 50 300
+const frames = Math.round(durationMs / 16);
+console.log("the coin rises 30px and fades over " + durationMs + "ms");
+console.log("about " + frames + " frames of movement, drawing the player's eye");
+console.log(durationMs <= 200
+  ? "Under 200ms — nobody is waiting on it."
+  : "Over 200ms. If the player is waiting on this, it stopped being juice and became lag.");
+```
 
 ## Particles, and knowing when to stop
 

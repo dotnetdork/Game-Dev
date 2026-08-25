@@ -18,6 +18,18 @@ art, that bug nobody but you has noticed.
 So finishing is something you **decide**. You pick a line, you stop adding, and you make what
 exists work properly.
 
+```run
+// @goal: Add one more feature before you call it done. Then one more. When does it go out?
+// @slider: extraFeatures 0 10 1 3
+const daysEach = 4, finishing = 5;
+console.log(extraFeatures + " more feature(s) first");
+console.log("building them:                 " + extraFeatures * daysEach + " days");
+console.log("finishing what already exists: " + finishing + " days");
+console.log(extraFeatures === 0
+  ? "Out in " + finishing + " days, and somebody else is playing it."
+  : "Out in " + (extraFeatures * daysEach + finishing) + " days — if no new idea turns up in the meantime.");
+```
+
 Professionals do exactly this, with a name for each stage:
 
 - **Feature freeze** — no new features. Only finishing what's already started.
@@ -87,6 +99,17 @@ stuck and their hand goes to the mouse to close the tab.
 
 You will want to explain. Every explanation you give is a thing your game failed to say for itself —
 and when it's on the internet, you won't be there to say it.
+
+```run
+// @goal: Count what you had to explain while they played. Each one is a thing the game did not say.
+// @slider: explanations 0 8 1 4
+console.log("twenty minutes sitting behind them");
+console.log("times you opened your mouth: " + explanations);
+console.log(explanations === 0
+  ? "Nothing needed saying. The game said all of it itself."
+  : explanations + " thing(s) your game failed to explain — and online you will not be there to help.");
+console.log("that count is your fix list, and it is already in priority order.");
+```
 
 Write down what you saw, not what you'd like to be true. Then fix the top two things.
 

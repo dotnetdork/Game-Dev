@@ -18,12 +18,32 @@ A **sprite** is an image you can move around the screen. That's the whole defini
 It has a position, it has a size, and you can draw it anywhere. Everything else — walking,
 jumping, exploding — is you swapping *which* picture is shown, or *where*.
 
+```run
+// @goal: Flip through a walk cycle by hand. Change how many frames it has.
+// @slider: frames 2 8 1 4
+let strip = "";
+for (let f = 0; f < frames; f++) strip = strip + "[" + f + "] ";
+console.log("the walk cycle:  " + strip);
+console.log("shown in order, then straight back to [0] — forever");
+console.log(frames + " still pictures. Not one of them moves.");
+```
+
 ## Frames in a row
 
 An animation is a list of pictures and an order to show them in.
 
 Walking might be four **frames**: left foot forward, passing, right foot forward, passing. Show
 them in a loop and it walks. Show them backwards and it moonwalks.
+
+```run
+// @goal: Pick which frames off the sheet belong to this animation.
+// @slider: end 1 7 1 3
+const sheet = [0, 1, 2, 3, 4, 5, 6, 7];
+const used = sheet.slice(0, end + 1);
+console.log("the sheet holds frames " + sheet.join(", "));
+console.log("start: 0, end: " + end + "   ->   plays " + used.join(", "));
+console.log("that is a " + used.length + "-frame cycle");
+```
 
 In Phaser you describe it once in `create()`:
 
@@ -88,6 +108,20 @@ You'll tune this by feel, not by calculation. Set it, watch it, change it. That'
 One rule worth knowing: **the animation should match the movement speed.** A character sprinting
 across the screen while their legs amble looks wrong even if you can't say why — it's called
 "skating", and once you've noticed it you'll see it in games everywhere.
+
+```run
+// @goal: Match the legs to the speed. Find where it stops looking like skating.
+// @slider: moveSpeed 40 400 20 200
+const strideLength = 40;                                 // pixels covered by one step
+const cyclesPerSecond = moveSpeed / (strideLength * 2);  // a walk cycle is two steps
+const frameRate = Math.round(cyclesPerSecond * 4);       // four frames in that cycle
+console.log("moving at " + moveSpeed + " pixels per second");
+console.log("that is " + cyclesPerSecond.toFixed(1) + " walk cycles a second");
+console.log("so a 4-frame cycle needs about " + frameRate + " fps to keep up");
+console.log(frameRate <= 6 ? "reads as: heavy, plodding, tired"
+  : frameRate >= 18 ? "reads as: frantic, comic, panicked"
+  : "reads as: normal walking");
+```
 
 ## Facing the right way
 

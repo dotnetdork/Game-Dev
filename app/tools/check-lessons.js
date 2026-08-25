@@ -356,9 +356,12 @@ function checkImages(file, text) {
    The course already contains the answer: decisions-and-repeats puts its first activity 10% in and
    never runs more than 4 prose blocks together. It is not shorter than the others, it is
    interleaved. So these two numbers describe a shape the course has already proven it can hit.
-   REPORTED, not failed. 18 of 22 lessons would fail today, and a check that fails everything on the
-   day it lands gets switched off rather than fixed. It becomes fatal once the list is empty — the
-   same way the position-bias report below stays a report while the shuffle covers it. */
+   It landed as a REPORT because 18 of 22 lessons would have failed on day one, and a check that
+   fails everything the day it arrives gets switched off rather than fixed. The condition for making
+   it fatal was that the list reach empty. It has: all 22 lessons pass, the longest prose run
+   averages 5.5 blocks and the first activity 16% down. So it is fatal now, which is the only way it
+   stays true — a report nobody has to satisfy drifts back within a month of authoring.
+   The position-bias report below is still a report, on the same terms: the shuffle covers it. */
 const PROSE_RUN_MAX = 6;
 const FIRST_ACT_MAX_PCT = 25;
 const ACT_FENCES = ['quiz', 'challenge', 'yourturn', 'run'];
@@ -451,7 +454,8 @@ if (!shuffles) {
     + 'the same place every time and a student learns the position instead of the material.');
   process.exit(1);
 }
-/* ---- the pacing report ---- */
+/* ---- pacing: a hard failure now that the list is empty ---- */
+let pacingFailed = false;
 const slow = pacing.filter(function (p) {
   return p.longestProseRun > PROSE_RUN_MAX || p.firstActivityPct === null || p.firstActivityPct > FIRST_ACT_MAX_PCT;
 });
@@ -460,19 +464,30 @@ const avgFirst = Math.round(pacing.reduce(function (s, p) { return s + (p.firstA
 console.log('pacing: longest prose run averages ' + avgRun + ' blocks (target ≤' + PROSE_RUN_MAX
   + '), first activity averages ' + avgFirst + '% down (target ≤' + FIRST_ACT_MAX_PCT + '%)');
 if (slow.length) {
-  console.log('  ' + slow.length + ' of ' + pacing.length + ' lessons read as a wall of text — interleave, do not rewrite:');
+  pacingFailed = true;
+  console.error('FAIL  ' + slow.length + ' of ' + pacing.length + ' lessons read as a wall of text.');
   slow.sort(function (a, b) { return b.longestProseRun - a.longestProseRun; }).forEach(function (p) {
     const why = [];
     if (p.longestProseRun > PROSE_RUN_MAX) why.push(p.longestProseRun + ' prose blocks in a row');
     if (p.firstActivityPct === null) why.push('no activity at all');
     else if (p.firstActivityPct > FIRST_ACT_MAX_PCT) why.push('first activity ' + p.firstActivityPct + '% down');
-    console.log('    ' + p.file.replace(/\.md$/, '').padEnd(26) + why.join(', '));
+    console.error('    ' + p.file.replace(/\.md$/, '').padEnd(26) + why.join(', '));
   });
+  /* Says what to do, because the fix is not obvious from the numbers and the wrong fix is to cut
+     the writing. A `run` cell counts as an activity here but NOT toward completing a lesson (see
+     AUTHORING.md), so interleaving changes how a lesson reads without changing what it asks of a
+     student. A figure breaks a run too. A `.tip` callout does not — it is read as prose. */
+  console.error('  Interleave, do not rewrite: a short ```run cell or a figure breaks a run of prose,');
+  console.error('  and a run cell with no @expect adds nothing to what the lesson demands.');
 } else {
-  console.log('  every lesson interleaves: nothing to do, and these targets can become hard failures now.');
+  console.log('  every lesson interleaves');
 }
 
 console.log('answer positions authored: '
   + Object.keys(answerAt).sort().map(function (k) { return k + '×' + answerAt[k]; }).join(', ')
   + '  (shuffled at render, so position carries no information)');
 console.log('every quiz, lab and your-turn step renders with something to answer');
+
+// Last, so a pacing failure still prints everything else this tool checked rather than cutting the
+// report off at the first problem.
+if (pacingFailed) process.exit(1);
