@@ -18,6 +18,17 @@ Think about how you feel when a game is too easy: bored. Too hard: frustrated, t
 In between there's a narrow band where you're working, but you believe you can do it. Designers
 call it **flow**. It's the state where you look up and an hour has gone.
 
+```run
+// @goal: Set the difficulty against a player who is already twenty minutes in. Find the band.
+// @slider: difficulty 1 20 1 6
+const skill = 8;                          // how good they have got by now
+const gap = difficulty - skill;
+console.log("player skill: " + skill + "    difficulty: " + difficulty);
+console.log(gap < -2 ? "Too easy. Bored, and gone in another five minutes."
+  : gap > 2 ? "Too hard. Frustrated, then gone right now."
+  : "In the band. This is flow.");
+```
+
 The catch is that the band **moves**. What was hard twenty minutes ago is easy now, because you got
 better. So a game that stays at one difficulty will eventually bore everybody, no matter where it
 started.
@@ -92,6 +103,16 @@ You don't need clever code to control difficulty. You need numbers you can adjus
 
 Most games turn all three, slowly, at the same time. The mistake beginners make is turning them in
 big jumps — level 1 is trivial, level 2 is impossible.
+
+```run
+// @goal: Turn all three dials at once. Walk up the levels and watch nothing double.
+// @slider: level 1 10 1 5
+const speed = (2 + level * 0.6).toFixed(1);
+const enemies = 1 + Math.floor(level / 2);
+const lives = Math.max(1, 5 - Math.floor(level / 3));
+console.log("level " + level + ":   speed " + speed + "   enemies " + enemies + "   lives " + lives);
+console.log("three dials moving a little, together — not one of them jumping.");
+```
 
 ## Failing should be cheap
 

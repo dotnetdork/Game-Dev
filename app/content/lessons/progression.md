@@ -31,6 +31,20 @@ somewhere better.*
 
 That promise is what turns a fun ten minutes into a game you come back to.
 
+```run
+// @goal: Two games, same unlock at 1000. One of them shows you where you are.
+// @slider: points 0 1000 50 800
+const need = 1000;
+const pct = Math.round(points / need * 100);
+const filled = Math.round(pct / 5);
+console.log("game B:  Locked");
+console.log("game A:  [" + "#".repeat(filled) + ".".repeat(20 - filled) + "]  "
+  + pct + "%   " + (need - points) + " to go");
+console.log(pct >= 70
+  ? "At " + pct + "% almost nobody puts it down. Same unlock, different promise."
+  : "Both players are equally far away. Only one of them knows it.");
+```
+
 Three things it can promise:
 
 | Kind | What you get | Example |
@@ -100,6 +114,18 @@ game. What makes a grind feel *bad* is specific:
 
 Fixing a bad grind is usually about **more, smaller rewards** rather than making the big one
 cheaper. Something every couple of minutes, something every session, something to aim at all week.
+
+```run
+// @goal: Space the rewards out, then bring them close. How long is the player left with nothing?
+// @slider: minutesBetweenRewards 1 45 1 20
+const session = 45;
+const times = Math.floor(session / minutesBetweenRewards);
+console.log("a 45-minute session, something good every " + minutesBetweenRewards + " minutes");
+console.log("that is " + times + " good moment" + (times === 1 ? "" : "s") + " in the whole sitting");
+console.log(minutesBetweenRewards <= 5
+  ? "Never more than a few minutes from something. This is the fix for a bad grind."
+  : "Long stretches with nothing to show for them — which is what people mean by grinding.");
+```
 
 > A player should never be more than a few minutes from *something* good happening.
 

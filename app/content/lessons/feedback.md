@@ -13,6 +13,17 @@ Did you win? Probably. Does it feel like anything? Not really.
 **Feedback** is everything a game does to tell you that what you did mattered. It is the second
 beat of the core loop, and it is the single cheapest way to make a game feel good.
 
+```run
+// @goal: The same hit, told two ways. Turn the channels up from nothing.
+// @slider: channels 0 3 1 0
+const said = ["a flash", "a click", "a little shake"].slice(0, channels);
+console.log("you hit the enemy — health 50 -> 40");
+console.log(said.length ? "the game also says: " + said.join(", ") : "the game says nothing at all");
+console.log(said.length === 0
+  ? "Something happened. You would never know."
+  : said.length + " of 3 channels answering — and that is the whole difference.");
+```
+
 ## Games are talking to you constantly
 
 Once you start noticing, you can't stop:
@@ -86,6 +97,16 @@ arrives**.
 Your brain links an action to its result inside about a tenth of a second. Past that, the two stop
 feeling connected. This is why a small instant flash beats a gorgeous explosion that starts half a
 second late — and why laggy games feel awful even when nothing is technically wrong.
+
+```run
+// @goal: How late is too late? Drag the delay until the answer stops feeling like yours.
+// @slider: delayMs 0 500 20 0
+console.log("you press the button at 0 ms");
+console.log("the game answers at " + delayMs + " ms");
+console.log(delayMs <= 100
+  ? "Under about 100 ms — your brain files it as 'I did that'."
+  : "Over about 100 ms — it stops being your doing and starts feeling like a coincidence.");
+```
 
 So the rule is: **the moment the thing happens, say so.** Even if all you can manage is one frame
 of white.

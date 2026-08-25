@@ -17,6 +17,16 @@ Not the story. Not the graphics. The **doing**.
 Five words each. That short list is the **core loop** — the handful of actions you repeat the
 entire time you play. Everything else in a game is decoration hung on top of it.
 
+```run
+// @goal: A three-second loop, over one sitting. Change how long somebody plays.
+// @slider: minutes 1 60 1 20
+const secondsPerGo = 3;
+const goes = Math.round(minutes * 60 / secondsPerGo);
+console.log("playing for " + minutes + " minutes");
+console.log("you do the loop " + goes + " times");
+console.log("so it has to still be worth doing on go number " + goes + ".");
+```
+
 <figure class="shot aside pixel">
   <img src="/content/images/shots/pacman-gameplay.png" alt="A Pac-Man maze with pellets, four ghosts and Pac-Man near the bottom">
   <figcaption>The shortest core loop ever shipped: <b>eat a dot, avoid a ghost, repeat</b>. No story,
@@ -37,6 +47,21 @@ That sounds like a contradiction. It isn't. What makes a loop worth repeating is
 complicated, but that **it comes out slightly differently every time**. Mario's jump is one button.
 But the gap you're jumping is never quite the same gap, so the same single button stays interesting
 for hours.
+
+```run
+// @goal: One button, eight goes. Take the variation to zero and see what happens.
+// @slider: variation 0 40 5 20
+let previous = null;
+for (let go = 1; go <= 8; go++) {
+  const gap = 100 + Math.round((Math.random() - 0.5) * 2 * variation);
+  console.log("go " + go + ": jump a gap of " + gap + " pixels"
+    + (gap === previous ? "   (exactly the same as last time)" : ""));
+  previous = gap;
+}
+console.log(variation === 0
+  ? "Every go identical. Your brain stops paying attention somewhere around go three."
+  : "The same single button, never quite the same jump. That is what keeps it alive.");
+```
 
 > If you can explain your loop in one sentence and it still sounds fun, you have something. If it
 > takes a paragraph, you probably have three loops fighting each other.
@@ -85,6 +110,18 @@ Bigger games stack loops. RuneScape is a good example because the stacking is so
 
 The short loop keeps your hands busy. The medium loop gives you something to aim at this
 afternoon. The long loop is the reason you come back tomorrow.
+
+```run
+// @goal: Stack the three loops. Change how long somebody plays and count what they finish.
+// @slider: minutes 1 180 5 45
+const loops = [["swing at a tree, get a log", 3], ["fill the bag, run to the bank", 120], ["get the level you wanted", 7200]];
+const seconds = minutes * 60;
+loops.forEach(function (l) {
+  const times = Math.floor(seconds / l[1]);
+  console.log(l[0] + ": " + times + (times === 1 ? " time" : " times"));
+});
+console.log("the short one keeps your hands busy; the long one is why you come back tomorrow.");
+```
 
 You do **not** need all three. Your first game only needs the short one — and that is the one this
 lesson is about. Get the three-second loop right and everything else has something to hang on.
@@ -192,6 +229,17 @@ Before your game has art, sound, menus or a title, it should pass this:
 > *"You ________, which lets you ________, so you can ________ again."*
 
 Minecraft: you **mine**, which lets you **build**, so you can **reach new places to mine** again.
+
+```run
+// @goal: Put YOUR game in the three blanks, then press Run. No slider — edit the words.
+const you = "mine";
+const whichLetsYou = "build";
+const soYouCan = "reach new places to mine";
+console.log("You " + you + ", which lets you " + whichLetsYou + ", so you can " + soYouCan + " again.");
+console.log(soYouCan.indexOf(you) >= 0
+  ? "The last blank leads back to the first. That is a loop."
+  : "Does the last blank lead back to the first? If it does not, this is a line, not a loop.");
+```
 
 If your sentence has a hole in it, that hole is what you build next.
 

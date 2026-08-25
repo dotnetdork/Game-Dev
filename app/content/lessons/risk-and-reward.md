@@ -22,6 +22,18 @@ A risk-and-reward moment needs three things:
 Take any one away and the tension vanishes. No gain and there's no reason to risk anything. No loss
 and pushing on is obviously correct. No uncertainty and it isn't a choice at all, just a sum.
 
+```run
+// @goal: Take the uncertainty to 0%, then to 100%. Watch the decision stop being one.
+// @slider: chanceItGoesWrong 0 100 10 40
+const gain = 50, loss = 30;
+const average = (gain * (100 - chanceItGoesWrong) - loss * chanceItGoesWrong) / 100;
+console.log("push on: gain " + gain + ", or lose " + loss);
+console.log("chance it goes wrong: " + chanceItGoesWrong + "%");
+console.log(chanceItGoesWrong === 0 ? "Free. Everyone pushes on every time — that is not a decision."
+  : chanceItGoesWrong === 100 ? "Certain loss. Nobody pushes on — also not a decision."
+  : "On average you come out " + average.toFixed(0) + ". The closer that is to zero, the harder the choice.");
+```
+
 > If the right answer is always "yes", it isn't a decision. It's a delay.
 
 ## You already know a dozen of these
