@@ -141,7 +141,7 @@ function switchView(view) {
   if (view === 'learn') $('crumb').textContent = $('crumb').dataset.lesson || 'Lesson';
   if (view === 'code') { upgradeEditor(); $('crumb').textContent = currentFile; refreshFiles(); loadCode(); setTimeout(function () { codeEditor.refresh(); }, 0); }
   /* Arriving here no longer starts the game and leaving no longer stops it — that is the transport's
-     job now (Play/Stop in the view bar). This tab shows the stage; it does not own what is on it.
+     job now (Play/Stop on the stage's own bar). This tab shows the stage; it does not own what is on it.
      The one thing that still follows the tab is sound: a game running behind Learn or Code must be
      silent, which syncGameAudio() handles by muting rather than pausing. */
   if (view === 'play') { $('crumb').textContent = 'Playing: ' + course.name; loadSettings(); }

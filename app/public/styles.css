@@ -262,12 +262,16 @@ body[data-tier="narrow"] .dock.left{--floatw:min(300px,84vw);}
 .crumb{flex:1;min-width:0;color:var(--muted);font-weight:600;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;}
 
 /* ---------- the transport ----------
-   Sits after the view tabs and reads as a different kind of control, because it is: the tabs choose
-   what you are looking at, this decides whether the game is running. Green rather than the brand
-   orange — every engine's play button is the one green thing on the toolbar, and that is a
-   convention worth borrowing rather than reinventing. */
-.transport{display:flex;align-items:center;gap:4px;margin-left:10px;padding-left:10px;
-  border-left:1px solid var(--line);flex:none;}
+   Reads as a different kind of control from the view tabs, because it is: the tabs choose what you
+   are looking at, this decides whether the game is running. Green rather than the brand orange —
+   every engine's play button is the one green thing on the toolbar, and that is a convention worth
+   borrowing rather than reinventing.
+   It lives on the stage's own bar, directly over the game it starts, rather than up in the view bar
+   beside the tabs. Attaching a control to the thing it controls is worth more than reach here: the
+   Code tab has its own Run button and Ctrl+Enter, so nobody has to travel to start a game. */
+.stage-bar{flex:none;display:flex;align-items:center;justify-content:center;gap:10px;
+  padding:8px 12px;border-bottom:1px solid var(--line);background:var(--panel);}
+.transport{display:flex;align-items:center;gap:4px;flex:none;}
 .tp{display:inline-flex;align-items:center;gap:6px;border:1px solid transparent;border-radius:7px;
   padding:5px 12px;font-family:var(--font);font-size:13px;font-weight:700;cursor:pointer;
   background:#123c2a;color:#7ef0b2;transition:background .12s,color .12s,border-color .12s;}
@@ -371,8 +375,11 @@ body[data-tier="narrow"] .dock.left{--floatw:min(300px,84vw);}
    and therefore no timing to get wrong. It used to be measured by hand from three different
    places, each after a requestAnimationFrame, and collapsing the console left the game at its old
    size with 204px of dead space under it. */
-.stage{display:flex;align-items:center;justify-content:center;width:100%;height:100%;min-height:0;
-  container-type:size;}
+/* flex:1 rather than height:100% — the stage now shares the view with the transport bar above it,
+   and 100% of the view would be the full height again plus the bar. A flex item still resolves to a
+   definite height here, which container-type:size needs for 100cqh to mean anything. */
+.stage{display:flex;align-items:center;justify-content:center;width:100%;flex:1 1 0;min-height:0;
+  padding:10px;container-type:size;}
 .stage-frame{position:relative;border:1px solid var(--line);border-radius:14px;overflow:hidden;
   background:#06101c;box-shadow:0 18px 55px rgba(0,0,0,.55);
   /* the largest 4:3 box that fits: as wide as the stage, or as wide as its height allows */
@@ -1446,6 +1453,7 @@ body[data-tier="mid"] .lesson-content > .tip.aside .mdi{display:none;}
     text-overflow:ellipsis;white-space:nowrap;}
   /* Touch targets. 26-30px is fine for a trackpad and not for a finger. */
   .vtab{min-height:40px;}
+  .tp{min-height:40px;}
   .viewbar{height:auto;min-height:44px;}
   .outline-btn{min-width:40px;min-height:40px;}
   /* A text link is still something a finger has to hit. Padding rather than min-height, so the
