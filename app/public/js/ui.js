@@ -181,8 +181,97 @@ function makeResizer(handle, side) {
 }
 makeResizer($('resLeft'), 'left'); makeResizer($('resRight'), 'right');
 
+/* ---------- the assistant's button, moved by hand ----------
+   It floats over the work, so wherever it sits is in somebody's way eventually — over the coins in
+   one game, over the log in another. Press and drag moves it; a press that does not travel is still
+   a click that opens the assistant, which is what it is for and must stay the easy thing.
+
+   Pointer events rather than mouse, unlike the two dock resizers: those adjust a column on a
+   desktop, this is a floating control on the tier where a touch screen is likely. Threshold before
+   anything moves, or a slightly shaky tap on a touch screen becomes a drag and never opens
+   anything. */
+const FABKEY = 'leagueFabPos';
+const FAB_DRAG_MIN = 4;                     // px of travel before a press counts as a drag
+
+function fabBounds(fab) {
+  const host = $('editor').getBoundingClientRect();
+  const r = fab.getBoundingClientRect();
+  return { host: host, w: r.width, h: r.height,
+    maxX: Math.max(0, host.width - r.width - 8), maxY: Math.max(0, host.height - r.height - 8) };
+}
+function placeFab(x, y) {
+  const fab = $('aiFab'); if (!fab) return;
+  const b = fabBounds(fab);
+  const cx = Math.max(8, Math.min(b.maxX, x)), cy = Math.max(8, Math.min(b.maxY, y));
+  fab.classList.add('moved');
+  fab.style.left = cx + 'px'; fab.style.top = cy + 'px';
+  return { x: cx, y: cy };
+}
+/* A position saved on a 1920 screen can be off the edge of a 1280 one, so it is clamped on the way
+   in rather than trusted — the same reasoning as clampDockWidths. */
+function restoreFabPos() {
+  const fab = $('aiFab'); if (!fab) return;
+  const p = Storage.readJSON(FABKEY, null);
+  if (!p || typeof p.x !== 'number' || typeof p.y !== 'number') return;
+  // Measuring needs a laid-out button, and it boots hidden. Unhide for the measurement only.
+  const was = fab.hidden; fab.hidden = false;
+  placeFab(p.x, p.y);
+  fab.hidden = was;
+}
+(function () {
+  const fab = $('aiFab'); if (!fab) return;
+  let dragging = false, moved = false, id = null, offX = 0, offY = 0;
+  fab.addEventListener('pointerdown', function (e) {
+    if (e.button !== undefined && e.button !== 0) return;
+    const host = $('editor').getBoundingClientRect(), r = fab.getBoundingClientRect();
+    // Grab from wherever it was taken hold of, not from the corner, or it leaps under the cursor.
+    offX = e.clientX - r.left; offY = e.clientY - r.top;
+    dragging = true; moved = false; id = e.pointerId;
+    // Keeps the drag alive over the game frame, which would otherwise swallow the moves. Guarded:
+    // capturing a pointer the element does not actually hold throws, and a throw here would leave
+    // `dragging` true with no way to end it — the button would follow the cursor forever.
+    try { fab.setPointerCapture(id); } catch (e) {}
+  });
+  fab.addEventListener('pointermove', function (e) {
+    if (!dragging) return;
+    const host = $('editor').getBoundingClientRect();
+    const x = e.clientX - host.left - offX, y = e.clientY - host.top - offY;
+    if (!moved) {
+      const r = fab.getBoundingClientRect();
+      if (Math.abs(e.clientX - (r.left + offX)) < FAB_DRAG_MIN
+        && Math.abs(e.clientY - (r.top + offY)) < FAB_DRAG_MIN) return;
+      moved = true;
+      fab.classList.add('dragging'); document.body.classList.add('dragging-fab');
+    }
+    placeFab(x, y);
+  });
+  function end() {
+    if (!dragging) return;
+    dragging = false;
+    if (id !== null) { try { fab.releasePointerCapture(id); } catch (e) {} id = null; }
+    fab.classList.remove('dragging'); document.body.classList.remove('dragging-fab');
+    if (moved) {
+      const host = $('editor').getBoundingClientRect(), r = fab.getBoundingClientRect();
+      Storage.writeJSON(FABKEY, { x: Math.round(r.left - host.left), y: Math.round(r.top - host.top) });
+    }
+  }
+  fab.addEventListener('pointerup', end);
+  fab.addEventListener('pointercancel', end);
+  // The click still fires after a drag; swallow it, or letting go opens the panel every time.
+  fab.addEventListener('click', function (e) {
+    if (moved) { moved = false; e.stopImmediatePropagation(); e.preventDefault(); return; }
+    showAI();
+  });
+  // A window resize can strand it off the edge, exactly as it can a saved position.
+  window.addEventListener('resize', function () {
+    if (!fab.classList.contains('moved')) return;
+    const was = fab.hidden; fab.hidden = false;
+    placeFab(parseFloat(fab.style.left) || 0, parseFloat(fab.style.top) || 0);
+    fab.hidden = was;
+  });
+})();
+
 if ($('aiCollapse')) $('aiCollapse').addEventListener('click', hideAI);
-if ($('aiFab')) $('aiFab').addEventListener('click', showAI);
 if ($('outlineBtn')) $('outlineBtn').addEventListener('click', showOutline);
 if ($('outlineCollapse')) $('outlineCollapse').addEventListener('click', hideOutline);
 if ($('dockScrim')) $('dockScrim').addEventListener('click', closeFloating);
@@ -210,6 +299,7 @@ if (typeof window.matchMedia === 'function') {
 }
 window.addEventListener('resize', applyTier);
 applyTier();
+restoreFabPos();   // after applyTier, so the button is measured against the layout it will live in
 
 /* ---------- saving problems are the student's problem, so say so ----------
    A failed save used to throw somewhere nobody was listening, and the student carried on working

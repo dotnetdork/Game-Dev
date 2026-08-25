@@ -127,7 +127,9 @@ function switchView(view) {
   });
   ['learn', 'code', 'play'].forEach(function (v) { $('view-' + v).hidden = (v !== view); });
   const panelFor = { learn: 'panel-outline', code: 'panel-files', play: 'panel-info' };
-  const titleFor = { learn: 'Course Outline', code: 'Files', play: 'Game Info' };
+  // "Inspector", not "Game Info": the panel edits the numbers now, and every engine calls the panel
+  // that edits the selected thing's properties an Inspector.
+  const titleFor = { learn: 'Course Outline', code: 'Files', play: 'Inspector' };
   ['panel-outline', 'panel-files', 'panel-info'].forEach(function (p) { $(p).hidden = (p !== panelFor[view]); });
   $('leftTitle').textContent = titleFor[view];
   /* The transport rides in this bar but belongs to the Game view, so it is only on screen there.
@@ -147,6 +149,12 @@ function switchView(view) {
   const ob = $('outlineBtn');
   if (ob) {
     ob.querySelector('.sr-only').textContent = titleFor[view];
+    /* The glyph follows the panel too. It was always the book, so on the Code tab a button that
+       opens the file tree was drawn as a lesson — the picture said one thing and the tooltip
+       underneath it said another. Sliders for the Inspector, matching what that panel now is. */
+    const iconFor = { learn: 'mdi-book-open-page-variant', code: 'mdi-file-tree', play: 'mdi-tune-variant' };
+    const g = ob.querySelector('.mdi');
+    if (g) g.className = 'mdi ' + iconFor[view];
     // One owner for the title, since it also has to say whether the panel is currently showing.
     if (typeof paintOutlineBtn === 'function') paintOutlineBtn();
   }

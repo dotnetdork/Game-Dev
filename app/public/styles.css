@@ -101,7 +101,15 @@ body{background:var(--bg);color:var(--ink);font-family:var(--font);font-size:14p
      narrow  <1180    both float in; the centre gets the whole width
    A dock that floats is the same element in the same place in the DOM — only its positioning
    changes — so nothing about focus order or the outline's tree semantics moves. */
-.editor{--leftw:280px;--rightw:320px;
+/* The defaults are Jay's, taken from a 1920 screen: the outline dragged down to its floor and the
+   assistant up to its ceiling (DOCK_LIMITS.wide in ui.js is left [230,520], right [280,560], and
+   both were sitting on the stop). The outline is a list of short titles and does not need 280px;
+   the assistant is a conversation and does.
+   The assistant is a clamp rather than a flat 560 because the wide tier starts at 1440, not 1920.
+   230 + 560 there would leave the centre 650px for a lesson whose block width is 780 — the figures
+   that sit beside text would stop fitting. 29vw is the proportion measured from the screenshot, so
+   a 1920 screen lands on 560 exactly and a 1440 one gets 418, leaving the centre 792. */
+.editor{--leftw:230px;--rightw:clamp(320px,29vw,560px);
   /* minmax(0,1fr) for the centre, for the same reason as body above: plain `1fr` is
      minmax(auto,1fr), and that `auto` minimum is the content's min-content width. A wide table in a
      lesson therefore widened the centre column instead of scrolling inside it. */
@@ -256,8 +264,24 @@ body[data-tier="narrow"] .dock.left{--floatw:min(300px,84vw);}
 .iconbtn:hover{filter:brightness(1.12);}
 
 .info-hd{padding:10px 12px 4px;color:var(--dim);font-size:11px;letter-spacing:1px;text-transform:uppercase;}
-.setrow{display:flex;justify-content:space-between;padding:7px 12px;border-bottom:1px solid #16304e;color:var(--muted);font-size:13px;}
-.setrow b{color:var(--ink);font-family:Consolas,monospace;}
+/* The Inspector. A row is a name, its live value, and the slider that changes it — stacked rather
+   than in a line, because a slider squeezed into the right half of a 230px column is a 90px slider
+   and nobody can aim at it. */
+.setrow{display:flex;flex-direction:column;gap:5px;padding:9px 12px 11px;border-bottom:1px solid #16304e;color:var(--muted);font-size:13px;}
+.setrow.empty{color:var(--dim);font-style:italic;}
+.set-hd{display:flex;justify-content:space-between;align-items:baseline;gap:8px;}
+.set-name{overflow:hidden;text-overflow:ellipsis;white-space:nowrap;}
+.setrow b,.set-val{color:var(--ink);font-family:Consolas,monospace;}
+.set-hint{color:var(--dim);font-size:11px;line-height:1.35;}
+/* Styled by hand rather than left to the platform: the default range control is a light-grey track
+   that reads as disabled on this background. Same shape as the volume slider in the console head. */
+.set-slider{-webkit-appearance:none;appearance:none;width:100%;height:4px;border-radius:3px;
+  background:#1c3b5e;cursor:pointer;margin:1px 0;}
+.set-slider::-webkit-slider-thumb{-webkit-appearance:none;appearance:none;width:14px;height:14px;
+  border-radius:50%;background:var(--azure);border:0;cursor:pointer;}
+.set-slider::-moz-range-thumb{width:14px;height:14px;border-radius:50%;background:var(--azure);border:0;cursor:pointer;}
+.set-slider:hover::-webkit-slider-thumb{background:var(--ink);}
+.set-slider:hover::-moz-range-thumb{background:var(--ink);}
 
 /* Each region names its own grid column. Without this, a dock that floats is absolutely positioned
    and so leaves the flow — which made `main` the FIRST in-flow item, so it was auto-placed into
@@ -739,6 +763,15 @@ body.resizing-v #gameFrame{pointer-events:none;}
 .ai-collapse .mdi{font-size:18px;}
 .ai-fab{position:absolute;right:18px;bottom:48px;z-index:20;width:48px;height:48px;border-radius:50%;background:var(--brand);color:var(--brand-ink);border:0;box-shadow:0 8px 22px rgba(0,0,0,.45);cursor:pointer;display:flex;align-items:center;justify-content:center;}
 .ai-fab .mdi{font-size:24px;}
+/* Fills the disc rather than sitting in it: the avatar is already a round badge with its own ring,
+   so a second circle around it with a margin read as a sticker on a button. */
+.ai-fab .fab-ava{width:100%;height:100%;border-radius:50%;object-fit:cover;display:block;pointer-events:none;}
+/* Dragged: left/top take over from the right/bottom default. Set inline by the drag, so this pair
+   has to be neutralised or the two would fight and the button would jump on first grab. */
+.ai-fab.moved{right:auto;bottom:auto;}
+.ai-fab.dragging{cursor:grabbing;transition:none;}
+body.dragging-fab{user-select:none;}
+body.dragging-fab #gameFrame{pointer-events:none;}
 .mcq-opt.correct::after{content:"\2713";margin-left:auto;color:var(--green);font-weight:700;font-size:15px;}
 .mcq-opt.wrong::after{content:"\2717";margin-left:auto;color:var(--gold);font-weight:700;font-size:15px;}
 .fb-row.correct::after{content:"\2713";margin-left:auto;color:var(--green);font-weight:700;}

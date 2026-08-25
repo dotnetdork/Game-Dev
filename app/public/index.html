@@ -38,7 +38,10 @@
   </header>
 
   <div class="stage-wrap">
-    <button id="aiFab" class="ai-fab" title="Open the assistant" hidden><span class="mdi mdi-robot-happy-outline"></span></button>
+    <!-- The assistant's own avatar, the same picture its panel header wears, rather than a generic
+         outline robot glyph. A button that opens a specific thing should look like that thing, and
+         a thin outline glyph on a saturated orange disc was mud at 24px besides. -->
+    <button id="aiFab" class="ai-fab" title="Open the assistant — drag to move it" hidden><img class="fab-ava" src="img/clearRobotRing4.png" alt=""></button>
     <div class="editor" id="editor">
       <aside class="dock left" aria-labelledby="leftTitle">
         <div class="res r" id="resLeft"></div>
@@ -59,7 +62,10 @@
             </div>
           </div>
           <div id="panel-info" hidden>
-            <div class="info-hd">Current settings</div>
+            <!-- Names the file it is editing, because that is the whole point of it: these rows are
+                 a view onto config.js, not a second place where the numbers live. Filled in by
+                 loadSettings(), since an older project keeps CONFIG in game.js. -->
+            <div class="info-hd" id="infoHd">Settings</div>
             <div id="infoSettings"></div>
             <button class="iconbtn" id="resetGameBtn" title="Restore the original starter game" style="margin:14px 12px;"><span class="mdi mdi-restore"></span>Reset game</button>
           </div>
