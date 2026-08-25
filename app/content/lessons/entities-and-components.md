@@ -26,6 +26,17 @@ Look at what a coin, a bullet and an enemy actually *are*:
 They aren't three different things. They're one thing — something in the world — with a **different
 set of parts**.
 
+```run
+// @goal: Build a thing out of parts. Add one at a time and watch what it turns into.
+// @slider: parts 2 5 1 2
+const all = ["position", "sprite", "movement", "damage", "health"];
+const has = all.slice(0, parts);
+const becomes = { 2: "a coin", 3: "a moving decoration", 4: "a bullet", 5: "an enemy" };
+console.log("parts:  " + has.join(" + "));
+console.log("that is " + becomes[parts]);
+console.log("nothing changed except the list. The thing IS its parts.");
+```
+
 That's the whole idea:
 
 - An **entity** is a thing in your game. It's barely anything on its own.
@@ -100,6 +111,16 @@ sign you've got the shape right.
 
 It also makes bugs less scary. If collision is broken for everything, the shared part is wrong. If
 it's broken for enemies only, it's in the enemy's extras. The bug has a smaller place to hide.
+
+```run
+// @goal: Add kinds of thing to the game. Count the lines, and the places a bug can hide.
+// @slider: kinds 3 8 1 4
+const shared = 40;                  // the foundation every kind needs
+const extras = 8;                   // what makes one kind different
+console.log(kinds + " kinds of thing");
+console.log("copy the file each time: " + kinds * (shared + extras) + " lines, and " + kinds + " places to fix one bug");
+console.log("share the foundation:    " + (shared + kinds * extras) + " lines, and 1 place to fix one bug");
+```
 
 ## Adding a new kind for free
 

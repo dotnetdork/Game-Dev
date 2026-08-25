@@ -24,6 +24,17 @@ if (score > 1000) nextLevel();
 Every one of those numbers is a **design decision** — how hard the game is, how fast it feels, how
 long it lasts — buried in the middle of the machinery that makes it work.
 
+```run
+// @goal: Change how the game plays. Count the places you have to visit each way.
+// @slider: thingsToChange 1 6 1 4
+console.log("you want to change " + thingsToChange + " thing(s) about how the game feels");
+console.log("magic numbers:  " + thingsToChange + " line(s) to hunt down, scattered across files");
+console.log("one CONFIG:     1 file, all of them visible at once");
+console.log(thingsToChange > 1
+  ? "The one you miss is the bug you ship."
+  : "Even at one, you had to already know which file it was in.");
+```
+
 Those are called **magic numbers**, and the problem isn't that they're wrong. It's that they're
 *hidden*. To make the game slightly easier you have to go hunting through files, and you will miss
 one.
@@ -47,6 +58,18 @@ const CONFIG = {
 ```
 
 Then the code reads `enemy.setVelocityX(CONFIG.enemySpeed)`.
+
+```run
+// @goal: Read the game out of its own numbers. Change one and see what it says about play.
+// @slider: enemySpeed 60 220 10 120
+const CONFIG = { enemySpeed: enemySpeed, spawnDelay: 750, levelUpScore: 1000, fallLimit: 580 };
+console.log("enemySpeed:   " + CONFIG.enemySpeed);
+console.log("spawnDelay:   " + CONFIG.spawnDelay + "ms between enemies");
+console.log("levelUpScore: " + CONFIG.levelUpScore);
+console.log(CONFIG.enemySpeed > 160 ? "reads as: fast and frantic"
+  : CONFIG.enemySpeed < 90 ? "reads as: slow and forgiving"
+  : "reads as: brisk, but fair");
+```
 
 Two things just happened, and the second is the bigger one:
 

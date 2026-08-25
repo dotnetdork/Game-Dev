@@ -27,6 +27,17 @@ function collectCoin() {
 
 That works. And for a small game it's absolutely fine — don't let anyone tell you otherwise.
 
+```run
+// @goal: Add parts to the game, and count the connections each way.
+// @slider: parts 2 8 1 5
+const byName = parts * (parts - 1) / 2;      // everyone can call everyone
+const byAnnouncing = parts;                  // everyone talks to one place
+console.log(parts + " parts of a game");
+console.log("calling each other by name:  " + byName + " connections");
+console.log("announcing to one place:     " + byAnnouncing + " connections");
+console.log("add one more part: calling grows by " + parts + ", announcing grows by 1.");
+```
+
 But look at what `collectCoin` now has to know about: the score, the text on screen, the sound
 system, the particle effects, and the levelling rules. Five things. Collecting a coin is
 suddenly the most connected function in your game.
@@ -85,6 +96,17 @@ on("coin:collected", makeSparkle);
 
 Now `collectCoin` knows about **nothing**. Adding a combo counter means adding one more listener —
 you never touch the coin code again. Removing sparkles means deleting one line.
+
+```run
+// @goal: Add features that care about a coin. Watch what happens to the coin code.
+// @slider: features 1 6 1 3
+const all = ["score", "sound", "sparkle", "combo", "achievement", "daily quest"];
+const caring = all.slice(0, features);
+console.log("things that care when a coin is collected: " + caring.join(", "));
+console.log("calling by name:  collectCoin is " + features + " lines and knows " + features + " systems");
+console.log("announcing:       collectCoin is 1 line and knows 0 systems");
+console.log("the " + features + " listeners live wherever they belong. The coin never hears about them.");
+```
 
 This app works exactly this way. When you finish a lesson, the code that completes it doesn't call
 the outline, the XP bar and the progress strip by name — it announces "a lesson finished" and those

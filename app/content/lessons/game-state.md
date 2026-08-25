@@ -33,6 +33,18 @@ That single value answers a surprising number of questions at once:
 - Should pressing Space start a new game? Only in `"gameover"`.
 - Should the pause menu be drawn? Only in `"paused"`.
 
+```run
+// @goal: Set the state, then ask the game four questions. One value answers all of them.
+// @slider: state 0 3 1 1
+const names = ["menu", "playing", "paused", "gameover"];
+const gameState = names[state];
+console.log("gameState = \"" + gameState + "\"");
+console.log("can the player move?       " + (gameState === "playing"));
+console.log("do enemies spawn?          " + (gameState === "playing"));
+console.log("does Space start a game?   " + (gameState === "gameover"));
+console.log("is the pause menu drawn?   " + (gameState === "paused"));
+```
+
 One variable, and all of those become easy.
 
 ## Why a pile of true/false goes wrong
@@ -47,6 +59,21 @@ let isGameOver = false;
 
 Three booleans. Three separate things to keep in step. And now count the combinations: **eight** of
 them, of which only three make any sense.
+
+```run
+// @goal: List every combination three flags can be in, and count the ones that mean something.
+let sensible = 0;
+const nonsense = [];
+for (let i = 0; i < 8; i++) {
+  const isPlaying = (i & 1) > 0, isPaused = (i & 2) > 0, isGameOver = (i & 4) > 0;
+  const howManyTrue = (isPlaying ? 1 : 0) + (isPaused ? 1 : 0) + (isGameOver ? 1 : 0);
+  if (howManyTrue === 1) sensible = sensible + 1;
+  else nonsense.push("playing=" + isPlaying + "  paused=" + isPaused + "  gameover=" + isGameOver);
+}
+console.log("8 combinations. " + sensible + " of them mean something.");
+console.log("the other " + nonsense.length + " are states your game can reach and cannot handle:");
+nonsense.forEach(function (n) { console.log("   " + n); });
+```
 
 What is your game doing when `isPlaying` and `isGameOver` are both true? Nothing sensible — but the
 code can absolutely end up there, because nothing stops it. One forgotten line and the player is
