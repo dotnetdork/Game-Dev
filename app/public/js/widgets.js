@@ -45,7 +45,10 @@ function widgetToken(key) { return (lessonWidgetId || 'l') + ':' + key; }
    scrolled to it. A reveal that makes you wait for the paragraph you are reading is worse than no
    reveal at all. */
 const LOOKAHEAD = 600;      // build this far ahead of the viewport
-const REVEAL_AHEAD = 140;   // start the fade this far ahead, so it finishes before you arrive
+/* Start the fade this far ahead, so it has finished before you arrive. Raised from 140 when the
+   fade grew to 420ms with up to 210ms of stagger: the lead has to cover the whole animation, or a
+   more noticeable reveal just means being handed a paragraph that is still moving. */
+const REVEAL_AHEAD = 260;
 let pendingBuilds = [], revealQueue = [], revealFailsafe = 0;
 
 function deferBlock(el, build) { pendingBuilds.push({ el: el, build: build }); }
@@ -90,7 +93,12 @@ function sweepLesson() {
       if (near(el, REVEAL_AHEAD)) due.push(el); else keep.push(el);
     });
     revealQueue = keep;
-    due.forEach(function (el) { el.classList.add('shown'); }); // write
+    due.forEach(function (el, n) {                             // write
+      // Stagger a burst so blocks arrive in sequence rather than as one slab. Capped, because a
+      // delay long enough to notice on the sixth block is a delay long enough to annoy.
+      if (n) el.style.setProperty('--rd', Math.min(n * 70, 210) + 'ms');
+      el.classList.add('shown');
+    });
   }
 }
 /* Called straight from the scroll handler, NOT behind requestAnimationFrame.

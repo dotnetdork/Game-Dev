@@ -172,16 +172,20 @@
       </div>
       <div class="lab-brief" id="labBrief"></div>
       <div class="lab-panes">
-        <section class="lab-pane lab-pane-code" aria-label="The code">
-          <h2 class="lab-pane-hd"><span class="mdi mdi-code-tags" aria-hidden="true"></span>The code</h2>
+        <!-- Short nouns, matching the Code and Play tabs in the shell. The chrome is a tool and
+             names its panels the way a tool does; the lesson prose is where the friendly voice
+             belongs. Saying "The code" here while the tab two inches away says "Code" made them
+             read as two different products. -->
+        <section class="lab-pane lab-pane-code" aria-label="Code">
+          <h2 class="lab-pane-hd"><span class="mdi mdi-code-tags" aria-hidden="true"></span>Code</h2>
           <div class="lab-editor" id="labEditor"></div>
           <!-- The cursor position belongs in the editor, the same way it does on the Code tab, and
                uses that tab's own statusbar class so the two look identical. A sibling rather than
                a child of #labEditor, because building the editor clears that element's contents. -->
           <div class="cm-statusbar" id="labCursor">Ln 1, Col 1</div>
         </section>
-        <section class="lab-pane lab-pane-game" aria-label="What it does">
-          <h2 class="lab-pane-hd"><span class="mdi mdi-play-circle" aria-hidden="true"></span>What it does</h2>
+        <section class="lab-pane lab-pane-game" aria-label="Game">
+          <h2 class="lab-pane-hd"><span class="mdi mdi-play-circle" aria-hidden="true"></span>Game</h2>
           <div class="lab-stage" id="labStage">
             <div class="lab-screen" id="labScreen"></div>
           </div>

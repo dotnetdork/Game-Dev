@@ -61,9 +61,13 @@ body{background:var(--bg);color:var(--ink);font-family:var(--font);font-size:14p
    when you reach it; anything further and the page feels like it is assembling itself around you.
    armReveal() only tags blocks it is about to manage, and a 4-second failsafe reveals everything
    regardless — an animation must never be the reason a student is looking at a blank page. */
-.lesson-content > .willshow{opacity:0;transform:translateY(10px);}
+.lesson-content > .willshow{opacity:0;transform:translateY(22px);}
 .lesson-content > .willshow.shown{opacity:1;transform:none;
-  transition:opacity .3s ease,transform .3s cubic-bezier(.22,.7,.3,1);}
+  transition:opacity .42s ease,transform .42s cubic-bezier(.22,.9,.28,1);
+  /* Blocks that cross the line together arrive one after another rather than as a slab. The delay
+     is set per element as it is revealed, and capped, so a burst of six never leaves the sixth
+     waiting more than a fifth of a second. */
+  transition-delay:var(--rd,0ms);}
 /* Asked for less movement: no transform, no transition, nothing hidden waiting for a sweep. */
 @media (prefers-reduced-motion: reduce){
   .lesson-content > .willshow{opacity:1;transform:none;}
@@ -267,7 +271,12 @@ body[data-tier="narrow"] .dock.left{--floatw:min(300px,84vw);}
 /* learn = scrollable article */
 #view-learn{background:var(--bg);overflow:auto;display:block;}
 .lesson{max-width:none;margin:0;padding:0 0 50px;background:transparent;border:0;box-shadow:none;border-radius:0;}
-.lesson-hero{padding:28px 0 22px;background:linear-gradient(135deg,var(--mod,#143561),#0d2440);border-bottom:1px solid var(--line);}
+/* 24/20, and declared ONCE. This was the fourth duplicate pair in this file: it set 28/22 here and
+   40/32 seven hundred lines later, so the padding you got was whichever rule you happened to read
+   last. Measured before: the hero stood 212px tall and reading began 256px down — about a third of
+   the first screen spent on a title, a one-line summary and two chips, on a page whose whole job is
+   to be read. */
+.lesson-hero{padding:24px 0 20px;background:linear-gradient(135deg,var(--mod,#143561),#0d2440);border-bottom:1px solid var(--line);}
 /* .hero-inner and .lesson-content are both declared once, further down, with the two-width
    reading system. They used to be declared here too, at 820px — and the later rule overrode the
    width but not the type, so the reading measure lived in one place and the font size in another. */
@@ -1259,6 +1268,7 @@ body[data-tier="mid"] .lesson-content > figure.aside figcaption{max-width:none;f
 .lesson-content > .yourturn,
 .lesson-content > .runcell,
 .lesson-content > figure:not(.aside),
+.lesson-content > .tip:not(.aside),
 .lesson-content > table,
 .lesson-content > pre{clear:both;}
 
@@ -1269,6 +1279,27 @@ body[data-tier="mid"] .lesson-content > figure.aside figcaption{max-width:none;f
 .lesson-content > .tip{display:flex;gap:11px;margin:22px 0;padding:13px 16px;
   background:#0e2742;border:1px solid #2a4a6f;
   border-radius:10px;color:#cfe0f2;font-size:16.5px;line-height:1.6;max-width:var(--measure);}
+
+/* ---------- a note in the margin ----------
+   Prose is 540px inside a 780px block, so a ~240px strip sits empty beside most paragraphs. A note
+   marked `aside` goes there: a definition, an aside, "in Unity this is called…". Reading is not
+   interrupted, and the strip finally does something on the paragraphs that have no figure.
+   Same float mechanism as figure.aside above, for the same reason — .lesson-content must stay
+   display:block — and the same tier gate: below mid the docks have already taken the room.
+   Quieter than the in-flow callout on purpose. In the flow a tip is an interruption and should look
+   like one; in the margin it is a footnote, and a tinted panel out there would pull the eye off the
+   sentence it belongs to. */
+body[data-tier="wide"] .lesson-content > .tip.aside,
+body[data-tier="mid"] .lesson-content > .tip.aside{
+  float:right;width:240px;margin:6px 0 18px 40px;clear:right;
+  max-width:none;padding:0 0 0 14px;
+  background:none;border:0;border-left:2px solid #2a4a6f;border-radius:0;
+  font-size:14px;line-height:1.6;color:var(--muted);}
+body[data-tier="wide"] .lesson-content > .tip.aside b,
+body[data-tier="mid"] .lesson-content > .tip.aside b{color:#c3d3e6;}
+/* The icon is decoration at this size and eats a third of the width. */
+body[data-tier="wide"] .lesson-content > .tip.aside .mdi,
+body[data-tier="mid"] .lesson-content > .tip.aside .mdi{display:none;}
 
 /* ---- tables ----
    There was no rule for these at all, and the course uses them constantly to compare three things
@@ -1357,7 +1388,6 @@ body[data-tier="mid"] .lesson-content > figure.aside figcaption{max-width:none;f
 /* Same block width and gutter as the body, so the <h1> starts on the same left edge as the first
    paragraph rather than on an axis of its own. */
 .hero-inner{max-width:calc(var(--wide) + 2 * var(--gutter));margin:0 auto;padding:0 var(--gutter);}
-.lesson-hero{padding:40px 0 32px;}
 
 /* ---------- below 700px: stop the chrome pushing the page sideways ----------
    The tier system's narrowest tier is `narrow` (<1180), built for Chromebook widths, and it does

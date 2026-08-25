@@ -27,6 +27,9 @@ entire time you play. Everything else in a game is decoration hung on top of it.
 
 ## Why the loop is short on purpose
 
+<div class="tip aside"><b>Also called</b> the "gameplay loop" or the "compulsion loop". Designers
+argue about which name is right; they all mean the handful of things you do over and over.</div>
+
 A good core loop is small enough to learn in about ten seconds and interesting enough to do a
 thousand times.
 
