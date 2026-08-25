@@ -81,7 +81,7 @@ $('newFileBtn').addEventListener('click', function () {
 });
 function saveFile(cb) { if (reviewing) { toast('Apply or dismiss the suggested change first.'); return; } project.files[currentFile] = codeEditor.getValue(); saveProject(); toast('Saved ✓'); if (cb) cb(); } // saves to the browser only
 $('saveBtn').addEventListener('click', function () { saveFile(); });
-$('runBtn').addEventListener('click', function () { saveFile(function () { switchView('play'); }); });
+$('runBtn').addEventListener('click', function () { saveFile(function () { runGame(); }); });
 document.addEventListener('keydown', function (e) { if ((e.ctrlKey || e.metaKey) && e.key.toLowerCase() === 's' && !$('view-code').hidden) { e.preventDefault(); saveFile(); } });
 
 /* ---------- game info ---------- */

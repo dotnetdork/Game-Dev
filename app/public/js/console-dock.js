@@ -58,7 +58,7 @@ function resetFile(name) {
   modal({ title: 'Reset ' + name + '?', message: 'This restores the original ' + name + ', replacing your changes. Your other files are kept.', okLabel: 'Reset it', onOk: function () {
     project.files[name] = def; if (project.order.indexOf(name) < 0) project.order.push(name);
     saveProject(); toast(name + ' restored.');
-    if (!$('view-play').hidden) startGame(); if (!$('view-code').hidden) loadCode(); loadSettings();
+    if (typeof isGameRunning === 'function' && isGameRunning()) startGame(); if (!$('view-code').hidden) loadCode(); loadSettings();
   } });
 }
 function resetGame() {
@@ -68,7 +68,7 @@ function resetGame() {
       if (project.order.indexOf(n) < 0) project.order.push(n);
     });
     saveProject(); toast('Game restored.'); refreshFiles();
-    if (!$('view-play').hidden) startGame(); if (!$('view-code').hidden) loadCode(); loadSettings();
+    if (typeof isGameRunning === 'function' && isGameRunning()) startGame(); if (!$('view-code').hidden) loadCode(); loadSettings();
   } });
 }
 if ($('resetGameBtn')) $('resetGameBtn').addEventListener('click', resetGame);

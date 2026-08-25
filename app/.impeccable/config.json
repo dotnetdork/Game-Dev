@@ -20,6 +20,15 @@
         ],
         "createdAt": "2026-08-21T19:08:06.652Z",
         "reason": "user confirmed: Jay chose the coloured left stripe from four presented options - 'I like the colored edge stripe option that you recommended' - as the way Quiz/Lab/Practice blocks separate from prose without being cards."
+      },
+      {
+        "rule": "broken-image",
+        "value": "*",
+        "files": [
+          "tools/check-lessons.js"
+        ],
+        "createdAt": "2026-08-25T15:25:45.220Z",
+        "reason": "false positive: the <img matches are regex literals inside a Node validator (IMG_SRC and checkFigureSizes) used to FIND img tags in lesson markdown and assert their src exists on disk. The file ships no markup. Verified separately that all 70 lesson images and 3 chrome images load."
       }
     ]
   }

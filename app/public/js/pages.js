@@ -1,5 +1,8 @@
 /* pages.js — Full-page views outside the editor: Store, Gallery, Leaderboards, Docs and Help, plus the top-bar router. */
 /* ---------- page router ---------- */
+/* Whether the game was running when the student left the editor for a full page, so it can be put
+   back exactly as they left it rather than only when they happen to return to the Play tab. */
+let wasRunningBeforePage = false;
 function showPage(page) {
   // The lab makes the top bar inert while it is open, so this should be unreachable then. Belt
   // and braces: leaving the bench on top of the Store would be baffling and hard to get out of.
@@ -7,15 +10,19 @@ function showPage(page) {
   document.querySelectorAll('.navitem').forEach(function (b) { b.classList.toggle('on', b.getAttribute('data-page') === page); });
   if (page === 'courses') {
     $('editor').hidden = false; $('page').hidden = true;
-    /* Restart the game if Play is the tab we are coming back to.
-       Leaving for any full page calls stopGame() below, which drops the iframe's srcdoc — but the
-       Play TAB stays selected inside the hidden editor. So without this, a student on Play who looks
-       at the Store and comes back finds an empty stage, and nothing on screen suggests why or offers
-       a way to fix it. The console toggle appeared to be the culprit only because resizing a blank
-       frame is when you notice it is blank. */
-    if (!$('view-play').hidden && typeof startGame === 'function') startGame();
+    /* Put the game back if it was running when we left.
+       Leaving for any full page calls stopGame() below, which drops the iframe's srcdoc. Without
+       this, a student who looks at the Store and comes back finds an empty stage with nothing on
+       screen to suggest why. (The console toggle appeared to be the culprit only because resizing a
+       blank frame is when you notice it is blank.)
+       Keyed on whether the game was RUNNING, not on which tab is showing: since the transport
+       separated those, a game can be running behind the Code tab and would otherwise be silently
+       dropped by a trip to the Store. */
+    if (wasRunningBeforePage && typeof startGame === 'function') startGame();
+    wasRunningBeforePage = false;
     updateFab(); return;
   }
+  wasRunningBeforePage = (typeof isGameRunning === 'function') && isGameRunning();
   stopGame(); $('editor').hidden = true; $('page').hidden = false;
   const pg = $('page');
   if (page === 'store') pg.innerHTML = renderStore();

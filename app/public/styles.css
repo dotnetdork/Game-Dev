@@ -260,6 +260,35 @@ body[data-tier="narrow"] .dock.left{--floatw:min(300px,84vw);}
    it. Without this, space-between shared the row out and the breadcrumb drifted to the middle the
    moment a third control appeared. */
 .crumb{flex:1;min-width:0;color:var(--muted);font-weight:600;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;}
+
+/* ---------- the transport ----------
+   Sits after the view tabs and reads as a different kind of control, because it is: the tabs choose
+   what you are looking at, this decides whether the game is running. Green rather than the brand
+   orange — every engine's play button is the one green thing on the toolbar, and that is a
+   convention worth borrowing rather than reinventing. */
+.transport{display:flex;align-items:center;gap:4px;margin-left:10px;padding-left:10px;
+  border-left:1px solid var(--line);flex:none;}
+.tp{display:inline-flex;align-items:center;gap:6px;border:1px solid transparent;border-radius:7px;
+  padding:5px 12px;font-family:var(--font);font-size:13px;font-weight:700;cursor:pointer;
+  background:#123c2a;color:#7ef0b2;transition:background .12s,color .12s,border-color .12s;}
+.tp .mdi{font-size:16px;}
+.tp:hover:not(:disabled){background:#17513a;color:#a8ffd0;}
+/* Running: Play becomes Restart and stops shouting, because the thing it starts is already there. */
+.tp-play.on{background:var(--panel2);color:var(--muted);border-color:var(--line);}
+.tp-play.on:hover{background:#17395c;color:var(--ink);}
+.tp-stop{background:var(--panel2);color:var(--muted);border-color:var(--line);padding:5px 9px;}
+.tp-stop:hover:not(:disabled){background:#3a1c1c;color:#ffb4b4;border-color:#7a3030;}
+.tp-stop:disabled{opacity:.4;cursor:default;}
+
+/* The stage with nothing on it. Now that arriving on this tab no longer starts the game, an empty
+   stage is a real state and needs to say what it is rather than being a black rectangle. */
+.game-idle{position:absolute;inset:0;z-index:3;display:flex;flex-direction:column;
+  align-items:center;justify-content:center;gap:8px;text-align:center;padding:24px;
+  background:#06101c;color:var(--muted);font-size:14px;line-height:1.6;}
+.game-idle.hidden{display:none;}
+.game-idle .mdi{font-size:40px;color:#2f5d84;}
+.game-idle b{color:var(--ink);font-size:15.5px;font-weight:700;}
+.game-idle > span:last-child{max-width:44ch;}
 .vtabs{display:flex;gap:4px;flex:none;}
 .vtab{display:flex;align-items:center;gap:6px;padding:5px 13px;border:none;border-radius:6px;background:transparent;color:var(--muted);font-weight:600;font-family:var(--font);font-size:13px;cursor:pointer;}
 .vtab .mdi{font-size:15px;}

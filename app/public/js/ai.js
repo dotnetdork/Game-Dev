@@ -111,10 +111,13 @@ function acceptProposal(en) {
   if (typeof endReview === 'function') endReview();
   renderChat('coder');
   refreshFiles();
-  switchView('play');            // straight to seeing the change actually happen
+  runGame();                     // straight to seeing the change actually happen, and running
   maybeAskQuiz(en);
 }
-function refreshAfterEdit() { loadSettings(); refreshFiles(); if (!$('view-play').hidden) startGame(); if (!$('view-code').hidden) loadCode(); }
+/* Re-run only if the game is actually running. It used to key off whether the Play TAB was showing,
+   which is no longer the same question: a game can be running behind the Code tab, and that is
+   exactly the case where seeing an applied edit take effect matters most. */
+function refreshAfterEdit() { loadSettings(); refreshFiles(); if (typeof isGameRunning === 'function' && isGameRunning()) startGame(); if (!$('view-code').hidden) loadCode(); }
 
 /* The last few turns of this panel's chat, so follow-ups like "even faster" or "undo that"
    make sense to the model. Call this BEFORE adding the new message. Kept small on purpose —

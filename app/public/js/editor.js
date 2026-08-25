@@ -15,7 +15,7 @@ const codeEditor = CodeMirror.fromTextArea($('codeeditor'), {
     'Ctrl-Space': 'autocomplete',
     'Ctrl-/': 'toggleComment', 'Cmd-/': 'toggleComment',
     'Ctrl-S': function () { saveFile(); }, 'Cmd-S': function () { saveFile(); },
-    'Ctrl-Enter': function () { saveFile(function () { switchView('play'); }); },
+    'Ctrl-Enter': function () { runGame(); }, 'Cmd-Enter': function () { runGame(); },
     'Ctrl-F': 'findPersistent', 'Cmd-F': 'findPersistent'
   }
 });
@@ -140,7 +140,12 @@ function switchView(view) {
   }
   if (view === 'learn') $('crumb').textContent = $('crumb').dataset.lesson || 'Lesson';
   if (view === 'code') { upgradeEditor(); $('crumb').textContent = currentFile; refreshFiles(); loadCode(); setTimeout(function () { codeEditor.refresh(); }, 0); }
-  if (view === 'play') { $('crumb').textContent = 'Playing: ' + course.name; startGame(); loadSettings(); } else { stopGame(); }
+  /* Arriving here no longer starts the game and leaving no longer stops it — that is the transport's
+     job now (Play/Stop in the view bar). This tab shows the stage; it does not own what is on it.
+     The one thing that still follows the tab is sound: a game running behind Learn or Code must be
+     silent, which syncGameAudio() handles by muting rather than pausing. */
+  if (view === 'play') { $('crumb').textContent = 'Playing: ' + course.name; loadSettings(); }
+  if (typeof syncGameAudio === 'function') syncGameAudio();
   // The assistant's mode is the student's choice, not the tab's. Switching it for them meant a
   // question typed in Tutor mode went to the coder the moment they clicked Code to look at the
   // answer — the panel changed its mind while they were mid-thought. Only an explicit click on
@@ -151,3 +156,22 @@ function switchView(view) {
   if (typeof paintLessonRail === 'function') paintLessonRail();
 }
 document.querySelectorAll('.vtab').forEach(function (btn) { btn.addEventListener('click', function () { switchView(btn.getAttribute('data-view')); }); });
+
+/* "Run my game and show me" — the one owner for it.
+   Ctrl+Enter, the Run button, the transport's Play and applying an AI change all mean this, and
+   before the transport they each expressed it as switchView('play') because arriving on that tab was
+   what started the game. Now that arriving does nothing, every one of them would have quietly
+   stopped running anything. */
+function runGame() {
+  // Save first, or Play runs the last save rather than what is on screen.
+  if (typeof codeEditor !== 'undefined' && !reviewing && !$('view-code').hidden) {
+    project.files[currentFile] = codeEditor.getValue(); saveProject();
+  }
+  startGame();
+  if ($('view-play').hidden) switchView('play');
+  else if (typeof syncGameAudio === 'function') syncGameAudio();
+}
+/* Play runs it and shows you it; Stop ends it and leaves you where you are — stopping is not a
+   reason to move somebody. */
+if ($('gamePlay')) $('gamePlay').addEventListener('click', runGame);
+if ($('gameStop')) $('gameStop').addEventListener('click', function () { stopGame(); });

@@ -69,6 +69,35 @@ function errorReporterScript() {
     '})();<' + '/script>\n';
 }
 
+/* ---------- the transport ----------
+   Whether the game is running is now its own state, not a side effect of which tab is showing.
+   switchView() used to call startGame() on arriving at Play and stopGame() on leaving, which meant
+   the game could only exist while you were looking at it — so you could never watch a change land
+   while editing the code that caused it. */
+let gameRunning = false;
+function isGameRunning() { return gameRunning; }
+
+/* Play and Stop, plus the idle notice on the stage. One place decides how all three look, so they
+   cannot disagree about whether anything is running. */
+function paintTransport() {
+  const play = $('gamePlay'), stop = $('gameStop'), idle = $('gameIdle');
+  if (play) {
+    play.classList.toggle('on', gameRunning);
+    play.innerHTML = '<span class="mdi ' + (gameRunning ? 'mdi-restart' : 'mdi-play') + '" aria-hidden="true"></span>'
+      + (gameRunning ? 'Restart' : 'Play');
+    play.title = gameRunning ? 'Start it again from the top (Ctrl+Enter)' : 'Run your game (Ctrl+Enter)';
+  }
+  if (stop) stop.disabled = !gameRunning;
+  // Only ever on the stage, and only when there is genuinely nothing there.
+  if (idle) idle.classList.toggle('hidden', gameRunning);
+}
+
+/* A game running behind the Learn tab must not still be making noise. Muting rather than pausing:
+   Phaser has no pause we control from out here, and postGameAudio already speaks to the frame. */
+function syncGameAudio() {
+  if (typeof postGameAudio === 'function') postGameAudio();
+}
+
 function startGame() { // build a self-contained page from the browser-side project and run it in the iframe (no server)
   conClear();                                          // this run starts with a clean log, on screen and in the buffer
   if (typeof noteGameRun === 'function') noteGameRun(); // so the AI can tell "printed nothing" from "never ran"
@@ -92,8 +121,15 @@ function startGame() { // build a self-contained page from the browser-side proj
   // Set per run rather than in the markup, so toggling it takes effect on the next Play.
   if (sandboxGame()) gf.setAttribute('sandbox', 'allow-scripts'); else gf.removeAttribute('sandbox');
   gf.removeAttribute('src'); gf.srcdoc = html;
+  gameRunning = true;
+  paintTransport();
 }
-function stopGame() { clearBootWatch(); showGameFailed(false); const f = $('gameFrame'); if (f) { f.removeAttribute('srcdoc'); f.removeAttribute('src'); } }
+function stopGame() {
+  clearBootWatch(); showGameFailed(false);
+  const f = $('gameFrame'); if (f) { f.removeAttribute('srcdoc'); f.removeAttribute('src'); }
+  gameRunning = false;
+  paintTransport();
+}
 
 /* ---------- did the game actually start? ----------
    A mistake INSIDE create() or update() is handled well: errorReporterScript catches it, the log
@@ -152,7 +188,18 @@ function fitStage() {
 /* ---------- game audio: mute defaults ON; controls live in the Play viewport ---------- */
 let gameMuted = (Storage.read('leagueMuted') !== 'false');
 let gameVolume = parseFloat(Storage.read('leagueVol') || '0.5'); if (isNaN(gameVolume)) gameVolume = 0.5;
-function postGameAudio() { const f = $('gameFrame'); if (f && f.contentWindow) { try { f.contentWindow.postMessage({ __leagueAudio: { mute: gameMuted, volume: gameVolume } }, '*'); } catch (e) {} } }
+/* Muted whenever the stage is not on screen, whatever the student's own mute setting says. The game
+   outliving the Play tab is the point of the transport; the game being *audible* from behind a
+   lesson is not, and in a room of twenty-five it is the difference between a feature and a problem.
+   The student's setting is untouched — this only ever adds mute, never clears it. */
+/* Nothing is running at boot, so paint that once rather than trusting the markup to agree. */
+paintTransport();
+function gameOffScreen() { const v = $('view-play'); return !!v && v.hidden; }
+function postGameAudio() {
+  const f = $('gameFrame'); if (!f || !f.contentWindow) return;
+  const mute = gameMuted || gameOffScreen();
+  try { f.contentWindow.postMessage({ __leagueAudio: { mute: mute, volume: gameVolume } }, '*'); } catch (e) {}
+}
 function updateAudioUI() { const b = $('muteBtn'), s = $('volSlider'); if (!b) return;
   b.innerHTML = '<span class="mdi ' + (gameMuted ? 'mdi-volume-off' : 'mdi-volume-high') + '"></span>';
   b.title = gameMuted ? 'Sound is off — click to turn it on' : 'Sound is on — click to mute';

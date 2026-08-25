@@ -76,7 +76,20 @@
           <div class="vtabs" role="tablist" aria-label="Lesson view">
             <button class="vtab on" data-view="learn" role="tab" aria-selected="true" aria-controls="view-learn"><span class="mdi mdi-book-open-page-variant"></span>Learn</button>
             <button class="vtab" data-view="code" role="tab" aria-selected="false" aria-controls="view-code"><span class="mdi mdi-code-tags"></span>Code</button>
-            <button class="vtab" data-view="play" role="tab" aria-selected="false" aria-controls="view-play"><span class="mdi mdi-gamepad-variant"></span>Play</button>
+            <button class="vtab" data-view="play" role="tab" aria-selected="false" aria-controls="view-play"><span class="mdi mdi-gamepad-variant"></span>Game</button>
+          </div>
+          <!-- The transport. Which view you are looking at and whether the game is running are two
+               different questions, and every engine keeps them apart: Scene/Game is a tab, Play/Stop
+               is a toolbar control. Fusing them meant you could not watch your code and your game at
+               the same time — the single most common thing anyone does in an engine. -->
+          <div class="transport" role="group" aria-label="Game">
+            <button class="tp tp-play" id="gamePlay" title="Run your game (Ctrl+Enter)"><span class="mdi mdi-play" aria-hidden="true"></span>Play</button>
+            <!-- The word rather than a square. There is no stop glyph in the icon subset, and
+                 rebuilding the font needs Python tooling that is not installed here — naming an icon
+                 the font does not carry ships a blank box. "Stop" is also plainer than a square for a
+                 twelve-year-old. (Written without the icon prefix on purpose: subset-icons.js scans
+                 for that token as plain text and would count a comment as a usage.) -->
+            <button class="tp tp-stop" id="gameStop" title="Stop the game" disabled>Stop</button>
           </div>
         </div>
         <!-- How far through the lesson you are. A lesson is about six screens tall and the only
@@ -118,6 +131,14 @@
                   <span>There is a typo somewhere in your code — the log below says where. Nothing
                     you wrote is lost: fix it and press Play again.</span>
                   <code class="gf-detail" hidden></code>
+                </div>
+                <!-- The game is no longer started by arriving on this tab, so there is a state where
+                     the stage is legitimately empty. Saying so beats a black rectangle. -->
+                <div class="game-idle" id="gameIdle">
+                  <span class="mdi mdi-play-circle" aria-hidden="true"></span>
+                  <b>Your game is not running.</b>
+                  <span>Press <b>Play</b> up in the bar to start it. It keeps running while you edit,
+                    so you can watch a change land without coming back here.</span>
                 </div>
               </div>
             </div>
