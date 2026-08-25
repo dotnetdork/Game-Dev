@@ -49,6 +49,38 @@ function showConsole(show, open) {
   if ($('view-play') && !$('view-play').hidden && typeof fitStage === 'function') requestAnimationFrame(fitStage);
 }
 if ($('conToggle')) $('conToggle').addEventListener('click', function () { consoleOpen = !consoleOpen; $('console').classList.toggle('collapsed', !consoleOpen); if (!$('view-play').hidden) requestAnimationFrame(fitStage); });
+
+/* ---------- dragging the console taller ----------
+   The vertical twin of makeResizer() in ui.js — same shape, same mouse-only scope, same decision not
+   to persist: a dock width dragged in one lesson does not follow you into the next, and neither
+   should this. The limits are computed per drag rather than fixed, because .center's height changes
+   with the window and a floor written in pixels would be most of a short one. */
+(function () {
+  const handle = $('resConsole'), con = $('console');
+  if (!handle || !con) return;
+  handle.addEventListener('mousedown', function (e) {
+    const centre = document.querySelector('.center');
+    if (!centre) return;
+    e.preventDefault();
+    const startY = e.clientY, start = con.getBoundingClientRect().height;
+    // Floor: the header plus a couple of lines, so the pane is never smaller than the thing it
+    // contains. Ceiling: leave the view above it at least a third, or dragging the log up would
+    // hide the game entirely and there would be no handle left to drag it back with.
+    const min = 90, max = Math.max(min, Math.round(centre.getBoundingClientRect().height * 0.72));
+    function move(ev) {
+      const h = Math.max(min, Math.min(max, start + (startY - ev.clientY)));  // up = taller
+      con.style.setProperty('--conh', h + 'px');
+    }
+    function up() {
+      document.removeEventListener('mousemove', move); document.removeEventListener('mouseup', up);
+      document.body.classList.remove('resizing-v');
+      if (!$('view-play').hidden && typeof fitStage === 'function') requestAnimationFrame(fitStage);
+    }
+    // While dragging, the cursor belongs to the drag and not to whatever it passes over.
+    document.body.classList.add('resizing-v');
+    document.addEventListener('mousemove', move); document.addEventListener('mouseup', up);
+  });
+})();
 if ($('conClear')) $('conClear').addEventListener('click', conClear);
 window.addEventListener('message', function (e) { const d = e && e.data; if (d && d.__gamelog) { conLine(d.level || 'log', d.text || ''); if (d.level === 'error' && $('view-play') && !$('view-play').hidden) showConsole(true, true); } });
 conClear();

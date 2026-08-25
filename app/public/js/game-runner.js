@@ -78,13 +78,16 @@ let gameRunning = false;
 function isGameRunning() { return gameRunning; }
 
 /* Play and Stop, plus the idle notice on the stage. One place decides how all three look, so they
-   cannot disagree about whether anything is running. */
+   cannot disagree about whether anything is running.
+   The buttons are symbols, so the name has to be carried by aria-label and title instead of by
+   visible text — and both are set here beside the icon rather than left in the markup, because a
+   button drawing ↻ while still announcing "Play" is a worse lie than a wrong picture on its own. */
 function paintTransport() {
   const play = $('gamePlay'), stop = $('gameStop'), idle = $('gameIdle');
   if (play) {
     play.classList.toggle('on', gameRunning);
-    play.innerHTML = '<span class="mdi ' + (gameRunning ? 'mdi-restart' : 'mdi-play') + '" aria-hidden="true"></span>'
-      + (gameRunning ? 'Restart' : 'Play');
+    play.innerHTML = '<span class="mdi ' + (gameRunning ? 'mdi-restart' : 'mdi-play') + '" aria-hidden="true"></span>';
+    play.setAttribute('aria-label', gameRunning ? 'Restart' : 'Play');
     play.title = gameRunning ? 'Start it again from the top (Ctrl+Enter)' : 'Run your game (Ctrl+Enter)';
   }
   if (stop) stop.disabled = !gameRunning;

@@ -130,6 +130,18 @@ function switchView(view) {
   const titleFor = { learn: 'Course Outline', code: 'Files', play: 'Game Info' };
   ['panel-outline', 'panel-files', 'panel-info'].forEach(function (p) { $(p).hidden = (p !== panelFor[view]); });
   $('leftTitle').textContent = titleFor[view];
+  /* The transport rides in this bar but belongs to the Game view, so it is only on screen there.
+     Whether the game is RUNNING is still nothing to do with which tab you are on — that is the whole
+     point of the transport — this only decides whether the buttons are visible. A game started here
+     keeps running behind Learn and Code with no control showing, which is fine: the Code tab has its
+     own Run button and Ctrl+Enter, and Stop is not something you reach for from a lesson. */
+  const tr = document.querySelector('.transport');
+  if (tr) {
+    tr.hidden = (view !== 'play');
+    // The bar has to know too: a centred transport sits over the middle of the breadcrumb's box, so
+    // the crumb is capped while it is there. See .viewbar.has-transport in styles.css.
+    tr.parentNode.classList.toggle('has-transport', view === 'play');
+  }
   /* At a narrow width the left dock slides in from a button, and that button opens whichever panel
      this tab shows — so it says so rather than always claiming "Course outline". */
   const ob = $('outlineBtn');
@@ -141,7 +153,7 @@ function switchView(view) {
   if (view === 'learn') $('crumb').textContent = $('crumb').dataset.lesson || 'Lesson';
   if (view === 'code') { upgradeEditor(); $('crumb').textContent = currentFile; refreshFiles(); loadCode(); setTimeout(function () { codeEditor.refresh(); }, 0); }
   /* Arriving here no longer starts the game and leaving no longer stops it — that is the transport's
-     job now (Play/Stop on the stage's own bar). This tab shows the stage; it does not own what is on it.
+     job now (Play/Stop, centred in the view bar). This tab shows the stage; it does not own what is on it.
      The one thing that still follows the tab is sound: a game running behind Learn or Code must be
      silent, which syncGameAudio() handles by muting rather than pausing. */
   if (view === 'play') { $('crumb').textContent = 'Playing: ' + course.name; loadSettings(); }
