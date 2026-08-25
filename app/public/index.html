@@ -130,6 +130,15 @@
               <button class="rv-skip" id="reviewSkip">No thanks</button>
             </div>
             <textarea id="codeeditor"></textarea><div class="cm-statusbar" id="cmStatus">Ln 1, Col 1</div>
+            <!-- Phones read; they do not build. Shown by a media query alone, with no JavaScript
+                 state to fall out of step with the width. The tab still works and still arrives
+                 somewhere that explains itself, which beats a dead tab or a 320px code editor. -->
+            <div class="build-gate" role="status">
+              <span class="mdi mdi-laptop" aria-hidden="true"></span>
+              <b>Open this on a computer to build your game.</b>
+              <span>Lessons and quizzes work fine on a phone — tap <b>Learn</b> to keep reading.
+                Writing code needs a bigger screen and a keyboard.</span>
+            </div>
           </div>
           <div class="view" id="view-play" role="tabpanel" tabindex="-1" hidden>
             <div class="stage" id="gameStage">
@@ -159,6 +168,12 @@
                     so you can watch a change land without coming back here.</span>
                 </div>
               </div>
+            </div>
+            <div class="build-gate" role="status">
+              <span class="mdi mdi-laptop" aria-hidden="true"></span>
+              <b>Open this on a computer to play your game.</b>
+              <span>Lessons and quizzes work fine on a phone — tap <b>Learn</b> to keep reading.
+                Your game needs a bigger screen and a keyboard to play.</span>
             </div>
           </div>
         </div>

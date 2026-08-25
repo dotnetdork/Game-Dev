@@ -360,6 +360,11 @@ body[data-tier="narrow"] .dock.left{--floatw:min(300px,84vw);}
 .vtab{display:flex;align-items:center;gap:6px;padding:5px 13px;border:none;border-radius:6px;background:transparent;color:var(--muted);font-weight:600;font-family:var(--font);font-size:13px;cursor:pointer;}
 .vtab .mdi{font-size:15px;}
 .vtab.on{background:var(--azure);color:#06192e;}
+/* ---------- phones read, they do not build ----------
+   Off at every width the app is meant to be built on; the media query at the end of this file turns
+   it on. Declared here rather than only inside that query so there is a rule to find when someone
+   greps for the class, and so `display:none` is the default rather than an accident of ordering. */
+.build-gate{display:none;}
 .viewbody{flex:1;min-height:0;position:relative;}
 .view{position:absolute;inset:0;display:flex;flex-direction:column;}
 [hidden]{display:none !important;}
@@ -1536,4 +1541,19 @@ body[data-tier="mid"] .lesson-content > .tip.aside .mdi{display:none;}
   /* A text link is still something a finger has to hit. Padding rather than min-height, so the
      underline stays on the text instead of floating away from it. */
   .block-link{padding:9px 0;}
+
+  /* ---- Code and Game say what they need instead of being broken ----
+     A 320px CodeMirror with no keyboard, and an 800x600 game that wants arrow keys, are not
+     surfaces you can shrink your way out of. The tab still works and still arrives somewhere that
+     explains itself, which is the difference between a limit and a fault.
+     Covering rather than replacing: the editor underneath keeps its content and its state, so
+     turning a phone sideways past 700px puts the student back exactly where they were. */
+  #view-code .build-gate,#view-play .build-gate{display:flex;position:absolute;inset:0;z-index:30;
+    flex-direction:column;align-items:center;justify-content:center;gap:10px;text-align:center;
+    padding:28px 24px;background:var(--bg);color:var(--muted);font-size:14px;line-height:1.6;}
+  .build-gate .mdi{font-size:38px;color:#2f5d84;}
+  .build-gate b{color:var(--ink);font-size:16px;font-weight:700;}
+  .build-gate > span:last-child{max-width:34ch;}
+  /* The transport belongs to a stage nobody can reach from here. */
+  .transport{display:none;}
 }

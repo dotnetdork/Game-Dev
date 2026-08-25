@@ -932,8 +932,25 @@ function labIsolate(on) {
   });
 }
 
+/* Below this the app reads but does not build — see the media query at the end of styles.css, which
+   gates the Code and Game tabs the same way. Kept in step with that 700px by being the only other
+   place the number appears. */
+const BUILD_MIN_WIDTH = 700;
+function tooSmallToBuild() { return window.innerWidth < BUILD_MIN_WIDTH; }
+
 function openLab(lab) {
   const view = $('labView'); if (!view) return;
+  /* Refused at the door rather than covered afterwards, unlike the two tabs. A lab takes over the
+     whole screen, so an overlay on top of one would have to reinvent the close button underneath
+     it — and unlike a tab, nothing is lost by simply not opening: the card stays where it was. */
+  if (tooSmallToBuild()) {
+    modal({ title: 'Open this on a computer',
+      message: 'This lab is a code editor and a screen to run it on, which need a bigger screen and '
+        + 'a keyboard. The lesson around it reads fine here — carry on, and come back to the lab '
+        + 'on a computer.',
+      okLabel: 'OK', hideCancel: true });
+    return;
+  }
   if (openLabRef) closeLab();
   openLabRef = lab;
   labReturnFocus = (lab.card && lab.card.open) || null;
