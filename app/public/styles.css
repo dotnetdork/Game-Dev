@@ -683,8 +683,13 @@ body.resizing-v #gameFrame{pointer-events:none;}
 .runcell .runbar{display:flex;justify-content:flex-end;padding:6px 8px;background:var(--panel2);}
 .runcell .runbtn{background:var(--teal);color:#04231d;border:0;border-radius:6px;padding:5px 12px;font-weight:600;cursor:pointer;display:inline-flex;align-items:center;gap:6px;}
 /* Output is rendered in the page, so it is sized by its own content and can never scroll
-   inside a box of its own. */
-.runcell .runout{margin:0;padding:10px 12px;border-top:1px solid var(--line);background:#08121f;
+   inside a box of its own.
+   border:0 and border-radius:0 before the top rule, and neither is redundant. This element is a
+   <pre>, so `.lesson pre` was giving it a 1px border on all four sides and a 10px radius — it drew
+   as a rounded card floating inside the cell, while the goal bar and the slider bar above it are
+   square and joined. Setting border-top alone never removed the other three sides. */
+.runcell .runout{margin:0;padding:10px 12px;background:#08121f;
+  border:0;border-top:1px solid var(--line);border-radius:0;
   color:#cfe0f2;font-family:Consolas,monospace;font-size:13px;line-height:1.6;
   white-space:pre-wrap;word-break:break-word;overflow:visible;}
 .runcell .runout:empty{display:none;}
