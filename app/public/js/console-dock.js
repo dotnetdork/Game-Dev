@@ -106,5 +106,5 @@ function resetGame() {
 if ($('resetGameBtn')) $('resetGameBtn').addEventListener('click', resetGame);
 
 /* Showing and hiding the assistant now lives with the rest of the layout in js/ui.js — hideAI(),
-   showAI() and updateFab() — because whether it is a column or a panel floating over the content
+   showAI() and paintAIBtn() — because whether it is a column or a panel floating over the content
    depends on the width tier, and one place has to own that decision. */

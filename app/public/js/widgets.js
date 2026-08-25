@@ -1022,7 +1022,7 @@ function openLab(lab) {
 
   view.hidden = false;
   labIsolate(true);
-  updateFab();
+  paintAIBtn();
   paintLabStatus(lab);
   // The editor gets focus: it is what the student came here to do, and the task is right above it.
   if (editor) { editor.refresh(); editor.focus(); } else if (ta) ta.focus();
@@ -1042,7 +1042,7 @@ function closeLab() {
   labConsoleOpen(false);
   $('labView').hidden = true;
   labIsolate(false);
-  updateFab();
+  paintAIBtn();
   paintLabCard(lab);
 
   if (labReturnFocus) { try { labReturnFocus.focus(); } catch (e) {} }

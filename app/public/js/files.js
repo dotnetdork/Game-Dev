@@ -96,12 +96,15 @@ document.addEventListener('keydown', function (e) { if ((e.ctrlKey || e.metaKey)
 
 /* Ranges for the four numbers the starter ships. Chosen to be interesting rather than safe: the low
    end of each is a real (silly) game, not a sensible minimum, because "what if gravity were zero"
-   is the question a twelve-year-old actually has. */
+   is the question a twelve-year-old actually has.
+   No descriptions. These four could have one and a variable the student adds in module three could
+   not, and a panel where the built-in rows are explained and their own are bare says their code is
+   the second-class kind. The name and the number are the same information for every row. */
 const SETTING_RANGE = {
-  moveSpeed:  { min: 0, max: 600,  step: 10,  hint: 'how fast the player walks' },
-  jumpPower:  { min: 0, max: 1200, step: 10,  hint: 'how high the player jumps' },
-  gravity:    { min: 0, max: 2000, step: 25,  hint: 'how hard everything falls' },
-  coinBounce: { min: 0, max: 1,    step: 0.05, hint: 'how much a coin bounces' }
+  moveSpeed:  { min: 0, max: 600,  step: 10 },
+  jumpPower:  { min: 0, max: 1200, step: 10 },
+  gravity:    { min: 0, max: 2000, step: 25 },
+  coinBounce: { min: 0, max: 1,    step: 0.05 }
 };
 /* A key we have never seen — the student added it, or a later lesson did. Showing it read-only
    would be the old behaviour for exactly the numbers most likely to be theirs, so a range is
@@ -112,14 +115,14 @@ function deriveRange(v) {
   const hi = v > 0 ? Math.max(v * 3, 1) : Math.max(Math.abs(v) * 3, 1);
   const span = hi - lo;
   const step = span >= 500 ? 10 : span >= 50 ? 1 : span >= 5 ? 0.1 : 0.01;
-  return { min: lo, max: hi, step: step, hint: '' };
+  return { min: lo, max: hi, step: step };
 }
 function settingRange(k, v) {
   const r = SETTING_RANGE[k] || deriveRange(v);
   // A hand-edited value can sit outside the range we chose. Widen rather than clamp: snapping the
   // student's own number to our maximum the moment they opened this panel would be the panel
   // rewriting their file for them, which is the one thing it must never do.
-  return { min: Math.min(r.min, v), max: Math.max(r.max, v), step: r.step, hint: r.hint };
+  return { min: Math.min(r.min, v), max: Math.max(r.max, v), step: r.step };
 }
 /* Slider values arrive as strings and come back through arithmetic, so 0.3 + 0.05 is
    0.35000000000000003 — and mergeConfig writes whatever it is given straight into the file. */
@@ -149,14 +152,13 @@ function loadSettings() {
     const sl = document.createElement('input');
     sl.type = 'range'; sl.min = r.min; sl.max = r.max; sl.step = r.step; sl.value = v;
     sl.className = 'set-slider';
-    sl.setAttribute('aria-label', k + (r.hint ? ' — ' + r.hint : ''));
+    sl.setAttribute('aria-label', k);
     // input fires the whole way through the drag, change only on release. The readout follows the
     // thumb so the number is never behind the hand; the file is written once, at the end, because
     // rebuilding the game on every pixel of a drag would make it unusable.
     sl.addEventListener('input', function () { val.textContent = roundToStep(sl.value, r.step); });
     sl.addEventListener('change', function () { commitSetting(k, roundToStep(sl.value, r.step)); });
     row.appendChild(head); row.appendChild(sl);
-    if (r.hint) { const h = document.createElement('span'); h.className = 'set-hint'; h.textContent = r.hint; row.appendChild(h); }
     box.appendChild(row);
   });
 }

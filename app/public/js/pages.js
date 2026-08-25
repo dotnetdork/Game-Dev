@@ -20,7 +20,7 @@ function showPage(page) {
        dropped by a trip to the Store. */
     if (wasRunningBeforePage && typeof startGame === 'function') startGame();
     wasRunningBeforePage = false;
-    updateFab(); return;
+    paintAIBtn(); return;
   }
   wasRunningBeforePage = (typeof isGameRunning === 'function') && isGameRunning();
   stopGame(); $('editor').hidden = true; $('page').hidden = false;
@@ -31,7 +31,7 @@ function showPage(page) {
   else if (page === 'docs') pg.innerHTML = renderDocs();
   else if (page === 'help') pg.innerHTML = renderHelp();
   wirePage(page);
-  updateFab();
+  paintAIBtn();
 }
 document.querySelectorAll('.navitem').forEach(function (b) { b.addEventListener('click', function () { showPage(b.getAttribute('data-page')); }); });
 

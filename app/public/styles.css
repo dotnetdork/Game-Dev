@@ -272,7 +272,6 @@ body[data-tier="narrow"] .dock.left{--floatw:min(300px,84vw);}
 .set-hd{display:flex;justify-content:space-between;align-items:baseline;gap:8px;}
 .set-name{overflow:hidden;text-overflow:ellipsis;white-space:nowrap;}
 .setrow b,.set-val{color:var(--ink);font-family:Consolas,monospace;}
-.set-hint{color:var(--dim);font-size:11px;line-height:1.35;}
 /* Styled by hand rather than left to the platform: the default range control is a light-grey track
    that reads as disabled on this background. Same shape as the volume slider in the console head. */
 .set-slider{-webkit-appearance:none;appearance:none;width:100%;height:4px;border-radius:3px;
@@ -761,17 +760,10 @@ body.resizing-v #gameFrame{pointer-events:none;}
   align-items:center;justify-content:center;width:24px;height:24px;padding:0;border-radius:6px;flex:none;}
 .ai-collapse:hover{color:var(--ink);background:#17395c;}
 .ai-collapse .mdi{font-size:18px;}
-.ai-fab{position:absolute;right:18px;bottom:48px;z-index:20;width:48px;height:48px;border-radius:50%;background:var(--brand);color:var(--brand-ink);border:0;box-shadow:0 8px 22px rgba(0,0,0,.45);cursor:pointer;display:flex;align-items:center;justify-content:center;}
-.ai-fab .mdi{font-size:24px;}
-/* Fills the disc rather than sitting in it: the avatar is already a round badge with its own ring,
-   so a second circle around it with a margin read as a sticker on a button. */
-.ai-fab .fab-ava{width:100%;height:100%;border-radius:50%;object-fit:cover;display:block;pointer-events:none;}
-/* Dragged: left/top take over from the right/bottom default. Set inline by the drag, so this pair
-   has to be neutralised or the two would fight and the button would jump on first grab. */
-.ai-fab.moved{right:auto;bottom:auto;}
-.ai-fab.dragging{cursor:grabbing;transition:none;}
-body.dragging-fab{user-select:none;}
-body.dragging-fab #gameFrame{pointer-events:none;}
+/* The assistant's restore button. Borrows .outline-btn wholesale and only mirrors the margin, so
+   the two ends of the view bar are the same control facing opposite ways rather than two different
+   inventions for one job. */
+.ai-btn{margin-right:0;margin-left:10px;}
 .mcq-opt.correct::after{content:"\2713";margin-left:auto;color:var(--green);font-weight:700;font-size:15px;}
 .mcq-opt.wrong::after{content:"\2717";margin-left:auto;color:var(--gold);font-weight:700;font-size:15px;}
 .fb-row.correct::after{content:"\2713";margin-left:auto;color:var(--green);font-weight:700;}

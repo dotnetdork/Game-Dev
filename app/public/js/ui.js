@@ -58,9 +58,9 @@ function closeFloating() {
   if (!floatOpen) return;
   const d = floatOpen === 'left' ? dockLeft : dockRight;
   d.classList.remove('open');
-  const back = floatOpen === 'left' ? $('outlineBtn') : $('aiFab');
+  const back = floatOpen === 'left' ? $('outlineBtn') : $('aiBtn');
   floatOpen = null;
-  paintScrim(); updateFab(); paintOutlineBtn();
+  paintScrim(); paintAIBtn(); paintOutlineBtn();
   if (back && !back.hidden) { try { back.focus(); } catch (e) {} }
 }
 function openFloating(which) {
@@ -69,19 +69,23 @@ function openFloating(which) {
   if (floatOpen && floatOpen !== which) closeFloating();
   d.classList.add('open');
   floatOpen = which;
-  paintScrim(); updateFab(); paintOutlineBtn();
+  paintScrim(); paintAIBtn(); paintOutlineBtn();
   const first = d.querySelector('button:not([hidden]), input:not([disabled])');
   if (first) { try { first.focus(); } catch (e) {} }
 }
 
-/* Shown whenever the assistant is not. Hidden over a full-page view or a lab, where the panel it
-   would open is behind something else and the button would do nothing a student can see. */
-function updateFab() {
-  const fab = $('aiFab'); if (!fab) return;
+/* The assistant's twin of paintOutlineBtn: on screen whenever the assistant is not, in the view bar
+   at the opposite end from the outline's button, and gone entirely over a full-page view or a lab —
+   where the panel it opens is behind something else and the button would do nothing a student can
+   see. Was a floating circle; a bar button is the same control the left panel already has, and one
+   idiom for "bring a panel back" beats two. */
+function paintAIBtn() {
+  const b = $('aiBtn'); if (!b) return;
   const labOpen = typeof openLabRef !== 'undefined' && !!openLabRef;
   const pageShowing = !($('page') && $('page').hidden);
   const aiVisible = tier === 'wide' ? !aiCollapsed : floatOpen === 'right';
-  fab.hidden = aiVisible || pageShowing || labOpen;
+  b.hidden = aiVisible || pageShowing || labOpen;
+  b.setAttribute('aria-expanded', aiVisible ? 'true' : 'false');
 }
 /* Hiding the outline mirrors hiding the assistant: the chevron in the panel's own header sends it
    away, and the button in the view bar brings it back. That button is on screen ONLY while the
@@ -104,12 +108,14 @@ function showOutline() {
   if (tier === 'narrow') { openFloating('left'); return; }   // that repaints the button itself
   outlineCollapsed = false;
   $('editor').classList.remove('outline-hidden');
+  restoreDockWidth('left');
   paintOutlineBtn();
   if (typeof fitStage === 'function') requestAnimationFrame(fitStage);
 }
 function hideOutline() {
   if (tier === 'narrow') { closeFloating(); return; }
   outlineCollapsed = true;
+  stashDockWidth('left');
   $('editor').classList.add('outline-hidden');
   paintOutlineBtn();
   if (typeof fitStage === 'function') requestAnimationFrame(fitStage);
@@ -118,16 +124,40 @@ function hideOutline() {
 }
 
 function hideAI() {
-  if (tier === 'wide') { aiCollapsed = true; $('editor').classList.add('ai-hidden'); }
+  if (tier === 'wide') { aiCollapsed = true; stashDockWidth('right'); $('editor').classList.add('ai-hidden'); }
   else closeFloating();
-  updateFab();
+  paintAIBtn();
   if (typeof fitStage === 'function') requestAnimationFrame(fitStage);
 }
 function showAI() {
-  if (tier === 'wide') { aiCollapsed = false; $('editor').classList.remove('ai-hidden'); }
+  if (tier === 'wide') { aiCollapsed = false; $('editor').classList.remove('ai-hidden'); restoreDockWidth('right'); }
   else openFloating('right');
-  updateFab();
+  paintAIBtn();
   if (typeof fitStage === 'function') requestAnimationFrame(fitStage);
+}
+
+/* ---------- a dragged width, put away while the dock is collapsed ----------
+   Collapsing a dock works by adding a class whose rule sets --leftw / --rightw to 0. A DRAG sets
+   the same property inline on #editor, and an inline style beats any selector — so once a student
+   had resized a panel, collapsing it stopped doing anything: the state said hidden, the chevron
+   swapped, the floating button appeared, and the panel stayed exactly where it was.
+
+   The width is taken off the element and kept here for the duration, then put back when the panel
+   returns. Restoring rather than discarding, because a width you dragged should survive being
+   folded away and brought back — that is the whole reason to fold it away. */
+const dockDragged = { left: null, right: null };
+function dockProp(side) { return side === 'left' ? '--leftw' : '--rightw'; }
+function stashDockWidth(side) {
+  const ed = $('editor'), p = dockProp(side);
+  const v = ed.style.getPropertyValue(p);
+  if (v) { dockDragged[side] = v; ed.style.removeProperty(p); }
+}
+function restoreDockWidth(side) {
+  const ed = $('editor'), p = dockProp(side);
+  if (!dockDragged[side]) return;
+  ed.style.setProperty(p, dockDragged[side]);
+  dockDragged[side] = null;
+  clampDockWidths();     // the tier may have changed while it was away
 }
 
 /* A width dragged at one tier can be nonsense at another, so anything outside the new tier's range
@@ -158,7 +188,7 @@ function applyTier() {
   $('editor').classList.toggle('outline-hidden', t !== 'narrow' && outlineCollapsed);
   clampDockWidths();
   paintScrim();
-  updateFab();
+  paintAIBtn();
   paintOutlineBtn();
   if (typeof fitStage === 'function') requestAnimationFrame(fitStage);
 }
@@ -169,8 +199,16 @@ function makeResizer(handle, side) {
     const lim = dockLimits(side);
     if (!lim) return;                          // this dock floats at this tier; there is nothing to drag
     e.preventDefault(); const startX = e.clientX; const editor = $('editor');
-    const prop = side === 'left' ? '--leftw' : '--rightw';
-    const start = parseInt(getComputedStyle(editor).getPropertyValue(prop), 10) || lim[0];
+    const prop = dockProp(side);
+    /* Measured off the dock, not parsed out of --leftw / --rightw.
+       A custom property computes to its TOKENS unless it has been registered with @property, so
+       once the default became clamp(320px,29vw,560px) this read back the literal string
+       "clamp(320px,29vw,560px)", parseInt gave NaN, and `|| lim[0]` silently started every drag
+       from the minimum — grabbing the handle snapped a 560px panel to 280 before it moved a pixel.
+       The element's own width is the same number when the value is plain pixels and the right one
+       when it is not. */
+    const el = side === 'left' ? dockLeft : dockRight;
+    const start = Math.round(el.getBoundingClientRect().width) || lim[0];
     function move(ev) {
       const dx = side === 'left' ? ev.clientX - startX : startX - ev.clientX;
       editor.style.setProperty(prop, Math.max(lim[0], Math.min(lim[1], start + dx)) + 'px');
@@ -181,97 +219,8 @@ function makeResizer(handle, side) {
 }
 makeResizer($('resLeft'), 'left'); makeResizer($('resRight'), 'right');
 
-/* ---------- the assistant's button, moved by hand ----------
-   It floats over the work, so wherever it sits is in somebody's way eventually — over the coins in
-   one game, over the log in another. Press and drag moves it; a press that does not travel is still
-   a click that opens the assistant, which is what it is for and must stay the easy thing.
-
-   Pointer events rather than mouse, unlike the two dock resizers: those adjust a column on a
-   desktop, this is a floating control on the tier where a touch screen is likely. Threshold before
-   anything moves, or a slightly shaky tap on a touch screen becomes a drag and never opens
-   anything. */
-const FABKEY = 'leagueFabPos';
-const FAB_DRAG_MIN = 4;                     // px of travel before a press counts as a drag
-
-function fabBounds(fab) {
-  const host = $('editor').getBoundingClientRect();
-  const r = fab.getBoundingClientRect();
-  return { host: host, w: r.width, h: r.height,
-    maxX: Math.max(0, host.width - r.width - 8), maxY: Math.max(0, host.height - r.height - 8) };
-}
-function placeFab(x, y) {
-  const fab = $('aiFab'); if (!fab) return;
-  const b = fabBounds(fab);
-  const cx = Math.max(8, Math.min(b.maxX, x)), cy = Math.max(8, Math.min(b.maxY, y));
-  fab.classList.add('moved');
-  fab.style.left = cx + 'px'; fab.style.top = cy + 'px';
-  return { x: cx, y: cy };
-}
-/* A position saved on a 1920 screen can be off the edge of a 1280 one, so it is clamped on the way
-   in rather than trusted — the same reasoning as clampDockWidths. */
-function restoreFabPos() {
-  const fab = $('aiFab'); if (!fab) return;
-  const p = Storage.readJSON(FABKEY, null);
-  if (!p || typeof p.x !== 'number' || typeof p.y !== 'number') return;
-  // Measuring needs a laid-out button, and it boots hidden. Unhide for the measurement only.
-  const was = fab.hidden; fab.hidden = false;
-  placeFab(p.x, p.y);
-  fab.hidden = was;
-}
-(function () {
-  const fab = $('aiFab'); if (!fab) return;
-  let dragging = false, moved = false, id = null, offX = 0, offY = 0;
-  fab.addEventListener('pointerdown', function (e) {
-    if (e.button !== undefined && e.button !== 0) return;
-    const host = $('editor').getBoundingClientRect(), r = fab.getBoundingClientRect();
-    // Grab from wherever it was taken hold of, not from the corner, or it leaps under the cursor.
-    offX = e.clientX - r.left; offY = e.clientY - r.top;
-    dragging = true; moved = false; id = e.pointerId;
-    // Keeps the drag alive over the game frame, which would otherwise swallow the moves. Guarded:
-    // capturing a pointer the element does not actually hold throws, and a throw here would leave
-    // `dragging` true with no way to end it — the button would follow the cursor forever.
-    try { fab.setPointerCapture(id); } catch (e) {}
-  });
-  fab.addEventListener('pointermove', function (e) {
-    if (!dragging) return;
-    const host = $('editor').getBoundingClientRect();
-    const x = e.clientX - host.left - offX, y = e.clientY - host.top - offY;
-    if (!moved) {
-      const r = fab.getBoundingClientRect();
-      if (Math.abs(e.clientX - (r.left + offX)) < FAB_DRAG_MIN
-        && Math.abs(e.clientY - (r.top + offY)) < FAB_DRAG_MIN) return;
-      moved = true;
-      fab.classList.add('dragging'); document.body.classList.add('dragging-fab');
-    }
-    placeFab(x, y);
-  });
-  function end() {
-    if (!dragging) return;
-    dragging = false;
-    if (id !== null) { try { fab.releasePointerCapture(id); } catch (e) {} id = null; }
-    fab.classList.remove('dragging'); document.body.classList.remove('dragging-fab');
-    if (moved) {
-      const host = $('editor').getBoundingClientRect(), r = fab.getBoundingClientRect();
-      Storage.writeJSON(FABKEY, { x: Math.round(r.left - host.left), y: Math.round(r.top - host.top) });
-    }
-  }
-  fab.addEventListener('pointerup', end);
-  fab.addEventListener('pointercancel', end);
-  // The click still fires after a drag; swallow it, or letting go opens the panel every time.
-  fab.addEventListener('click', function (e) {
-    if (moved) { moved = false; e.stopImmediatePropagation(); e.preventDefault(); return; }
-    showAI();
-  });
-  // A window resize can strand it off the edge, exactly as it can a saved position.
-  window.addEventListener('resize', function () {
-    if (!fab.classList.contains('moved')) return;
-    const was = fab.hidden; fab.hidden = false;
-    placeFab(parseFloat(fab.style.left) || 0, parseFloat(fab.style.top) || 0);
-    fab.hidden = was;
-  });
-})();
-
 if ($('aiCollapse')) $('aiCollapse').addEventListener('click', hideAI);
+if ($('aiBtn')) $('aiBtn').addEventListener('click', showAI);
 if ($('outlineBtn')) $('outlineBtn').addEventListener('click', showOutline);
 if ($('outlineCollapse')) $('outlineCollapse').addEventListener('click', hideOutline);
 if ($('dockScrim')) $('dockScrim').addEventListener('click', closeFloating);
@@ -299,7 +248,6 @@ if (typeof window.matchMedia === 'function') {
 }
 window.addEventListener('resize', applyTier);
 applyTier();
-restoreFabPos();   // after applyTier, so the button is measured against the layout it will live in
 
 /* ---------- saving problems are the student's problem, so say so ----------
    A failed save used to throw somewhere nobody was listening, and the student carried on working

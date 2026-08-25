@@ -38,10 +38,6 @@
   </header>
 
   <div class="stage-wrap">
-    <!-- The assistant's own avatar, the same picture its panel header wears, rather than a generic
-         outline robot glyph. A button that opens a specific thing should look like that thing, and
-         a thin outline glyph on a saturated orange disc was mud at 24px besides. -->
-    <button id="aiFab" class="ai-fab" title="Open the assistant — drag to move it" hidden><img class="fab-ava" src="img/clearRobotRing4.png" alt=""></button>
     <div class="editor" id="editor">
       <aside class="dock left" aria-labelledby="leftTitle">
         <div class="res r" id="resLeft"></div>
@@ -106,6 +102,13 @@
             <button class="tp tp-play" id="gamePlay" title="Run your game (Ctrl+Enter)" aria-label="Play"><span class="mdi mdi-play" aria-hidden="true"></span></button>
             <button class="tp tp-stop" id="gameStop" title="Stop the game" aria-label="Stop" disabled><span class="mdi mdi-stop" aria-hidden="true"></span></button>
           </div>
+          <!-- The assistant's twin of #outlineBtn, at the opposite end of the bar from it, and on
+               screen only while the assistant is not.
+               A glyph, not the assistant's avatar: that picture is a detailed little robot with a
+               ring, and at the 19px this button allows it was mud. mdi-robot is the shorthand the
+               Help page already uses for the assistant, and it is a flat shape that survives being
+               small — which is the whole job here. -->
+          <button class="outline-btn ai-btn" id="aiBtn" aria-expanded="false" aria-controls="panel-ai" title="Show the assistant" hidden><span class="mdi mdi-robot" aria-hidden="true"></span><span class="sr-only">Assistant</span></button>
         </div>
         <!-- How far through the lesson you are. A lesson is about six screens tall and the only
              progress readout used to sit at the very bottom of it, so for the whole scroll there was

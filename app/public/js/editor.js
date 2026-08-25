@@ -127,9 +127,11 @@ function switchView(view) {
   });
   ['learn', 'code', 'play'].forEach(function (v) { $('view-' + v).hidden = (v !== view); });
   const panelFor = { learn: 'panel-outline', code: 'panel-files', play: 'panel-info' };
-  // "Inspector", not "Game Info": the panel edits the numbers now, and every engine calls the panel
-  // that edits the selected thing's properties an Inspector.
-  const titleFor = { learn: 'Course Outline', code: 'Files', play: 'Inspector' };
+  /* Engine names for engine panels. "Inspector" rather than "Game Info" because the panel edits the
+     numbers now, and that is what every engine calls the one that edits the selected thing's
+     properties; "Content Browser" rather than "Files" because it holds the scripts AND the bought
+     art and sound, which is exactly the distinction Unreal's name draws. */
+  const titleFor = { learn: 'Course Outline', code: 'Content Browser', play: 'Inspector' };
   ['panel-outline', 'panel-files', 'panel-info'].forEach(function (p) { $(p).hidden = (p !== panelFor[view]); });
   $('leftTitle').textContent = titleFor[view];
   /* The transport rides in this bar but belongs to the Game view, so it is only on screen there.
