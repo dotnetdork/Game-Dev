@@ -1,0 +1,917 @@
+# Openers a student can tap instead of typing, and the line the panel greets them with.
+#
+# Three chips appear above the input when a chat is new, drawn at random from the pools below so
+# they are not the same three every time. Why they exist: a blank box and a blinking cursor is the
+# hardest possible interface for a child who does not yet know what they are allowed to ask. Three
+# real openers show them the SHAPE of a good one, and the ones written here are the things students
+# actually get stuck on.
+#
+# TUTOR AND BUILD DRAW FROM DIFFERENT POOLS, and they are different in kind, not just in wording.
+# The Tutor is asked QUESTIONS — why is this happening, what does this mean, explain it again. Build
+# is given INSTRUCTIONS — add this, make that faster, put a sound on the pickup. Offering "What is a
+# variable?" as a Build chip teaches a child that the two panels are interchangeable, which is the
+# single most expensive misconception this app can hand out. So: `tutor:` is written in questions,
+# `coder:` is written in imperatives, and neither borrows from the other.
+#
+# `tutor:` has a `labs:` tier; `coder:` does not, because Build is off inside a lab bench.
+#
+# The draw prefers the specific over the general: this lesson's pool first, then this module's, then
+# `any`. So a lesson with ten of its own will always show three of those, and a lesson with none
+# still shows something sensible.
+#
+# POOL SIZE IS THE POINT. A student opens a chat many times a term. If a lesson has three openers
+# they see the same three forever and stop reading them. Ten per lesson gives 120 possible sets of
+# three, which is enough that the chips still feel chosen for the moment. When you add a lesson,
+# write ten for each side. If you can only think of four, the lesson itself is probably vague.
+#
+# Every value is in a student's voice. Not "Explain the game loop" — a child does not talk like
+# that. "Why does my game keep going when I'm not touching anything?"
+#
+# QUOTING: wrap the whole line in single quotes if it contains a colon followed by a space, or
+# starts with a backtick or a double quote. Same rule as every other authored file here — see
+# content/AUTHORING.md.
+
+# ---- the opening message of a new chat ----
+# One is drawn at random each time a chat is started, and then it belongs to that chat for good.
+#
+# These are not decoration and they are not the same sentence twenty ways. Each one teaches
+# something DIFFERENT about how to use the panel — that it can read your error, that it will not
+# write your code, that "I don't get it" is a real question, that it can see the file you have open.
+# A student who opens a few chats over a term picks up the whole set without ever reading a manual.
+#
+# They have a voice, deliberately. A flat "How can I help you today?" reads as a form to fill in;
+# a line with a bit of warmth and an opinion in it reads as somebody to talk to, and a child who
+# thinks there is somebody there will actually ask. Two or three sentences: enough room for a
+# personality and a lesson, not so much that it becomes a wall of text nobody reads.
+#
+# Written to a ten-year-old: short sentences, no jargon, and never smug about what it will not do.
+greetings:
+  tutor:
+    - "Hi, I'm your **Tutor** — the explaining one. I don't touch your game at all, which means there is genuinely nothing you can ask me here that breaks anything. Ask me what a line does, why something isn't working, or what on earth this lesson is actually on about."
+    - "Hi, I'm your **Tutor**. I can see your code and whatever your game printed the last time you ran it, so \"why is it doing *that*?\" is a question I can usually answer properly instead of guessing. I'll explain what's going on — the typing stays yours."
+    - "Hi, I'm your **Tutor**. \"I don't get it\" is a completely fine thing to say to me. It's honestly the most useful thing you can say, because it tells me to stop and come at it from somewhere else. Tell me which bit lost you."
+    - "Hi, I'm your **Tutor**. There is no question too basic here, and I mean that — nobody is born knowing what a semicolon is for. If you want to know what a word means, what a symbol does, or why anyone would write it that way, just ask."
+    - "Hi, I'm your **Tutor**. If your game is broken, tell me two things: what you expected, and what happened instead. Those two sentences together are usually enough for me to spot it with you in about ten seconds."
+    - "Hi, I'm your **Tutor**. I'll help you understand your code rather than replace it — the version you worked out yourself is the one you'll still understand next week, and next week is where the marks are. Ask me anything."
+    - "Hi, I'm your **Tutor**. I can see which lesson you're on, so you don't have to set the scene for me. Just ask the bit you're stuck on and I'll fill in the rest myself."
+    - "Hi, I'm your **Tutor**. If an explanation doesn't land, say \"explain that differently\" and I'll try a completely different way in. There's always more than one way to picture the same idea, and the first one isn't always the best one for you."
+    - "Hi, I'm your **Tutor**. \"Why would anyone write it like *that*?\" is one of my favourite questions to get. Code nearly always has a reason behind it, and the reason is usually the interesting part — much more interesting than the code."
+    - "Hi, I'm your **Tutor**. You can talk to me *before* you write anything, which is a trick most people don't work out for ages. Tell me what you're trying to build and I'll help you get the steps into the right order first."
+    - "Hi, I'm your **Tutor**. If there's a word or a symbol in the lesson you've never seen before, ask. Programming is about ninety percent weird punctuation with a name, and every single person had to be told what `=>` was once."
+    - "Hi, I'm your **Tutor**. Ask me the same thing twice if you need to — I genuinely don't mind and I won't sigh. Explanations often only click on the second go, and sometimes the third one is the one that sticks."
+    - "Hi, I'm your **Tutor**. I can walk through your own code with you line by line and tell you what each part is actually doing. That's usually much faster than staring at it hoping it confesses."
+    - "Hi, I'm your **Tutor**. Guessing is allowed here. Tell me what you *think* is happening and I'll tell you which parts you've already got right — that's a far better place to start from than a blank page."
+    - "Hi, I'm your **Tutor**. Paste an error at me, or just say \"it went red\", and I'll help you read it. Errors look terrifying and are usually saying something quite simple in the rudest possible way."
+    - "Hi, I'm your **Tutor**. I know which file you've got open, so \"what's this bit for?\" normally works without you copying anything across to me. Just point at it in words."
+    - "Hi, I'm your **Tutor**. If you want to check something *before* you run it, show me and ask \"will this work?\" I'll tell you what I think will happen and why — and if I'm wrong, running it will settle the argument."
+    - "Hi, I'm your **Tutor**. If there are two ways to do something and you can't choose, ask me to compare them. Usually one of them is easier to change later, and that's almost always the one worth picking."
+    - "Hi, I'm your **Tutor**. On the Practice at the end of a lesson I'll talk you through the thinking but I won't hand over the answer. That one's actually worth doing yourself — it's the bit that turns reading into knowing."
+    - "Hi, I'm your **Tutor**. Small questions get much better answers than big ones. \"Why is my player stuck on the wall?\" beats \"fix my game\" every time, because the first one I can actually get my teeth into."
+    - "Hi, I'm your **Tutor**. If your game runs but does the wrong thing, that's often more interesting than a crash — a crash tells you where it broke, but this makes you think. Describe what it does and we'll work backwards together."
+    - "Hi, I'm your **Tutor**. You don't have to use the proper words with me. Say \"the jumpy bit\" or \"that thing at the top that keeps going wrong\" and I'll work out what you mean. Getting the names right comes later, and it comes on its own."
+  coder:
+    - "Hi, I'm **Build** — the one that actually types. Tell me what you want in plain words, like \"make the player jump higher\" or \"add another coin\", and I'll write it. You'll see exactly what changed, line by line, before any of it goes near your game."
+    - "Hi, I'm **Build**. I edit your real game files, so I show you my working first: every change comes to you as a before-and-after, and nothing lands until you've had a look and said yes. Declining costs you nothing at all."
+    - "Hi, I'm **Build**. I can only use art and sounds you actually own — no borrowing things from thin air. If you ask for something you haven't got yet, I'll say so and tell you where it is in the Store."
+    - "Hi, I'm **Build**. You don't need to know the right words for anything. Describe what you want to *happen* in your game and I'll work out what it's called and which file it belongs in. That part's my job."
+    - "Hi, I'm **Build**. One thing I won't do is the Practice exercise at the end of a lesson — that one's yours, and the Tutor will talk you through it if you get stuck. Everything else in your game, though, just ask."
+    - "Hi, I'm **Build**. If what I give you isn't what you meant, say so plainly and I'll change it — I don't get precious about it. Small steps land much better than one enormous request, for both of us."
+    - "Hi, I'm **Build**. I read your code before I change any of it, so you can just say \"make it faster\" without digging out what it's currently set to. I'll go and look."
+    - "Hi, I'm **Build**. Nothing I write goes into your game unless you accept it, so you can ask for something wild, look at it, decide you hate it, and throw it away. That costs you nothing but about four seconds."
+    - "Hi, I'm **Build**. Ask me to explain a change as well as make it — \"add a jump and tell me how it works\" is a completely reasonable thing to say, and honestly it's the best way to use me."
+    - "Hi, I'm **Build**. I'll make a new file if your game has outgrown the one it's in, and I'll tell you *why* it belongs there rather than just quietly moving your stuff around behind your back."
+    - "Hi, I'm **Build**. One change at a time is much easier for you to check than ten at once — and when something goes wrong later, you'll know exactly which change did it. Future you will be grateful."
+    - "Hi, I'm **Build**. I can go rummaging in the Store with you. Say \"find me a spaceship\" and I'll tell you what's in there, what it costs, and whether it'll actually fit what you're making."
+    - "Hi, I'm **Build**. If a change is close but not quite right, describe the *difference* — \"like that but slower\", \"same thing but it should only happen once\". That's by far the fastest way to get it landed."
+    - "Hi, I'm **Build**. Numbers are the easiest thing to ask me for. \"Gravity feels too floaty\" or \"the enemy is way too fast\" is plenty — I'll go and find the value and tune it until it feels right."
+    - "Hi, I'm **Build**. I won't wander into files you didn't ask about. If a change genuinely needs to reach into a second one, I'll show you that too and tell you why it couldn't be avoided."
+    - "Hi, I'm **Build**. I do sound as well as art — a coin pickup, a jump, a game over sting. Tell me the moment you want it on and I'll wire it up to the exact line where that moment happens."
+    - "Hi, I'm **Build**. I work best *after* you've had a proper go yourself. Try it, get stuck, then tell me where you got to — you'll learn a lot more, and I'll do a lot less guessing about what you meant."
+    - "Hi, I'm **Build**. If your game is broken, tell me what it's doing wrong rather than what to change. I'd rather find the actual cause and fix that than paste a patch over the top of it and leave it for later."
+    - "Hi, I'm **Build**. Big ideas are welcome — I'll just break them into steps. Say \"I want a boss fight\" and we'll build it a piece at a time until one day there's a boss fight."
+    - "Hi, I'm **Build**. Anything you accept from me is your code now. You can edit it, break it, rename everything, and come back and ask me to change it again. Nothing I write is locked."
+    - "Hi, I'm **Build**. If you're not sure something is even possible, just ask — I'll tell you straight. And when the answer is no, there's usually a simpler version sitting nearby that is a yes."
+    - "Hi, I'm **Build**. I'll follow the way your game is already written rather than my own favourite style, so what I add should look like it belongs next to the rest of your code, not like it was dropped in from space."
+
+# ================================================================================================
+# TUTOR — questions. Things a student wants EXPLAINED.
+# ================================================================================================
+tutor:
+  # ---- always eligible, whatever lesson they are on ----
+  any:
+    - Can you explain that in a simpler way?
+    - I do not understand what I am supposed to do.
+    - What does this lesson want me to end up with?
+    - Why is my game not doing anything?
+    - What does this error mean?
+    - Is my code wrong, or just different?
+    - What should I try next?
+    - Can you go through my code with me line by line?
+    - What is this line actually for?
+    - I changed something and now it is worse. What did I break?
+    - Why does it work sometimes and not other times?
+    - Is there a simpler way to write this?
+    - What is the smallest thing I could try to find the problem?
+    - How do I check whether my code is even running?
+    - I have no idea where to start.
+    - Can you explain that with an example instead?
+    - What am I supposed to have learned here?
+    - Why did you do it that way and not the other way?
+    - Is this a mistake, or is it meant to look like that?
+    - How would I test this?
+    - Can you explain this like I have never seen code before?
+    - What is the difference between those two things?
+    - My game ran but nothing happened on screen.
+    - Where in my files should this go?
+
+  # ---- per module, keyed by the module name in course.yaml ----
+  modules:
+    Game Engines:
+      - What is a game engine actually doing for me?
+      - What part of this did I write, and what part came with Phaser?
+      - Why do games need a loop at all?
+      - What is a frame?
+      - Why can I not just draw everything once?
+      - What is the difference between an engine and a game?
+      - Why do we use Phaser instead of writing it all ourselves?
+      - What is actually happening between one frame and the next?
+      - Why would my game run at a different speed on another computer?
+      - What is a canvas?
+    Core Mechanics:
+      - How do I know if my game is actually fun?
+      - What makes a game too hard or too easy?
+      - Why does my game feel boring to play?
+      - What is a core loop?
+      - How long should one go of my game last?
+      - Why do people stop playing my game after a minute?
+      - What is the difference between a mechanic and a feature?
+      - How do I make a choice in my game feel like a real choice?
+      - What should the player be worried about?
+      - How do I keep it interesting without adding loads of stuff?
+    Phaser Programming:
+      - What is the difference between let and const?
+      - Why does my change not do anything when I run it?
+      - What does this line of code actually do?
+      - Where does this code need to go?
+      - What is a function and why would I make one?
+      - Why is my variable undefined?
+      - What does this error message mean?
+      - What is `this` in my code?
+      - Why does my code run in a different order than I wrote it?
+      - How do I print something so I can see what is going on?
+    Systems Architecture:
+      - Why would I split my code into more files?
+      - How do I stop my game breaking when I add something?
+      - What is state, in plain words?
+      - Why is my code so hard to change now?
+      - What is an event, and why not just call the function?
+      - When should something be its own file?
+      - Why would I put my numbers in a separate file?
+      - How do I stop the same code appearing four times?
+      - What is the difference between data and code?
+      - How do professionals keep big games organised?
+    Asset Design:
+      - How do I get my own picture into my game?
+      - Why does my sprite look blurry or stretched?
+      - What makes a game feel good to play?
+      - What is a sprite sheet?
+      - How do I make my character look like it is walking?
+      - When should a sound play and when is it just noise?
+      - What is juice?
+      - How do I know when my game is finished?
+      - Why does my game feel flat even though it works?
+      - How do I make a hit feel like it landed?
+
+  # ---- per lesson, keyed by the lesson id (the .md filename) ----
+  lessons:
+    what-an-engine-does:
+      - Why does the game keep going when I am not touching anything?
+      - What is a frame, really?
+      - What happens if the loop stops?
+      - Why is 60 frames a second the normal number?
+      - What is the engine doing that I did not write?
+      - Why does the whole screen get redrawn every frame?
+      - What actually calls update?
+      - Would my game run the same on a slower computer?
+      - What is the difference between the engine and my game?
+      - Why can the computer not just draw it once and leave it?
+    physics-and-collision:
+      - What is the difference between overlap and collider?
+      - Why does my player fall through the floor?
+      - Why does my player walk through the coins?
+      - What is gravity actually doing to my sprite?
+      - What is a body, and why does my sprite need one?
+      - Why does my player get stuck on the edge of a platform?
+      - How does something bounce?
+      - Why does my player slide forever after I let go?
+      - How does the game know two things are touching?
+      - What is velocity, in plain words?
+    what-a-game-is-made-of:
+      - What is a sprite sheet for?
+      - Why can I not just use one big picture?
+      - What is a tilemap?
+      - What is the difference between a sprite and an image?
+      - What are all the pieces a game is made of?
+      - Where do the pictures actually come from?
+      - What is an asset?
+      - Why do games load things before they start?
+      - What happens if I ask for a picture that is not there?
+      - What is a scene?
+    from-project-to-playable:
+      - Why can I not just send someone my folder?
+      - What does it mean to build a game?
+      - Why would my game work here but not for my friend?
+      - What is a file path and why does it keep breaking?
+      - What does the browser actually need to run my game?
+      - Why do I need a server just to look at my own game?
+      - What is the difference between my project and the game people play?
+      - What would stop my game loading on someone else's computer?
+      - How do I check my game works before I share it?
+      - Why is it a problem if something only exists on my machine?
+    the-core-loop:
+      - What is a core loop, in plain words?
+      - How do I know if my loop is any good?
+      - Why does my game get boring after a minute?
+      - What should happen right after the player succeeds?
+      - How is a core loop different from the game loop in code?
+      - What is the one thing my player does over and over?
+      - How long should one go round the loop take?
+      - Why does my game feel like it just stops?
+      - What makes someone want to do it again?
+      - Can a game have more than one loop?
+    feedback:
+      - What counts as feedback in a game?
+      - Why does my game feel dead when I hit something?
+      - How does the player know they did something right?
+      - What should happen the instant a hit lands?
+      - Is a number going up enough feedback on its own?
+      - How much feedback is too much?
+      - Why does my game feel unresponsive?
+      - What is the difference between feedback and juice?
+      - How do I show that the player got hurt?
+      - Why do players not notice when they score?
+    difficulty-and-flow:
+      - How do I make my game harder without making it annoying?
+      - Why do people quit at my hardest level?
+      - What is flow?
+      - How fast should my game get harder?
+      - Why is my game boring at the start?
+      - What is the difference between hard and unfair?
+      - How do I test if my game is too hard?
+      - Should the difficulty ever go back down?
+      - Why does my game go from easy straight to impossible?
+      - How do good games teach you without a tutorial?
+    risk-and-reward:
+      - What makes a risk feel worth taking?
+      - Why does nobody take the dangerous path in my game?
+      - Why does everyone take the risky option every time?
+      - What is a real cost, as opposed to a fake one?
+      - How big should the reward be compared to the risk?
+      - What makes a choice interesting instead of obvious?
+      - Should the player be able to see the risk coming?
+      - How do I stop one option being the right answer always?
+      - What happens if the risk never actually punishes you?
+      - Can a choice be interesting without any numbers?
+    progression:
+      - How do I make someone want to come back tomorrow?
+      - What should I unlock, and when?
+      - What is the difference between getting better and getting stronger?
+      - Why does collecting points forever get boring?
+      - What is a level, and does my game need them?
+      - How do I show the player they are making progress?
+      - Should progress ever be lost?
+      - What is the first thing a player should unlock?
+      - How do I stop the start feeling like a grind?
+      - What is pacing?
+    values-and-variables:
+      - What is a variable, in plain words?
+      - Why does score = score + 5 not mean score equals score plus 5?
+      - What is the difference between let and const?
+      - Why does my score keep resetting to zero?
+      - What is scope?
+      - Why is my variable undefined?
+      - What is the difference between a string and a number?
+      - Why did my number turn into text?
+      - Where should I declare a variable?
+      - What does it mean when two variables point to the same thing?
+    decisions-and-repeats:
+      - What does if actually do?
+      - When would I use a loop instead of writing it out?
+      - What is a function for?
+      - What is the difference between = and ==?
+      - Why does my if statement never run?
+      - Why does my if statement always run?
+      - What does else if do that else does not?
+      - What is a boolean?
+      - How do I check two things at once?
+      - What is the difference between a for loop and a while loop?
+    scenes-create-update:
+      - What is the difference between create and update?
+      - Why does my game get slower and slower?
+      - Where should I put this line of code?
+      - What is preload for?
+      - Why does my sprite appear a thousand times?
+      - What order do create and update happen in?
+      - Why is my variable gone by the time update runs?
+      - What belongs in create and what belongs in update?
+      - How often does update actually run?
+      - What is a scene, and when would I need a second one?
+    input-movement-collision:
+      - How do I read the arrow keys?
+      - Why does my player move through walls?
+      - Why does my player stick to things instead of collecting them?
+      - Why does my player keep moving after I let go of the key?
+      - How do I make the player jump only when on the ground?
+      - What is the difference between setting position and setting velocity?
+      - Why is my player moving faster diagonally?
+      - How do I check if a key is being held down?
+      - Why does my jump happen loads of times in one press?
+      - How do I stop the player leaving the screen?
+    reading-an-error:
+      - What does this error message mean?
+      - Where do I even start when something breaks?
+      - My game does nothing and there is no error. What now?
+      - What does undefined is not a function mean?
+      - What does cannot read property of undefined mean?
+      - Why does the error point at a line that looks fine?
+      - How do I use console.log to find a problem?
+      - What is a stack trace?
+      - Should I fix errors from the top or the bottom?
+      - How do I know which of my changes broke it?
+    game-state:
+      - What is game state, in plain words?
+      - How do I make a start screen and a game over screen?
+      - Why does my game over screen never go away?
+      - Why can my game be playing and finished at the same time?
+      - What is a state machine?
+      - Why are lots of true and false flags a problem?
+      - How do I restart my game properly?
+      - What should happen when the state changes?
+      - Where should the state actually live?
+      - How do I stop the player moving while the game is over?
+    entities-and-components:
+      - What actually makes an enemy different from a coin?
+      - Why would I build things out of shared parts?
+      - What is a component?
+      - Why is the same code in my game four times?
+      - How do I make one version that works for all of them?
+      - What is the difference between a thing and what a thing can do?
+      - When is copying code actually fine?
+      - How do I add a new enemy without rewriting everything?
+      - What is a group in Phaser?
+      - What should be shared and what should stay separate?
+    events-not-tangles:
+      - What is an event, in plain words?
+      - Why is my code getting so tangled?
+      - Why not just call the function directly?
+      - What does emit actually do?
+      - Who is listening to my event?
+      - Why does changing one thing break three others?
+      - When is an event the wrong tool?
+      - How do I know if my code is too tangled?
+      - What is coupling?
+      - How do events make it easier to add something new?
+    data-out-of-code:
+      - Why would I put numbers in a separate file?
+      - What is an array for?
+      - What is an object for?
+      - What counts as data and what counts as code?
+      - How do I loop through a list of things?
+      - Why is a magic number a problem?
+      - How do I make levels without writing new code each time?
+      - What is JSON?
+      - Where should my settings live?
+      - How do I get one thing out of an array?
+    sprites-and-animation:
+      - How do I make my character look like it is walking?
+      - What is an animation, underneath?
+      - Why does my animation look wrong?
+      - Why does my animation only play one frame?
+      - What is a frame rate in an animation?
+      - How do I make an animation loop forever?
+      - How do I switch between walking and standing still?
+      - Why does my sprite look stretched?
+      - What is a sprite sheet and how does the game cut it up?
+      - How do I flip my character to face the other way?
+    sound-design:
+      - How do I play a sound when something happens?
+      - Why do my sound effects feel annoying?
+      - When should a sound play and when should it not?
+      - Why does my sound not play the first time?
+      - How do I stop the same sound playing over itself?
+      - Should my game have music as well?
+      - How loud should a sound effect be?
+      - What sound matters most in my game?
+      - Why does sound make a game feel better?
+      - How do I make a sound feel like it belongs to the hit?
+    juice:
+      - What is juice in a game?
+      - How much screen shake is too much?
+      - Why does my game feel flat even though it works?
+      - What is the cheapest thing I can add that makes it feel better?
+      - What is a tween?
+      - How do I make a hit feel like it landed?
+      - Should everything be juicy or only some things?
+      - What are particles for?
+      - Why does making things squash and stretch look good?
+      - How do I know when I have added too much?
+    ship-it:
+      - How do I know when my game is finished?
+      - What should I do when I watch someone play it?
+      - What should I check before I share my game?
+      - Why does my game break for other people?
+      - How do I get useful feedback instead of nice comments?
+      - What do I do if someone does not understand my game?
+      - Should I fix everything they say?
+      - How do I write instructions for my game?
+      - What is the difference between finished and perfect?
+      - What is the first thing a new player sees?
+
+  # ---- inside a lab bench, keyed by the same lesson id ----
+  # A lab is a specific broken program, so these are about THAT, not about the lesson around it.
+  # The lab tutor is under instructions to nudge rather than answer, so these are written as the
+  # questions a stuck student would actually ask at the bench, not as requests for the fix.
+  labs:
+    what-an-engine-does:
+      - Why does my box only move once?
+      - What is supposed to ask for the next frame?
+      - I pressed Run and nothing keeps going. Why?
+      - What does this code do the first time through?
+      - Which line is missing?
+      - How would I check whether my function runs more than once?
+    physics-and-collision:
+      - Why is nothing falling when gravity is set?
+      - What is missing between having a speed and actually moving?
+      - Does my object know it is meant to be affected by physics?
+      - What does the physics engine need me to do first?
+      - Why does setting gravity on its own not do anything?
+      - How do I check whether my sprite has a body?
+    what-a-game-is-made-of:
+      - Why is nothing drawn on the screen?
+      - What picture is my code actually asking for?
+      - How do I find out which pictures I have?
+      - Does the name in my code match the name that was loaded?
+      - Why does asking for a missing picture fail quietly?
+      - Where would I look to see what was preloaded?
+    from-project-to-playable:
+      - What in here would only work on the computer it was written on?
+      - Why does this fail for everybody else?
+      - What is the assumption being made in this code?
+      - How would I spot something that only exists on one machine?
+      - What should this use instead of a fixed path?
+      - How do I test that it works somewhere else?
+    the-core-loop:
+      - Why does nothing new appear after I collect the coin?
+      - What does it mean to set up the next go?
+      - What is missing at the end of the loop?
+      - The coin disappears and then nothing. Why?
+      - Where should the new coin be created?
+      - What makes a loop actually loop?
+    feedback:
+      - The health goes down but I cannot tell. What should I add?
+      - How does the player know the hit worked?
+      - What is the most obvious thing I could change on a hit?
+      - Where in the code does the hit actually happen?
+      - What would make this feel like it connected?
+      - Is changing a number enough on its own?
+    difficulty-and-flow:
+      - How do I make the speed go up a bit at a time?
+      - Where does the difficulty get set in this code?
+      - Why does it jump straight to impossible?
+      - What should the speed depend on?
+      - How do I stop it getting hard too fast?
+      - What is a sensible amount to increase it by?
+    risk-and-reward:
+      - Why does everyone just take the risky chest?
+      - What downside could I give it?
+      - What makes this choice fake at the moment?
+      - Where is the reward set in this code?
+      - What would make me actually think before choosing?
+      - Should the cost happen every time or sometimes?
+    progression:
+      - The points go up forever and nothing happens. What should change?
+      - What could I unlock with these points?
+      - Where would I check whether the player has earned something?
+      - What counts as real progress here?
+      - How do I show the player something changed?
+      - What should happen at a milestone?
+    values-and-variables:
+      - Why does my score go back to zero every time?
+      - What does it mean for a variable to be inside the loop?
+      - Where is the value getting lost?
+      - Why does declaring it there matter?
+      - How would I prove the score is being reset?
+      - Where should this variable actually live?
+    decisions-and-repeats:
+      - What is my if statement actually checking?
+      - Why does the condition never come true?
+      - How do I see what the value is when it is checked?
+      - Is the comparison the right way round?
+      - What would make this condition true?
+      - Am I using = when I meant ==?
+    scenes-create-update:
+      - What is happening every frame that should only happen once?
+      - Why is it piling up?
+      - Where should this line have gone?
+      - How can I tell how many times something has run?
+      - What is the difference between create and update again?
+      - Why does moving one line fix all of it?
+    input-movement-collision:
+      - The keys are being read but the player will not move. Why?
+      - Where does the value stop being used?
+      - How do I follow the key press all the way to the movement?
+      - What should the key actually be setting?
+      - Is the movement being overwritten somewhere?
+      - How do I check the key is really being detected?
+    reading-an-error:
+      - What is this error telling me?
+      - Which line is actually broken?
+      - Should I fix the first error or the last one?
+      - Why did fixing one error give me a different one?
+      - What does this message mean in plain words?
+      - How do I know I have fixed the right thing?
+    game-state:
+      - How can it be playing and game over at the same time?
+      - What should replace these separate flags?
+      - How many states does this game actually have?
+      - Which combinations of these flags are impossible?
+      - Where does the state get changed?
+      - What should the state be called instead?
+    entities-and-components:
+      - What do these four blocks of code have in common?
+      - What is actually different between them?
+      - How do I make one version that handles all four?
+      - What should be a parameter and what should be fixed?
+      - Where do I start pulling this apart?
+      - How do I check my one version still does all four jobs?
+    events-not-tangles:
+      - Why does this one function touch everything?
+      - What should it announce instead of doing?
+      - Who should be listening?
+      - What is the event actually called?
+      - How does this make it easier to change later?
+      - What stays and what moves out?
+    data-out-of-code:
+      - Which numbers in here are settings?
+      - Where should they all go?
+      - How do I tell a setting from a normal number?
+      - What should the settings object look like?
+      - How do I make the code read from it?
+      - Did I miss one?
+    sprites-and-animation:
+      - The frames are loaded but nothing animates. What is missing?
+      - What is the step between having frames and playing them?
+      - Where would I create the animation?
+      - Is the animation created but never started?
+      - How do I check the animation exists?
+      - What does the animation need to be told?
+    sound-design:
+      - Which moment here deserves a sound?
+      - Where would the sound go in this code?
+      - How do I stop it being annoying?
+      - Should it play every time?
+      - What sound do I actually have available?
+      - Why is silence a problem here?
+    juice:
+      - Nothing is broken but it feels like nothing. Where do I start?
+      - What is the one change that would help most?
+      - How do I make the hit obvious?
+      - What could I add without touching the logic?
+      - How much is too much here?
+      - Where does the hit happen in this code?
+    ship-it:
+      - What would break this for somebody else?
+      - What should I check first?
+      - How do I find the assumptions in this code?
+      - Is there something in here that only works for the author?
+      - What is the list of things to go through?
+      - How do I know when I have got them all?
+
+# ================================================================================================
+# BUILD — instructions. Things a student wants DONE to their game.
+#
+# Imperatives, never questions. These chips are the student's first lesson in what a build request
+# sounds like: one change, described by what should happen rather than by what to type. No `labs:`
+# tier — Build is off inside a lab bench.
+# ================================================================================================
+coder:
+  any:
+    - Add a comment to every line explaining what it does.
+    - Make the game start paused until I press a key.
+    - Add a score that goes up when I collect something.
+    - Put a title on the screen when the game starts.
+    - Make the player move faster.
+    - Add a second one of whatever I already have.
+    - Show me what this file looks like tidied up.
+    - Add a game over screen.
+    - Make the background a different colour.
+    - Add a restart key so I do not have to reload.
+    - Make everything on screen a bit bigger.
+    - Add a timer that counts down.
+    - Put a border round the play area so nothing escapes.
+    - Add a sound when the player collects something.
+    - Rename my variables to something that makes sense.
+    - Split this file up, it is getting long.
+    - Add a high score that survives a restart.
+    - Make the hardest bit a bit easier.
+    - Add a second level.
+    - Take out the bits I am not using any more.
+  modules:
+    Game Engines:
+      - Show me the game loop with a comment on every line.
+      - Add a counter that shows how many frames have gone by.
+      - Draw the frames per second in the corner of the screen.
+      - Make a shape that moves across the screen on its own.
+      - Add a key that pauses and unpauses the loop.
+      - Make the movement the same speed no matter the frame rate.
+      - Add a second shape that moves at a different speed.
+      - Print something to the console once every second.
+      - Make the shape bounce off the edges instead of leaving.
+      - Slow the whole game down to half speed.
+    Core Mechanics:
+      - Make the thing I collect respawn somewhere new.
+      - Add a reward for taking the risky route.
+      - Make the game get faster the longer I survive.
+      - Add a combo that builds up if I do not miss.
+      - Give the player three lives instead of one.
+      - Add something the player has to avoid.
+      - Make the first thirty seconds easier than the rest.
+      - Add a milestone message every ten points.
+      - Give the player a choice between two things.
+      - Make the reward bigger the longer the player waits.
+    Phaser Programming:
+      - Move this code into its own function.
+      - Add a variable for the speed instead of the number.
+      - Print the score to the console every time it changes.
+      - Add an if that checks whether the score is high enough.
+      - Turn these four lines into a loop.
+      - Fix whatever is causing this error.
+      - Move this out of update and into create.
+      - Add arrow key controls.
+      - Give my player a jump.
+      - Stop the player going off the side of the screen.
+    Systems Architecture:
+      - Put all my settings into one file.
+      - Replace these flags with a single state.
+      - Make this send an event instead of calling everything itself.
+      - Turn my four copies of this into one function.
+      - Split this file into two that make sense.
+      - Make the enemies come from a list instead of being written out.
+      - Add a new enemy type without touching the old ones.
+      - Move the numbers out of the code and into data.
+      - Add a start state and a game over state.
+      - Make it so adding a level does not need new code.
+    Asset Design:
+      - Put a real sprite in place of my coloured box.
+      - Make my character animate when it walks.
+      - Add a sound when the player collects something.
+      - Add a screen shake when I take damage.
+      - Add particles where the hit lands.
+      - Make the score number pop when it goes up.
+      - Add background music on a loop.
+      - Make the sprite bigger without it going blurry.
+      - Add a tween so things scale in instead of appearing.
+      - Give my game a title screen that looks finished.
+  lessons:
+    what-an-engine-does:
+      - Add a shape that moves a little bit every frame.
+      - Show the frame rate on screen.
+      - Add a key that stops and starts the loop.
+      - Count the frames and print the total every second.
+      - Make two shapes move at different speeds.
+      - Make the shape bounce off the edges.
+      - Slow the game down so I can see each frame.
+      - Add a comment to every line of the loop.
+      - Make the movement smooth instead of jumpy.
+      - Draw a trail behind the moving shape.
+    physics-and-collision:
+      - Add gravity so my player falls.
+      - Add a floor the player lands on.
+      - Make the player bounce when it hits the ground.
+      - Make the coins get collected instead of blocking me.
+      - Stop the player falling through the platform.
+      - Add a wall the player cannot walk through.
+      - Turn the physics debug outlines on.
+      - Make gravity weaker so the jump floats.
+      - Add a platform the player can jump onto.
+      - Make the player stop sliding when I let go.
+    what-a-game-is-made-of:
+      - Load a sprite and put it on the screen.
+      - Swap my placeholder box for a real picture.
+      - Add a background image behind everything.
+      - Show me everything my game is currently loading.
+      - Add a second sprite next to the first one.
+      - Make the sprite bigger without it going blurry.
+      - Put a tile floor along the bottom.
+      - Fix the picture that is not loading.
+      - Centre the sprite on the screen.
+      - Add a sprite sheet and use one frame from it.
+    from-project-to-playable:
+      - Find anything in my game that would only work on my computer.
+      - Fix my file paths so they work anywhere.
+      - Add a README that says how to run my game.
+      - Check my game for things that will break when I share it.
+      - Make the game fit any window size.
+      - Add a loading screen while things download.
+      - List every file my game actually needs.
+      - Remove anything my game is not using.
+      - Add a message if something fails to load.
+      - Get my game ready to hand in.
+    the-core-loop:
+      - Make a new coin appear after I collect one.
+      - Add a score that goes up each time round the loop.
+      - Make the next one appear somewhere random.
+      - Speed the loop up slightly every time.
+      - Add a short pause between one go and the next.
+      - Make three of them appear at once instead of one.
+      - Add a streak counter for collecting without missing.
+      - Put the coin somewhere harder each time.
+      - Add a sound at the end of each go round the loop.
+      - Make the game end if I miss one.
+    feedback:
+      - Flash the enemy white when I hit it.
+      - Make the score pop when it goes up.
+      - Add a sound when the hit lands.
+      - Show a number floating up where the hit happened.
+      - Shake the screen a little when I take damage.
+      - Add a health bar above the enemy.
+      - Make the player flash when it gets hurt.
+      - Add particles where the hit lands.
+      - Make the hit knock the enemy back a bit.
+      - Show a message when the player does something right.
+    difficulty-and-flow:
+      - Make the speed climb gradually instead of jumping.
+      - Make the first ten seconds much easier.
+      - Add a difficulty that goes up every twenty points.
+      - Put a cap on how fast it can get.
+      - Add a short rest after a hard bit.
+      - Make the enemies spawn more often over time.
+      - Give the player a moment to breathe between waves.
+      - Ease the difficulty back down after the player dies.
+      - Add an easy mode and a hard mode.
+      - Make the hardest bit fair instead of impossible.
+    risk-and-reward:
+      - Give the risky chest a real downside.
+      - Make the safe option worth taking sometimes.
+      - Add a chance that the risk goes wrong.
+      - Make the reward bigger the longer I wait.
+      - Show the player what they are risking before they choose.
+      - Add a second route that is faster but dangerous.
+      - Make the risk cost health instead of points.
+      - Let the player bank their points to keep them safe.
+      - Make the reward scale with how risky it was.
+      - Add a gamble the player can take at the end.
+    progression:
+      - Unlock something new at fifty points.
+      - Add levels that get harder.
+      - Show a progress bar towards the next unlock.
+      - Save the highest level the player has reached.
+      - Add a new ability the player earns.
+      - Make the level change the way the game looks.
+      - Add a message when the player reaches a milestone.
+      - Give the player something to spend points on.
+      - Add three levels with different layouts.
+      - Show the player how far through they are.
+    values-and-variables:
+      - Move my score variable outside the loop.
+      - Replace this number with a named variable.
+      - Change my lets to consts where nothing reassigns them.
+      - Add a lives variable that goes down when I get hit.
+      - Show the score on screen instead of in the console.
+      - Give all my variables clearer names.
+      - Add a variable for the player speed and use it everywhere.
+      - Fix the variable that keeps coming out undefined.
+      - Put all my starting values in one place at the top.
+      - Make the score go up by different amounts for different things.
+    decisions-and-repeats:
+      - Add an if that ends the game when lives hit zero.
+      - Turn these repeated lines into a loop.
+      - Make something different happen above a certain score.
+      - Add a check for two things being true at once.
+      - Fix the if that never seems to run.
+      - Use a loop to create ten coins.
+      - Add an else so something happens either way.
+      - Make this happen only the first time.
+      - Pull this repeated code out into a function.
+      - Add a countdown that runs from ten to one.
+    scenes-create-update:
+      - Move this line out of update into create.
+      - Split my game into a menu scene and a game scene.
+      - Fix whatever is being created every frame.
+      - Add a preload for all my images.
+      - Make the game restart the scene when I press R.
+      - Add a game over scene.
+      - Move all my setup into create.
+      - Stop the sprite being added a thousand times.
+      - Pass the score from one scene to the next.
+      - Add a pause between scenes.
+    input-movement-collision:
+      - Add arrow key movement.
+      - Add a jump on the space bar.
+      - Stop the player jumping in mid air.
+      - Make the player stop when I let go of the key.
+      - Fix the diagonal movement being too fast.
+      - Add WASD as well as the arrow keys.
+      - Keep the player inside the screen.
+      - Make the player face the way it is moving.
+      - Add a key that makes the player run.
+      - Make the collision collect the coin instead of blocking.
+    reading-an-error:
+      - Fix this error for me and tell me what caused it.
+      - Add console.logs so I can see what is going on.
+      - Find out why my variable is undefined.
+      - Check my file for anything that will crash.
+      - Add a try so one bad thing does not kill the game.
+      - Tell me what is wrong with this line.
+      - Print the value right before the line that breaks.
+      - Fix the typo that is breaking my game.
+      - Go through my code and find the mistake.
+      - Add a message to the console when the game starts.
+    game-state:
+      - Replace my flags with one state variable.
+      - Add a start screen before the game begins.
+      - Add a game over screen with the final score.
+      - Stop the player moving when the game is over.
+      - Add a pause state on the P key.
+      - Make the restart properly reset everything.
+      - Add a win state as well as a lose state.
+      - Show a different message for each state.
+      - Make the game only listen to keys while it is playing.
+      - Add a countdown before the game starts.
+    entities-and-components:
+      - Turn my four enemies into one function I call four times.
+      - Put all the enemies in a group.
+      - Add a new enemy type using what is already there.
+      - Give the enemies different speeds from one list.
+      - Make a spawn function that takes the type as an argument.
+      - Pull the shared enemy code into one place.
+      - Add health to everything that can be hit.
+      - Make the coin and the enemy share their movement code.
+      - Create ten enemies with a loop.
+      - Give each enemy its own behaviour without copying the file.
+    events-not-tangles:
+      - Make this emit an event instead of calling everything.
+      - Add a listener for when the player scores.
+      - Untangle this function so it only does one job.
+      - Make the score and the sound both react to the same event.
+      - Add an event for the player dying.
+      - Move the UI updates out into a listener.
+      - Make adding a new reaction not need this function changed.
+      - Name my events consistently.
+      - Add an event when the level changes.
+      - Show me every place that listens to this event.
+    data-out-of-code:
+      - Move all my numbers into a settings object.
+      - Make my levels come from an array.
+      - Put the enemy types in a list and loop over them.
+      - Replace the magic numbers with named settings.
+      - Load my level data from a separate file.
+      - Add a new level by adding data, not code.
+      - Turn this repeated setup into a list of objects.
+      - Make the settings easy to find at the top.
+      - Store the wave patterns as data.
+      - Add a config file for the whole game.
+    sprites-and-animation:
+      - Make my character animate when it walks.
+      - Add an idle animation for standing still.
+      - Flip the sprite when the player turns around.
+      - Play the jump animation while in the air.
+      - Slow the walk animation down a bit.
+      - Make the animation loop forever.
+      - Switch between walk and idle automatically.
+      - Add a death animation that plays once.
+      - Fix the animation that only shows one frame.
+      - Make the sprite sheet frames the right size.
+    sound-design:
+      - Add a sound when I collect a coin.
+      - Add a jump sound.
+      - Play music in the background on a loop.
+      - Turn the sound effects down a bit.
+      - Stop the same sound overlapping itself.
+      - Add a game over sound.
+      - Add a mute key.
+      - Change the pitch slightly each time so it is less repetitive.
+      - Add a footstep sound while the player walks.
+      - Only play the sound if something actually happened.
+    juice:
+      - Add a screen shake when I take damage.
+      - Make the coin spin as it sits there.
+      - Add particles when something is collected.
+      - Make the player squash when it lands.
+      - Add a tween so things scale in instead of appearing.
+      - Make the score number pop when it changes.
+      - Add a flash when the hit lands.
+      - Slow time down for a moment on a big hit.
+      - Make the camera follow the player smoothly.
+      - Add a trail behind the player when it moves fast.
+    ship-it:
+      - Go through my game and find anything that will break for other people.
+      - Add instructions on the start screen.
+      - Make sure my game works in a different sized window.
+      - Tidy up my code and add comments.
+      - Remove everything I am not using.
+      - Add a proper title and a credits line.
+      - Check every file loads before the game starts.
+      - Make the game restart cleanly from the game over screen.
+      - Add a loading message.
+      - Give my game a final polish pass.

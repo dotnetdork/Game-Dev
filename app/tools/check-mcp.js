@@ -37,7 +37,9 @@ async function main() {
   check('tools listed', tools.length === 5, tools.map(function (t) { return t.name; }).join(', '));
   // one per lesson, plus the outline, the asset catalogue and the Phaser reference
   check('resources listed', resources.length >= LESSON_IDS.length, resources.length + ' resources for ' + LESSON_IDS.length + ' lessons');
-  check('prompts listed', prompts.length === 8, prompts.map(function (p) { return p.name; }).join(', '));
+  // 5 agents (coder, tutor, lab-tutor, quiz, grader) + 4 skills. Adding an agent or a skill under
+  // ai/ is expected to move this number; it exists to catch one going missing.
+  check('prompts listed', prompts.length === 9, prompts.map(function (p) { return p.name; }).join(', '));
 
   // every tool advertises a schema the client can actually use
   const schemaOk = tools.every(function (t) { return t.inputSchema && t.inputSchema.type === 'object'; });

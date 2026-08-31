@@ -43,7 +43,10 @@ function loadCourse() {
    mid-class can still move around what they have already read. */
 function lessonBody(lesson) {
   if (lesson.body !== null) return Promise.resolve(lesson.body);
-  return fetch('content/lessons/' + lesson.id + '.md')
+  // Absolute: the app is served from /lesson/<id> as well as /, and this must not resolve against
+  // whichever one the student happens to be on. The <base> tag in index.html covers it too; this
+  // is the one fetch important enough to not depend on that.
+  return fetch('/content/lessons/' + lesson.id + '.md')
     .then(function (r) { return r.ok ? r.text() : Promise.reject(new Error(String(r.status))); })
     .then(function (md) {
       lesson.body = mdToSafeHTML(splitFrontMatter(md).body || '');
@@ -130,7 +133,95 @@ function renderOutline() {
     });
     sec.appendChild(head); sec.appendChild(kids); tree.appendChild(sec);
   });
+  buildSectionNav();   // the open lesson keeps its section list across an outline rebuild
   wireTreeKeys();
+}
+
+/* ---------- the sections inside the lesson you are reading ----------
+   The outline stopped at the lesson, so once a student was inside one there was no map at all: no
+   sense of how many sections there were, which one they were in, how much was left, or — the part
+   that actually matters — where the things they have to DO are. A lesson is about 2,500 pixels of
+   scrolling, and the only way to find its quiz was to scroll until one appeared.
+
+   So the open lesson expands into its own `##` headings, and a heading whose section contains a run
+   cell, quiz, lab or practice step is marked. That dot is the honest answer to "what do I actually
+   have to do in here", and it is why this lists sections rather than just being a table of
+   contents. The current section highlights as you scroll.
+
+   Only for the lesson being read, and only when there are at least two sections — a list of one is
+   not a structure, and every lesson in the sidebar sprouting its own sub-tree would bury the course. */
+/* The lesson's `##` headings, and only those.
+   Quiz, Lab and Practice rows were tried here and taken back out: a lesson has one lab and one
+   practice step, so listing them adds two rows that say what the block already says about itself
+   when you reach it, and they doubled the length of the rail without telling you anything about
+   what the lesson is ABOUT — which is the job a table of contents actually has. */
+/* Recap is left out. Every lesson ends with one, it is a restatement of what the student has just
+   read rather than a place to go, and it is the last thing on the page — so the row was a permanent
+   final entry in every lesson's list that pointed at the bottom of the scrollbar. */
+function navTargets() {
+  const body = $('lessonBody');
+  const root = body && body.querySelector('.lesson-content');
+  if (!root) return [];
+  return [].slice.call(root.querySelectorAll(':scope > h2'))
+    .map(function (h) { return { el: h, label: h.textContent }; })
+    .filter(function (t) { return !/^\s*recap\s*$/i.test(t.label); });
+}
+function scrollToSection(id) {
+  const learn = $('view-learn'), target = document.getElementById(id);
+  if (!learn || !target) return;
+  if (typeof switchView === 'function') switchView('learn');
+  const top = target.getBoundingClientRect().top - learn.getBoundingClientRect().top + learn.scrollTop - 16;
+  try { learn.scrollTo({ top: top, behavior: 'smooth' }); } catch (e) { learn.scrollTop = top; }
+}
+function buildSectionNav() {
+  const old = tree.querySelector('.sectionlist');
+  if (old) old.remove();
+  const row = tree.querySelector('.lesson-row.active');
+  const targets = navTargets();
+  if (!row || targets.length < 2) return;
+  const list = document.createElement('div');
+  list.className = 'sectionlist';
+  list.setAttribute('role', 'group');
+  targets.forEach(function (t, i) {
+    if (!t.el.id) t.el.id = 'lsec' + i;
+    const b = document.createElement('button');
+    b.type = 'button';
+    b.className = 'section-row';
+    b.setAttribute('role', 'treeitem');
+    b.innerHTML = '<span class="mdi mdi-menu-right" aria-hidden="true"></span>'
+      + '<span class="lbl">' + esc(t.label) + '</span>';
+    b.addEventListener('click', function () { scrollToSection(t.el.id); });
+    list.appendChild(b);
+  });
+  row.parentNode.insertBefore(list, row.nextSibling);
+  spySections();
+}
+/* Which section is on screen. Reads on a rAF so a fast scroll costs one measurement a frame rather
+   than one per scroll event. */
+let spyQueued = false;
+function spySections() {
+  const list = tree.querySelector('.sectionlist');
+  if (!list) return;
+  const learn = $('view-learn');
+  if (!learn) return;
+  const top = learn.getBoundingClientRect().top;
+  const targets = navTargets();
+  let active = 0;
+  targets.forEach(function (t, i) { if (t.el.getBoundingClientRect().top - top < 90) active = i; });
+  [].slice.call(list.children).forEach(function (b, i) {
+    b.classList.toggle('on', i === active);
+    if (i === active) b.setAttribute('aria-current', 'true'); else b.removeAttribute('aria-current');
+  });
+}
+function wireSectionSpy() {
+  const learn = $('view-learn');
+  if (!learn || learn.__spyWired) return;
+  learn.__spyWired = true;
+  learn.addEventListener('scroll', function () {
+    if (spyQueued) return;
+    spyQueued = true;
+    requestAnimationFrame(function () { spyQueued = false; spySections(); });
+  }, { passive: true });
 }
 
 /* Roving tabindex: one stop for the whole tree, arrows to move within it. */
@@ -212,6 +303,26 @@ let currentAIMode = 'full';   // the current lesson's coder policy: full | guide
 let aiMode = 'coder';         // which agent the panel talks to: tutor | coder
 let aiModels = {};            // per-agent model names from /api/info
 let currentLessonText = '';   // plain text of the current lesson, used as tutor context
+/* The current lesson's practice task, set by renderYourTurnCells. Sent to the Build helper so it
+   can tell "do my practice exercise for me" apart from every other request. Cleared per lesson —
+   a stale task from the previous lesson would make Build refuse the wrong things. */
+let currentPracticeTask = null;
+/* Build is only useful where there is code on screen. On Learn the panel is the Tutor and the mode
+   toggle is off — a student who asked Build to change something while reading got an edit they
+   could not see, applied to a file they were not looking at. */
+function paintAIModeAvailability(view) {
+  const buildable = view !== 'learn';
+  const tog = $('modeToggle');
+  if (tog) {
+    tog.disabled = !buildable;
+    tog.title = buildable
+      ? (aiMode === 'tutor' ? 'Tutor mode (explains) — click to switch to Build' : 'Build mode (edits code) — click to switch to Tutor')
+      : 'Build edits your game\'s code — open the Code or Game tab to use it';
+  }
+  if (!buildable && aiMode === 'coder' && typeof setAIMode === 'function') setAIMode('tutor');
+  else if (typeof paintAIBtn === 'function') paintAIBtn();
+}
+
 function applyAIMode(mode) {
   currentAIMode = mode || 'full';
   if (aiMode !== 'coder') return;   // in Tutor mode the lesson's coder policy doesn't gate the box
@@ -226,11 +337,16 @@ function setAIMode(mode) {
   const tog = $('modeToggle');
   if (tog) {
     tog.innerHTML = '<span class="mdi ' + (aiMode === 'tutor' ? 'mdi-comment-text-outline' : 'mdi-code-tags') + '"></span>';
-    tog.title = aiMode === 'tutor' ? 'Tutor mode (explains) — click to switch to Build' : 'Build mode (edits code) — click to switch to Tutor';
+    // paintAIModeAvailability owns the title while Build is unavailable, so do not overwrite it.
+    if (!tog.disabled) tog.title = aiMode === 'tutor' ? 'Tutor mode (explains) — click to switch to Build' : 'Build mode (edits code) — click to switch to Tutor';
     tog.classList.toggle('tutor', aiMode === 'tutor'); tog.classList.toggle('coder', aiMode === 'coder');
   }
   const tag = $('aiModelTag'); if (tag) { const spec = aiModels[aiMode] || ''; tag.textContent = spec.replace(/^[^:]+:/, '') || '…'; tag.title = spec; }
   if (aiMode === 'tutor') { const inp = $('aiText'), btn = $('aiSend'); if (inp) { inp.disabled = false; inp.placeholder = 'Ask the tutor about this lesson...'; } if (btn) btn.disabled = false; }
   else { applyAIMode(currentAIMode); }
+  /* Each mode has its own current conversation, so switching modes swaps which thread is on
+     screen rather than showing one mode's messages under the other's name. */
+  if (typeof bindChat === 'function') bindChat(aiMode);
   if (typeof renderChat === 'function') renderChat(aiMode);
+  if (typeof renderChatBar === 'function') renderChatBar();
 }

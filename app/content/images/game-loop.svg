@@ -1,62 +1,83 @@
-<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 720 260" role="img"
-     aria-label="A cycle of three steps: read the input, update the world, draw it. An arrow returns from draw back to read, and the cycle repeats about sixty times a second.">
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 480 512" role="img"
+     aria-label="The game loop as a vertical cycle. Step 1, read: which buttons are being held down. Step 2, update: move everything, work out what hit what, add up the score. Step 3, draw: put the picture on the screen, then throw it away. A dashed arrow returns from draw back up to read, about sixty times every second.">
   <title>The game loop: read, update, draw — about sixty times a second</title>
 
   <!-- Colours are the app's own palette, hard-coded because an external SVG cannot inherit the
        page's custom properties. The app is dark-only, so there is one set to match. -->
+
+  <!-- VERTICAL, and not just to fit the column better. Read the three steps top to bottom and the
+       return arrow climbs back up past all of them — which is the shape of the loop as it is
+       actually written in code, and the shape a student will meet again in every `while` and every
+       `update()` for the rest of the course. Left to right, the return leg reads as a footnote
+       under a row of boxes; vertically it reads as going back to the top.
+
+       Each box carries the FULL description of its step. It used to carry a three-word summary
+       while the lesson repeated the same three steps as a bulleted list directly above, so the
+       diagram was a worse copy of the paragraph next to it. The list is gone and the detail lives
+       here now: a reader who looks only at the picture gets the whole idea. -->
   <defs>
-    <marker id="gl-arrow" viewBox="0 0 10 10" refX="8" refY="5" markerWidth="6" markerHeight="6" orient="auto-start-reverse">
+    <marker id="gl-arrow" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="6" markerHeight="6" orient="auto-start-reverse">
       <path d="M0 0 L10 5 L0 10 z" fill="#3e8fd6"/>
     </marker>
-    <marker id="gl-arrow-back" viewBox="0 0 10 10" refX="8" refY="5" markerWidth="6" markerHeight="6" orient="auto-start-reverse">
+    <marker id="gl-arrow-back" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="6.5" markerHeight="6.5" orient="auto-start-reverse">
       <path d="M0 0 L10 5 L0 10 z" fill="#f5820a"/>
     </marker>
   </defs>
 
   <g font-family="Segoe UI, Roboto, Arial, sans-serif">
 
-    <!-- the three steps -->
+    <!-- Three boxes stacked on one axis: x 70, width 340, 28px of air between each.
+         Heights differ because the steps do — update genuinely has three jobs and draw has two,
+         and padding them all to one height to look tidy would say they were the same size of idea. -->
+
+    <!-- STEP 1 -->
     <g>
-      <rect x="28" y="66" width="176" height="92" rx="12" fill="#12304f" stroke="#2fd0b6" stroke-width="1.5"/>
-      <text x="116" y="100" text-anchor="middle" fill="#2fd0b6" font-size="13" font-weight="700" letter-spacing="1.4">1 · READ</text>
-      <text x="116" y="124" text-anchor="middle" fill="#eaf1f8" font-size="15" font-weight="600">What keys are down?</text>
-      <text x="116" y="143" text-anchor="middle" fill="#9fb2cc" font-size="13">Ask the controls.</text>
+      <rect x="70" y="26" width="340" height="92" rx="12" fill="#12304f" stroke="#2fd0b6" stroke-width="1.5"/>
+      <text x="92" y="49" fill="#5f7893" font-size="11.5" font-weight="700" letter-spacing="1.2">STEP 1</text>
+      <text x="92" y="76" fill="#2fd0b6" font-size="19" font-weight="700" letter-spacing=".3">READ</text>
+      <text x="92" y="99" fill="#9fb2cc" font-size="12.5">which buttons are being held down</text>
     </g>
 
+    <line x1="240" y1="118" x2="240" y2="146" stroke="#3e8fd6" stroke-width="2" marker-end="url(#gl-arrow)"/>
+
+    <!-- STEP 2 -->
     <g>
-      <rect x="272" y="66" width="176" height="92" rx="12" fill="#12304f" stroke="#3e8fd6" stroke-width="1.5"/>
-      <text x="360" y="100" text-anchor="middle" fill="#3e8fd6" font-size="13" font-weight="700" letter-spacing="1.4">2 · UPDATE</text>
-      <text x="360" y="124" text-anchor="middle" fill="#eaf1f8" font-size="15" font-weight="600">Move everything.</text>
-      <text x="360" y="143" text-anchor="middle" fill="#9fb2cc" font-size="13">Check what hit what.</text>
+      <rect x="70" y="152" width="340" height="124" rx="12" fill="#12304f" stroke="#3e8fd6" stroke-width="1.5"/>
+      <text x="92" y="175" fill="#5f7893" font-size="11.5" font-weight="700" letter-spacing="1.2">STEP 2</text>
+      <text x="92" y="202" fill="#3e8fd6" font-size="19" font-weight="700" letter-spacing=".3">UPDATE</text>
+      <text x="92" y="225" fill="#9fb2cc" font-size="12.5">move everything</text>
+      <text x="92" y="245" fill="#9fb2cc" font-size="12.5">work out what hit what</text>
+      <text x="92" y="265" fill="#9fb2cc" font-size="12.5">add up the score</text>
     </g>
 
+    <line x1="240" y1="276" x2="240" y2="304" stroke="#3e8fd6" stroke-width="2" marker-end="url(#gl-arrow)"/>
+
+    <!-- STEP 3 -->
     <g>
-      <rect x="516" y="66" width="176" height="92" rx="12" fill="#12304f" stroke="#f5b02e" stroke-width="1.5"/>
-      <text x="604" y="100" text-anchor="middle" fill="#f5b02e" font-size="13" font-weight="700" letter-spacing="1.4">3 · DRAW</text>
-      <text x="604" y="124" text-anchor="middle" fill="#eaf1f8" font-size="15" font-weight="600">Put it on screen.</text>
-      <text x="604" y="143" text-anchor="middle" fill="#9fb2cc" font-size="13">Then throw it away.</text>
+      <rect x="70" y="310" width="340" height="110" rx="12" fill="#12304f" stroke="#f5b02e" stroke-width="1.5"/>
+      <text x="92" y="333" fill="#5f7893" font-size="11.5" font-weight="700" letter-spacing="1.2">STEP 3</text>
+      <text x="92" y="360" fill="#f5b02e" font-size="19" font-weight="700" letter-spacing=".3">DRAW</text>
+      <text x="92" y="383" fill="#9fb2cc" font-size="12.5">put the picture on the screen</text>
+      <text x="92" y="403" fill="#9fb2cc" font-size="12.5">…then throw the picture away</text>
     </g>
 
-    <!-- forward arrows -->
-    <line x1="212" y1="112" x2="264" y2="112" stroke="#3e8fd6" stroke-width="2" marker-end="url(#gl-arrow)"/>
-    <line x1="456" y1="112" x2="508" y2="112" stroke="#3e8fd6" stroke-width="2" marker-end="url(#gl-arrow)"/>
+    <!-- The return. Down out of DRAW, along the bottom, up the left rail past all three steps, and
+         back into the side of READ. Equal 14px corners on all four turns. -->
+    <path d="M240 420 L240 442 Q240 456 226 456 L36 456 Q22 456 22 442 L22 86 Q22 72 36 72 L62 72"
+          fill="none" stroke="#f5820a" stroke-width="2" stroke-dasharray="7 6" marker-end="url(#gl-arrow-back)"/>
 
-    <!-- and back to the start: the part that makes it a loop -->
-    <path d="M604 166 L604 208 Q604 220 592 220 L128 220 Q116 220 116 208 L116 166"
-          fill="none" stroke="#f5820a" stroke-width="2" stroke-dasharray="6 5" marker-end="url(#gl-arrow-back)"/>
-    <text x="360" y="243" text-anchor="middle" fill="#f5820a" font-size="13.5" font-weight="600">and again — about 60 times every second</text>
+    <text x="240" y="490" text-anchor="middle" fill="#f5820a" font-size="13" font-weight="600">then do it all again — about 60 times every second</text>
 
-    <!-- One frame travelling the cycle. Motion is the point here: the loop is a thing that keeps
-         going, and a still picture of a cycle has to be inferred. Removed entirely under
-         prefers-reduced-motion, which leaves the diagram complete without it. -->
+    <!-- One frame travelling the return leg. Only the return leg is animated: the three steps in a
+         row are obvious from the arrows, and "and then it starts over" is the part a still picture
+         cannot say. Removed under prefers-reduced-motion; the dashed line and its label carry the
+         same meaning without it. -->
     <g class="gl-runner">
-      <circle r="7" fill="#3ddc84" stroke="#0a1a2e" stroke-width="2">
-        <animateMotion dur="4s" repeatCount="indefinite" rotate="auto"
-          path="M116 112 L360 112 L604 112 L604 208 Q604 220 592 220 L128 220 Q116 220 116 208 Z"/>
+      <circle r="6" fill="#3ddc84" stroke="#0a1a2e" stroke-width="2">
+        <animateMotion dur="2.6s" repeatCount="indefinite" keyPoints="0;1" keyTimes="0;1" calcMode="linear"
+          path="M240 420 L240 442 Q240 456 226 456 L36 456 Q22 456 22 442 L22 86 Q22 72 36 72 L62 72"/>
       </circle>
     </g>
-
-    <text x="360" y="34" text-anchor="middle" fill="#8b9db1" font-size="13" letter-spacing="1.6">ONE TRIP ROUND = ONE FRAME</text>
   </g>
 
   <style>

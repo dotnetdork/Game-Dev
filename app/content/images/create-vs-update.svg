@@ -53,6 +53,5 @@
 
     <!-- the trap this diagram exists to prevent -->
     <rect x="24" y="262" width="672" height="30" rx="8" fill="#241d0e" stroke="#4a3c18" stroke-width="1"/>
-    <text x="360" y="282" text-anchor="middle" fill="#e6d8b8" font-size="13.5">Make something in update() and you make a new one 60 times a second.</text>
   </g>
 </svg>

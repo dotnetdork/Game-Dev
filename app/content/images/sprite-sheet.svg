@@ -55,9 +55,6 @@
     </g>
 
     <text x="164" y="216" fill="#eaf1f8" font-size="14.5" font-weight="600">Nothing actually walks.</text>
-    <text x="164" y="238" fill="#9fb2cc" font-size="13.5">Six still pictures, swapped about eight times a second,</text>
-    <text x="164" y="257" fill="#9fb2cc" font-size="13.5">and your eyes do the rest — the same trick as the game loop.</text>
-    <text x="164" y="279" fill="#8b9db1" font-size="12.5">Swap them faster and they run. Slower and they trudge.</text>
   </g>
 
   <style>

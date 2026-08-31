@@ -219,6 +219,33 @@ function makeResizer(handle, side) {
 }
 makeResizer($('resLeft'), 'left'); makeResizer($('resRight'), 'right');
 
+/* The lab bench's assistant gets the same handle and the same limits as the one in the shell. It
+   cannot go through makeResizer: that one writes --leftw / --rightw on #editor, and the bench is a
+   different element with its own property. Same numbers, same feel, ten lines. */
+(function () {
+  const handle = $('labRes'); if (!handle) return;
+  handle.addEventListener('mousedown', function (e) {
+    const split = document.querySelector('.lab-split'), panel = $('labTutor');
+    if (!split || !panel) return;
+    const lim = (DOCK_LIMITS.wide || {}).right || [280, 560];
+    e.preventDefault();
+    const startX = e.clientX;
+    const start = Math.round(panel.getBoundingClientRect().width) || lim[0];
+    const move = function (ev) {
+      const w = Math.max(lim[0], Math.min(lim[1], start - (ev.clientX - startX)));
+      split.style.setProperty('--labaiw', w + 'px');
+    };
+    const up = function () {
+      document.removeEventListener('mousemove', move);
+      document.removeEventListener('mouseup', up);
+      document.body.style.userSelect = '';
+    };
+    document.body.style.userSelect = 'none';
+    document.addEventListener('mousemove', move);
+    document.addEventListener('mouseup', up);
+  });
+})();
+
 if ($('aiCollapse')) $('aiCollapse').addEventListener('click', hideAI);
 if ($('aiBtn')) $('aiBtn').addEventListener('click', showAI);
 if ($('outlineBtn')) $('outlineBtn').addEventListener('click', showOutline);
@@ -267,5 +294,8 @@ if (!Storage.persistent) {
 
 /* ---------- boot ---------- */
 renderFooter(); showPage('courses');
-loadCourse().then(function () { renderOutline(); selectLesson(0); })
+/* startRouter, not selectLesson(0): where the student lands is whatever the URL says, falling back
+   to where they left off. Opening lesson 1 unconditionally was how a student thirty minutes into
+   the course lost their place to a page reload. See js/router.js. */
+loadCourse().then(function () { renderOutline(); startRouter(); })
   .catch(function () { $('lessonBody').innerHTML = '<p style="color:var(--muted)">Could not load the course content. Is the server running?</p>'; });

@@ -84,6 +84,9 @@ That's deliberate, and it's the strongest version of the mechanic. Losing a chan
 stings a bit. Losing something you already worked for stings a *lot* — which is exactly why the
 decision feels heavy.
 
+Arcade games leaned on this harder than anything since, and they had a reason: every game ended in
+a loss, and the only question was how much you had piled up first. Push on for one more wave and
+you might double your score or lose the lot.
 This is also why it has to be used carefully with younger players. A risk that can wipe out an
 hour's work isn't tense, it's just cruel. Better to risk **this run's** progress than everything
 ever.
@@ -188,6 +191,8 @@ code: |
   }
 ```
 
+A choice with no downside is not a choice. The moment it can cost you something, the player has to actually think.
+
 ```quiz
 question: Which of these is the strongest version of a risk?
 options:
@@ -203,6 +208,8 @@ feedback:
   - That's a real mechanic in some games, but for a young player it usually just makes them stop playing.
 explain: The sting comes from losing something already earned — but keep it to the current run, or failure stops being worth risking at all.
 ```
+
+Your game probably has no decisions in it at all — just things to collect. One real choice changes that.
 
 ```yourturn
 title: Add one real decision
@@ -223,3 +230,5 @@ reward: Risk Designer badge
 - Risking what you have already earned hits hardest — keep it to the current run.
 - **Telegraph the danger.** Players should be able to guess the odds before committing.
 - If everyone picks the same option every time, it isn't a choice yet.
+
+goal: The risky chest can cost you something, so taking it is an actual decision.

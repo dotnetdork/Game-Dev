@@ -126,6 +126,12 @@ function switchView(view) {
     b.setAttribute('aria-selected', on ? 'true' : 'false');   // the tablist's state, not just its paint
   });
   ['learn', 'code', 'play'].forEach(function (v) { $('view-' + v).hidden = (v !== view); });
+  /* Build has nothing to do on the Learn tab — it edits game files, and there are none on screen.
+     Offering it there produced edits a student could not see land, so the panel goes to Tutor and
+     the mode toggle is disabled while they are reading. It comes straight back on Code and Game. */
+  if (typeof paintAIModeAvailability === 'function') paintAIModeAvailability(view);
+  // Each tab gets its own address, so /…/what-an-engine-does/code is a link. See js/router.js.
+  if (typeof syncRoute === 'function') syncRoute();
   const panelFor = { learn: 'panel-outline', code: 'panel-files', play: 'panel-info' };
   /* Engine names for engine panels. "Inspector" rather than "Game Info" because the panel edits the
      numbers now, and that is what every engine calls the one that edits the selected thing's
@@ -195,5 +201,13 @@ function runGame() {
 }
 /* Play runs it and shows you it; Stop ends it and leaves you where you are — stopping is not a
    reason to move somebody. */
-if ($('gamePlay')) $('gamePlay').addEventListener('click', runGame);
+/* Play doubles as Resume, because to a student those are the same button and the same idea. */
+if ($('gamePlay')) $('gamePlay').addEventListener('click', function () {
+  if (typeof gamePaused !== 'undefined' && isGameRunning() && gamePaused) { resumeGame(); return; }
+  runGame();
+});
+if ($('gamePause')) $('gamePause').addEventListener('click', function () { pauseGame(); });
 if ($('gameStop')) $('gameStop').addEventListener('click', function () { stopGame(); });
+/* Reset restores the starter files and always asks first — resetGame() owns that dialog. It used to
+   be a lone button in the Inspector, which put a destructive action in a panel of tuning sliders. */
+if ($('gameReset')) $('gameReset').addEventListener('click', function () { resetGame(); });

@@ -56,7 +56,10 @@ Supported syntax is deliberately small: `key: value`, quoted values, `[a, b, c]`
 |---|---|
 | `{{gameCode}}` | the student's current `game.js` |
 | `{{lessonTitle}}` | the lesson they're on |
-| `{{lessonContext}}` | that lesson's text |
+| `{{lessonContext}}` | that lesson's text, cut at 3,000 characters — a lesson runs nearer 10,000, so do not expect the end of one to be in here |
+| `{{whereTheyAre}}` | which screen the student is on — Learn, Code (and which file), Game (and whether it is running) — as a sentence. Both the tutor and the coder read it |
+| `{{labTitle}}` `{{labTask}}` `{{labGoal}}` `{{labCode}}` `{{labLog}}` | the lab bench's own slots, for the `lab-tutor` agent. A lab is a canvas exercise with no relation to the student's game, so it deliberately does not travel through `{{gameCode}}` |
+| `{{practiceTask}}` | the lesson's `yourturn` exercise — title, task and steps. Passed separately precisely because `lessonContext` truncates long before it. Says so plainly when the lesson has no practice step |
 | `{{ownedAssets}}` | the asset keys they own, one per line — the only keys that exist |
 | `{{files}}` | their other project files (`main.js`, anything they added) |
 | `{{aiMode}}` | `full`, `guided` or `off` for this lesson |

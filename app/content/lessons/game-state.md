@@ -120,7 +120,7 @@ out of `gameover`? If there's no arrow leaving a state, the player is stuck ther
 
 <figure class="diagram">
   <img src="/content/images/state-machine.svg" alt="Four states — title, playing, dying and gameover — with arrows showing the only allowed moves, and a dashed arrow from gameover back to playing.">
-  <figcaption>Read it as a map: you are always in exactly one bubble, and you can only leave along an arrow. The dashed one back to <code>playing</code> is the one people forget.</figcaption>
+  <figcaption>Read it as a map: you are always in exactly one bubble, and you can only leave along an arrow. The dashed one back to <code>playing</code> is the one people forget. A bubble with no arrow leaving it traps the player there forever.</figcaption>
 </figure>
 
 ## Where the rules live
@@ -207,6 +207,8 @@ code: |
   tick();
 ```
 
+One state instead of several flags removes a whole class of bug — not by catching it, but by making it impossible to write.
+
 ```quiz
 question: You sketch your states and notice `gameover` has arrows going in but none coming out. What does that mean for the player?
 options:
@@ -223,11 +225,13 @@ feedback:
 explain: Sketching the states first makes missing transitions obvious. A state with no exit is a trap.
 ```
 
+Your game is keeping track of what it is doing right now, whether you planned it or not. The question is whether it is doing that in one place or in several that can disagree.
+
 ```yourturn
 title: Give your game a real state
 task: Replace at least one true/false flag with a single state value.
 steps:
-  - Open the Code tab and open game.js.
+  - Open `game.js` in the Code tab.
   - Find any true/false flags controlling what the game is doing — things like `isDead` or `started`.
   - Add `let gameState = "playing";` near the top.
   - In update(), wrap everything that should only happen while playing inside `if (gameState === "playing") { ... }`.
@@ -243,3 +247,5 @@ reward: State Machinist badge
 - Sketch the **state machine** first — states and the arrows between them. Missing arrows are bugs
   you can catch before writing code.
 - One state variable gives `update()` a clear shape and makes features like pause a single branch.
+
+goal: The game can only ever be in one state at a time, so "dead and alive" cannot happen.

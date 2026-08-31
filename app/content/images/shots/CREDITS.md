@@ -64,6 +64,7 @@ visible rather than buried.
 
 | File | Game | Rights holder | Status |
 |---|---|---|---|
+| `mario-gameplay.png` | Super Mario Bros. (1985) | Nintendo | Non-free — fair use |
 | `asteroids-gameplay.png` | Asteroids (1979) | Atari | Non-free — fair use |
 | `asteroids-cabinet.jpg` | Asteroids arcade cabinet | Atari | Non-free — fair use |
 | `space-invaders.gif` | Space Invaders (1978) | Taito | Non-free — fair use |
@@ -81,10 +82,14 @@ rather than a rewrite:
 
 ### Games asked for and not included
 
-- **Super Mario Bros.** — Nintendo publishes no reusable press assets and is the most protective
-  rights holder in the industry. `supertux-level.jpg` is a freely-licensed platformer that makes
-  every point a Mario screenshot would, and the lesson text can still *name* Mario, which needs no
-  licence at all.
+- **Super Mario Bros.** — now included, on Jay's decision (30 Aug 2026), under the same fair-use
+  rationale as the rest of Group 2. The stand-in approach was tried first and failed on its own
+  terms: the course names Mario constantly — the jump, the level design, the core loop — and then
+  showed a picture of a different game, which reads as a substitution rather than an example.
+  `mario-gameplay.png` is the 256×240 image as published, used to illustrate a specific claim about
+  how its jump is tuned.
+  Note that `mario-world-1-1.jpg`, the level laid out end to end, is **not** in this group: it is a
+  CC BY-SA 3.0 diagram by a third party and carries a real licence.
 - **Fortnite** — Epic's fan content policy does not cover a paid course, and the Wikipedia article
   carries no usable screenshot.
 

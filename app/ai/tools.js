@@ -21,17 +21,26 @@ const REFERENCE = path.join(__dirname, 'reference', 'phaser-api.md');
 const SAFE_ID = /^[A-Za-z0-9_-]+$/;
 const SAFE_FILE = /^[A-Za-z0-9_-]+\.js$/;
 
-let catalogCache = null;
-/* The Store catalogue. assets-manifest.js is a generated browser file (`window.STORE_ASSETS = [...]`),
-   so the array is sliced out rather than duplicating it into a second source of truth. */
-function catalog() {
-  if (catalogCache) return catalogCache;
+let catalogCache = null, bundleCache = null;
+/* The Store catalogue. assets-manifest.js is a generated browser file, so it is RUN against a stand-in
+   `window` rather than duplicated into a second source of truth.
+
+   It used to be sliced out with `src.slice(indexOf('['), lastIndexOf(']'))`, which worked only while
+   the file held exactly one array. It now assigns three (STORE_PACKS, STORE_BUNDLES, STORE_ASSETS),
+   so that slice spanned all of them and JSON.parse threw — leaving the catalogue empty and
+   search_store silently returning nothing at all. Evaluating it cannot drift like that. */
+function loadManifest() {
+  if (catalogCache) return;
   try {
     const src = fs.readFileSync(path.join(ROOT, 'public', 'assets-manifest.js'), 'utf8');
-    catalogCache = JSON.parse(src.slice(src.indexOf('['), src.lastIndexOf(']') + 1));
-  } catch (e) { catalogCache = []; }
-  return catalogCache;
+    const win = {};
+    new Function('window', src)(win);          // no require cache, no global pollution
+    catalogCache = win.STORE_ASSETS || [];
+    bundleCache = win.STORE_BUNDLES || [];
+  } catch (e) { catalogCache = []; bundleCache = []; }
 }
+function catalog() { loadManifest(); return catalogCache; }
+function catalogBundles() { loadManifest(); return bundleCache; }
 
 const TOOLS = [
   {
@@ -58,10 +67,24 @@ const TOOLS = [
       if (!q) return { matches: [] };
       const ownedKeys = {};
       (ctx.assets || []).forEach(function (a) { ownedKeys[a.key] = true; });
-      const hits = catalog().filter(function (a) {
-        return !ownedKeys[a.key] && ((a.key + ' ' + a.name + ' ' + a.cat + ' ' + (a.desc || '')).toLowerCase().indexOf(q) >= 0);
-      }).slice(0, 12);
-      return { matches: hits.map(function (a) { return { key: a.key, name: a.name, category: a.cat, cost: a.cost, owned: false }; }) };
+      const text = function (o) { return (o.key + ' ' + o.id + ' ' + o.name + ' ' + o.cat + ' ' + (o.desc || '')).toLowerCase(); };
+      const out = [];
+      /* Bundles first, and a bundle is reported INSTEAD of its members. Characters, enemies and the
+         numbered tile sets are sold only as sets, so answering "buy platformer_character_green_idle"
+         would send a student looking for a thing the Store has no button for. */
+      catalogBundles().forEach(function (b) {
+        if (out.length >= 12 || ownedKeys[b.id] || text(b).indexOf(q) < 0) return;
+        out.push({ buy: b.id, name: b.name, category: b.cat, cost: b.cost, kind: 'set',
+          pieces: b.count, note: 'Sold as one set of ' + b.count + ' pictures.' });
+      });
+      catalog().forEach(function (a) {
+        if (out.length >= 12) return;
+        if (ownedKeys[a.key] || a.free) return;
+        if (a.bundle) return;                       // reachable only through its set, reported above
+        if (text(a).indexOf(q) < 0) return;
+        out.push({ buy: a.key, name: a.name, category: a.cat, cost: a.cost, kind: 'single' });
+      });
+      return { matches: out };
     }
   },
   {

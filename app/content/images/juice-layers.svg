@@ -15,7 +15,6 @@
     <rect x="24" y="44" width="284" height="86" rx="10" fill="#12304f" stroke="#5f7893" stroke-width="1.5"/>
     <text x="166" y="76" text-anchor="middle" fill="#eaf1f8" font-size="14.5" font-weight="600" font-family="Consolas, monospace">health -= 10</text>
     <text x="166" y="100" text-anchor="middle" fill="#9fb2cc" font-size="13">The enemy is hurt.</text>
-    <text x="166" y="119" text-anchor="middle" fill="#8b9db1" font-size="12.5">It reads as a spreadsheet.</text>
 
     <!-- ===== the same rule, wrapped ===== -->
     <text x="392" y="30" fill="#f5820a" font-size="12.5" font-weight="700" letter-spacing="1.3">THE SAME RULE, WRAPPED</text>
@@ -58,10 +57,5 @@
     </g>
 
     <!-- the point -->
-    <text x="166" y="186" text-anchor="middle" fill="#c3d3e6" font-size="13.5" font-weight="600">Same numbers.</text>
-    <text x="166" y="208" text-anchor="middle" fill="#9fb2cc" font-size="13">Same code doing the damage.</text>
-    <text x="166" y="230" text-anchor="middle" fill="#9fb2cc" font-size="13">Completely different to play.</text>
-    <text x="166" y="272" text-anchor="middle" fill="#f5d3a8" font-size="13">Juice is everything around</text>
-    <text x="166" y="291" text-anchor="middle" fill="#f5d3a8" font-size="13">the rule, never the rule.</text>
   </g>
 </svg>

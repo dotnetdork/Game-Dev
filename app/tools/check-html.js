@@ -25,15 +25,22 @@ const OPTIONAL_CLOSE = new Set(['html', 'head', 'body', 'p', 'li', 'tr', 'td', '
 
 const lineOf = (i) => src.slice(0, i).split('\n').length;
 
+/* Comment spans, so the scanner can ignore what is inside them.
+   Angle brackets turn up in prose constantly — a comment explaining that lessons live at
+   /lesson/<id> was read as an open <id> tag, and the failure it produced named </html> on the last
+   line of the file, hundreds of lines from the actual text. Blanked rather than deleted so every
+   byte offset after a comment still points at the right line number. */
+const scan = src.replace(/<!--[\s\S]*?-->/g, (c) => c.replace(/[^\n]/g, ' '));
+
 const stack = [];
 const errors = [];
 const tag = /<(\/?)([a-zA-Z!][a-zA-Z0-9-]*)\b[^>]*?(\/?)>/g;
 let m;
-while ((m = tag.exec(src)) !== null) {
+while ((m = tag.exec(scan)) !== null) {
   const closing = m[1] === '/', name = m[2].toLowerCase(), selfClosed = m[3] === '/';
   if (VOID.has(name) || selfClosed) continue;
   if (name === 'script' || name === 'style') {                 // skip their text content wholesale
-    if (!closing) { const end = src.indexOf('</' + name, tag.lastIndex); if (end > -1) tag.lastIndex = end; }
+    if (!closing) { const end = scan.indexOf('</' + name, tag.lastIndex); if (end > -1) tag.lastIndex = end; }
     continue;
   }
   if (!closing) { stack.push({ name: name, line: lineOf(m.index) }); continue; }

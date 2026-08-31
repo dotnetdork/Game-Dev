@@ -24,6 +24,7 @@ Every frame the engine does this:
 ```run
 // @goal: Watch a ball fall. Change gravity and see what happens.
 // @slider: gravity 0 2 0.1 0.5
+// @demo: gravity
 let y = 0, velocityY = 0;
 for (let frame = 1; frame <= 6; frame++) {
   velocityY = velocityY + gravity;   // gravity speeds it up
@@ -42,6 +43,20 @@ Collision sounds hard and mostly isn't. For two rectangles, the question "are th
 is four comparisons: is A's left edge past B's right edge? Is A's right edge before B's left edge?
 Same for top and bottom. If none of those are true, they're touching.
 
+<figure class="shot aside">
+  <img src="/content/images/shots/jumper-platformer.png" alt="A simple 2D platformer level made of rectangular blocks, with a small character standing on one">
+  <figcaption>Look at how square everything is. That is not laziness — a world built out of rectangles
+  is a world where "did these two things touch?" is four comparisons instead of real geometry. The
+  art can be any shape it likes; the boxes underneath stay boxes.
+  <cite><b>Jumper</b> — Depicklator, CC BY-SA 2.0.</cite></figcaption>
+</figure>
+
+That is genuinely all collision is underneath: four number comparisons, done for every pair the
+game cares about, every single frame. It sounds like it should be harder than that, and it is not.
+
+The reason it stays cheap is that games do the comparison on invisible rectangles rather than on
+the artwork. Your player might be a penguin with a beak and flippers; the box the physics checks is
+a plain rectangle sitting behind it. Nothing ever measures the beak.
 Engines wrap that up for you. In Phaser you say `this.physics.add.overlap(player, coins, grab)` and
 it handles the rest.
 
@@ -75,23 +90,31 @@ explain: Walls working proves the physics system is fine. If one specific pair d
 
 ## Why games fake it
 
-<figure class="shot aside">
-  <img src="/content/images/shots/jumper-platformer.png" alt="A simple 2D platformer level made of rectangular blocks, with a small character standing on one">
-  <figcaption>Look at how square everything is. That is not laziness — a world built out of rectangles
-  is a world where "did these two things touch?" is four comparisons instead of real geometry. The
-  art can be any shape it likes; the boxes underneath stay boxes.
-  <cite><b>Jumper</b> — Depicklator, CC BY-SA 2.0.</cite></figcaption>
-</figure>
-
 Real physics is expensive to calculate and, more importantly, **not much fun**.
 
-Mario's jump is nothing like a real jump. He rises too fast, hangs slightly at the top, and falls
-faster than he rose. No object on Earth does that. It feels fantastic, which is why it has been
-copied for forty years.
+Mario's jump is nothing like a real jump. He rises too fast, hangs for a moment at the top, and
+falls faster than he rose. You can also steer him *in mid-air*, which is not a thing that happens
+to any object anywhere in the universe. It feels fantastic, and every platformer built since has copied it.
 
+<figure class="shot aside pixel">
+  <img src="/content/images/shots/mario-gameplay.png" alt="Super Mario Bros: Mario mid-level with brick blocks above him, a question-mark block, and an enemy approaching along the ground">
+  <figcaption>The jump arc here is a lie, and the lie is why it plays well. Nintendo tuned these
+  numbers until they felt right, not until they were right.
+  <cite><b>Super Mario Bros.</b> (1985) — Nintendo. Used for teaching commentary; see CREDITS.md.</cite></figcaption>
+</figure>
+
+Nobody worked those numbers out from an equation. Somebody changed a value, played it, changed it
+again, and kept going until the jump felt right — which is exactly what you will be doing to your
+own game later in this lesson.
 That's the rule: **game physics exists to feel good, not to be correct.** If real numbers feel bad,
 use unreal numbers.
 
+You can see the same decision everywhere once you look. Characters in platformers usually keep
+moving for a fraction of a second after you let go, because stopping dead feels robotic. Many let
+you jump for a few frames *after* you have already walked off a ledge, because players are certain
+they pressed it in time and are usually wrong.
+
+None of that is realistic. All of it is there because it tests better than the honest version.
 ## When the fake breaks
 
 The fake has edges, and it's useful to know where they are.
@@ -118,9 +141,28 @@ console.log(everInside
 
 If something fast is going through something thin, that's almost always why.
 
+```quiz
+question: A fast bullet passes straight through a thin wall without ever colliding. What is happening?
+options:
+  - It moves further in one frame than the wall is thick, so it is never inside it
+  - The wall has no colour
+  - Gravity is pulling it through
+  - Bullets cannot collide with walls
+answer: 0
+feedback:
+  - Right — that is tunnelling, and it is the classic edge of how game physics fakes movement.
+  - Colour has nothing to do with collision.
+  - Gravity pulls down, not through.
+  - They can, as long as the check gets a chance to notice.
+explain: Collision is only checked once per frame. Something that jumps past a thin object between frames is never seen to touch it.
+```
+
+Gravity is two additions: it changes the speed, and the speed changes the position. Leave out either one and nothing moves. Here is a ball with only half of that.
+
 ```challenge
 title: Lab — the thing that will not fall
-task: Gravity is in the code and nothing is falling. Work out what is missing between having a speed and actually moving.
+task: Gravity is in the code and nothing is falling. Work out what is missing between having a speed and actually moving.
+goal: The ball falls and lands on the ground instead of hanging in the air.
 hint: Follow the two steps. `velocityY` grows every frame — but is anything using it to change `y`?
 solution: |
   // The goal: the ball must reach the ground. Gravity changes speed; speed must change position.
@@ -158,27 +200,13 @@ code: |
   step();
 ```
 
-```quiz
-question: A fast bullet passes straight through a thin wall without ever colliding. What is happening?
-options:
-  - It moves further in one frame than the wall is thick, so it is never inside it
-  - The wall has no colour
-  - Gravity is pulling it through
-  - Bullets cannot collide with walls
-answer: 0
-feedback:
-  - Right — that is tunnelling, and it is the classic edge of how game physics fakes movement.
-  - Colour has nothing to do with collision.
-  - Gravity pulls down, not through.
-  - They can, as long as the check gets a chance to notice.
-explain: Collision is only checked once per frame. Something that jumps past a thin object between frames is never seen to touch it.
-```
+That was the course's example. Now go and feel the same numbers in the game that is actually yours.
 
 ```yourturn
 title: Tune the feel of your gravity
 task: Change how heavy your game feels, and notice how much a single number changes it.
 steps:
-  - Open the Code tab and open config.js.
+  - Open `config.js` in the Code tab.
   - Find `gravity`. Halve it, press Run, and jump. Everything should feel floaty and slow.
   - Now double the original value and jump again. It should feel heavy and sharp.
   - Pick the value you actually like — not the realistic one, the one that feels good — and leave it there.

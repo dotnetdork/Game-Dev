@@ -1,0 +1,68 @@
+# Which lesson TEACHES each idea.
+#
+# `npm test` walks the lessons in course.yaml order and complains when a lesson leans on something
+# a later lesson is the one to introduce. That is the failure this file exists to catch, and it is
+# invisible to every other check: the prose reads well, the code runs, the quiz is answerable, and
+# the student still cannot follow it because a word or a piece of syntax turned up nine lessons
+# before anything explained it.
+#
+# The real example that prompted this. Lesson 1's lab asks a student to restore a missing
+# `requestAnimationFrame(frame)` — inside a `function`, a word the lesson used four times and never
+# defined, in a course that does not reach functions until lesson 11. Nothing flagged it.
+#
+# Reordering the course means editing this file. That is the point: if a lesson moves, the check
+# tells you what moved out from under it.
+
+# ---- words used in prose ----
+# Value is the lesson id (the .md filename without its extension) that introduces the term. Matched
+# case-insensitively on whole words, with a tolerated trailing "s".
+#
+# Do NOT list a word that is also ordinary English in this context. "build" was tried and pulled:
+# every lesson says "build the world", "build a game", and the check fired on all of them. A term
+# only belongs here if seeing it in a sentence means the lesson is relying on the technical sense.
+terms:
+  game loop: what-an-engine-does
+  frame: what-an-engine-does
+  game engine: what-an-engine-does
+  lag: what-an-engine-does
+  gravity: physics-and-collision
+  velocity: physics-and-collision
+  overlap: physics-and-collision
+  collider: physics-and-collision
+  tunnelling: physics-and-collision
+  sprite: what-a-game-is-made-of
+  sprite sheet: what-a-game-is-made-of
+  tilemap: what-a-game-is-made-of
+  asset: what-a-game-is-made-of
+  core loop: the-core-loop
+  variable: values-and-variables
+  function: decisions-and-repeats
+  scene: scenes-create-update
+  state: game-state
+  juice: juice
+
+# ---- syntax used in runnable cells and labs ----
+# `match` is a JavaScript regular expression. Keep these coarse: the question is "has this student
+# met this shape before", not "is this expression well formed".
+syntax:
+  - id: a variable
+    teaches: values-and-variables
+    match: '\b(?:let|const|var)\s+[A-Za-z_$]'
+  - id: an if
+    teaches: decisions-and-repeats
+    match: '\bif\s*\('
+  - id: a loop
+    teaches: decisions-and-repeats
+    match: '\b(?:for|while)\s*\('
+  - id: a function
+    teaches: decisions-and-repeats
+    match: '\bfunction\b|=>'
+  - id: console.log
+    teaches: reading-an-error
+    match: '\bconsole\s*\.\s*log\b'
+  - id: an array
+    teaches: data-out-of-code
+    match: '=\s*\[|\.push\s*\('
+  - id: an object
+    teaches: data-out-of-code
+    match: '=\s*\{'

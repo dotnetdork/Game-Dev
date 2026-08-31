@@ -218,13 +218,15 @@ feedback:
 explain: Things you expect to change often are data. Things that describe how the machine works are code.
 ```
 
+Your own game has the same scattering. Numbers you picked weeks ago are sitting in the middle of lines that do other things, and every one of them is a number you cannot find when you want to change it.
+
 ```yourturn
 title: Collect your own settings
-task: Move every tuning number in your game into config.js where you can find them.
+task: Move every tuning number in your game into `config.js` where you can find them.
 steps:
-  - Open the Code tab and read through game.js, player.js and world.js looking for bare numbers.
+  - Open the Code tab and read through `game.js`, `player.js` and `world.js` looking for bare numbers.
   - For each one, ask whether it is a decision you might change while balancing. If yes, it is a setting.
-  - Move it into CONFIG in config.js with a name that says what it is, and make the code read from there.
+  - Move it into CONFIG in `config.js` with a name that says what it is, and make the code read from there.
   - Press Run and check the game plays exactly as before — this change should be invisible to a player.
   - Now change two of them and play again. That is how quick balancing should feel.
 reward: Data Driver badge
@@ -238,3 +240,5 @@ reward: Data Driver badge
 - Once levels are **data**, adding one is adding a line — no new logic, nothing to break.
 - Real games go much further; it is why Minecraft modding exists.
 - **Changes often → data. Describes how the machine works → code.**
+
+goal: Every setting sits in one object at the top, and nothing is left buried in the code below.

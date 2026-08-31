@@ -13,6 +13,7 @@ is those three. The game you're building is those three.
 ```run
 // @goal: All three verbs, one frame at a time. Change how long the left key is held.
 // @slider: framesHeld 0 20 1 12
+// @demo: held
 let x = 200;
 for (let f = 1; f <= 20; f++) {
   const leftIsDown = f <= framesHeld;            // read
@@ -39,6 +40,11 @@ console.log("the player ended up at x = " + x);
   <cite><b>Kenney</b> — Platformer Pack, public domain (CC0).</cite></figcaption>
 </figure>
 
+Notice the word once. You are not asking what the keys are doing yet; you are asking Phaser to keep
+an eye on them from now on and hand you an object you can check whenever you like.
+Keys are not events in a game the way they are on a web page. Nothing interrupts you when a key
+goes down. Instead the loop asks, on every single frame, "is this key held right now?" — which is
+why holding an arrow moves you smoothly instead of nudging you once.
 In `create()`, you ask Phaser to watch the arrow keys once:
 
 ```
@@ -124,6 +130,7 @@ Both go in `create()`. You're registering the rule once; Phaser applies it every
 ```run
 // @goal: The same touch, under both rules. Switch between them.
 // @slider: useCollider 0 1 1 0
+// @demo: overlap
 let playerX = 95;
 const thingStartsAt = 100;
 console.log("player at x = " + playerX + ", the thing starts at x = " + thingStartsAt);
@@ -216,11 +223,13 @@ feedback:
 explain: collider pushes things apart; overlap lets them pass through. Coins want overlap.
 ```
 
+Reading a key, turning it into movement, checking what it hit — your game already does all three. Adding a second control means walking that path again with your own hands.
+
 ```yourturn
 title: Add a second way to control your game
 task: Give your player one more input — a second key, or the mouse.
 steps:
-  - Open the Code tab and open player.js.
+  - Open `player.js` in the Code tab.
   - Find where the arrow keys are read.
   - Add another key with `this.input.keyboard.addKey("SPACE")` in create(), or use A and D alongside the arrows.
   - Make it do something in update() — a dash, a second jump, dropping something.
@@ -233,7 +242,7 @@ check:
   # So: prove they changed something, prove they did not break movement while doing it, and leave
   # "is that actually a second control?" to the grader, which is a judgement.
   - changed_at_least: 2
-    hint: Nothing in your game has changed yet. Open player.js and add a key.
+    hint: Nothing in your game has changed yet. Open `player.js` and add a key.
   - function_kept: movePlayer
     hint: "`movePlayer` has gone from your game — put it back before adding to it."
   - parses: true
@@ -247,3 +256,5 @@ check:
 - Move with **velocity**, not by setting position — setting position skips physics and walls.
 - **overlap** lets things pass through; **collider** pushes them apart. Coins overlap, floors collide.
 - When something does not happen, **follow the value** from where it starts to where it should end up.
+
+goal: The player moves across the screen when you press a key.

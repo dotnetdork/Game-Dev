@@ -61,7 +61,7 @@ explain: Things are MADE in create() and CHANGED in update(). Creating in update
 
 <figure class="diagram">
   <img src="/content/images/create-vs-update.svg" alt="A timeline showing create running once at the start, then update running on every frame afterwards.">
-  <figcaption>One tick for <code>create</code>. Sixty ticks a second, forever, for <code>update</code>. Every mistake in this lesson comes from putting something in the wrong one.</figcaption>
+  <figcaption>One tick for <code>create</code>. Sixty ticks a second, forever, for <code>update</code>. Every mistake in this lesson comes from putting something in the wrong one. Build something in <code>update</code> and you build a new one sixty times a second.</figcaption>
 </figure>
 
 ## What belongs where
@@ -163,6 +163,8 @@ code: |
   update();
 ```
 
+Once versus every frame is the distinction behind an enormous share of beginner bugs, and it never stops mattering.
+
 ```quiz
 question: Your game runs fine for ten seconds and then gets slower and slower. What is the most likely cause?
 options:
@@ -179,11 +181,13 @@ feedback:
 explain: Gradual slowdown means something is accumulating. Creating objects in update() adds sixty a second forever.
 ```
 
+You have two functions in your game doing exactly these two jobs. It is worth knowing which of your lines are in the right one.
+
 ```yourturn
 title: Check your own create and update
 task: Read both functions in your game and make sure nothing that should happen once is happening every frame.
 steps:
-  - Open the Code tab and open game.js.
+  - Open `game.js` in the Code tab.
   - 'Read `update()` line by line, asking each one: does this need to happen again next frame?'
   - Look especially for `this.add.` anything — that means "make a new one", and it almost always belongs in create().
   - Move anything you find into `create()`, keeping a reference to it so update() can still change it.
@@ -205,3 +209,5 @@ check:
 - Ask: *does this need to happen again?* If not, it belongs in `create()`.
 - Colliders are registered in `create()` — you're setting up the rule, not doing the check.
 - **Gradual slowdown** almost always means something is being created in `update()`.
+
+goal: The thing that should happen once happens once, no matter how long it runs.

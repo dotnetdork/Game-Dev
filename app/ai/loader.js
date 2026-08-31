@@ -104,6 +104,21 @@ function renderGameLog(lines, ran) {
     return '[' + l.level + '] ' + l.text + (l.n > 1 ? '   (repeated ' + l.n + ' times)' : '');
   }).join('\n');
 }
+/* The lesson's practice exercise, for the one agent that has to recognise it and decline.
+   Rendered as its own block rather than left inside {{lessonContext}}, which is the lesson text cut
+   at 3,000 characters — the practice block is the last thing in a ~10,000 character lesson, so it
+   never survived the truncation. Absent for lessons that have no practice step, and the agent is
+   told what silence means rather than being handed an empty heading. */
+function renderPracticeTask(p) {
+  if (!p || (!p.task && !(p.steps && p.steps.length))) {
+    return '(this lesson has no practice exercise — nothing here is off limits)';
+  }
+  let s = '';
+  if (p.title) s += p.title + '\n';
+  if (p.task) s += p.task + '\n';
+  if (p.steps && p.steps.length) s += renderSteps(p.steps) + '\n';
+  return s.trim();
+}
 function fill(text, vars) {
   return text.replace(/\{\{(\w+)\}\}/g, function (m, key) {
     const v = vars[key];
@@ -140,6 +155,16 @@ function buildPrompt(agent, ctx) {
     gameCode: c.gameCode || '',
     lessonTitle: c.lessonTitle || '(not in a lesson)',
     lessonContext: c.lessonContext || '(no lesson text)',
+    practiceTask: renderPracticeTask(c.practiceTask),
+    /* The lab bench's own slots. Without these the lab tutor was handed {{gameCode}} — the
+       student's GAME — and confidently answered questions about game.js and Phaser while the
+       student was looking at a canvas exercise that contains neither. */
+    whereTheyAre: c.where || '(not known)',
+    labTitle: (c.lab && c.lab.title) || '(untitled lab)',
+    labTask: (c.lab && c.lab.task) || '(no task given)',
+    labGoal: (c.lab && c.lab.goal) || '(no goal given)',
+    labCode: (c.lab && c.lab.code) || '(their editor is empty)',
+    labLog: (c.lab && c.lab.log) || '(they have not run it yet)',
     ownedAssets: renderAssets(c.assets),
     files: renderFiles(c.files),
     aiMode: c.aiMode || 'full',

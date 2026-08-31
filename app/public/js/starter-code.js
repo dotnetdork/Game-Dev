@@ -16,30 +16,36 @@ STARTER['config.js'] = `// =====================================================
 // ============================================================
 
 const CONFIG = {
-  moveSpeed: 220,   // how fast the player walks (bigger = faster)
-  jumpPower: 520,   // how high the player jumps (bigger = higher)
-  gravity: 800,     // how hard everything falls (bigger = heavier)
+  moveSpeed: 110,   // how fast the player walks (bigger = faster)
+  jumpPower: 260,   // how high the player jumps (bigger = higher)
+  gravity: 420,     // how hard everything falls (bigger = heavier)
   coinBounce: 0.3   // how much a coin bounces when it lands (0 = none)
 };
 
 // The size of the game world, in pixels.
-const WIDTH = 800;
-const HEIGHT = 600;
+//
+// This is small on purpose. The art is 1-bit pixel art drawn at
+// 16x16, so the world is measured in those little tiles - 25
+// across and 19 down. Phaser stretches the whole thing up to fill
+// the window, so small here does NOT mean small on screen.
+const TILE = 16;
+const WIDTH = 400;
+const HEIGHT = 304;
 `;
 
 /* ------------------------------------------------------------------ world.js */
 STARTER['world.js'] = `// ============================================================
-//  world.js  -  Builds the level: the sky, the ground and the
-//               platforms you jump on.
+//  world.js  -  Builds the level: the ground and the platforms
+//               you jump on.
 //
 //  Want a bigger level? A different shape? This is the file.
 // ============================================================
 
 
-// Draw the sky behind everything else.
-function buildSky(scene) {
-  scene.add.image(WIDTH / 2, HEIGHT / 2, 'sky').setDisplaySize(WIDTH, HEIGHT);
-}
+// The name of the block the whole level is built out of.
+// Every picture in the Store has a name like this. Swap it for
+// another one you own and the whole level changes at once.
+const BLOCK = '1bit-platformer_tile_0375';
 
 
 // Build the floor and the floating platforms.
@@ -47,18 +53,29 @@ function buildSky(scene) {
 function buildPlatforms(scene) {
   const ground = scene.physics.add.staticGroup();
 
-  // A row of grass blocks across the bottom makes the floor.
-  for (let x = 0; x <= WIDTH; x += 70) {
-    ground.create(x, HEIGHT - 30, 'grass');
+  // A row of blocks across the bottom makes the floor.
+  // One block is TILE wide, so stepping by TILE lays them
+  // edge to edge with no gaps.
+  for (let x = 0; x < WIDTH + TILE; x += TILE) {
+    ground.create(x, HEIGHT - TILE / 2, BLOCK);
   }
 
   // A few floating platforms to jump onto.
   // Try adding another line here!
-  ground.create(620, 430, 'grass');
-  ground.create(690, 430, 'grass');
-  ground.create(180, 330, 'grass');
+  buildPlatform(ground, 300, 210, 4);
+  buildPlatform(ground, 90, 160, 3);
+  buildPlatform(ground, 230, 110, 2);
 
   return ground;
+}
+
+
+// Lay "howMany" blocks in a row, starting at x, to make one
+// platform. Written once here so the lines above stay short.
+function buildPlatform(ground, x, y, howMany) {
+  for (let i = 0; i < howMany; i++) {
+    ground.create(x + i * TILE, y, BLOCK);
+  }
 }
 `;
 
@@ -71,7 +88,7 @@ STARTER['player.js'] = `// =====================================================
 
 // Put the player into the world and set up the keyboard.
 function createPlayer(scene) {
-  const player = scene.physics.add.sprite(120, 200, 'player');
+  const player = scene.physics.add.sprite(60, 120, '1bit-platformer_tile_0340');
   player.setCollideWorldBounds(true);        // don't walk off-screen
 
   // Set up the keys so movePlayer() can read them later.
@@ -117,7 +134,7 @@ STARTER['coins.js'] = `// ======================================================
 
 
 // Where each coin starts. Add a pair to add a coin!
-const COIN_SPOTS = [[250, 0], [430, 0], [560, 0], [640, 360], [180, 260]];
+const COIN_SPOTS = [[130, 0], [215, 0], [280, 0], [316, 180], [106, 130]];
 
 
 // Create all the coins and drop them into the world.
@@ -125,7 +142,7 @@ function createCoins(scene) {
   const coins = scene.physics.add.group();
 
   COIN_SPOTS.forEach(function (spot) {
-    const coin = coins.create(spot[0], spot[1], 'coin-gold');
+    const coin = coins.create(spot[0], spot[1], '1bit-platformer_tile_0002');
     coin.setBounceY(CONFIG.coinBounce);      // a little bounce when it lands
   });
 
@@ -136,8 +153,8 @@ function createCoins(scene) {
 // Show the score in the top-left corner.
 function createScoreText(scene) {
   scene.score = 0;
-  return scene.add.text(16, 16, 'Coins: 0', {
-    fontSize: '24px',
+  return scene.add.text(8, 8, 'Coins: 0', {
+    fontSize: '14px',
     color: '#ffffff'
   });
 }
@@ -188,7 +205,6 @@ function create() {
   const scene = this;
 
   // 1) The level itself  (see world.js)
-  buildSky(scene);
   scene.ground = buildPlatforms(scene);
 
   // 2) The player        (see player.js)
@@ -228,7 +244,8 @@ const config = {
   width: WIDTH,                  // game width  (from config.js)
   height: HEIGHT,                // game height (from config.js)
   parent: 'game',                // the box on the page to draw into
-  backgroundColor: '#7ec0ee',    // sky blue, shown behind everything
+  backgroundColor: '#12213a',    // the colour behind everything
+  pixelArt: true,                // keep the pixels crisp, do not blur them
 
   // Scale the game to fit its box, and keep it centered.
   scale: {

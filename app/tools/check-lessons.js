@@ -395,10 +395,18 @@ function pacingOf(text) {
   let run = 0, longest = 0;
   kinds.forEach(function (k) { if (k === 'prose') { run++; if (run > longest) longest = run; } else run = 0; });
   const first = kinds.indexOf('act');
+  /* Two activities with nothing in between. A quiz sitting directly on top of a lab, or a lab
+     directly on top of the practice step, gives a student three things to do in a row and not one
+     sentence explaining why the next one follows the last — the lesson stops teaching and starts
+     issuing tasks. A line or two between them does real work: it says what the lab is about to
+     show, or what the quiz just proved. */
+  let backToBack = 0;
+  for (let k = 1; k < kinds.length; k++) if (kinds[k] === 'act' && kinds[k - 1] === 'act') backToBack++;
   return {
     blocks: kinds.length,
     longestProseRun: longest,
     firstActivityPct: first < 0 ? null : Math.round(first / kinds.length * 100),
+    backToBack: backToBack,
     activities: kinds.filter(function (k) { return k === 'act'; }).length
   };
 }
@@ -418,6 +426,49 @@ files.forEach(function (f) {
 });
 
 checkUpscaleGuard();
+checkDemoNames();
+
+/* ---- `// @demo: name` in a run cell has to name a demo that exists ----
+   A run cell can ask for a live picture under the code. If the name is wrong — renamed in
+   demos.js, or a typo — buildRunCell finds nothing in DEMOS and simply does not add the canvas.
+   Nothing throws, nothing logs, and the cell renders as an ordinary run cell, so the only way to
+   notice is to remember that the lesson used to have a picture in it. That is exactly the kind of
+   quiet loss this suite exists to catch.
+
+   demos.js is read and evaluated rather than pattern-matched, so this checks the real object the
+   browser builds. Evaluating it is safe: the file is a plain object literal of draw functions and
+   touches no browser API until one of them is CALLED, which nothing here does. */
+function checkDemoNames() {
+  const demoSrc = fs.readFileSync(path.join(__dirname, '..', 'public', 'js', 'demos.js'), 'utf8');
+  let names;
+  try {
+    names = Object.keys(eval(demoSrc + ';DEMOS'));           // eslint-disable-line no-eval
+  } catch (e) {
+    fail('demos.js', 'does not evaluate (' + String(e.message).split('\n')[0] + ').');
+    return;
+  }
+  if (!names.length) { fail('demos.js', 'defines no demos at all — this is a bug in that file.'); return; }
+  let used = 0;
+  files.forEach(function (f) {
+    const src = fs.readFileSync(path.join(DIR, f), 'utf8');
+    let m; const re = /^```run\r?\n([\s\S]*?)^```/gm;
+    while ((m = re.exec(src))) {
+      const d = m[1].match(/^\s*\/\/\s*@demo:\s*(\S+)\s*$/m);
+      if (!d) continue;
+      used++;
+      if (names.indexOf(d[1]) < 0) {
+        fail(f, 'a run cell asks for the demo "' + d[1] + '", which is not in demos.js (have: '
+          + names.join(', ') + '). The cell would render with no picture and no error.');
+      }
+      /* A demo with no slider to drive it is a still image that animates at nobody's request —
+         almost certainly a directive left behind after the sliders were edited out. */
+      if (!/^\s*\/\/\s*@slider:/m.test(m[1])) {
+        fail(f, 'a run cell has "@demo: ' + d[1] + '" but no @slider — the picture would have nothing to drive it.');
+      }
+    }
+  });
+  console.log(used + ' run cells carry a live picture, from ' + names.length + ' demos: ' + names.join(', '));
+}
 
 console.log(files.length + ' lessons: ' + quizzes + ' quizzes, ' + challenges + ' labs, ' + yourturns + ' your-turn steps');
 if (tiny.length) {
@@ -481,6 +532,28 @@ if (slow.length) {
   console.error('  and a run cell with no @expect adds nothing to what the lesson demands.');
 } else {
   console.log('  every lesson interleaves');
+}
+
+/* ---- activities stacked with nothing between them ----
+   Fatal. It arrived as a report because 18 of the 22 lessons did this and a check that fails
+   everything on the day it lands gets switched off rather than satisfied — the same way the pacing
+   numbers above were introduced. The condition for promoting it was the list reaching empty, and
+   all 28 have now been written, so it is a failure from here. */
+const stacked = pacing.filter(function (p) { return p.backToBack > 0; });
+const stackedTotal = stacked.reduce(function (s, p) { return s + p.backToBack; }, 0);
+if (!stacked.length) {
+  console.log('every activity has something between it and the last one');
+} else {
+  pacingFailed = true;
+  console.error('FAIL  ' + stackedTotal + ' activities in ' + stacked.length + ' lessons sit directly'
+    + ' on another, with no sentence in between:');
+  stacked.sort(function (a, b) { return b.backToBack - a.backToBack; }).forEach(function (p) {
+    console.error('    ' + p.file.replace(/\.md$/, '').padEnd(26) + p.backToBack);
+  });
+  console.error('  A quiz landing straight on a lab, or a lab straight on the practice step, gives a');
+  console.error('  student three things to do in a row and no sentence saying why the next one');
+  console.error('  follows the last. The line between them should do work: say what the lab is about');
+  console.error('  to show, or what the quiz just proved.');
 }
 
 console.log('answer positions authored: '

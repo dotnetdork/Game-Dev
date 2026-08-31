@@ -92,8 +92,23 @@ explain: Each separate file is a separate request with its own overhead. Fewer, 
 Mario's levels are not giant pictures. They're a grid of small square tiles — ground, brick, pipe,
 sky — placed on a map. Each tile is drawn once and reused hundreds of times.
 
+<figure class="diagram">
+  <img src="/content/images/shots/mario-world-1-1.jpg" alt="The whole of Super Mario Bros World 1-1 laid out end to end, showing it is built from a small set of repeated block, brick and pipe tiles">
+  <figcaption>All of World 1-1, laid out end to end. Count the different kinds of square: there are
+  only a handful, used over and over. That is the entire level.
+  <cite><b>Super Mario Bros. World 1-1</b> — Umweltschützen, CC BY-SA 3.0.</cite></figcaption>
+</figure>
+
 That's a **tilemap**, and it's why old games could hold enormous worlds in tiny memory. The level
 isn't a picture; it's a list of numbers saying which tile goes where.
+
+<figure class="shot">
+  <img src="/content/images/shots/supertux-editor.jpg" alt="A level editor showing a game level built from repeated square tiles, with a palette of tile choices along the side">
+  <figcaption>A level being built out of tiles, with the palette of available tiles down the side.
+  The level is not a picture — it is a list saying which tile goes in which square, which is why it
+  can be edited like this at all.
+  <cite><b>SuperTux level editor</b> — SuperTux Development Team, level by Daniel Alston, screenshot by PantheraLeo1359531, CC BY-SA 3.0.</cite></figcaption>
+</figure>
 
 It has a second benefit that matters more today: a tilemap is **data**, so a level can be edited,
 generated, or loaded from a file without touching any code. Minecraft is this idea taken to its
@@ -124,9 +139,28 @@ being about waiting.
 
 **Rule of thumb:** an image should be no more than about twice the size it's drawn at.
 
+```quiz
+question: You use a 4000-pixel-wide image for a coin that appears 30 pixels wide. What is the problem?
+options:
+  - It downloads and uses memory for detail nobody can see
+  - The coin will look blurry
+  - The engine cannot load images that big
+  - Nothing, bigger is always better
+answer: 0
+feedback:
+  - Right. It looks identical and costs a hundred times more to load.
+  - It will look fine — just very expensive.
+  - It can load it. That is not the issue.
+  - On a shared school connection, bigger is how a lesson turns into waiting.
+explain: An image needs about twice the pixels it is drawn at. Beyond that you are paying loading time for detail that never reaches the screen.
+```
+
+Every picture in a game is loaded under a name, and the name has to match exactly. Here is one that does not.
+
 ```challenge
 title: Lab — the sprite that never appears
-task: The code asks for a picture that isn't there, so nothing is drawn. Ask for one that exists instead, and notice how the game tells you it could not find something.
+task: The code asks for a picture that isn't there, so nothing is drawn. Ask for one that exists instead, and notice how the game tells you it could not find something.
+goal: The sprite appears on screen instead of a blank space.
 hint: Look at `wanted` and compare it, letter by letter, with what is actually in `owned`. Names have to match exactly.
 solution: |
   // The goal: draw a sprite the game actually owns.
@@ -168,28 +202,13 @@ A wrong asset name is the single most common reason a game shows a blank screen.
 reason the AI in this app is *checked* before it's trusted — inventing a picture that doesn't exist
 was the number one way it used to break people's games.
 
-```quiz
-question: You use a 4000-pixel-wide image for a coin that appears 30 pixels wide. What is the problem?
-options:
-  - It downloads and uses memory for detail nobody can see
-  - The coin will look blurry
-  - The engine cannot load images that big
-  - Nothing, bigger is always better
-answer: 0
-feedback:
-  - Right. It looks identical and costs a hundred times more to load.
-  - It will look fine — just very expensive.
-  - It can load it. That is not the issue.
-  - On a shared school connection, bigger is how a lesson turns into waiting.
-explain: An image needs about twice the pixels it is drawn at. Beyond that you are paying loading time for detail that never reaches the screen.
-```
 
 ```yourturn
 title: Add an asset you own to your game
 task: Pick something from the Store you already own and put it in your game by name.
 steps:
   - Open the Store from the top bar and find something marked Free or Owned. Note its green key — that is its exact name.
-  - Open the Code tab and go to world.js.
+  - Open `world.js` in the Code tab.
   - Add it with `this.add.sprite(x, y, "the-key")`, using the key exactly as it is written.
   - Press Run. If nothing appears, open the console and look — a name that does not match is the usual reason.
 reward: Asset Handler badge

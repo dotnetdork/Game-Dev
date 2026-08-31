@@ -13,6 +13,13 @@ completely separate job — and it's the one where most projects quietly die.
 While you're working, your game is a pile of files: code, pictures, sounds, all sitting in folders
 where you can edit them.
 
+<figure class="shot">
+  <img src="/content/images/shots/endless-sky-title.jpg" alt="The title screen of a finished space game, showing a planet and a menu with New Pilot and Load Pilot options">
+  <figcaption>This is what a build looks like from the outside: one thing you open, with no sign of
+  the folders it was made from.
+  <cite><b>Endless Sky 0.9.12</b> — Endless Sky developers, GPLv3.</cite></figcaption>
+</figure>
+
 Nobody else wants a pile of files. A **build** is what you get when you take that pile and turn it
 into one thing another person can actually open:
 
@@ -106,9 +113,28 @@ Nothing is free. Here's the honest comparison:
 
 For a first game — and for a lot of real games — the top row wins and the rest doesn't matter yet.
 
+```quiz
+question: What is the biggest practical advantage of building your game for the web?
+options:
+  - Someone can play it by clicking a link, with nothing to install
+  - It will run faster than a native game
+  - It can be sold in console stores more easily
+  - It works offline by default
+answer: 0
+feedback:
+  - Right — the distance between finished and played is a single link.
+  - Native builds get more out of the machine; web trades some speed for reach.
+  - Console stores are much harder to reach, not easier.
+  - Offline needs extra work on the web; native gets it for free.
+explain: The web's advantage is reach. No installer, no approval, no download — just a link.
+```
+
+A build has to work somewhere other than the computer it was made on. Here is one that does not.
+
 ```challenge
 title: Lab — the game that only runs here
-task: This game depends on something that only exists on the machine it was written on. Find the assumption and make it work anywhere.
+task: This game depends on something that only exists on the machine it was written on. Find the assumption and make it work anywhere.
+goal: The game runs without depending on where its folder happens to sit.
 hint: Look at `assetPath`. Would that address mean anything on somebody else's computer?
 solution: |
   // The goal: every asset path must be one another machine could actually follow.
@@ -149,27 +175,12 @@ code: |
 "It works on my machine" is the oldest joke in software, and this is usually why: something in the
 project quietly depends on where it happens to be sitting.
 
-```quiz
-question: What is the biggest practical advantage of building your game for the web?
-options:
-  - Someone can play it by clicking a link, with nothing to install
-  - It will run faster than a native game
-  - It can be sold in console stores more easily
-  - It works offline by default
-answer: 0
-feedback:
-  - Right — the distance between finished and played is a single link.
-  - Native builds get more out of the machine; web trades some speed for reach.
-  - Console stores are much harder to reach, not easier.
-  - Offline needs extra work on the web; native gets it for free.
-explain: The web's advantage is reach. No installer, no approval, no download — just a link.
-```
 
 ```yourturn
 title: Write down how someone else would play your game
 task: Answer this in your own project, as a comment. If you cannot answer it yet, that is worth knowing now rather than in three weeks.
 steps:
-  - Open the Code tab and open config.js.
+  - Open `config.js` in the Code tab.
   - At the top, add a comment block titled "How to play this".
   - Write who you want to play it, and how they would get to it.
   - Look through your code for anything that would only work on your machine — a file path, a name only you would know.

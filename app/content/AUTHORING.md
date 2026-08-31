@@ -76,6 +76,53 @@ Editable JavaScript + Run button. Optional directives as // comment lines:
 - // @expect: <text>     after Run, if output contains <text> it shows "Goal met!" and counts
                          toward completing the lesson
 - // @slider: name min max step value   adds a live slider; `name` is set for you and re-runs on drag
+- // @demo: <name>       puts a moving picture between the code and the output, driven by the same
+                         sliders. Needs at least one @slider. See "Live pictures" below
+
+### Live pictures (@demo)
+
+A slider cell shows a student a NUMBER changing. For some ideas the number is the least interesting
+part — "each frame gets 20 milliseconds" means nothing at ten, and neither does "gravity = 0.5".
+What means something is watching the box lurch when you drag the frame rate to four. `@demo` adds a
+canvas under the editor that the same sliders drive.
+
+The demos live in `app/public/js/demos.js`, one per visual idea, and several lessons can share one —
+`walk` drives three different cells in Sprites and Animation. Adding a NEW one means writing a draw
+function, and that file's header is the contract. The rule worth knowing before you open it: a draw
+function's source is lifted out and run inside a sandboxed iframe, so it cannot reference anything
+next to it in the file.
+
+Do not reach for one by default. A demo earns its place when the thing being taught is a MOVEMENT or
+a FEEL — timing, gravity, animation, delay, the difference between passing through and stopping. For
+a cell that is really arithmetic (how many megabytes, how many features), the printout is the honest
+answer and a picture is decoration.
+
+Behaviour is the same everywhere and you do not configure it: the picture loads paused showing its
+first frame, starts when the student drags a slider or clicks it, and stops after ten seconds of
+nobody touching it, when it scrolls off, or when the tab goes to the background.
+
+`check-lessons.js` fails if a cell names a demo that is not in demos.js, or carries `@demo` with no
+`@slider` — both of which would otherwise render as an ordinary run cell with no picture and no
+error at all.
+- // @predict: <question> >> <option> | *<option> | <option>
+                         asks the student to commit to a guess BEFORE the code and the output are
+                         visible. `*` marks the right one; options are shuffled at render
+
+### Writing a good @predict
+
+This is PRIMM's Predict stage, and it is the difference between a student watching output go past
+and a student getting an answer to a question they asked. It is never graded and never blocks — a
+wrong guess is the useful kind, and the cell opens either way.
+
+Two rules, both learned the hard way:
+
+**The answer must not be on the page.** The first one written here asked how long a frame gets at
+60fps — and the paragraph directly below the cell says "one frame gets about 16 milliseconds". The
+student reads the answer while deciding. Predict something only the *output* can settle.
+
+**Ask about a relationship, not a fact.** "How long does one frame get?" is a lookup. "Drag the
+frame rate down to 30 — what happens to the time each frame gets?" makes them reason about
+`1000 / fps`, which is the line you actually want them reading. Facts are what the prose is for.
 
 ## Quizzes (```quiz) — checked locally, answer is 0-based
 
@@ -136,10 +183,33 @@ it goes at the end of the module's last lesson under a `## Your challenge` headi
     ```challenge
     title: Be the engine          # optional, shown in the card header
     task: What the student has to do.
+    goal: What the screen looks like when it is right.   # optional, shown as "Goal"
     code: |
       // starter code, deliberately incomplete
       if (somethingIsTrue) win();
     ```
+
+### Getting unstuck
+
+There is **no hint system**. A ladder of authored hints was built and taken back out: it was a
+second way to ask for help sitting beside the AI assistant, in a panel the student already knows
+how to use from the lesson, with a rule about which one you had to spend first. Two overlapping
+doors, one of them locked.
+
+What a stuck student has instead:
+
+- **The tutor**, in the bench, same panel and same manners as on the lesson. It explains and refuses
+  to write the code, so leaning on it still leaves the work theirs. Free.
+- **The worked answer**, offered by the bench itself after four failed runs. That one *is* the
+  answer, so it halves the lesson's XP — halves, not zeroes; see `lessonXpFactor` in widgets.js.
+
+`hint:` is still parsed and still carried by every lab, and nothing renders it today. Left in place
+rather than stripped from 22 files: it is one sentence per lab saying what to look at, which is
+exactly what a future in-editor nudge would need.
+
+**Write the `goal:`.** `task:` describes the problem; `goal:` describes what finished looks like,
+and without it the block tells a student what is broken and never what they are aiming for. Say
+what they will *see* ("the box travels all the way across"), not what they should type.
 
 Inside the sandbox the code gets `canvas` (300x200), `ctx` (its 2D context), and `win()` — call
 `win()` and the challenge is complete. Nothing else is available; there is no Phaser here, so a
@@ -163,8 +233,8 @@ The bridge from the lab to the student's own game: same technique, their code, b
     reward: Engine Room badge
     ```
 
-`reward:` **awards a real badge.** It is recorded against the student, shown in the trophy case in
-the status bar, and cannot be bought with Stars — that is the whole point of it. Two rules:
+`reward:` **awards a real badge.** It is recorded against the student and shown in the trophy case
+in the status bar. Two rules:
 
 - **Every reward name must be unique across the whole course.** Badges are stored by name, so a
   duplicate means the second lesson awards nothing while still promising it. `npm test` fails on

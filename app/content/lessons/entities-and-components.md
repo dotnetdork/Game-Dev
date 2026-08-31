@@ -199,6 +199,8 @@ feedback:
 explain: Copying a file means every future fix has to be made in several places. Shared parts mean one fix, everywhere.
 ```
 
+Nearly every project has this in it somewhere, and yours is not special. Go and look for the block of lines that appears more than once with small differences.
+
 ```yourturn
 title: Find the copy-paste in your own game
 task: Look for code you have written more than once, and pull the shared part out.
@@ -217,3 +219,5 @@ reward: Systems Thinker badge
 - Nearly everything shares **position**, **sprite** and **body**.
 - Writing the same lines a fourth time is the signal to pull them out.
 - The measure of a good structure is **how little you write to add the next thing**.
+
+goal: All four things move from one piece of code instead of four near-identical copies.

@@ -191,6 +191,8 @@ code: |
   }
 ```
 
+Announcing beats reaching in for one reason: the announcer does not have to know who is listening, so adding a fifth listener changes nothing that already works.
+
 ```quiz
 question: What is the main downside of announcing instead of calling directly?
 options:
@@ -206,6 +208,8 @@ feedback:
   - Many things can listen — that is the whole point.
 explain: Events trade readability for flexibility. If nothing is listening, nothing happens and nothing warns you.
 ```
+
+You do not have to untangle a whole game to feel the difference. One connection is enough.
 
 ```yourturn
 title: Untangle one connection in your game
@@ -228,3 +232,5 @@ reward: Untangler badge
 - The cost is real: **you can no longer follow the thread by reading**.
 - Use it for one-to-many and for parts that shouldn't know each other. For two things that are one
   idea, just make the call.
+
+goal: The function announces what happened, and the systems react on their own.

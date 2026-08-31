@@ -153,6 +153,8 @@ code: |
   step();
 ```
 
+Conditions are the part beginners misread most often, because a wrong one looks exactly like a right one until you run it.
+
 ```quiz
 question: What is the main reason to pull repeated code out into a named function?
 options:
@@ -169,11 +171,13 @@ feedback:
 explain: Reuse saves typing, but naming is what makes code readable. `spawnEnemy()` says what happens; ten lines of maths only says how.
 ```
 
+You now have the three shapes almost all code is made from. The fastest way to own them is to point at one in code you did not write and say what it does.
+
 ```yourturn
 title: Name a move in your own game
 task: Find something your game does in more than one place, and turn it into a function whose name says what it does.
 steps:
-  - Open the Code tab and read through game.js looking for similar-looking lines in two places.
+  - Open the Code tab and read through `game.js` looking for similar-looking lines in two places.
   - Cut one copy out and wrap it in `function doSomethingUseful() { ... }` near the other functions.
   - Replace both places with a call to your new function.
   - Press Run. Nothing should look different — that is the point. Same game, clearer code.
@@ -187,3 +191,5 @@ reward: Logic Wrangler badge
 - **Loops** repeat work. A loop whose condition never ends freezes everything.
 - **Functions** let you reuse work — and more importantly, **give it a name**.
 - Nearly all game code is these three stacked together.
+
+goal: The condition finally comes true and the thing it guards actually happens.

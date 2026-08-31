@@ -39,7 +39,7 @@ try {
 <figure class="diagram">
   <img src="/content/images/error-anatomy.svg" alt="An error message broken into four labelled parts: the kind of problem, what it wanted, which file, and which line. Read it backwards, starting from the file and line.">
   <figcaption>The same four parts are in every error message you will ever see, in every language.
-  Learn to find them once and errors stop being shouting and start being a map.</figcaption>
+  Learn to find them once and errors stop being shouting and start being a map. Read it backwards: file and line first, then what it wanted, then the kind. Almost nobody does, which is why "I have no idea what this means" is usually "I read the first word and stopped".</figcaption>
 </figure>
 
 Take this:
@@ -187,11 +187,13 @@ feedback:
 explain: Code inside a condition that is never true produces no error, because it never runs. Silence is a symptom.
 ```
 
+Reading an error is a skill, and skills need reps. The fastest way to get them is to cause errors deliberately, while you already know what you did.
+
 ```yourturn
 title: Break your own game on purpose
 task: Make a deliberate mistake, read the error, then fix it. Doing this once when nothing is at stake is worth an hour of panic later.
 steps:
-  - Open the Code tab and open game.js.
+  - Open `game.js` in the Code tab.
   - Deliberately misspell something — change `player` to `plyer` in one place.
   - Press Run, open the Play tab, and read the message in the console underneath. Find the file and line number in it.
   - Before fixing it, say out loud what the message means in your own words.
@@ -214,3 +216,5 @@ example: player  // the spelling that was there before you broke it
 - **Guess, check, repeat.** Changing things at random is not debugging.
 - `console.log` just before the broken line is the fastest tool you have.
 - **No error is not the same as no bug** — silent nothing usually means an `if` that never ran.
+
+goal: All three errors are gone and the log runs clean.

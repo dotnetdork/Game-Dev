@@ -26,9 +26,6 @@
       <rect x="24" y="202" width="130" height="26" rx="6" fill="#12304f" stroke="#3e8fd6"/>
       <text x="36" y="219" fill="#9ecbff">main.js</text>
     </g>
-    <text x="24" y="248" fill="#5f7893" font-size="11.5">main.js is last on purpose:</text>
-    <text x="24" y="264" fill="#5f7893" font-size="11.5">it starts the engine, so</text>
-    <text x="24" y="280" fill="#5f7893" font-size="11.5">everything else must exist.</text>
 
     <line x1="164" y1="135" x2="216" y2="135" stroke="#5f7893" stroke-width="2" marker-end="url(#op-arrow)"/>
 
@@ -44,7 +41,6 @@
       <text x="240" y="164" fill="#9ecbff">&lt;script&gt; main    &lt;/script&gt;</text>
     </g>
     <text x="324" y="196" text-anchor="middle" fill="#c9f5dc" font-size="12.5">glued together, in order</text>
-    <text x="324" y="216" text-anchor="middle" fill="#8b9db1" font-size="11.5">nothing is compiled</text>
 
     <line x1="432" y1="135" x2="484" y2="135" stroke="#5f7893" stroke-width="2" marker-end="url(#op-arrow)"/>
 
@@ -58,7 +54,5 @@
     <text x="595" y="140" text-anchor="middle" fill="#3ddc84" font-size="14" font-weight="700">your game,</text>
     <text x="595" y="160" text-anchor="middle" fill="#3ddc84" font-size="14" font-weight="700">running</text>
     <text x="595" y="248" text-anchor="middle" fill="#eaf1f8" font-size="13" font-weight="600">Nothing installed.</text>
-    <text x="595" y="266" text-anchor="middle" fill="#9fb2cc" font-size="12">Windows, Mac, Chromebook,</text>
-    <text x="595" y="282" text-anchor="middle" fill="#9fb2cc" font-size="12">phone — the same one file.</text>
   </g>
 </svg>

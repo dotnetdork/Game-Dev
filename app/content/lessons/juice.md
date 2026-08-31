@@ -22,6 +22,7 @@ None of it affects whether you win. All of it affects whether you want to keep p
 ```run
 // @goal: Add layers of juice to one hit. Watch the rule underneath refuse to change.
 // @slider: layers 0 5 1 0
+// @demo: juice
 const all = ["a flash", "knockback", "particles", "a screen shake", "a sound"];
 const added = all.slice(0, layers);
 console.log("the rule:      enemy.health = enemy.health - 10");
@@ -109,6 +110,7 @@ The one to be careful with is **duration**. Anything the player is waiting on sh
 ```run
 // @goal: Tween a coin toward the score. Change how long it takes to get there.
 // @slider: durationMs 50 800 50 300
+// @demo: juice
 const frames = Math.round(durationMs / 16);
 console.log("the coin rises 30px and fades over " + durationMs + "ms");
 console.log("about " + frames + " frames of movement, drawing the player's eye");
@@ -186,6 +188,8 @@ code: |
   step();
 ```
 
+None of that changed a single rule. The game plays exactly as it did; it just stopped feeling like a spreadsheet.
+
 ```quiz
 question: How should you decide how long a screen shake lasts?
 options:
@@ -201,6 +205,8 @@ feedback:
   - Long shakes read as bugs.
 explain: Juice has no right answer, only a right feel. The method is always set it, play it, adjust.
 ```
+
+Pick the single best moment in your game. Right now it probably announces itself with a number going up, and it deserves better than that.
 
 ```yourturn
 title: Juice up your best moment
@@ -223,3 +229,5 @@ reward: Juice Master badge
   ~200ms.
 - **Particles**: add half what you want, then play it twenty times.
 - Juice is **tuned by playing, not by reading**. There is no correct number.
+
+goal: The hit lands on more than one channel, so it reads as an event and not a number changing.

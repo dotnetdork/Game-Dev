@@ -1,0 +1,17 @@
+{
+  "detector": {
+    "ignoreRules": [],
+    "ignoreFiles": [],
+    "ignoreValues": [
+      {
+        "rule": "side-tab",
+        "value": "*",
+        "files": [
+          "app/public/styles.css"
+        ],
+        "createdAt": "2026-08-30T21:41:50.211Z",
+        "reason": "User confirmed the block stripe: after it replaced a top hairline the user said \"I do like the coloring though\". It delimits quiz/lab/practice blocks (styles.css:1367-1379) and marks where a block stops. The 2px rule on .tip.aside (styles.css:1639) is the footnote convention for a floated margin note. Neither is a card accent tab."
+      }
+    ]
+  }
+}

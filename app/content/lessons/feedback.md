@@ -16,6 +16,7 @@ beat of the core loop, and it is the single cheapest way to make a game feel goo
 ```run
 // @goal: The same hit, told two ways. Turn the channels up from nothing.
 // @slider: channels 0 3 1 0
+// @demo: feedback
 const said = ["a flash", "a click", "a little shake"].slice(0, channels);
 console.log("you hit the enemy — health 50 -> 40");
 console.log(said.length ? "the game also says: " + said.join(", ") : "the game says nothing at all");
@@ -50,6 +51,11 @@ Three completely different games, all doing the same job: **you did a thing, her
   <cite><b>Kenney</b> — Platformer &amp; UI packs, public domain (CC0).</cite></figcaption>
 </figure>
 
+A coin that vanishes silently has been collected. A coin that flashes, pings and bumps the score
+has been *collected*, and the player felt it happen. The rule underneath is identical.
+
+This matters more than it sounds. When a player says a game feels unresponsive, they almost never
+mean it ignored them — it usually did exactly what they asked. They mean it never told them.
 You have four channels, and the good ones use several at once:
 
 | Channel | Example |
@@ -94,6 +100,12 @@ explain: Changing a value is not the same as communicating it. Without a flash, 
 The most important thing about feedback is not how impressive it is. It's **how quickly it
 arrives**.
 
+It is also the cheapest thing in this entire course to get right. A flash lasting a tenth of a
+second costs you two lines and no art at all, and it will do more for how your game feels than
+anything else you add this week.
+This is a hard rule about people, not a style preference. It does not matter how good your
+explosion is if it starts too late — the player has already moved on and will read it as unrelated
+to what they did.
 Your brain links an action to its result inside about a tenth of a second. Past that, the two stop
 feeling connected. This is why a small instant flash beats a gorgeous explosion that starts half a
 second late — and why laggy games feel awful even when nothing is technically wrong.
@@ -101,6 +113,7 @@ second late — and why laggy games feel awful even when nothing is technically 
 ```run
 // @goal: How late is too late? Drag the delay until the answer stops feeling like yours.
 // @slider: delayMs 0 500 20 0
+// @demo: feedback
 console.log("you press the button at 0 ms");
 console.log("the game answers at " + delayMs + " ms");
 console.log(delayMs <= 100
@@ -209,6 +222,8 @@ feedback:
 explain: Feedback has to arrive almost instantly. A plain flash on the same frame beats a beautiful effect that is late.
 ```
 
+Somewhere in your game something important happens in complete silence. Find it, because your players already have.
+
 ```yourturn
 title: Make one thing in your game shout
 task: Pick the single most important thing that happens in your game — the collect, the hit, the jump — and give it feedback on at least two channels.
@@ -227,3 +242,5 @@ reward: Game Feel badge
   do the communicating.
 - **Speed beats spectacle.** Roughly a tenth of a second, or the link is broken.
 - Failure needs feedback just as much as success does.
+
+goal: A hit is impossible to miss — you can tell it landed without watching the health number.

@@ -1,0 +1,41 @@
+# The course glossary.
+#
+#   term: 'a short, plain explanation'
+#
+# QUOTE EVERY VALUE. Single quotes, always. Most of these explanations contain a colon or a dash,
+# and an unquoted YAML value containing ": " is a parse error that takes the whole file down — and
+# with it every tooltip in the course. Single quotes also let a value contain "double quotes",
+# which several of these need. To put a single quote inside, double it: 'it''s'.
+#
+# HOW IT REACHES THE PAGE. There is no new syntax to learn. Lessons already mark a term the first
+# time it matters by bolding it — **core loop**, **frame**, **sprite** — and that bold is the
+# author saying "this word is a thing". Any bolded run of text matching a key below becomes
+# hoverable: hover, keyboard focus or tap opens the explanation. First match per lesson only, so a
+# word bolded again later for emphasis does not sprout a second tooltip.
+#
+# WHAT TO WRITE. Two sentences at most, and no jargon inside the explanation — a student opening
+# this is already unsure, so a definition that needs its own definition is worse than nothing.
+# Say what it IS, then where they meet it. Aim it at a ten-year-old.
+#
+# Keys are matched case-insensitively, and a trailing "s" on the page still matches.
+
+core loop: 'The handful of actions you repeat the whole time you play — eat a dot, avoid a ghost, repeat. Also called the "gameplay loop" or the "compulsion loop"; designers argue about the name, and they all mean the same thing.'
+game loop: 'The three jobs a game does over and over, about sixty times a second — read the buttons, update the world, draw the picture.'
+frame: 'One trip around the game loop. At sixty frames a second, each one lasts about sixteen milliseconds.'
+game engine: 'Software that does the parts every game needs — the loop, the drawing, the collisions, loading files — so you only have to build the parts that make your game yours.'
+lag: 'The game loop running late, so your button press gets noticed after it happened. The game is not broken; it is behind.'
+sprite: 'A picture the game can move around. Your player, a coin and an enemy are all sprites.'
+sprite sheet: 'One image file holding several frames of an animation side by side, played in order so a character looks like it is moving.'
+tilemap: 'A level built from a small set of repeated squares instead of one huge picture, stored as a list of which tile goes where.'
+asset: 'Anything your game loads that is not code — a picture, a sound, a font.'
+variable: 'A named box that holds a value your game needs to remember, like the score.'
+function: 'A named block of code you can run whenever you want, as many times as you like, instead of writing it out again.'
+velocity: 'How fast something is moving and in which direction. Add it to a position every frame and the thing moves.'
+gravity: 'A small amount added to downward speed every frame. That is the whole trick — games do not use real physics.'
+overlap: 'A collision check that tells you two things touched and lets them pass through each other. Right for collecting a coin.'
+collider: 'A collision check that tells you two things touched and also pushes them apart. Right for walls and floors.'
+tunnelling: 'When something moves so fast it jumps clean past a thin wall between one frame and the next, so nothing ever notices a collision.'
+state: 'What your game is doing right now — playing, paused, game over. Keeping it in one place stops it being two things at once.'
+juice: 'Everything wrapped around a rule to make it feel good — a flash, a shake, a sound. It never changes what the rule does.'
+build: 'Your project packed into one thing another person can open, instead of the folder of files you work in.'
+scene: 'One screen of your game with its own set of objects — a title screen, a level, a game-over screen.'

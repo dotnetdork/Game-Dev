@@ -94,6 +94,9 @@ Here is the most valuable twenty minutes available to you, and almost nobody doe
 
 Sit someone in front of your game. **Say nothing.** Not one word, however much it hurts.
 
+Everything you know about your own game is invisible to them. You know which button does what, what
+the goal is, and which bits are unfinished. They know none of it, and the first thirty seconds of
+watching somebody find that out is worth more than an hour of your own testing.
 Watch where they hesitate. Watch what they try that you never considered. Watch the moment they get
 stuck and their hand goes to the mouse to close the tab.
 
@@ -222,6 +225,8 @@ feedback:
 explain: A playtest measures what your game communicates without you. The moment you speak, you stop measuring it.
 ```
 
+This is the part that turns a project into a game other people have played. Everything up to now was for you; this is for them.
+
 ```yourturn
 title: Publish your game
 task: Give it a title and put it in the Gallery. This is the last step of the course and the one that counts.
@@ -242,3 +247,5 @@ reward: Published badge
   reloading, sensible starting state, no console errors.
 - **Watch someone play and say nothing.** If you have to explain it, it isn't explained.
 - Publishing feels uncomfortable for everyone, always. Do it anyway.
+
+goal: Every item on the checklist passes, so the game runs somewhere other than here.

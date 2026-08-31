@@ -1,10 +1,365 @@
 /* ai.js — The AI panel: chat rendering, the Tutor and Build (coder) requests to /api/ai, and applying the returned ops to the project. */
 /* ---------- AI ---------- */
 const aiMsgs = $('aiMsgs');
-const chats = { coder: [], tutor: [] };   // separate conversation per mode
-function renderBubble(who, text) { const m = document.createElement('div'); m.className = 'msg ' + who; if (who === 'bot') { try { m.innerHTML = mdToSafeHTML(text); } catch (e) { m.textContent = String(text); } } else { m.textContent = text; } return m; }
+/* The live message array for each mode. Every other function in this file reads and pushes to
+   `chats[mode]` and always has — it is now a VIEW onto the current thread's messages rather than
+   the only conversation there is, so threading cost no changes at the call sites. */
+const chats = { coder: [], tutor: [] };
+
+/* ---------- conversations ----------
+   There was one conversation per mode, it lived only in memory, and a reload threw it away. Two
+   things wrong with that, and only one of them is tidiness:
+
+   The reload. Lessons survive a refresh now, so a chat vanishing with it is the odd one out.
+
+   The context. chatHistory() sends the last six turns with every request, so once the assistant has
+   gone down a wrong path it keeps being handed the wrong path and stays there. A new conversation
+   is the only way to actually clear that, which makes "New chat" a debugging tool rather than
+   housekeeping — and the reason its button is somewhere a stuck student will find it.
+
+   Build and Tutor keep entirely separate lists: different assistant, different job, and switching
+   modes should not disturb either conversation. */
+const CHAT_MAX_THREADS = 12;      // per mode; localStorage is shared with their project
+const CHAT_MAX_MSGS = 40;         // per thread, kept from the end
+let liveThreads = [];             // [{id, mode, title, lesson, msgs, at}] — msgs may hold proposals
+
+/* One of several, drawn per new chat from content/questions.yaml, and then fixed for that chat.
+   Each variant in the pool teaches something different about how to use the panel rather than being
+   the same sentence reworded — so a student who starts a few chats across a term picks up the whole
+   set without reading a manual.
+   The hard-coded pair below is the fallback for the one case the pool cannot cover: a thread created
+   before questions.yaml has loaded, or a broken file. Never leaves a chat with no opening line. */
+const CHAT_GREETING_FALLBACK = {
+  tutor: "Hi! I'm your **Tutor**. Ask me anything about the lesson or the code and I'll explain it — I won't change your game.",
+  coder: "Hi! I'm your **Build** helper. Tell me what to change or add to your game — like \"make the player move faster\" — and I'll edit the code."
+};
+function chatGreeting(mode) {
+  const pool = ((QUESTIONS || {}).greetings || {})[mode];
+  if (Array.isArray(pool) && pool.length) return pool[Math.floor(Math.random() * pool.length)];
+  return CHAT_GREETING_FALLBACK[mode] || CHAT_GREETING_FALLBACK.tutor;
+}
+function newThreadId() { return 't' + Date.now().toString(36) + Math.random().toString(36).slice(2, 6); }
+function threadsFor(mode) {
+  return liveThreads.filter(function (t) { return t.mode === mode; }).sort(function (a, b) { return b.at - a.at; });
+}
+function makeThread(mode) {
+  const f = (typeof flat !== 'undefined' && typeof curIdx === 'number') ? flat[curIdx] : null;
+  const t = { id: newThreadId(), mode: mode, title: '', lesson: f ? f.l.t : '',
+    msgs: [{ who: 'bot', text: chatGreeting(mode) }], at: Date.now() };
+  liveThreads.push(t);
+  /* Oldest first out, and only within this mode, so a busy Build history cannot evict the Tutor
+     conversation a student is halfway through. */
+  const mine = threadsFor(mode);
+  if (mine.length > CHAT_MAX_THREADS) {
+    const drop = mine.slice(CHAT_MAX_THREADS).map(function (x) { return x.id; });
+    liveThreads = liveThreads.filter(function (x) { return drop.indexOf(x.id) < 0; });
+  }
+  return t;
+}
+let currentThreadId = { tutor: null, coder: null };
+function currentThread(mode) {
+  let t = liveThreads.find(function (x) { return x.id === currentThreadId[mode]; });
+  if (!t) { t = threadsFor(mode)[0] || makeThread(mode); currentThreadId[mode] = t.id; }
+  return t;
+}
+/* Point chats[mode] at the current thread's own array, so every existing push lands in the right
+   conversation without any of them knowing threads exist. */
+function bindChat(mode) {
+  chats[mode] = currentThread(mode).msgs;
+  return chats[mode];
+}
+function openThread(id) {
+  const t = liveThreads.find(function (x) { return x.id === id; });
+  if (!t) return;
+  currentThreadId[t.mode] = t.id;
+  bindChat(t.mode);
+  renderChat(t.mode);
+  renderChatBar();
+  persistChats();
+}
+function startNewChat() {
+  const t = makeThread(aiMode);
+  currentThreadId[aiMode] = t.id;
+  bindChat(aiMode);
+  renderChat(aiMode);
+  renderChatBar();
+  persistChats();
+  const box = $('aiText'); if (box) box.focus();
+}
+/* Deleting the conversation you are currently in has to leave you somewhere, so it falls back to
+   the next most recent in this mode and starts a fresh one if that was the last. Never leaves the
+   panel pointing at a thread that no longer exists. */
+function deleteThread(id) {
+  const t = liveThreads.find(function (x) { return x.id === id; });
+  if (!t) return;
+  const mode = t.mode;
+  liveThreads = liveThreads.filter(function (x) { return x.id !== id; });
+  if (currentThreadId[mode] === id) {
+    const next = threadsFor(mode)[0];
+    currentThreadId[mode] = next ? next.id : null;
+    bindChat(mode);                       // creates a greeted thread when that was the last one
+    if (mode === aiMode) renderChat(mode);
+  }
+  renderChatBar();
+  persistChats();
+}
+
+/* The first thing the student asked, which is what they will recognise it by. */
+function threadTitle(t) {
+  if (t.title) return t.title;
+  const firstAsk = (t.msgs || []).find(function (m) { return m.who === 'user' && m.text; });
+  if (!firstAsk) return 'New chat';
+  const s = String(firstAsk.text).replace(/\s+/g, ' ').trim();
+  return s.length > 52 ? s.slice(0, 52) + '…' : s;
+}
+
+/* What goes to disk. Deliberately not the live objects:
+   a proposal carries `ops` and the full before/after text of every file it touches. Storing that is
+   large, and restoring it is worse than large — accepting a diff computed against code the student
+   has since changed would quietly corrupt their game. So a saved proposal keeps its sentence and
+   its outcome and nothing else, and comes back as a record with no button. A proposal still pending
+   when the page closed is recorded as declined, because it was never applied. */
+function persistChats() {
+  if (typeof state !== 'object' || !state) return;
+  state.chats = {
+    current: { tutor: currentThreadId.tutor, coder: currentThreadId.coder },
+    threads: liveThreads.map(function (t) {
+      return { id: t.id, mode: t.mode, title: threadTitle(t), lesson: t.lesson, at: t.at,
+        msgs: (t.msgs || [])
+          .filter(function (m) { return m && m.text && m.text !== 'Thinking…'; })
+          .slice(-CHAT_MAX_MSGS)
+          .map(function (m) {
+            if (m.kind === 'proposal') {
+              return { who: m.who, kind: 'proposal', text: m.text,
+                state: m.state === 'pending' ? 'declined' : m.state };
+            }
+            return { who: m.who, text: m.text };     // a quiz card degrades to its question text
+          })
+      };
+    })
+  };
+  if (typeof saveState === 'function') saveState();
+}
+/* The slim bar. Shows which conversation is open and lists the others for this mode only — a
+   student switching to Build should not be offered their Tutor conversations. */
+function renderChatBar() {
+  const title = $('chatTitle'); if (!title) return;
+  title.textContent = threadTitle(currentThread(aiMode));
+  const list = $('chatList');
+  if (!list) return;
+  const mine = threadsFor(aiMode);
+  list.innerHTML = '';
+  mine.forEach(function (t) {
+    /* A div, not a button: it holds a delete button, and a button inside a button is invalid and
+       does not receive clicks reliably. Keyboard-reachable by hand instead. */
+    const row = document.createElement('div');
+    row.className = 'chat-row' + (t.id === currentThreadId[aiMode] ? ' on' : '');
+    row.setAttribute('role', 'option');
+    row.tabIndex = 0;
+    row.setAttribute('aria-selected', String(t.id === currentThreadId[aiMode]));
+
+    const text = document.createElement('span'); text.className = 'cr-text';
+    /* textContent, not an escaped string. The title is whatever the student typed, and building
+       markup out of it needs an escaper — `esc` lives in pages.js, which the page loads AFTER this
+       file, so reaching for it here throws at boot. Two nodes and no escaping needed. */
+    const tt = document.createElement('span'); tt.className = 'cr-title'; tt.textContent = threadTitle(t);
+    text.appendChild(tt);
+    if (t.lesson) {
+      const sub = document.createElement('span'); sub.className = 'cr-sub'; sub.textContent = t.lesson;
+      text.appendChild(sub);
+    }
+    row.appendChild(text);
+
+    /* Delete, on hover and on keyboard focus. Kept out of the way rather than absent: a student
+       testing the assistant makes throwaway chats constantly, and a list that only grows is a list
+       they stop using. */
+    const del = document.createElement('button');
+    del.type = 'button'; del.className = 'cr-del';
+    del.title = 'Delete this chat';
+    del.innerHTML = '<span class="mdi mdi-close" aria-hidden="true"></span><span class="sr-only">Delete this chat</span>';
+    del.addEventListener('click', function (e) { e.stopPropagation(); deleteThread(t.id); });
+    row.appendChild(del);
+
+    const open = function () { closeChatList(); openThread(t.id); };
+    row.addEventListener('click', open);
+    row.addEventListener('keydown', function (e) {
+      if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); open(); }
+      else if (e.key === 'Delete' || e.key === 'Backspace') { e.preventDefault(); deleteThread(t.id); }
+    });
+    list.appendChild(row);
+  });
+  if (!mine.length) {
+    const p = document.createElement('p'); p.className = 'chat-none'; p.textContent = 'No other chats yet.';
+    list.appendChild(p);
+  }
+}
+function closeChatList() {
+  const l = $('chatList'), b = $('chatPick');
+  if (l) l.hidden = true;
+  if (b) b.setAttribute('aria-expanded', 'false');
+}
+function toggleChatList() {
+  const l = $('chatList'), b = $('chatPick');
+  if (!l) return;
+  const open = l.hidden;
+  if (open) renderChatBar();
+  l.hidden = !open;
+  if (b) b.setAttribute('aria-expanded', String(open));
+}
+if ($('chatNew')) $('chatNew').addEventListener('click', startNewChat);
+if ($('chatPick')) $('chatPick').addEventListener('click', function (e) { e.stopPropagation(); toggleChatList(); });
+document.addEventListener('click', function (e) {
+  const bar = document.querySelector('.chatbar');
+  if (bar && !bar.contains(e.target)) closeChatList();
+});
+document.addEventListener('keydown', function (e) { if (e.key === 'Escape') closeChatList(); });
+
+/* ---------- three questions to tap instead of typing ----------
+   A blank box and a blinking cursor is the hardest interface there is for a child who does not yet
+   know what they are allowed to ask. Three real questions show the SHAPE of a good one.
+
+   Drawn at random each time from content/questions.yaml, specific pools first — this lesson's, then
+   this module's, then the general ones. Random rather than fixed because the same three chips on
+   every lesson stop being read by about the third lesson.
+
+   Only while a chat is new. Once the student has asked something the chips are gone: they are a way
+   in, not a menu. */
+let QUESTIONS = null;
+function loadQuestions() {
+  if (QUESTIONS) return Promise.resolve(QUESTIONS);
+  return fetch('/content/questions.yaml')
+    .then(function (r) { return r.ok ? r.text() : Promise.reject(new Error(String(r.status))); })
+    .then(function (src) {
+      QUESTIONS = (typeof jsyaml !== 'undefined') ? (jsyaml.load(src) || {}) : {};
+      return QUESTIONS;
+    })
+    /* A missing or broken pool must never cost a student the chat itself. */
+    .catch(function () { QUESTIONS = {}; return QUESTIONS; });
+}
+function shuffled(a) {
+  const out = a.slice();
+  for (let i = out.length - 1; i > 0; i--) { const j = Math.floor(Math.random() * (i + 1)); const t = out[i]; out[i] = out[j]; out[j] = t; }
+  return out;
+}
+/* `scope` is 'lesson' or 'lab'. Takes from the most specific pool first and tops up from the more
+   general ones, so a lesson with four of its own shows three of those and a lesson with none still
+   shows something sensible rather than nothing.
+
+   `agent` picks the tree. The two are different in kind, not just in wording: the Tutor's chips are
+   questions ("why is my score resetting?"), Build's are instructions ("move my score variable out of
+   the loop"). Offering a Build chip that reads like a question teaches a child that the two panels
+   are interchangeable, which is the most expensive misconception this app could hand out. Build has
+   no lab tier because Build is off inside a lab bench. */
+function pickQuestions(scope, n, agent) {
+  const q = QUESTIONS || {};
+  /* Falls back to the whole file if the agent trees are missing, so an older or half-edited
+     questions.yaml still produces chips instead of nothing. */
+  const t = q[agent === 'coder' ? 'coder' : 'tutor'] || q;
+  const f = (typeof flat !== 'undefined' && typeof curIdx === 'number') ? flat[curIdx] : null;
+  const lessonId = f ? (f.l.id || '') : '';
+  const moduleName = f ? f.m.name : '';
+  const tiers = scope === 'lab'
+    ? [(t.labs || {})[lessonId], (t.lessons || {})[lessonId], (t.modules || {})[moduleName]]
+    : [(t.lessons || {})[lessonId], (t.modules || {})[moduleName], t.any];
+  const out = [];
+  tiers.concat([t.any]).forEach(function (pool) {
+    if (out.length >= n || !Array.isArray(pool)) return;
+    shuffled(pool).forEach(function (s) {
+      if (out.length < n && typeof s === 'string' && out.indexOf(s) < 0) out.push(s);
+    });
+  });
+  return out;
+}
+/* Rendered into the message list itself rather than pinned above the input, so they scroll away
+   with the greeting instead of hovering over a conversation that has moved on. */
+function renderStarters(scope, host, send, agent) {
+  if (!host) return;
+  const old = host.querySelector('.starters'); if (old) old.remove();
+  const picks = pickQuestions(scope, 3, agent);
+  if (!picks.length) return;
+  const wrap = document.createElement('div');
+  wrap.className = 'starters';
+  const lead = document.createElement('p'); lead.className = 'st-lead';
+  /* Build's chips are instructions, so "what to ask" would be the wrong word for them. */
+  lead.textContent = agent === 'coder' ? 'Not sure what to build?' : 'Not sure what to ask?';
+  wrap.appendChild(lead);
+  picks.forEach(function (text) {
+    const b = document.createElement('button');
+    b.type = 'button'; b.className = 'st-chip'; b.textContent = text;
+    b.addEventListener('click', function () { send(text); });
+    wrap.appendChild(b);
+  });
+  host.appendChild(wrap);
+  host.scrollTop = host.scrollHeight;
+}
+/* A chat is "new" until the student has said something in it. */
+function chatIsNew(msgs) {
+  return !(msgs || []).some(function (m) { return m && m.who === 'user'; });
+}
+function refreshStarters() {
+  if (!aiMsgs) return;
+  const old = aiMsgs.querySelector('.starters'); if (old) old.remove();
+  if (!chatIsNew(chats[aiMode])) return;
+  loadQuestions().then(function () {
+    if (!chatIsNew(chats[aiMode])) return;
+    renderStarters('lesson', aiMsgs, function (text) {
+      const box = $('aiText'); if (box) { box.value = text; growTextarea(box); }
+      sendAI();
+    }, aiMode);
+  });
+}
+
+function loadChats() {
+  const saved = (state && state.chats) || {};
+  liveThreads = Array.isArray(saved.threads) ? saved.threads.filter(function (t) {
+    return t && t.id && (t.mode === 'tutor' || t.mode === 'coder') && Array.isArray(t.msgs);
+  }) : [];
+  currentThreadId = {
+    tutor: (saved.current && saved.current.tutor) || null,
+    coder: (saved.current && saved.current.coder) || null
+  };
+  ['tutor', 'coder'].forEach(function (m) { bindChat(m); });   // creates a greeted thread if none
+}
+function renderBubble(who, text) { const m = document.createElement('div'); m.className = 'msg ' + who; if (who === 'bot') { try { m.innerHTML = String(mdToSafeHTML(text)).trim(); } catch (e) { m.textContent = String(text); } } else { m.textContent = text; } return m; }
 function addMsg(who, text) { const entry = { who: who, text: text }; (chats[aiMode] || (chats[aiMode] = [])).push(entry); const m = renderBubble(who, text); m.__entry = entry; aiMsgs.appendChild(m); aiMsgs.scrollTop = aiMsgs.scrollHeight; return m; }
-function setMsg(m, who, text) { if (m && m.__entry) { m.__entry.who = who; m.__entry.text = text; } if (who === 'bot') { try { m.innerHTML = mdToSafeHTML(text); } catch (e) { m.textContent = String(text); } } else { m.textContent = text; } aiMsgs.scrollTop = aiMsgs.scrollHeight; }
+/* ---------- the waiting message ----------
+   "Thinking…" sat there unchanged for however long the call took, which reads as frozen — a
+   ten-year-old cannot tell a slow answer from a broken one. Rotating text says the thing is alive.
+
+   These are written on this side, not sent by the model. Worth being clear about, because it looks
+   like the assistant narrating itself: the rotating words in a chat UI are the CLIENT guessing at
+   what is happening. (A model's real reasoning is a separate API feature — streamed thinking blocks
+   — which this server does not ask for and which would be a strange fit for a 3-sentence answer to
+   a child.) So they are honest about the shape of the work rather than pretending to report it. */
+const THINKING = {
+  tutor: ['Thinking…', 'Reading your code…', 'Working out how to explain it…',
+    'Looking for a simpler way to say it…', 'Checking what the lesson covered…'],
+  coder: ['Thinking…', 'Reading your game…', 'Working out the smallest change…',
+    'Checking which file this belongs in…', 'Writing it carefully…'],
+  lab: ['Thinking…', 'Reading your lab code…', 'Looking at what it printed…',
+    'Working out a nudge, not the answer…']
+};
+function startThinking(el, kind) {
+  if (!el) return;
+  const pool = THINKING[kind] || THINKING.tutor;
+  let i = 0;
+  const step = function () {
+    el.textContent = pool[i % pool.length];
+    if (el.__entry) el.__entry.text = 'Thinking…';   // history never stores the flavour text
+    i++;
+  };
+  step();
+  stopThinking(el);
+  /* Slow on purpose. Faster than this and it reads as a slot machine rather than as work; the
+     point is to show the thing is alive, not to entertain. */
+  el.__think = setInterval(step, 2200);
+}
+function stopThinking(el) {
+  if (el && el.__think) { clearInterval(el.__think); el.__think = null; }
+}
+
+function setMsg(m, who, text) {
+  stopThinking(m); if (m && m.__entry) { m.__entry.who = who; m.__entry.text = text; } if (who === 'bot') { try { m.innerHTML = mdToSafeHTML(text); } catch (e) { m.textContent = String(text); } } else { m.textContent = text; } aiMsgs.scrollTop = aiMsgs.scrollHeight; }
 function renderChat(mode) {
   aiMsgs.innerHTML = '';
   (chats[mode] || []).forEach(function (en) {
@@ -12,6 +367,7 @@ function renderChat(mode) {
     m.__entry = en; aiMsgs.appendChild(m);
   });
   aiMsgs.scrollTop = aiMsgs.scrollHeight;
+  refreshStarters();
 }
 
 /* ---------- propose → read → accept ----------
@@ -152,8 +508,31 @@ function aiContext() {
   return {
     lessonTitle: f ? f.l.t : '',
     lessonContext: currentLessonText || '',
+    where: describeWhere(),
     aiMode: currentAIMode,
     ownedAssets: (typeof ownedAssets === 'function' ? ownedAssets() : []).map(function (a) { return { key: a.key, type: a.type }; }),
+    /* Owned BUNDLES, compressed to a shared prefix and a count.
+
+       The Store now sells 400-tile sets, and the server caps the key list it puts in the prompt at
+       300. Sending only that list meant a student who owned a big set had keys 301+ treated as
+       invented — the coder's change would be refused with "you don't own that" for a tile they had
+       paid for. Sending four hundred key strings on every request instead is not the answer either.
+
+       So a set travels as `1bit-platformer_tile_` × 400, which the server can validate against and
+       describe in one line. */
+    ownedSets: (function () {
+      const out = [];
+      (window.STORE_BUNDLES || []).forEach(function (b) {
+        if (!state.unlocked[b.id] && !b.free) return;
+        const keys = b.members || [];
+        if (keys.length < 2) return;
+        let p = keys[0];
+        keys.forEach(function (k) { while (p && k.indexOf(p) !== 0) p = p.slice(0, -1); });
+        if (p.length < 4) return;             // no useful shared prefix — leave it to the key list
+        out.push({ prefix: p, count: keys.length, name: b.name, type: 'image' });
+      });
+      return out;
+    })(),
     files: files,
     // What the game actually printed the last time it ran. "It says undefined is not a function
     // on line 40" is a different conversation from "here is my code, help".
@@ -247,7 +626,7 @@ function renderQuizCard(en) {
     } else {
       b.addEventListener('click', function () {
         en.picked = i;
-        if (i === correct) { state.xp += QUIZ_XP; saveState(); toast('Nice! +' + QUIZ_XP + ' XP'); }
+        if (i === correct) { awardXp(QUIZ_XP); toast('Nice! +' + QUIZ_XP + ' XP'); }
         renderChat('coder');
       });
     }
@@ -261,13 +640,38 @@ function renderQuizCard(en) {
   return wrap;
 }
 
+/* Where the student actually is, in a sentence the model can act on.
+   Both agents were answering blind: the tutor could not tell someone reading a lesson from someone
+   staring at a stack trace on the Code tab, and the coder could not tell whether the game was even
+   running. "Why isn't it working?" means three different questions on the three tabs. */
+function describeWhere() {
+  const f = (typeof flat !== 'undefined' && typeof curIdx === 'number') ? flat[curIdx] : null;
+  const tab = document.querySelector('.vtab.on');
+  const view = tab ? tab.getAttribute('data-view') : 'learn';
+  const bits = [];
+  if (f) bits.push('They are on lesson "' + f.l.t + '" in the module "' + f.m.name + '".');
+  if (view === 'learn') bits.push('They are READING the lesson — the Learn tab. They are not looking at their code right now.');
+  else if (view === 'code') {
+    bits.push('They are on the CODE tab, editing their game\'s files.');
+    if (typeof currentFile === 'string' && currentFile) bits.push('The file open in front of them is ' + currentFile + '.');
+  } else if (view === 'play') {
+    bits.push('They are on the GAME tab, watching their game.');
+    bits.push(typeof isGameRunning === 'function' && isGameRunning()
+      ? 'It is running right now.' : 'It is NOT running — they have not pressed Play, or they stopped it.');
+  }
+  return bits.join(' ');
+}
+
 function askTutor(question, context) {
   const history = chatHistory('tutor');
   addMsg('user', question); const pending = addMsg('bot', 'Thinking…');
+  startThinking(pending, 'tutor');
+  setChatBusy($('aiText'), true);
   const c = aiContext();
-  fetch('/api/ai', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ studentId: studentId, agent: 'tutor', message: question, context: context || '', code: project.files['game.js'] || '', history: history, lessonTitle: c.lessonTitle, files: c.files, gameLog: c.gameLog, gameRan: c.gameRan }) })
+  fetch('/api/ai', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ studentId: studentId, agent: 'tutor', message: question, context: context || '', code: project.files['game.js'] || '', history: history, lessonTitle: c.lessonTitle, where: c.where, files: c.files, gameLog: c.gameLog, gameRan: c.gameRan }) })
     .then(function (r) { return r.json(); }).then(function (d) { setMsg(pending, 'bot', d.reply || '—'); })
-    .catch(function () { setMsg(pending, 'bot', 'Could not reach the tutor.'); });
+    .catch(function () { setMsg(pending, 'bot', 'Could not reach the tutor.'); })
+    .finally(function () { setChatBusy($('aiText'), false); persistChats(); renderChatBar(); });
 }
 /* Clicking a line number in the Code tab asks the tutor about that line. The answer lands in
    the normal chat, so the student can follow up on it like any other question. */
@@ -275,6 +679,7 @@ function explainLine(fileName, lineNumber, lineText, snippet) {
   setAIMode('tutor');
   addMsg('user', 'What does line ' + lineNumber + ' of ' + fileName + ' do?');
   const pending = addMsg('bot', 'Thinking…');
+  startThinking(pending, 'tutor');
   const c = aiContext(), history = chatHistory('tutor');
   fetch('/api/ai', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({
     studentId: studentId, agent: 'tutor', skill: 'explain-a-line',
@@ -284,21 +689,26 @@ function explainLine(fileName, lineNumber, lineText, snippet) {
     gameLog: c.gameLog, gameRan: c.gameRan
   }) })
     .then(function (r) { return r.json(); }).then(function (d) { setMsg(pending, 'bot', d.reply || '—'); })
-    .catch(function () { setMsg(pending, 'bot', 'Could not reach the tutor.'); });
+    .catch(function () { setMsg(pending, 'bot', 'Could not reach the tutor.'); })
+    .finally(function () { setChatBusy($('aiText'), false); persistChats(); renderChatBar(); });
 }
 
 function sendAI() {
   const box = $('aiText'); const text = box.value.trim(); if (!text) return;
+  setTimeout(function () { growTextarea(box); }, 0);   // back to one line once it is sent
   if (aiMode === 'coder' && currentAIMode === 'off') { toast('The AI is off for this challenge — give it a try yourself!'); return; }
   box.value = '';
   if (aiMode === 'tutor') { askTutor(text, currentLessonText); return; }
   const history = chatHistory('coder'), c = aiContext();
   addMsg('user', text); const pending = addMsg('bot', 'Thinking…');
+  startThinking(pending, 'coder');
+  setChatBusy($('aiText'), true);
   // the code lives in the browser; we send it along with the lesson, the other files and the
   // asset keys that exist, the server relays the AI, and we apply the change here
   fetch('/api/ai', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({
     studentId: studentId, agent: 'coder', message: text, code: project.files['game.js'] || '',
-    history: history, lessonTitle: c.lessonTitle, lessonContext: c.lessonContext,
+    history: history, lessonTitle: c.lessonTitle, lessonContext: c.lessonContext, where: c.where,
+    practiceTask: currentPracticeTask,
     aiMode: c.aiMode, ownedAssets: c.ownedAssets, files: c.files,
     gameLog: c.gameLog, gameRan: c.gameRan
   }) })
@@ -324,12 +734,85 @@ function sendAI() {
       }
       refreshAfterEdit();
     })
-    .catch(function () { pending.textContent = 'Could not reach the server.'; });
+    .catch(function () { pending.textContent = 'Could not reach the server.'; })
+    .finally(function () { setChatBusy($('aiText'), false); persistChats(); renderChatBar(); });
 }
 $('aiSend').addEventListener('click', sendAI);
-$('aiText').addEventListener('keydown', function (e) { if (e.key === 'Enter') sendAI(); });
-chats.coder.push({ who: 'bot', text: "Hi! I'm your **Build** helper. Tell me what to change or add to your game — like \"make the player move faster\" — and I'll edit the code." });
-chats.tutor.push({ who: 'bot', text: "Hi! I'm your **Tutor**. Ask me anything about the lesson or the code and I'll explain it — I won't change your game." });
-renderChat(aiMode);
+
+/* ---------- what a chat box is supposed to do ----------
+   This was a one-line <input>. It could not hold a newline, so Shift+Enter did nothing, a pasted
+   snippet arrived as one endless scrolling line with its formatting flattened, and there was no way
+   to see the end of what you had written. Every chat panel does these four things and it did none
+   of them. Shared, so the lesson's assistant and the lab bench's behave identically. */
+function growTextarea(el) {
+  if (!el) return;
+  el.style.height = 'auto';                       // measure the content, not the box it is in now
+  const max = 180;                                // ~7 lines, then it scrolls instead of eating the chat
+  el.style.height = Math.min(el.scrollHeight, max) + 'px';
+  el.style.overflowY = el.scrollHeight > max ? 'auto' : 'hidden';
+}
+/* ---------- the send button says what will happen if you press it ----------
+   It was one static paper-plane that looked identical whether the box was empty, ready, or waiting
+   on a reply — so the only way to find out whether anything was happening was to press it again.
+   Three states, and the icon carries each:
+     empty     dim, disabled, nothing to send
+     ready     lit, the arrow
+     waiting   a spinner, disabled, so a second press cannot queue a duplicate question
+   `busy` is owned by the caller, because only it knows when the reply has landed. */
+function paintChatSend(el) {
+  if (!el) return;
+  const btn = el.__sendBtn; if (!btn) return;
+  const busy = !!el.__busy;
+  const empty = !el.value.trim();
+  btn.disabled = busy || empty || el.disabled;
+  btn.classList.toggle('busy', busy);
+  btn.title = busy ? 'Waiting for a reply…' : (empty ? 'Type something first' : 'Send');
+  btn.innerHTML = '<span class="mdi ' + (busy ? 'mdi-loading' : 'mdi-send') + '" aria-hidden="true"></span>';
+  el.parentElement && el.parentElement.classList.toggle('is-busy', busy);
+}
+function setChatBusy(el, busy) {
+  if (!el) return;
+  el.__busy = !!busy;
+  el.placeholder = busy ? 'Thinking…' : (el.__placeholder || el.placeholder);
+  paintChatSend(el);
+}
+function wireChatBox(el, send) {
+  if (!el) return;
+  el.__placeholder = el.placeholder;
+  /* The send button is whichever button sits beside it in the input row. Found rather than passed,
+     so a third chat panel added later needs no extra wiring. */
+  el.__sendBtn = el.parentElement && el.parentElement.querySelector('button');
+  paintChatSend(el);
+  el.addEventListener('input', function () { growTextarea(el); paintChatSend(el); });
+  /* The whole input row takes the focus ring, not the bare textarea — the box and its send button
+     read as one control, which is what they are. */
+  el.addEventListener('focus', function () { el.parentElement && el.parentElement.classList.add('focused'); });
+  el.addEventListener('blur', function () { el.parentElement && el.parentElement.classList.remove('focused'); });
+  el.addEventListener('keydown', function (e) {
+    /* Enter sends; Shift+Enter (and Ctrl/Cmd+Enter) start a new line. The modifier check has to
+       come first, or holding shift would send and swallow the line the student meant to write. */
+    if (e.key !== 'Enter') return;
+    if (e.shiftKey || e.ctrlKey || e.metaKey || e.altKey) return;   // let the newline through
+    e.preventDefault();
+    if (el.__busy || !el.value.trim()) return;   // no double-sends while a reply is in flight
+    send();
+  });
+  /* Paste keeps its formatting. The browser's default paste into a textarea already preserves
+     newlines and indentation; what broke it before was the element being an <input>, which strips
+     every line break on the way in. Growing afterwards is the only part left to do. */
+  el.addEventListener('paste', function () { setTimeout(function () { growTextarea(el); paintChatSend(el); }, 0); });
+}
+wireChatBox($('aiText'), sendAI);
+/* Conversations come back from the last session rather than being greeted fresh every reload. The
+   greeting is now the first message of a NEW thread (chatGreeting), so it is not pushed here. */
+/* Questions first, then conversations. loadChats() creates a greeted thread when there is nothing
+   saved, and the greeting comes from the pool — so the pool has to be there before the first thread
+   is made, or a brand-new student gets the fallback line every time. */
+loadQuestions().then(function () {
+  loadChats();
+  renderChat(aiMode);
+  renderChatBar();
+  refreshStarters();
+});
 $('modeToggle').addEventListener('click', function () { setAIMode(aiMode === 'tutor' ? 'coder' : 'tutor'); });
 fetch('/api/info').then(function (r) { return r.json(); }).then(function (d) { aiModels = d.agents || { coder: d.model, tutor: d.model }; setAIMode(aiMode); }).catch(function () {});

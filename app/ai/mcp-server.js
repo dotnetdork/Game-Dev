@@ -134,8 +134,14 @@ server.registerResource(
   'catalog://store',
   { title: 'Asset store catalogue', description: 'Every art and sound asset a student can buy, with keys and costs.', mimeType: 'application/json' },
   async function (uri) {
+    /* Run the generated file against a stand-in `window` rather than slicing an array out of it by
+       string index. The slice worked only while the manifest held exactly one array; it now assigns
+       three (packs, bundles, assets), so it produced a fragment spanning all of them that no JSON
+       parser would accept. */
     const src = fs.readFileSync(path.join(ROOT, 'public', 'assets-manifest.js'), 'utf8');
-    const json = src.slice(src.indexOf('['), src.lastIndexOf(']') + 1);
+    const win = {};
+    new Function('window', src)(win);
+    const json = JSON.stringify(win.STORE_ASSETS || []);
     return { contents: [{ uri: uri.href, mimeType: 'application/json', text: json }] };
   }
 );

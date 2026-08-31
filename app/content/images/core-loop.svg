@@ -39,8 +39,6 @@
       <path d="M240 232 L164 232"/>
       <path d="M86 190 Q76 122 134 98"/>
     </g>
-    <text x="196" y="166" text-anchor="middle" fill="#c9f5dc" font-size="12.5">the reward makes</text>
-    <text x="196" y="183" text-anchor="middle" fill="#c9f5dc" font-size="12.5">you want the next goal</text>
 
     <!-- ===== the loop that stops ===== -->
     <text x="536" y="30" text-anchor="middle" fill="#8b9db1" font-size="12.5" font-weight="700" letter-spacing="1.3">TAKE THE REWARD AWAY</text>
@@ -63,10 +61,5 @@
 
     <path d="M598 98 Q636 122 646 190" fill="none" stroke="#5f7893" stroke-width="2" marker-end="url(#cl-dead)"/>
     <path d="M580 232 L504 232" fill="none" stroke="#5f7893" stroke-width="2" marker-end="url(#cl-dead)"/>
-
-    <text x="536" y="166" text-anchor="middle" fill="#8b9db1" font-size="12.5">no reason to go round</text>
-    <text x="536" y="183" text-anchor="middle" fill="#8b9db1" font-size="12.5">a second time</text>
-
-    <text x="360" y="284" text-anchor="middle" fill="#c3d3e6" font-size="13.5">All three parts, or it is not a loop — it is a thing you did once.</text>
   </g>
 </svg>

@@ -29,6 +29,8 @@ The core loop gives you something to do right now. Feedback tells you it worked.
 it interesting. **Progression** is the part that says: *keep doing this and you will end up
 somewhere better.*
 
+It is also the part beginners skip, because nothing about a game breaks without it. Your game will
+run perfectly happily with nothing to work toward. It will just be a thing people try once.
 That promise is what turns a fun ten minutes into a game you come back to.
 
 ```run
@@ -79,6 +81,8 @@ the weakest on its own — but it's the one that lasts longest once everything i
 Fill in the blank: RuneScape doesn't just tell you your level. It shows you **exactly how far into
 the next one you are.**
 
+Hide it and the level still arrives at exactly the same moment — the player just has no idea it is
+coming, so it lands as a surprise instead of as something they earned.
 That bar is doing enormous work. A goal you can see yourself approaching is far more motivating
 than one you can only reach. It's the difference between "get to level 40 someday" and "I'm 80%
 through 39, I'll just finish this."
@@ -202,6 +206,8 @@ code: |
   step();
 ```
 
+Progress has to arrive. A number climbing forever is not progress, it is arithmetic.
+
 ```quiz
 question: Playtesters say your game "gets boring after five minutes" even though they like playing it. What's most likely missing?
 options:
@@ -217,6 +223,8 @@ feedback:
   - Difficulty could be part of it, but "they like playing it" points at nothing to aim for.
 explain: Enjoying it at first and stopping soon after is the classic sign of a good loop with nothing built on top of it.
 ```
+
+Play your own game for two minutes and ask the honest question: is there any reason to start it a second time?
 
 ```yourturn
 title: Give your player something to come back for
@@ -237,3 +245,5 @@ reward: Progression Designer badge
 - **Show the bar.** Visible progress pulls far harder than a distant locked thing.
 - Bad grinds are usually **rewards too far apart**, not too much repetition.
 - Make the loop fun first. Progression is a reason to keep playing, not a replacement for fun.
+
+goal: Something visibly arrives as you play — a level, a bar, an ability that gets better.

@@ -21,6 +21,7 @@ jumping, exploding — is you swapping *which* picture is shown, or *where*.
 ```run
 // @goal: Flip through a walk cycle by hand. Change how many frames it has.
 // @slider: frames 2 8 1 4
+// @demo: walk
 let strip = "";
 for (let f = 0; f < frames; f++) strip = strip + "[" + f + "] ";
 console.log("the walk cycle:  " + strip);
@@ -38,6 +39,7 @@ them in a loop and it walks. Show them backwards and it moonwalks.
 ```run
 // @goal: Pick which frames off the sheet belong to this animation.
 // @slider: end 1 7 1 3
+// @demo: walk
 const sheet = [0, 1, 2, 3, 4, 5, 6, 7];
 const used = sheet.slice(0, end + 1);
 console.log("the sheet holds frames " + sheet.join(", "));
@@ -79,7 +81,7 @@ explain: An animation is a list of frames and a speed. The engine swaps which on
 
 <figure class="diagram">
   <img src="/content/images/sprite-sheet.svg" alt="One image file divided into six numbered cells, each holding a frame of a walking character. Below it, a single panel showing those frames playing one after another.">
-  <figcaption>One file, six frames, swapped on a timer. Nothing walks — you are looking at still pictures being replaced, which is the same trick as the game loop one module ago.</figcaption>
+  <figcaption>One file, six frames, swapped on a timer. Nothing walks — you are looking at still pictures being replaced, which is the same trick as the game loop one module ago. Swap them faster and the character runs; slower and it trudges.</figcaption>
 </figure>
 
 ## Speed changes everything
@@ -112,6 +114,7 @@ across the screen while their legs amble looks wrong even if you can't say why �
 ```run
 // @goal: Match the legs to the speed. Find where it stops looking like skating.
 // @slider: moveSpeed 40 400 20 200
+// @demo: walk
 const strideLength = 40;                                 // pixels covered by one step
 const cyclesPerSecond = moveSpeed / (strideLength * 2);  // a walk cycle is two steps
 const frameRate = Math.round(cyclesPerSecond * 4);       // four frames in that cycle
@@ -206,13 +209,15 @@ feedback:
 explain: Animation speed should match movement speed. When they disagree, the character looks like it is sliding.
 ```
 
+A character standing on one frame reads as a picture. A character with four reads as alive, and yours already owns the frames.
+
 ```yourturn
 title: Animate something in your own game
 task: Give one thing in your game more than one frame.
 steps:
   - Open the Store and find a character with several poses — the alien sprites have walk, jump and duck versions.
   - Buy or use the free ones, noting each green key exactly.
-  - Open the Code tab and open player.js.
+  - Open `player.js` in the Code tab.
   - Swap the picture depending on what the player is doing — one key while moving, another while still.
   - Press Run and move around. Then change how fast it swaps until the movement looks right.
 reward: Animator badge
@@ -225,3 +230,5 @@ reward: Animator badge
 - **`frameRate`** changes the character completely. Tune it by watching, not calculating.
 - Match animation speed to movement speed, or you get **skating**.
 - **Flip** the sprite instead of drawing it twice, and draw all your art facing the same way.
+
+goal: The character animates instead of standing on a single frame.

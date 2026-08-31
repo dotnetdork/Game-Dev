@@ -16,8 +16,19 @@
    relying on the attribute — that's what would let script-src drop 'unsafe-inline'. */
 function sandboxGame() { return !!DEV.sandboxGame; }
 
-/* Owned Store assets → auto-preloaded into every Phaser scene by key (student just uses the name). */
-function ownedAssets() { const A = window.STORE_ASSETS || []; return A.filter(function (a) { return a.free || !!state.unlocked[a.id]; }); }
+/* Owned Store assets → auto-preloaded into every Phaser scene by key (student just uses the name).
+
+   THREE ways to own something, and every caller needs the same answer: it is free, it was bought on
+   its own, or it came inside a bundle that was bought. Characters, enemies and the numbered tile
+   sets are bundle-only, so a check that looked at `unlocked[a.id]` alone would preload none of them
+   and the student's game would fail to find a key the Store told them they owned.
+
+   Defined here rather than in pages.js because game-runner.js loads earlier: files.js and pages.js
+   both call it, and the Store is not open when a game runs. */
+function assetOwned(a) {
+  return !!(a && (a.free || state.unlocked[a.id] || (a.bundle && state.unlocked[a.bundle])));
+}
+function ownedAssets() { return (window.STORE_ASSETS || []).filter(assetOwned); }
 function assetInjectScript() {
   // Assets go in by URL, not as inlined base64. The manifest used to carry a data URI for all 265
   // of them — 933 KB downloaded by every student on every load, for the handful they own. The
@@ -82,13 +93,35 @@ function isGameRunning() { return gameRunning; }
    The buttons are symbols, so the name has to be carried by aria-label and title instead of by
    visible text — and both are set here beside the icon rather than left in the markup, because a
    button drawing ↻ while still announcing "Play" is a worse lie than a wrong picture on its own. */
+/* Paused is a third state, distinct from stopped: the game is still there, still holding its score
+   and its positions, just not being asked for frames. */
+let gamePaused = false;
+function pauseGame() {
+  if (!gameRunning || gamePaused) return;
+  gamePaused = true;
+  try { $('gameFrame').contentWindow.postMessage({ __gamectl: 'pause' }, '*'); } catch (e) {}
+  paintTransport();
+}
+function resumeGame() {
+  if (!gameRunning || !gamePaused) return;
+  gamePaused = false;
+  try { $('gameFrame').contentWindow.postMessage({ __gamectl: 'resume' }, '*'); } catch (e) {}
+  paintTransport();
+}
 function paintTransport() {
   const play = $('gamePlay'), stop = $('gameStop'), idle = $('gameIdle');
+  const pause = $('gamePause');
+  if (pause) { pause.disabled = !gameRunning || gamePaused; }
   if (play) {
-    play.classList.toggle('on', gameRunning);
-    play.innerHTML = '<span class="mdi ' + (gameRunning ? 'mdi-restart' : 'mdi-play') + '" aria-hidden="true"></span>';
-    play.setAttribute('aria-label', gameRunning ? 'Restart' : 'Play');
-    play.title = gameRunning ? 'Start it again from the top (Ctrl+Enter)' : 'Run your game (Ctrl+Enter)';
+    play.classList.toggle('on', gameRunning && !gamePaused);
+    /* Three things this button can mean, and it says which: start it, carry on from where you
+       froze it, or run it again from the top. */
+    const icon = !gameRunning ? 'mdi-play' : (gamePaused ? 'mdi-play' : 'mdi-restart');
+    const label = !gameRunning ? 'Play' : (gamePaused ? 'Resume' : 'Restart');
+    play.innerHTML = '<span class="mdi ' + icon + '" aria-hidden="true"></span>';
+    play.setAttribute('aria-label', label);
+    play.title = label === 'Play' ? 'Run your game'
+      : (label === 'Resume' ? 'Carry on from where you paused' : 'Run it again from the top');
   }
   if (stop) stop.disabled = !gameRunning;
   // Only ever on the stage, and only when there is genuinely nothing there.
@@ -110,10 +143,19 @@ function startGame() { // build a self-contained page from the browser-side proj
     + '\n' + errorReporterScript()                                  // must sit between the game files and main.js
     + (typeof project.files['main.js'] === 'string' ? '<' + 'script>\n' + project.files['main.js'] + '\n<' + '/script>' : '');
   const capture = '<' + 'script>(function(){function f(a){a=[].slice.call(a);if(typeof a[0]==="string"&&/%[csdfoO]/.test(a[0])){var i=1;var o=a[0].replace(/%[csdfoO]/g,function(m){if(m==="%c"){i++;return "";}return String(a[i++]);});return (o+" "+a.slice(i).join(" ")).replace(/\\s+/g," ").trim();}return a.map(String).join(" ");}function s(l,a){try{parent.postMessage({__gamelog:true,level:l,text:f(a)},"*");}catch(e){}}var c=console,lg=c.log.bind(c);c.log=function(){lg.apply(c,arguments);s("log",arguments);};var wn=c.warn.bind(c);c.warn=function(){wn.apply(c,arguments);s("warn",arguments);};var er=c.error.bind(c);c.error=function(){er.apply(c,arguments);s("error",arguments);};window.onerror=function(m){s("error",[m]);return false;};})();<' + '/script>\n';
+  /* Pause, from outside a sandbox we cannot reach into. Phaser drives its loop with
+     requestAnimationFrame, so wrapping that one function freezes the game without touching the
+     student's code or needing a Phaser API they have not met. Held callbacks are handed back to
+     the real rAF on resume. Same shim the lab uses — see labDoc() in widgets.js. */
+  const pauseShim = '<' + 'script>(function(){var p=false,held=[],raf=window.requestAnimationFrame.bind(window);'
+    + 'window.requestAnimationFrame=function(cb){if(p){held.push(cb);return 0;}return raf(cb);};'
+    + 'window.addEventListener("message",function(e){var d=e&&e.data||{};'
+    + 'if(d.__gamectl==="pause"){p=true;}'
+    + 'else if(d.__gamectl==="resume"){p=false;var q=held;held=[];for(var i=0;i<q.length;i++){raf(q[i]);}}});})();<' + '/script>\n';
   const html = '<!doctype html><html><head><meta charset="utf-8">'
     + '<style>html,body{margin:0;height:100%;background:#06101c;overflow:hidden}#game{width:100%;height:100vh}</style></head><body>'
     + '<div id="game"></div>\n'
-    + capture
+    + capture + pauseShim
     + '<' + 'script src="/vendor/phaser/phaser.min.js"><' + '/script>\n'   // vendored: no CDN, works on filtered networks
     + assetInjectScript()
     + scripts + '\n</body></html>';
@@ -124,13 +166,13 @@ function startGame() { // build a self-contained page from the browser-side proj
   // Set per run rather than in the markup, so toggling it takes effect on the next Play.
   if (sandboxGame()) gf.setAttribute('sandbox', 'allow-scripts'); else gf.removeAttribute('sandbox');
   gf.removeAttribute('src'); gf.srcdoc = html;
-  gameRunning = true;
+  gameRunning = true; gamePaused = false;
   paintTransport();
 }
 function stopGame() {
   clearBootWatch(); showGameFailed(false);
   const f = $('gameFrame'); if (f) { f.removeAttribute('srcdoc'); f.removeAttribute('src'); }
-  gameRunning = false;
+  gameRunning = false; gamePaused = false;
   paintTransport();
 }
 

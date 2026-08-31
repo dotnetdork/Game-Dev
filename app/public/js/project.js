@@ -310,14 +310,21 @@ const SKEY = 'leagueProgress';
    guess, how many runs have failed — keyed "<lessonId>:<widgetKey>". A 50-minute class gets
    interrupted; coming back to an empty editor is how you lose a 12-year-old. */
 /* `badges` is new, and it is not a cosmetic addition. Every one of the 22 lessons ends with a
-   your-turn step whose card says "Doing this unlocks <X> badge — you cannot buy it with Stars",
-   and until now nothing anywhere awarded, stored or displayed one. The app made a specific promise
-   to a child twenty-two times and kept it zero times.
+   your-turn step whose card says "Doing this unlocks the <X> badge", and until now nothing anywhere
+   awarded, stored or displayed one. The app made a specific promise to a child twenty-two times and
+   kept it zero times.
    Shape: badge name -> { at: <when>, lesson: "<mi.li>" }. Keyed by name because the question a
    student asks is "have I got the Bug Hunter badge", not "what did lesson 3.2 give me".
    No schema bump needed: loadState() merges DEFAULT_STATE first, so an older save gains the key
    with an empty object — which is exactly the case check-state.js already covers. */
-const DEFAULT_STATE = { v: SCHEMA.progress, xp: 0, stars: 250, done: {}, modDone: {}, unlocked: {}, published: [], activities: {}, labs: {}, badges: {}, practice: {} };
+/* `at` is the lesson id the student was last on, for the case the URL cannot answer — they opened
+   a bookmark of "/" or typed the bare address. Before it existed, every arrival started at lesson 1
+   regardless of how far through the course they were. See js/router.js. */
+/* `chats` is a STRIPPED snapshot of the assistant's conversations — see persistChats in js/ai.js.
+   The live threads keep their proposal internals in memory; what is written here is text and
+   outcomes only, because a saved diff is both large and unsafe to re-apply against code that has
+   changed since. */
+const DEFAULT_STATE = { v: SCHEMA.progress, xp: 0, stars: 250, done: {}, modDone: {}, unlocked: {}, published: [], activities: {}, labs: {}, badges: {}, practice: {}, at: '', weekXp: 0, weekStart: 0, chats: { threads: [], current: {} } };
 function loadState() {
   const raw = Storage.read(SKEY);
   if (!raw) return Object.assign({}, DEFAULT_STATE);
@@ -352,7 +359,7 @@ function labState(lessonId, key) {
 function saveLabState(lessonId, key, patch) {
   if (!state.labs) state.labs = {};
   const k = labKey(lessonId, key);
-  state.labs[k] = Object.assign({ code: null, guessed: false, fails: 0, revealed: false }, state.labs[k], patch);
+  state.labs[k] = Object.assign({ code: null, guessed: false, fails: 0, revealed: false, hintsUsed: 0, tutorOffered: false }, state.labs[k], patch);
   saveState();
   return state.labs[k];
 }
@@ -514,9 +521,9 @@ function checkPracticeRules(rules, snap) {
   return { pass: !firstFail, hint: firstFail ? firstFail.hint : '', authoring: [] };
 }
 /* ---------- badges ----------
-   Earned by doing the technique in your OWN game, which is why they cannot be bought with Stars:
-   Stars buy art, badges record that you did something. Awarding is idempotent — a student who
-   re-opens a finished lesson does not earn it twice and does not get told about it again. */
+   Earned by doing the technique in your OWN game — a badge records that you did something.
+   Awarding is idempotent: a student who re-opens a finished lesson does not earn it twice and does
+   not get told about it again. */
 function hasBadge(name) { return !!(state.badges && state.badges[name]); }
 function badgeCount() { return state.badges ? Object.keys(state.badges).length : 0; }
 function awardBadge(name, lessonId) {
@@ -528,6 +535,35 @@ function awardBadge(name, lessonId) {
   saveState();
   emit(EV.BADGE_EARNED, { name: n, lesson: lessonId || '' });
   return true;
+}
+
+/* ---------- XP, total and this week ----------
+   The weekly board needs a weekly number. It did not have one: it ranked the student by their
+   ALL-TIME xp against everyone else's weekly figures, so anyone a few lessons in topped the weekly
+   board permanently — which is the exact "one child is always first, one is always last" shape a
+   resetting board exists to avoid.
+   Monday-based, and it rolls over lazily: the first read or award in a new week zeroes the counter.
+   No timer has to run, and a laptop that was shut all week catches up the moment it opens. */
+function weekStamp(when) {
+  const t = new Date(when || Date.now());
+  t.setHours(0, 0, 0, 0);
+  t.setDate(t.getDate() - ((t.getDay() + 6) % 7));   // back to Monday
+  return t.getTime();
+}
+function weekXp() {
+  const w = weekStamp();
+  if (state.weekStart !== w) { state.weekStart = w; state.weekXp = 0; saveState(); }
+  return state.weekXp || 0;
+}
+/* The one place XP is added. Both callers used to do `state.xp += n` and neither could have known
+   about the weekly total, which is how it came to be missing. */
+function awardXp(n) {
+  const amt = Number(n) || 0;
+  if (!amt) return;
+  weekXp();                                   // rolls the week over first, if it needs it
+  state.xp += amt;
+  state.weekXp = (state.weekXp || 0) + amt;
+  saveState();
 }
 
 function markActivity(lessonId, key) {

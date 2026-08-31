@@ -85,6 +85,11 @@ explain: A sound effect fires again and again. Short and unobtrusive survives re
 Music does a completely different job. A sound effect says *that happened*; music says *this is
 what kind of place you are in*.
 
+The clearest proof of this is a sound you already know. A creeper hiss is barely a sound at all —
+it is short, quiet, and it will still make an experienced player spin round instantly, because the
+game has spent hours teaching them what follows it.
+It also explains why muting the music in a horror game makes it stop being frightening while the
+monsters carry on behaving identically. Nothing about the rules changed. The room did.
 Which means it can be much longer, much more compressed, and it should sit **underneath** the
 effects rather than competing with them. If your jump sound gets lost under the soundtrack, the
 music is too loud — not the effect too quiet.
@@ -176,6 +181,8 @@ code: |
   step();
 ```
 
+Sound is the cheapest feedback there is, and the easiest to lean on too hard — which is why it should never be the only signal.
+
 ```quiz
 question: Why should a warning never be communicated by sound alone?
 options:
@@ -191,6 +198,8 @@ feedback:
   - Plenty of games make this exact mistake — which is why it is worth saying.
 explain: Sound is one channel among several. Anything important needs at least one other, or some players never receive it.
 ```
+
+Your game has one moment that matters more than the others. It should sound like something.
 
 ```yourturn
 title: Give your game one good sound
@@ -212,3 +221,5 @@ reward: Sound Designer badge
 - Music sets the room and sits **underneath** the effects.
 - **Muted by default, one click to change** — especially in a classroom.
 - Never make sound the **only** way something is communicated.
+
+goal: The moment that matters makes a sound, and it is not the only thing marking it.

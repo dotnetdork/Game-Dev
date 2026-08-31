@@ -12,13 +12,19 @@ running. In code, that's a **variable**.
 
 ## A box with a name on it
 
-<figure class="diagram aside narrow">
-  <img src="/content/images/a-box-with-a-name.svg" alt="A variable drawn as a labelled box. The label, score, is written once. What is inside the box changes from 0 to 1 to 5 as the game runs.">
-  <figcaption>The name is written once. What is in the box changes as often as you like.</figcaption>
+<figure class="diagram narrow">
+  <img src="/content/images/a-box-with-a-name.svg" alt="A variable drawn as a named box. The name, score, is written once. The box holds exactly one thing — right now a 5. The earlier values, 0 and 1, are drawn outside the box, faded and crossed out.">
+  <figcaption>The name is written once. What is inside changes as often as you like — but there is
+  only ever one thing in there.</figcaption>
 </figure>
 
-A variable is a labelled box. You put something in it, and later you can look at it or swap it for
-something else.
+A variable is a box with a name on it. You put something in it, and later you can look at it or
+swap it for something else.
+
+**The box holds exactly one thing.** Put a new value in and the old one is gone — not stored
+underneath it, not sitting beside it. Gone. This sounds obvious and it is the single most common
+thing beginners get wrong, so it is worth saying out loud: after `score = 1` and then `score = 5`,
+the box contains 5, and nothing else.
 
 ```run
 // @goal: Run this and watch the box change.
@@ -153,6 +159,8 @@ code: |
   collect();
 ```
 
+Where a value lives decides how long it survives, and that is the whole reason the score kept vanishing.
+
 ```quiz
 question: Which is the best name for a value holding how fast the player walks?
 options:
@@ -169,11 +177,13 @@ feedback:
 explain: A good name says what the value IS. If it needs a comment to explain it, the name is wrong.
 ```
 
+Your game is already remembering a score and a position. Adding one more thing it remembers is how you find out you understood this.
+
 ```yourturn
 title: Give your game something new to remember
 task: Add one value your game does not track yet, and show it on screen.
 steps:
-  - Open the Code tab and open game.js.
+  - Open `game.js` in the Code tab.
   - Pick something worth remembering — coins collected, jumps made, seconds survived.
   - Create it near the top with `let`, starting at 0, so it lives outside the loop and survives.
   - Add 1 to it in the right place, then draw it with a text object so you can watch it work.
@@ -197,3 +207,5 @@ example: let coinsCollected = 0;
 - Use **`const`** when a value should not change, **`let`** when it should. Avoid `var`.
 - A variable made **inside** a loop is new every time and cannot remember anything.
 - **Names are the comment you do not have to write.**
+
+goal: The score climbs and stays climbing instead of resetting.

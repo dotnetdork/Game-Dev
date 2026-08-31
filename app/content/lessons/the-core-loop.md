@@ -27,6 +27,8 @@ console.log("you do the loop " + goes + " times");
 console.log("so it has to still be worth doing on go number " + goes + ".");
 ```
 
+## Why the loop is short on purpose
+
 <figure class="shot aside pixel">
   <img src="/content/images/shots/pacman-gameplay.png" alt="A Pac-Man maze with pellets, four ghosts and Pac-Man near the bottom">
   <figcaption>The shortest core loop ever shipped: <b>eat a dot, avoid a ghost, repeat</b>. No story,
@@ -35,11 +37,6 @@ console.log("so it has to still be worth doing on go number " + goes + ".");
   <cite><b>Pac-Man</b> (1980) — Bandai Namco Entertainment America, CC BY 3.0.</cite></figcaption>
 </figure>
 
-## Why the loop is short on purpose
-
-<div class="tip aside"><b>Also called</b> the "gameplay loop" or the "compulsion loop". Designers
-argue about which name is right; they all mean the handful of things you do over and over.</div>
-
 A good core loop is small enough to learn in about ten seconds and interesting enough to do a
 thousand times.
 
@@ -47,6 +44,14 @@ That sounds like a contradiction. It isn't. What makes a loop worth repeating is
 complicated, but that **it comes out slightly differently every time**. Mario's jump is one button.
 But the gap you're jumping is never quite the same gap, so the same single button stays interesting
 for hours.
+
+Pac-Man is the extreme version. There is one input — a direction — and one rule: dots are good,
+ghosts are bad. You could explain the entire game to somebody in the time it takes to read this
+sentence.
+
+What keeps anyone playing is that the four ghosts never quite chase you the same way twice. The
+loop is fixed; the situation isn't. That gap between the two is where every game you have ever
+loved actually lives.
 
 ```run
 // @goal: One button, eight goes. Take the variation to zero and see what happens.
@@ -211,12 +216,14 @@ feedback:
 explain: Doing and answering both happen; what's missing is anything to do next.
 ```
 
+Every game in this lesson had a loop you could say out loud in five words. Yours has one too, whether or not you have ever named it.
+
 ```yourturn
 title: Name your loop, then make it repeat
 task: Your own game needs a loop before it needs anything else. Write it down first — if you can't say it in one sentence, it isn't ready.
 steps:
   - Open the Code tab and look at your game.
-  - In config.js, add a comment at the top with your loop in one sentence, like "// Loop — dodge falling rocks, grab the coins they knock loose, go again."
+  - In `config.js`, add a comment at the top with your loop in one sentence, like "// Loop — dodge falling rocks, grab the coins they knock loose, go again."
   - Find the thing your player collects or hits, and make sure something NEW appears afterwards. If nothing does, the loop stops on the first go.
   - Press Run and do your loop five times without stopping. If you got bored on go number three, the loop is too samey — change one thing so each go is a little different.
 reward: Loop Builder badge
@@ -249,3 +256,5 @@ If your sentence has a hole in it, that hole is what you build next.
 - It has three beats: **you act**, **the game answers**, **you're set up to go again**.
 - Short and varied beats long and complicated.
 - Big games stack loops, but every one of them starts with a good three-second loop.
+
+goal: Collecting a coin makes a new one appear somewhere else, so the loop keeps going.

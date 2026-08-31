@@ -33,7 +33,6 @@
       <line x1="240" y1="141" x2="318" y2="141" stroke="#2fd0b6" stroke-width="2" stroke-dasharray="5 4" marker-end="url(#ov-arrow)"/>
 
       <text x="184" y="228" text-anchor="middle" fill="#c9f5dc" font-size="13.5">It carries straight on.</text>
-      <text x="184" y="250" text-anchor="middle" fill="#9fb2cc" font-size="13">Good for collecting.</text>
     </g>
 
     <!-- ============ collider ============ -->
@@ -57,7 +56,6 @@
       <text x="530" y="126" text-anchor="middle" fill="#f5820a" font-size="11.5" font-weight="600">stopped</text>
 
       <text x="536" y="228" text-anchor="middle" fill="#f5d3a8" font-size="13.5">It cannot get through.</text>
-      <text x="536" y="250" text-anchor="middle" fill="#9fb2cc" font-size="13">Good for walls and floors.</text>
     </g>
   </g>
 </svg>

@@ -53,6 +53,7 @@ const OLLAMA_THINK = /^(1|true|yes|on)$/i.test(process.env.OLLAMA_THINK || '');
 const AGENT_TOOLS = {
   coder:  /^(1|true|yes|on)$/i.test(process.env.CODER_TOOLS  || ''),
   tutor:  /^(1|true|yes|on)$/i.test(process.env.TUTOR_TOOLS  || ''),
+  'lab-tutor': /^(1|true|yes|on)$/i.test(process.env.TUTOR_TOOLS || ''),
   quiz:   /^(1|true|yes|on)$/i.test(process.env.QUIZ_TOOLS   || ''),
   grader: /^(1|true|yes|on)$/i.test(process.env.GRADER_TOOLS || '')
 };
@@ -76,6 +77,11 @@ const PROVIDER_DEFAULT_MODEL = { ollama: OLLAMA_MODEL, anthropic: ANTHROPIC_MODE
 function resolveModel(agent) {
   let spec = AGENT_MODELS[agent] || '';
   if (!spec) spec = ai.agentModel(agent) || '';
+  /* The lab bench's tutor is the tutor — same job, different context — so it rides on TUTOR_MODEL
+     unless someone deliberately gives it one of its own. Without this it had no entry in
+     AGENT_MODELS at all, fell through to DEFAULT_PROVIDER, and a course configured for Anthropic
+     tried to reach a local Ollama that was not running: "The AI service is not reachable". */
+  if (!spec && agent === 'lab-tutor') spec = AGENT_MODELS.tutor || ai.agentModel('tutor') || '';
   if (!spec) spec = DEFAULT_PROVIDER + ':' + (PROVIDER_DEFAULT_MODEL[DEFAULT_PROVIDER] || '');
   const i = spec.indexOf(':');
   // `agent` rides along so the usage meter can attribute a call without threading an extra
@@ -154,7 +160,17 @@ const corsOpen = (res) => { res.setHeader('Access-Control-Allow-Origin', '*'); r
 app.use('/assets', express.static(path.join(ROOT, 'public', 'assets'), { setHeaders: corsOpen }));
 app.use('/vendor', express.static(path.join(ROOT, 'public', 'vendor'), { setHeaders: corsOpen }));
 app.use(express.static(path.join(ROOT, 'public')));
-app.use('/content', express.static(path.join(ROOT, 'content'), { etag: false, lastModified: false, cacheControl: false })); // authored course: YAML structure + Markdown lessons (read-only)
+/* Authored course content: YAML, Markdown and the lesson diagrams (read-only).
+   `no-cache` means "revalidate before reusing", not "do not store" — the ETag comes back with it,
+   so an unchanged file still costs a 304 and no bytes.
+   This previously turned OFF etag, lastModified AND cacheControl, which sounds like the strongest
+   possible anti-caching setting and is the opposite: with no validator and no directive at all, a
+   browser falls back to heuristic freshness and is entitled to keep serving what it has. The
+   symptom was editing a lesson diagram, reloading, and being shown the old drawing — which is a
+   bad way to author content that is meant to be edited while the server runs. */
+app.use('/content', express.static(path.join(ROOT, 'content'), {
+  setHeaders: (res) => res.setHeader('Cache-Control', 'no-cache')
+}));
 
 /* ---- the course index, in one request ----
    Boot used to be: fetch course.yaml, then fetch all 47 lesson files, then parse the front-matter
@@ -227,6 +243,75 @@ function buildIndex() {
   return { id: data.id, name: data.name || 'Course', library: data.library || 'Phaser', modules: modules };
 }
 
+/* ---- who made the pictures ----
+   Derived from the lessons, never hand-kept. The <cite> beside a figure is already the credit, and
+   check-lessons.js refuses a borrowed picture that has none — so a maintained list here would be a
+   second copy of the same fact, free to drift from the first the next time a lesson gains a figure.
+
+   Grouped by the credit line rather than by file, which sorts both shapes correctly on its own: a
+   borrowed screenshot has a credit no other picture shares and gets its own row, while the seventy
+   sprites of the course's own Kenney art share one line and collapse into a single row.
+
+   This answers "who made what you can see", which is the question a reader has. It does not replace
+   content/images/shots/CREDITS.md — that records where each file was fetched from, under which
+   licence, and which five are a fair-use claim rather than a permission. Different question. */
+const FIGURE_RE = /<figure\b[^>]*>([\s\S]*?)<\/figure>/g;
+const CITE_RE = /<cite\b[^>]*>([\s\S]*?)<\/cite>/;
+const MEDIA_SRC_RE = /<(?:img|source)\b[^>]+src\s*=\s*["']([^"']+)["']/g;
+
+function plainText(html) {
+  return String(html)
+    .replace(/<[^>]+>/g, '')
+    .replace(/&amp;/g, '&').replace(/&lt;/g, '<').replace(/&gt;/g, '>')
+    .replace(/&quot;/g, '"').replace(/&#39;/g, "'").replace(/&nbsp;/g, ' ')
+    .replace(/\s+/g, ' ').trim();
+}
+
+function buildCredits() {
+  const index = buildIndex();
+  const groups = new Map();       // credit line -> { credit, pictures:Set, lessons:[] }
+  index.modules.forEach((mod) => {
+    mod.lessons.forEach((lesson) => {
+      let raw = '';
+      try { raw = fs.readFileSync(path.join(LESSON_DIR, lesson.id + '.md'), 'utf8'); } catch (e) { return; }
+      FIGURE_RE.lastIndex = 0;
+      let fig;
+      while ((fig = FIGURE_RE.exec(raw))) {
+        const inner = fig[1] || '';
+        const cited = inner.match(CITE_RE);
+        if (!cited) continue;
+        const credit = plainText(cited[1]);
+        if (!credit) continue;
+        if (!groups.has(credit)) groups.set(credit, { credit: credit, pictures: new Set(), lessons: [] });
+        const g = groups.get(credit);
+        MEDIA_SRC_RE.lastIndex = 0;
+        let src;
+        while ((src = MEDIA_SRC_RE.exec(inner))) g.pictures.add(src[1]);
+        // A lesson that shows four Kenney sprites is still one place it appears.
+        if (g.lessons.indexOf(lesson.title) < 0) g.lessons.push(lesson.title);
+      }
+    });
+  });
+  return {
+    credits: Array.from(groups.values()).map((g) => ({
+      credit: g.credit,
+      pictures: g.pictures.size,
+      lessons: g.lessons
+    }))
+  };
+}
+
+let creditsCache = null;
+app.get('/api/credits', (req, res) => {
+  try {
+    const stamp = newestMtime();
+    if (!creditsCache || creditsCache.stamp !== stamp) creditsCache = { stamp: stamp, body: buildCredits() };
+    res.json(creditsCache.body);
+  } catch (e) {
+    res.status(500).json({ error: 'Could not read the course content.' });
+  }
+});
+
 app.get('/api/lessons', (req, res) => {
   try {
     const stamp = newestMtime();
@@ -240,7 +325,7 @@ app.get('/api/lessons', (req, res) => {
 // ---- which models are running (per agent) ----
 app.get('/api/info', (req, res) => {
   const agents = {};
-  ['coder', 'tutor', 'quiz', 'grader'].forEach(function (a) { const m = resolveModel(a); agents[a] = m.provider + ':' + m.model; });
+  ['coder', 'tutor', 'lab-tutor', 'quiz', 'grader'].forEach(function (a) { const m = resolveModel(a); agents[a] = m.provider + ':' + m.model; });
   res.json({ agents: agents, provider: DEFAULT_PROVIDER, model: resolveModel('coder').model });
 });
 
@@ -299,10 +384,41 @@ function buildContextBlock(ctx) {
     s += 'Stay close to what this lesson covers. If the student asks for something far beyond it, '
       + 'do the simplest version that works and mention that in "reply".';
   }
-  if (ctx.assets && ctx.assets.length) {
+  /* The one request the Build helper should NOT satisfy.
+     Every other change a student asks for is theirs to ask for — that is what this helper is. But
+     the practice exercise is the lesson's only check that the student can do the thing themselves,
+     and its grader reads the file, so it cannot tell whose hands typed it. Writing this one edit
+     hands over the badge and removes the only evidence either of them had. */
+  if (ctx.practiceTask && (ctx.practiceTask.task || ctx.practiceTask.steps.length)) {
+    s += '\n\nTHIS LESSON\'S PRACTICE EXERCISE — the student is meant to do this one themselves:\n';
+    if (ctx.practiceTask.title) s += '  ' + ctx.practiceTask.title + '\n';
+    if (ctx.practiceTask.task) s += '  ' + ctx.practiceTask.task + '\n';
+    ctx.practiceTask.steps.forEach(function (st, i) { s += '  ' + (i + 1) + '. ' + st + '\n'; });
+    s += 'If what they are asking for IS this exercise, do not make the edit. Return no edit field '
+      + 'at all — just a "reply" that names the one step they are stuck on, says what to look for, '
+      + 'and tells them the Tutor (the other mode of this panel) will talk it through. Be warm '
+      + 'about it and be specific about the step; "do it yourself" on its own is useless to them.\n'
+      + 'This applies ONLY to this exercise. Anything else they want in their game — art, enemies, '
+      + 'a new mechanic, a bug they cannot find — you build as normal, including while this lesson '
+      + 'is open. When it is close but not the same thing, build it.';
+  }
+  if ((ctx.assets && ctx.assets.length) || (ctx.assetSets && ctx.assetSets.length)) {
     s += '\n\nASSETS THE STUDENT OWNS — these are the ONLY asset keys that exist:\n'
-      + ctx.assets.map(function (a) { return '  ' + a.key + '  (' + a.type + ')'; }).join('\n')
-      + '\nUse ONLY these keys. NEVER invent an asset key: a key that is not on this list fails to load and breaks the game. '
+      + ctx.assets.map(function (a) { return '  ' + a.key + '  (' + a.type + ')'; }).join('\n');
+    /* Whole sets are described rather than listed. Naming all four hundred would crowd out the
+       student's own code, and the numbering is regular enough to use from the description. */
+    if (ctx.assetSets && ctx.assetSets.length) {
+      s += '\n\nWHOLE SETS THEY OWN — every key in these ranges exists and is safe to use:\n'
+        + ctx.assetSets.map(function (t) {
+            const w = String(Math.max(0, t.count - 1));
+            return '  ' + t.prefix + '0000 … ' + t.prefix + '0'.repeat(Math.max(0, 4 - w.length)) + w
+              + '   (' + t.count + ' pictures — ' + t.name + ')';
+          }).join('\n')
+        + '\nThese are numbered, not named, so you cannot tell what a given one looks like. Do not guess '
+        + 'that a particular number is a coin or a door. Use one only when the student names it, or when '
+        + 'they ask you to try numbers so they can see which is which.';
+    }
+    s += '\nUse ONLY these keys. NEVER invent an asset key: a key that is not on this list fails to load and breaks the game. '
       + 'If the student wants art or a sound they do not own, say so in "reply" and tell them to buy it in the Store.';
   } else {
     s += '\n\nThe student owns no assets yet — do not reference any asset keys.';
@@ -371,14 +487,25 @@ function matchAll(text, specs) {
   return found;
 }
 // Keys the proposed change uses that the student does not own and nothing defines.
-function unknownAssetKeys(ops, gameCode, owned) {
+// `sets` are owned bundles as prefix+count: a key inside one of those ranges is owned even though
+// it is not in the (capped) key list, which is what stops a 400-tile set being rejected from 301.
+function unknownAssetKeys(ops, gameCode, owned, sets) {
   const code = opsCode(ops);
   if (!code.trim()) return [];
   const defined = matchAll(gameCode + '\n' + code, ASSET_DEFS);   // existing code counts
   const ownedSet = {};
   (owned || []).forEach(function (a) { ownedSet[a.key] = true; });
+  const inSet = function (k) {
+    return (sets || []).some(function (t) {
+      if (k.indexOf(t.prefix) !== 0) return false;
+      /* The tail has to be a number inside the set, so a prefix cannot wave through anything that
+         merely starts with the same letters. */
+      const tail = k.slice(t.prefix.length);
+      return /^\d+$/.test(tail) && parseInt(tail, 10) < t.count;
+    });
+  };
   return Object.keys(matchAll(code, ASSET_USES))
-    .filter(function (k) { return !ownedSet[k] && !defined[k]; });
+    .filter(function (k) { return !ownedSet[k] && !defined[k] && !inSet(k); });
 }
 function assetApology(bad, owned) {
   const names = bad.map(function (k) { return '"' + k + '"'; }).join(' and ');
@@ -642,7 +769,7 @@ app.post('/api/ai', async (req, res) => {
   const context = ((req.body && req.body.context) || '').toString().slice(0, 4000);
   const history = sanitizeHistory(req.body && req.body.history);
   let agent = (req.body && req.body.agent) || 'coder';
-  if (['coder', 'tutor', 'quiz', 'grader'].indexOf(agent) < 0) agent = 'coder';   // controller: keep to known agents
+  if (['coder', 'tutor', 'lab-tutor', 'quiz', 'grader'].indexOf(agent) < 0) agent = 'coder';   // controller: keep to known agents
   const spec = resolveModel(agent);
 
   // Context the browser sends about where the student is and what exists in their project.
@@ -650,11 +777,44 @@ app.post('/api/ai', async (req, res) => {
   const ctx = {
     lessonTitle: (b.lessonTitle || '').toString().slice(0, 120),
     lessonContext: (b.lessonContext || '').toString().slice(0, 3000),
+    /* The lesson's practice exercise, sent separately because lessonContext is truncated long
+       before it. See buildContextBlock for what the coder is told to do with it. */
+    practiceTask: (b.practiceTask && typeof b.practiceTask === 'object') ? {
+      title: String(b.practiceTask.title || '').slice(0, 120),
+      task: String(b.practiceTask.task || '').slice(0, 400),
+      steps: Array.isArray(b.practiceTask.steps)
+        ? b.practiceTask.steps.slice(0, 8).map(function (s) { return String(s || '').slice(0, 200); }).filter(Boolean)
+        : []
+    } : null,
+    /* The lab bench's own context, for the lab-tutor agent. Kept separate from `code` and
+       `lessonContext` on purpose: a lab is a canvas exercise with no relation to the student's
+       game, and feeding it through the game-shaped slots is exactly how the tutor came to answer
+       questions about game.js and Phaser to a student looking at neither. */
+    lab: (b.lab && typeof b.lab === 'object') ? {
+      title: String(b.lab.title || '').slice(0, 120),
+      task: String(b.lab.task || '').slice(0, 400),
+      goal: String(b.lab.goal || '').slice(0, 300),
+      code: String(b.lab.code || '').slice(0, 6000),
+      log: String(b.lab.log || '').slice(0, 1500)
+    } : null,
+    /* Which screen the student is actually looking at. "Why isn't it working?" is three different
+       questions on the Learn, Code and Game tabs, and both agents were answering it blind. */
+    where: (b.where || '').toString().slice(0, 400),
     aiMode: ['full', 'guided', 'off'].indexOf(b.aiMode) >= 0 ? b.aiMode : 'full',
     hasAssetList: Array.isArray(b.ownedAssets),   // only validate keys when the client actually told us what it owns
     assets: Array.isArray(b.ownedAssets) ? b.ownedAssets.slice(0, 300).map(function (a) {
       return { key: String((a && a.key) || '').slice(0, 60), type: String((a && a.type) || '').slice(0, 20) };
     }).filter(function (a) { return a.key; }) : [],
+    /* Owned bundles as `prefix × count`. The 300 cap above exists to keep the prompt sane, but the
+       same list is what the answer is VALIDATED against — so without this a student who owns a
+       400-tile set would have their own tiles rejected as invented from number 301 onwards. */
+    assetSets: Array.isArray(b.ownedSets) ? b.ownedSets.slice(0, 40).map(function (s) {
+      return {
+        prefix: String((s && s.prefix) || '').slice(0, 60),
+        count: Math.max(0, Math.min(9999, parseInt((s && s.count) || 0, 10) || 0)),
+        name: String((s && s.name) || '').slice(0, 60)
+      };
+    }).filter(function (s) { return s.prefix.length >= 4; }) : [],
     // a lesson widget or the editor can ask for one extra skill for this request only
     extraSkills: b.skill ? [String(b.skill).slice(0, 40)] : [],
     fileName: String(b.fileName || '').slice(0, 60),
@@ -688,10 +848,16 @@ app.post('/api/ai', async (req, res) => {
   // ctx already carries the assets, files, game code and lesson this request is about.
   const agentTools = AGENT_TOOLS[agent] ? ctx : null;
 
-  // TUTOR: plain-language explanation, no code edits.
-  if (agent === 'tutor') {
+  /* TUTOR and LAB-TUTOR: plain-language explanation, no code edits.
+     lab-tutor has to be named here. Every agent this chain does not recognise falls through to the
+     CODER branch at the bottom — so the lab's tutor was being run on the coder's prompt, which is
+     built entirely around game.js, and it answered a student staring at a canvas exercise with
+     advice about their Phaser game being empty. Adding an agent means adding it to this list. */
+  if (agent === 'tutor' || agent === 'lab-tutor') {
     let raw;
-    const tutorSystem = ai.buildPrompt('tutor', Object.assign({ gameCode: gameCode }, ctx)) || fallbackTutorSystem(gameCode, context, ctx);
+    const tutorSystem = ai.buildPrompt(agent, Object.assign({ gameCode: gameCode }, ctx))
+      || (agent === 'tutor' ? fallbackTutorSystem(gameCode, context, ctx) : null);
+    if (!tutorSystem) return res.status(500).json({ reply: 'The lab tutor prompt is missing (ai/agents/lab-tutor.md).' });
     try { raw = await callAI(spec, tutorSystem, message, false, history, agentTools); }
     catch (e) { return res.status(502).json({ reply: 'The tutor is not reachable right now (' + e.message + ').' }); }
     return res.json({ reply: (raw || '').trim() || 'Hmm, I am not sure — try rephrasing.' });
@@ -792,7 +958,7 @@ app.post('/api/ai', async (req, res) => {
   if (ctx.hasAssetList) {
     // keys defined anywhere in the project count as real, not just those in game.js
     const allCode = gameCode + '\n' + ctx.files.map(function (f) { return f.code; }).join('\n');
-    let bad = unknownAssetKeys(ops, allCode, ctx.assets);
+    let bad = unknownAssetKeys(ops, allCode, ctx.assets, ctx.assetSets);
     if (bad.length) {
       const retry = message + '\n\nIMPORTANT: your previous answer used the asset key(s) '
         + bad.map(function (k) { return '"' + k + '"'; }).join(', ')
@@ -803,12 +969,25 @@ app.post('/api/ai', async (req, res) => {
       catch (e) { return res.status(502).json({ reply: 'The AI service is not reachable right now (' + e.message + ').' }); }
       parsed = extractJSON(raw) || { reply: (raw || '').trim() || 'Done.' };
       ops = toOps(parsed);
-      bad = unknownAssetKeys(ops, gameCode, ctx.assets);
+      bad = unknownAssetKeys(ops, gameCode, ctx.assets, ctx.assetSets);
       if (bad.length) return res.json({ reply: assetApology(bad, ctx.assets), ops: null });
     }
   }
 
   res.json({ reply: parsed.reply || 'Done.', why: parsed.why || '', ops: Object.keys(ops).length ? ops : null });
+});
+
+/* ---- app routes reach the app ----
+   The browser now has real addresses: /lesson/what-an-engine-does, /store, /help. Those paths mean
+   something to js/router.js and nothing to the file system, so a reload or a pasted link would
+   otherwise 404 on the very thing the routing exists to make shareable.
+   Deliberately LAST, so it can only ever see what nothing else claimed: express.static above has
+   already served every real file, and /api and /content have already answered. A path with a dot in
+   its last segment is treated as a missing file and left to 404 honestly — returning index.html for
+   a mistyped script name would turn a clear failure into a blank page and a confusing console. */
+app.get(/^\/(?!api\/)(?!content\/).*$/, (req, res, next) => {
+  if (/\.[a-z0-9]+$/i.test(req.path.split('/').pop() || '')) return next();
+  res.sendFile(path.join(ROOT, 'public', 'index.html'));
 });
 
 app.listen(PORT, () => {

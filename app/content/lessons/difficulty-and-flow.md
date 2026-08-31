@@ -183,6 +183,8 @@ code: |
   step();
 ```
 
+A curve is a design decision made out of numbers. Getting it wrong is not a bug — the game still runs, it just stops being worth playing.
+
 ```quiz
 question: Players keep quitting at your hardest level. Which change is most likely to help WITHOUT making the level easier?
 options:
@@ -199,11 +201,13 @@ feedback:
 explain: Lowering the cost of failing lets players attempt something hard many times, which is when hard becomes fun instead of annoying.
 ```
 
+Your game almost certainly has one difficulty setting that never changes. That is a flat line, and a flat line is the thing this whole lesson is against.
+
 ```yourturn
 title: Put a slope in your game
 task: Find the thing in your game that could get harder, and make it climb a little at a time instead of staying flat or jumping.
 steps:
-  - Open the Code tab and open config.js.
+  - Open `config.js` in the Code tab.
   - Find a number that controls difficulty — enemy speed, spawn rate, how much time you get.
   - Make it change as the player does well. A small step each time, not a doubling.
   - Check the cost of failing. If dying sends the player back to the very start, try putting them back near where they died instead.
@@ -217,3 +221,5 @@ reward: Difficulty Designer badge
 - Introduce **one new idea at a time**, somewhere failing is cheap, before combining it.
 - Three dials: **speed**, **amount**, **room for error**. Turn them gradually.
 - Cheap failure makes hard games fun. Expensive failure makes them quit.
+
+goal: The speed climbs in small steps instead of jumping, with no sudden leap anywhere.

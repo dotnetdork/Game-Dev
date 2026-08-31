@@ -1,1 +1,23 @@
-Kenney (https://kenney.nl) - CC0 1.0 public domain. Packs: Platformer Art Deluxe, UI Pack, Digital Audio, Interface Sounds.
+Art and audio: Kenney (kenney.nl), released under CC0 1.0 Universal.
+No attribution is required; it is here because saying where things came from is the right
+thing to do, and because students should see it done.
+
+Packs used:
+  - 1-Bit  (kenney_1-bit-pack)
+  - 1-Bit Platformer  (kenney_1-bit-platformer-pack)
+  - Background Elements  (kenney_background-elements-remastered)
+  - Fish Pack  (kenney_fish-pack_2)
+  - Medals  (kenney_medals)
+  - Micro Roguelike  (kenney_micro-roguelike)
+  - New Platformer  (kenney_new-platformer-pack-1.1)
+  - Pixel Platformer  (kenney_pixel-platformer)
+  - Pixel Platformer — Farm  (kenney_pixel-platformer-farm-expansion)
+  - Pixel Platformer — Food  (kenney_pixel-platformer-food-expansion)
+  - Pixel Platformer — Industrial  (kenney_pixel-platformer-industrial-expansion)
+  - Buildings  (kenney_platformer-art-buildings)
+  - Candy  (kenney_platformer-art-candy)
+  - Aliens & Enemies  (kenney_platformer-art-extended-enemies)
+  - Terrain Themes  (kenney_platformer-art-extended-tileset)
+  - Mushrooms  (kenney_platformer-art-mushrooms)
+  - Winter  (kenney_platformer-art-winter)
+  - Tiny Dungeon  (kenney_tiny-dungeon)

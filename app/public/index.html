@@ -2,6 +2,11 @@
 <html lang="en">
 <head>
 <meta charset="utf-8">
+<!-- Every asset path below is relative, and lessons now live at /lesson/<id> — two segments deep,
+     where "js/course.js" would resolve to "/lesson/js/course.js" and 404 the whole app. One base
+     tag fixes all 34 of them at once, which is better than 34 chances to miss one. It must stay
+     ABOVE the first relative URL in the document to have any effect. See js/router.js. -->
+<base href="/">
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <title>LEAGUE - Game Dev</title>
 <!-- League branding assets, self-hosted under public/img/. -->
@@ -63,7 +68,9 @@
                  loadSettings(), since an older project keeps CONFIG in game.js. -->
             <div class="info-hd" id="infoHd">Settings</div>
             <div id="infoSettings"></div>
-            <button class="iconbtn" id="resetGameBtn" title="Restore the original starter game" style="margin:14px 12px;"><span class="mdi mdi-restore"></span>Reset game</button>
+            <!-- Reset moved to the transport row at the top, beside play/pause/stop, where the other
+                 run controls are. A destructive button sitting alone under a panel of tuning sliders
+                 was easy to hit by accident and hard to find on purpose. -->
           </div>
         </div>
       </aside>
@@ -98,9 +105,14 @@
                anyone who cannot see them, as aria-label and as the tooltip — paintTransport() keeps
                both in step with the icon, since a button that says "Play" while showing ↻ is worse
                than either alone. -->
+          <!-- Play, pause, stop, reset — the same four, in the same order, as the lab bench, so the
+               controls do not change shape between the two places a student runs code. Reset is
+               destructive (it restores the starter files) and always asks first. -->
           <div class="transport" role="group" aria-label="Game" hidden>
-            <button class="tp tp-play" id="gamePlay" title="Run your game (Ctrl+Enter)" aria-label="Play"><span class="mdi mdi-play" aria-hidden="true"></span></button>
+            <button class="tp tp-play" id="gamePlay" title="Run your game" aria-label="Play"><span class="mdi mdi-play" aria-hidden="true"></span></button>
+            <button class="tp" id="gamePause" title="Freeze the game where it is" aria-label="Pause" disabled><span class="mdi mdi-pause" aria-hidden="true"></span></button>
             <button class="tp tp-stop" id="gameStop" title="Stop the game" aria-label="Stop" disabled><span class="mdi mdi-stop" aria-hidden="true"></span></button>
+            <button class="tp tp-reset" id="gameReset" title="Restore the original starter game" aria-label="Reset"><span class="mdi mdi-restore" aria-hidden="true"></span></button>
           </div>
           <!-- The assistant's twin of #outlineBtn, at the opposite end of the bar from it, and on
                screen only while the assistant is not.
@@ -200,10 +212,24 @@
           <span class="tag" id="aiModelTag">model…</span>
           <button class="ai-collapse" id="aiCollapse" title="Hide the assistant"><span class="mdi mdi-chevron-right"></span></button>
         </div>
+        <!-- One thin row: start a fresh conversation, or go back to one. New chat is not just
+             housekeeping — chatHistory() resends the last six turns, so a conversation that has gone
+             wrong stays wrong, and this is the only way to clear it. See js/ai.js. -->
+        <div class="chatbar">
+          <button class="chat-new" id="chatNew" title="Start a new chat"><span class="mdi mdi-plus" aria-hidden="true"></span><span class="sr-only">New chat</span></button>
+          <button class="chat-pick" id="chatPick" aria-haspopup="listbox" aria-expanded="false">
+            <span class="chat-title" id="chatTitle">New chat</span>
+            <span class="mdi mdi-chevron-down" aria-hidden="true"></span>
+          </button>
+          <div class="chat-list" id="chatList" role="listbox" hidden></div>
+        </div>
         <div class="ai">
           <div class="ai-msgs" id="aiMsgs"></div>
           <div class="ai-input">
-            <input id="aiText" placeholder="Ask the AI to change your game...">
+            <!-- A textarea, not an input. A one-line input put a whole paste on a single scrolling
+                 line, could not hold a newline at all, and gave no way to write a second sentence.
+                 Enter sends, Shift+Enter starts a line, and it grows with what is in it. -->
+            <textarea id="aiText" rows="1" placeholder="Ask the AI to change your game..."></textarea>
             <button id="aiSend" title="Send"><span class="mdi mdi-send"></span></button>
           </div>
         </div>
@@ -221,14 +247,42 @@
          the status bar, so the student can see they are still inside the same app and the way
          back is one obvious button. Built by openLab() in js/widgets.js. -->
     <div class="lab-view" id="labView" hidden role="dialog" aria-modal="true" aria-labelledby="labTitle">
+      <!-- One horizontal band, like the shell: everything the student works in on the left, the
+           help panel full-height beside it. The panel used to start BELOW the lab bar and the task,
+           which made it read as a box dropped in the corner rather than part of the bench. Its
+           header now sits on the same line as the lab bar, exactly as the assistant's header sits
+           on the same line as the Learn / Code / Game tabs. -->
+      <div class="lab-split">
+      <div class="lab-left">
       <div class="lab-bar">
         <!-- The lesson's own icon rather than a back arrow: it names where the button goes. -->
         <button class="lab-back" id="labBack"><span class="mdi mdi-book-open-page-variant" aria-hidden="true"></span>Back</button>
         <span class="lab-flask mdi mdi-flask-outline" aria-hidden="true"></span>
         <span class="lab-title" id="labTitle"></span>
-        <button class="btn btn-secondary lab-reset" id="labReset" title="Put the example back the way it started"><span class="mdi mdi-restore" aria-hidden="true"></span>Reset</button>
+        <!-- Was Reset, which put the example back and threw the student's work away — a destructive
+             button in the one place a stuck child is most likely to click something. What they
+             actually need there is help, so that is what is there now. Restart lives in the
+             transport row at the bottom with the other run controls, where it belongs. -->
+        <!-- Two controls, not one that changes job. The counter is the ladder; the robot beside it
+             is the tutor, locked until the ladder is used up, and it opens the panel from here. -->
+        <!-- Play, pause, stop, reset — at the TOP, in the same order and the same shape as the Game
+             tab's transport, so the controls do not move between the two places a student runs code.
+             Reset restores the starter code and always asks first. -->
+        <div class="lab-transport" role="group" aria-label="Run controls">
+          <button class="tp tp-play" id="labRun" title="Run it" aria-label="Play"><span class="mdi mdi-play" aria-hidden="true"></span></button>
+          <button class="tp" id="labPause" title="Freeze it where it is" aria-label="Pause" disabled><span class="mdi mdi-pause" aria-hidden="true"></span></button>
+          <button class="tp tp-stop" id="labStop" title="Stop and clear the screen" aria-label="Stop" disabled><span class="mdi mdi-stop" aria-hidden="true"></span></button>
+          <button class="tp tp-reset" id="labReset" title="Put the starter code back" aria-label="Reset"><span class="mdi mdi-restore" aria-hidden="true"></span></button>
+        </div>
+        <!-- Same button as the shell's collapsed assistant: same classes, same mdi-robot glyph, same
+             job. It was the avatar image, which made the one control a student presses for help
+             look like two different things depending on which screen they were on. -->
+        <button class="outline-btn ai-btn lab-tutor-btn" id="labTutorBtn" aria-expanded="false" aria-controls="labTutor" title="Show the tutor"><span class="mdi mdi-robot" aria-hidden="true"></span><span class="sr-only">Tutor</span></button>
       </div>
       <div class="lab-brief" id="labBrief"></div>
+      <!-- Horizontal split: the working area on the left, the tutor beside it on the right — the
+           same side, shape and behaviour as the AI assistant dock in the main shell, so a student
+           meets one chat panel in this app rather than two that sit in different places. -->
       <div class="lab-panes">
         <!-- Short nouns, matching the Code and Play tabs in the shell. The chrome is a tool and
              names its panels the way a tool does; the lesson prose is where the friendly voice
@@ -243,7 +297,12 @@
           <div class="cm-statusbar" id="labCursor">Ln 1, Col 1</div>
         </section>
         <section class="lab-pane lab-pane-game" aria-label="Game">
-          <h2 class="lab-pane-hd"><span class="mdi mdi-play-circle" aria-hidden="true"></span>Game</h2>
+          <!-- The verdict sits in the header of the thing it is a verdict ABOUT. It used to live in
+               the bottom-left corner of the window, diagonally opposite the screen the student was
+               watching and next to nothing it referred to. -->
+          <h2 class="lab-pane-hd"><span class="mdi mdi-play-circle" aria-hidden="true"></span>Game
+            <span class="lab-status" id="labStatus" aria-live="polite"></span>
+          </h2>
           <div class="lab-stage" id="labStage">
             <div class="lab-screen" id="labScreen"></div>
           </div>
@@ -261,11 +320,29 @@
         </div>
         <div class="console-body" id="labConBody"></div>
       </div>
-      <div class="lab-foot">
-        <div class="lab-status" id="labStatus" aria-live="polite"></div>
-        <span class="lab-keys"><kbd>Ctrl</kbd>+<kbd>Enter</kbd> to run</span>
-        <button class="btn btn-primary-role lab-run" id="labRun"><span class="mdi mdi-play" aria-hidden="true"></span>Run</button>
-      </div>
+      </div><!-- /lab-left -->
+      <!-- The tutor, inside the bench and on the right, where the AI assistant lives everywhere
+           else in this app. It unlocks after three hints and stays here: sending a stuck student
+           back to the lesson to find a chat panel asks them to leave the thing they are stuck on,
+           and the bench makes the rest of the app inert anyway. It sees the task, the code actually
+           in the editor, and what the last run printed. -->
+      <aside class="lab-tutor dock right" id="labTutor" aria-label="AI Assistant" hidden>
+        <!-- The same drag handle as the assistant dock in the shell, wired to the same limits. -->
+        <div class="res l" id="labRes"></div>
+        <div class="dock-head">
+          <span class="ai-title"><img class="ai-ava" src="img/clearRobotRing4.png" alt="">AI Assistant</span>
+          <span class="tag" id="labTutorTag">model…</span>
+          <button class="ai-collapse" id="labTutorHide" title="Hide the assistant"><span class="mdi mdi-chevron-right" aria-hidden="true"></span></button>
+        </div>
+        <div class="ai">
+          <div class="ai-msgs" id="labTutorBody"></div>
+          <form class="ai-input" id="labTutorForm">
+            <textarea id="labTutorText" rows="1" placeholder="Ask about this lab..." aria-label="Ask the tutor about this lab"></textarea>
+            <button type="submit" id="labTutorSend" title="Send"><span class="mdi mdi-send" aria-hidden="true"></span></button>
+          </form>
+        </div>
+      </aside>
+      </div><!-- /lab-split -->
     </div>
   </div>
 
@@ -304,6 +381,8 @@
 <script src="js/highlight.js"></script>
 <script src="js/project.js"></script>
 <script src="js/course.js"></script>
+<!-- Before widgets.js: buildRunCell reads DEMOS when a cell carries an @demo directive. -->
+<script src="js/demos.js"></script>
 <script src="js/widgets.js"></script>
 <script src="js/editor.js"></script>
 <script src="js/game-runner.js"></script>
@@ -311,6 +390,7 @@
 <script src="js/ai.js"></script>
 <script src="js/console-dock.js"></script>
 <script src="js/pages.js"></script>
+<script src="js/router.js"></script>
 <script src="js/ui.js"></script>
 </body>
 </html>

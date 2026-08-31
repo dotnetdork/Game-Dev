@@ -127,8 +127,61 @@ waitForServer('http://localhost:' + PORT + '/api/lessons', 40).then(function () 
   check('Prettier is not loaded at boot', typeof win.prettier === 'undefined');
   check('CodeMirror IS loaded at boot (lessons need it)', typeof win.CodeMirror === 'function');
 
-  console.log('\n' + (failures ? failures + ' failing' : 'the app boots'));
-  done(failures ? 1 : 0);
+  /* The Help page lists who made every borrowed picture, and the whole point of building that list
+     on the server from the lessons is that it cannot fall behind them. This is the assertion that
+     makes that true rather than merely intended: gather the credits straight off disk and require
+     the endpoint to account for every one. Add a figure with a new credit and forget something,
+     and this fails instead of the course quietly under-attributing a picture it is showing. */
+  console.log('\n--- the picture credits ---');
+  const fs = require('fs');
+  const LESSONS = path.join(ROOT, 'content', 'lessons');
+  const flat = function (s) {
+    return String(s).replace(/<[^>]+>/g, '')
+      .replace(/&amp;/g, '&').replace(/&lt;/g, '<').replace(/&gt;/g, '>')
+      .replace(/&quot;/g, '"').replace(/&#39;/g, "'").replace(/&nbsp;/g, ' ')
+      .replace(/\s+/g, ' ').trim();
+  };
+  /* Only the lessons course.yaml actually lists, and only credits attached to a figure — the same
+     two things the endpoint scans. A draft lesson sitting in the folder unlisted is shown to
+     nobody, and a <cite> in prose is not a picture credit; counting either here would fail the
+     build over a picture that is not under-attributed because it is not on screen at all. */
+  const onDisk = new Set();
+  return fetch('http://localhost:' + PORT + '/api/lessons')
+    .then(function (r) { return r.json(); })
+    .then(function (index) {
+      (index.modules || []).forEach(function (mod) {
+        (mod.lessons || []).forEach(function (lesson) {
+          let raw = '';
+          try { raw = fs.readFileSync(path.join(LESSONS, lesson.id + '.md'), 'utf8'); } catch (e) { return; }
+          const figs = /<figure\b[^>]*>([\s\S]*?)<\/figure>/g;
+          let fig;
+          while ((fig = figs.exec(raw))) {
+            const cited = (fig[1] || '').match(/<cite\b[^>]*>([\s\S]*?)<\/cite>/);
+            if (!cited) continue;
+            const t = flat(cited[1]);
+            if (t) onDisk.add(t);
+          }
+        });
+      });
+      return fetch('http://localhost:' + PORT + '/api/credits');
+    })
+    .then(function (r) { return r.ok ? r.json() : Promise.reject(new Error('HTTP ' + r.status)); })
+    .then(function (data) {
+      const served = new Set((data.credits || []).map(function (c) { return c.credit; }));
+      const missing = Array.from(onDisk).filter(function (c) { return !served.has(c); });
+      const extra = Array.from(served).filter(function (c) { return !onDisk.has(c); });
+      check('the lessons have credits to serve', onDisk.size > 0, onDisk.size + ' distinct');
+      check('every credit in the lessons is on the credits page', missing.length === 0,
+        missing.length ? missing[0] : served.size + ' served');
+      check('the credits page invents nothing', extra.length === 0, extra.length ? extra[0] : 'clean');
+      check('every credit names at least one lesson and one picture',
+        (data.credits || []).every(function (c) { return c.pictures > 0 && c.lessons.length > 0; }));
+    })
+    .catch(function (e) { check('the credits endpoint answers', false, e.message); })
+    .then(function () {
+      console.log('\n' + (failures ? failures + ' failing' : 'the app boots'));
+      done(failures ? 1 : 0);
+    });
 }).catch(function (e) {
   console.error('check-boot could not run: ' + e.message);
   if (serverErr) console.error(serverErr.slice(0, 800));
