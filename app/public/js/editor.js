@@ -178,7 +178,11 @@ function switchView(view) {
   // question typed in Tutor mode went to the coder the moment they clicked Code to look at the
   // answer — the panel changed its mind while they were mid-thought. Only an explicit click on
   // the toggle (or explainLine, which is a tutor question by definition) changes it now.
-  if (view === 'learn') showConsole(false); else if (view === 'code') showConsole(true, true); else showConsole(true, false); // log: open on Code, closed on Play
+  /* Open on Code AND on Play. It used to start closed on Play, on the theory that the game is the
+     thing you came to look at — but the log is where a game that did nothing tells you why, and a
+     student who does not know the panel exists reads a blank screen as "my game is broken" with no
+     next step. It is collapsible; the default should be the one that answers the question. */
+  if (view === 'learn') showConsole(false); else showConsole(true, true);
   if (view === 'play') requestAnimationFrame(fitStage);
   // The reading rail belongs to the lesson, so it goes away with it.
   if (typeof paintLessonRail === 'function') paintLessonRail();

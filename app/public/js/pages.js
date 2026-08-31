@@ -209,6 +209,10 @@ function buyAsset(id) {
   modal({ title: 'Unlock "' + a.name + '"?', message: 'Costs ★ ' + a.cost + '. You can then use it in your game with the name "' + a.key + '". You have ★ ' + state.stars + '.', okLabel: 'Unlock it',
     onOk: function () {
       state.stars -= a.cost; state.unlocked[a.id] = true; saveState();
+      /* Straight into the project. Buying one sprite is an unambiguous "I want this", and making
+         them go and add it afterwards would be a second step with no decision in it. */
+      if (typeof addProjectAssets === 'function') addProjectAssets(a.key);
+      if (typeof refreshFiles === 'function') refreshFiles();
       toast('Unlocked ' + a.name + ' — use "' + a.key + '" in your game.'); showPage('store');
     } });
 }
@@ -225,8 +229,24 @@ function buyBundle(id) {
     okLabel: 'Unlock it',
     onOk: function () {
       state.stars -= b.cost; state.unlocked[b.id] = true; saveState();
+      /* What goes INTO the project depends on what kind of set it is, and the difference matters.
+         A character is nine frames of one thing and all nine belong in the game — that is the whole
+         reason it is a bundle. A 400-tile set is a library to pick from, and adding all of it would
+         be 400 requests on every Run, so what goes in is the one sheet that holds the lot; the
+         loose tiles stay available through + for anyone who wants them by name. */
+      let msg = 'Unlocked ' + b.name + ' — ' + b.count + ' pieces.';
+      if (typeof addProjectAssets === 'function') {
+        if (b.sheet) {
+          addProjectAssets(b.sheet);
+          msg += ' Added to your project as one sheet: ' + b.sheet + '.';
+        } else {
+          addProjectAssets(b.members);
+          msg += ' Added to your project.';
+        }
+      }
+      if (typeof refreshFiles === 'function') refreshFiles();
       storeOpenBundle = b.id;         // straight to the names, which is what they need next
-      toast('Unlocked ' + b.name + ' — ' + b.count + ' pieces.'); showPage('store');
+      toast(msg); showPage('store');
     } });
 }
 

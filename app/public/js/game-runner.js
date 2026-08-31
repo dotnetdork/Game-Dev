@@ -29,13 +29,60 @@ function assetOwned(a) {
   return !!(a && (a.free || state.unlocked[a.id] || (a.bundle && state.unlocked[a.bundle])));
 }
 function ownedAssets() { return (window.STORE_ASSETS || []).filter(assetOwned); }
+
+/* ---------- owning something and loading it are different ----------
+   They used to be the same: every owned asset went into the frame and was load.image()d on every
+   Run. At 265 assets nobody noticed. The Store now sells a 400-tile set, which made that 400
+   requests before create() gets to run — so a project carries an explicit list of what it loads,
+   curated in the content browser, and only that list is injected.
+
+   `project.assets === null` means "everything owned", which is what every project saved before this
+   existed gets. It is materialised into a real list the first time anything asks, which has to
+   happen out here rather than in the v1->v2 migration: that runs before `state` exists. */
+function ensureProjectAssets() {
+  if (!Array.isArray(project.assets)) {
+    project.assets = ownedAssets().map(function (a) { return a.key; });
+    saveProject();
+  }
+  return project.assets;
+}
+/* The manifest entries for what this project loads. Filtered by ownership as well as membership,
+   so a key that is in the list but not owned (a shared project, a catalogue change) is skipped
+   rather than 404ing on every Run. */
+function projectAssets() {
+  const want = {};
+  ensureProjectAssets().forEach(function (k) { want[k] = true; });
+  return (window.STORE_ASSETS || []).filter(function (a) { return want[a.key] && assetOwned(a); });
+}
+function inProject(key) { return ensureProjectAssets().indexOf(key) >= 0; }
+function addProjectAssets(keys) {
+  const list = ensureProjectAssets();
+  let added = 0;
+  (Array.isArray(keys) ? keys : [keys]).forEach(function (k) {
+    if (k && list.indexOf(k) < 0) { list.push(k); added++; }
+  });
+  if (added) saveProject();
+  return added;
+}
+function removeProjectAsset(key) {
+  const list = ensureProjectAssets(), i = list.indexOf(key);
+  if (i < 0) return false;
+  list.splice(i, 1); saveProject();
+  return true;
+}
 function assetInjectScript() {
   // Assets go in by URL, not as inlined base64. The manifest used to carry a data URI for all 265
   // of them — 933 KB downloaded by every student on every load, for the handful they own. The
   // frame is sandboxed, so /assets is cross-origin to it; the server sends those paths CORS-open
   // for exactly this reason. As a bonus the browser now caches each asset instead of re-parsing
   // base64 on every run.
-  const map = {}; ownedAssets().forEach(function (a) { map[a.key] = { type: a.type, url: '/' + a.file }; });
+  /* projectAssets(), not ownedAssets(): what the student put in the project, not everything they
+     have ever bought. See the note above ensureProjectAssets(). */
+  const map = {};
+  projectAssets().forEach(function (a) {
+    map[a.key] = { type: a.type, url: '/' + a.file };
+    if (a.type === 'spritesheet') { map[a.key].fw = a.frameWidth; map[a.key].fh = a.frameHeight; }
+  });
   return '<' + 'script>window.LEAGUE_ASSETS=' + JSON.stringify(map) + ';'
     + 'window.preloadAssets=function(scene){var A=window.LEAGUE_ASSETS||{};'
     // The frame is sandboxed, so its origin is opaque and /assets is cross-origin to it. Without
@@ -44,6 +91,8 @@ function assetInjectScript() {
     + 'try{scene.load.on("loaderror",function(f){console.warn("[league] could not load: "+(f&&f.key));});}catch(e){}'
     + 'for(var k in A){var a=A[k];try{'
     + 'if(a.type==="image"){if(!scene.textures.exists(k))scene.load.image(k,a.url);}'
+    // A whole tile set as one sheet. The frame number picks the tile, and frame N is tile N.
+    + 'else if(a.type==="spritesheet"){if(!scene.textures.exists(k))scene.load.spritesheet(k,a.url,{frameWidth:a.fw,frameHeight:a.fh});}'
     + 'else if(a.type==="audio"){if(!scene.cache||!scene.cache.audio||!scene.cache.audio.exists(k))scene.load.audio(k,a.url);}'
     + '}catch(e){}}};'
     + 'if(window.__leagueMute===undefined)window.__leagueMute=true;'
@@ -134,8 +183,59 @@ function syncGameAudio() {
   if (typeof postGameAudio === 'function') postGameAudio();
 }
 
+/* ---------- the safety net under the asset list ----------
+   Splitting "owned" from "in the project" introduces one new way to be confused: code that names a
+   sprite the student really does own, which simply does not load because it was never added. The
+   symptom is a missing texture and no error worth reading, and the fix ("press + in the content
+   browser") is not something a twelve-year-old will guess.
+
+   So a Run scans their files for owned keys they have not added, adds them, and says so. It is not
+   silent — the toast names what happened, which is how they learn the list exists — and it cannot
+   add anything they do not own, so it is not a way around the Store.
+
+   Keys built at run time (`'tile_' + n`) cannot be seen this way, which is exactly what a 400-tile
+   set invites. That is the case the sheet is for: one key, added when the set is bought. */
+function autoAddUsedAssets() {
+  if (typeof ownedAssets !== 'function') return;
+  const code = fileNames().map(function (n) { return project.files[n] || ''; }).join('\n');
+  if (!code) return;
+  const quoted = {};
+  let m; const re = /['"]([A-Za-z0-9_-]{2,60})['"]/g;
+  while ((m = re.exec(code))) quoted[m[1]] = true;
+  const missing = ownedAssets().filter(function (a) { return quoted[a.key] && !inProject(a.key); });
+  if (!missing.length) return;
+  addProjectAssets(missing.map(function (a) { return a.key; }));
+  if (typeof refreshFiles === 'function') refreshFiles();
+  if (typeof toast === 'function') {
+    toast(missing.length === 1
+      ? 'Your code uses "' + missing[0].key + '", so it was added to the project.'
+      : missing.length + ' assets your code uses were added to the project.');
+  }
+}
+
+/* One CONFIG value, into the running game. Answered by configBridge inside the frame.
+   If the frame says it could not apply the change — no CONFIG in this project, or it threw — the
+   game is rebuilt so the slider is never a control that silently does nothing. Guarded so a broken
+   frame cannot put us in a rebuild loop. */
+let configFallbackAt = 0;
+window.addEventListener('message', function (e) {
+  const d = e && e.data;
+  if (!d || !d.__leagueConfigFail) return;
+  const now = Date.now();
+  if (now - configFallbackAt < 1500) return;
+  configFallbackAt = now;
+  if (typeof isGameRunning === 'function' && isGameRunning()) startGame();
+});
+function sendConfigLive(key, value) {
+  const gf = $('gameFrame');
+  if (!gf || !gf.contentWindow) return;
+  try { gf.contentWindow.postMessage({ __leagueConfig: true, key: key, value: value }, '*'); }
+  catch (e) { startGame(); }
+}
+
 function startGame() { // build a self-contained page from the browser-side project and run it in the iframe (no server)
   conClear();                                          // this run starts with a clean log, on screen and in the buffer
+  autoAddUsedAssets();                                 // before the assets are injected, not after
   if (typeof noteGameRun === 'function') noteGameRun(); // so the AI can tell "printed nothing" from "never ran"
   // load order is the file order in the tree; main.js runs last because it starts the engine
   const ordered = fileNames().filter(function (n) { return n !== 'main.js'; });
@@ -152,10 +252,45 @@ function startGame() { // build a self-contained page from the browser-side proj
     + 'window.addEventListener("message",function(e){var d=e&&e.data||{};'
     + 'if(d.__gamectl==="pause"){p=true;}'
     + 'else if(d.__gamectl==="resume"){p=false;var q=held;held=[];for(var i=0;i<q.length;i++){raf(q[i]);}}});})();<' + '/script>\n';
+  /* ---------- the Inspector's sliders, applied to the running game ----------
+     Dragging a slider used to rebuild the whole game: the level was thrown away, the score reset,
+     the player teleported back to the start. That makes the one thing this panel is for — "pull
+     gravity about and watch what happens" — impossible to actually watch, because what you get is
+     a new game that happens to have different gravity.
+
+     So the value is posted in and assigned instead. `CONFIG` is declared `const CONFIG = {...}` at
+     the top level of config.js, which makes it a global LEXICAL binding and not a property of
+     `window` — so this cannot reach it as `window.CONFIG`. It can reach it by name, because a
+     classic top-level script shares that scope, which is why this is its own <script> and not part
+     of the asset IIFE. The binding is read inside the callback, long after config.js has run, so
+     there is no temporal-dead-zone problem.
+
+     `const` freezes the BINDING, not the object, so assigning a property is allowed and legal.
+
+     Gravity needs a second step. Arcade reads it once, when the game boots, into the physics
+     world — so changing CONFIG.gravity alone would update the number the student can see in their
+     file and change nothing on screen. Every arcade world is re-synced from CONFIG.gravity after
+     any change, rather than special-casing which key moved, so the world can never drift from the
+     file it came from.
+
+     Anything the student's own code reads per frame (moveSpeed, jumpPower) takes effect on the very
+     next frame. Anything read once at creation time (coinBounce, used when a coin is made) applies
+     to the next thing created — which is the honest behaviour and worth them noticing. */
+  const configBridge = '<' + 'script>window.addEventListener("message",function(e){'
+    + 'var d=e&&e.data||{};if(!d.__leagueConfig)return;var k=d.key;'
+    + 'try{'
+    + 'if(typeof CONFIG==="undefined"||!CONFIG){parent.postMessage({__leagueConfigFail:true},"*");return;}'
+    + 'CONFIG[k]=d.value;'
+    + 'var g=window.__leagueGame;'
+    + 'if(g&&g.scene&&typeof CONFIG.gravity==="number"){var ss=g.scene.scenes||[];'
+    + 'for(var i=0;i<ss.length;i++){var w=ss[i]&&ss[i].physics&&ss[i].physics.world;'
+    + 'if(w&&w.gravity)w.gravity.y=CONFIG.gravity;}}'
+    + '}catch(err){parent.postMessage({__leagueConfigFail:true},"*");}'
+    + '});<' + '/script>\n';
   const html = '<!doctype html><html><head><meta charset="utf-8">'
     + '<style>html,body{margin:0;height:100%;background:#06101c;overflow:hidden}#game{width:100%;height:100vh}</style></head><body>'
     + '<div id="game"></div>\n'
-    + capture + pauseShim
+    + capture + pauseShim + configBridge
     + '<' + 'script src="/vendor/phaser/phaser.min.js"><' + '/script>\n'   // vendored: no CDN, works on filtered networks
     + assetInjectScript()
     + scripts + '\n</body></html>';

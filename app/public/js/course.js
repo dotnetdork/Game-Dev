@@ -106,12 +106,21 @@ function renderOutline() {
     head.setAttribute('role', 'treeitem');
     head.setAttribute('aria-expanded', open ? 'true' : 'false');
     if (modLocked) head.setAttribute('aria-disabled', 'true');
-    head.innerHTML = '<span class="tri" aria-hidden="true">' + (open ? '▾' : '▸') + '</span><span class="mdi ' + (modLocked ? 'mdi-lock' : 'mdi-folder') + '" aria-hidden="true"' + (modLocked ? '' : ' style="color:' + moduleAccent(mi) + '"') + '></span><span class="lbl">' + esc(m.name) + '</span>';
+    /* The folder is the open/closed control, the same as in the content browser — no separate
+       triangle. A triangle beside a label is the shape of a select, and this is a section being
+       folded away rather than an option being chosen. Dropping it also frees the row's left edge so
+       a lesson's icon can sit directly under its module's, which is what makes the nesting read. */
+    const modIcon = function (isOpen) {
+      return modLocked ? 'mdi-lock' : (isOpen ? 'mdi-folder-open' : 'mdi-folder');
+    };
+    head.innerHTML = '<span class="mdi ' + modIcon(open) + '" aria-hidden="true"'
+      + (modLocked ? '' : ' style="color:' + moduleAccent(mi) + '"') + '></span>'
+      + '<span class="lbl">' + esc(m.name) + '</span>';
     head.addEventListener('click', function () {
       if (modLocked) { toast('Finish the previous module to unlock this one.'); return; }
       const nowCollapsed = sec.classList.toggle('collapsed');
       secOpen[mi] = !nowCollapsed;                 // remembered, so the next rebuild honours it
-      head.querySelector('.tri').textContent = nowCollapsed ? '▸' : '▾';
+      head.querySelector('.mdi').className = 'mdi ' + modIcon(!nowCollapsed);
       head.setAttribute('aria-expanded', nowCollapsed ? 'false' : 'true');
     });
     const kids = document.createElement('div'); kids.className = 'kids'; kids.setAttribute('role', 'group');
@@ -188,7 +197,12 @@ function buildSectionNav() {
     b.type = 'button';
     b.className = 'section-row';
     b.setAttribute('role', 'treeitem');
-    b.innerHTML = '<span class="mdi mdi-menu-right" aria-hidden="true"></span>'
+    /* These rows jump to a heading inside the lesson you already have open — nothing expands and
+       nothing is chosen, so the right-pointing arrow that used to sit here was promising a
+       behaviour that does not exist. `text-short` says what the destination IS: a passage of the
+       lesson. It also sits sensibly under the file icon on the lesson row above it — document, then
+       the pieces of that document — where a bullet was just punctuation. */
+    b.innerHTML = '<span class="mdi mdi-text-short" aria-hidden="true"></span>'
       + '<span class="lbl">' + esc(t.label) + '</span>';
     b.addEventListener('click', function () { scrollToSection(t.el.id); });
     list.appendChild(b);

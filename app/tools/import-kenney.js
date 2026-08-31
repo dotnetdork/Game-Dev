@@ -77,6 +77,13 @@ const PREFER = ['Default', 'PNG/Default', 'Tiles/Transparent'];
    `mode` is 'individual' | 'frames' | 'set'. `set` needs a `setName`.
    `theme` on an individual group additionally offers that folder as a themed bundle.
 
+   `atlas` on a `set` group imports that pack's packed tilemap as a SPRITESHEET alongside the loose
+   tiles. A 400-tile set is 400 `load.image()` calls and 400 requests on every Run; the same art as
+   one sheet is a single request, and `this.add.image(x, y, 'sheet', 42)` is how these packs are
+   meant to be used. Kenney's `_packed` variants have no gutter, so frameWidth/frameHeight alone
+   describe them, and their frame count matches the loose-tile count exactly — checked below, so a
+   pack whose sheet does not line up fails the run rather than shipping a silently wrong grid.
+
    `ns` NAMESPACES a group, and it is not optional where two folders of one pack use the same
    filenames. Several packs number their tiles from zero in EVERY sub-folder, so Tiles/Colored and
    Tiles/Monochrome both contain tile_0000.png, and all ten terrain themes contain slice01_01.png.
@@ -90,7 +97,8 @@ const PACKS = [
     { src: 'Tilesheet', cat: 'Tiles', mode: 'individual' }
   ] },
   { slug: '1bit-platformer', name: '1-Bit Platformer', style: '1-bit', dir: 'kenney_1-bit-platformer-pack', groups: [
-    { src: 'Tiles/Transparent', cat: 'Tiles', mode: 'set', setName: '1-Bit Platformer tiles' }
+    { src: 'Tiles/Transparent', cat: 'Tiles', mode: 'set', setName: '1-Bit Platformer tiles',
+      atlas: { src: 'Tilemap/monochrome_tilemap_transparent_packed.png', w: 16, h: 16 } }
   ] },
   { slug: 'backgrounds', name: 'Background Elements', style: 'smooth', dir: 'kenney_background-elements-remastered', groups: [
     { src: 'Backgrounds', cat: 'Backgrounds', mode: 'individual' },
@@ -104,8 +112,10 @@ const PACKS = [
     { src: 'PNG', cat: 'UI', mode: 'individual' }
   ] },
   { slug: 'micro-roguelike', name: 'Micro Roguelike', style: 'pixel', dir: 'kenney_micro-roguelike', groups: [
-    { src: 'Tiles/Colored', ns: 'colour', cat: 'Tiles', mode: 'set', setName: 'Micro Roguelike tiles (colour)' },
-    { src: 'Tiles/Monochrome', ns: 'mono', cat: 'Tiles', mode: 'set', setName: 'Micro Roguelike tiles (mono)' }
+    { src: 'Tiles/Colored', ns: 'colour', cat: 'Tiles', mode: 'set', setName: 'Micro Roguelike tiles (colour)',
+      atlas: { src: 'Tilemap/colored_tilemap_packed.png', w: 8, h: 8 } },
+    { src: 'Tiles/Monochrome', ns: 'mono', cat: 'Tiles', mode: 'set', setName: 'Micro Roguelike tiles (mono)',
+      atlas: { src: 'Tilemap/monochrome_tilemap_packed.png', w: 8, h: 8 } }
   ] },
   { slug: 'platformer', name: 'New Platformer', style: 'smooth', dir: 'kenney_new-platformer-pack-1.1', groups: [
     { src: 'Sprites/Characters/Default', cat: 'Characters', mode: 'frames' },
@@ -115,18 +125,24 @@ const PACKS = [
     { src: 'Sounds', cat: 'Sounds', mode: 'individual', ext: '.ogg' }
   ] },
   { slug: 'pixel-platformer', name: 'Pixel Platformer', style: 'pixel', dir: 'kenney_pixel-platformer', groups: [
-    { src: 'Tiles', cat: 'Tiles', mode: 'set', setName: 'Pixel Platformer tiles' },
-    { src: 'Tiles/Backgrounds', ns: 'bg', cat: 'Backgrounds', mode: 'set', setName: 'Pixel Platformer backgrounds' },
-    { src: 'Tiles/Characters', ns: 'chr', cat: 'Characters', mode: 'set', setName: 'Pixel Platformer characters' }
+    { src: 'Tiles', cat: 'Tiles', mode: 'set', setName: 'Pixel Platformer tiles',
+      atlas: { src: 'Tilemap/tilemap_packed.png', w: 18, h: 18 } },
+    { src: 'Tiles/Backgrounds', ns: 'bg', cat: 'Backgrounds', mode: 'set', setName: 'Pixel Platformer backgrounds',
+      atlas: { src: 'Tilemap/tilemap-backgrounds_packed.png', w: 24, h: 24 } },
+    { src: 'Tiles/Characters', ns: 'chr', cat: 'Characters', mode: 'set', setName: 'Pixel Platformer characters',
+      atlas: { src: 'Tilemap/tilemap-characters_packed.png', w: 24, h: 24 } }
   ] },
   { slug: 'pixel-farm', name: 'Pixel Platformer — Farm', style: 'pixel', dir: 'kenney_pixel-platformer-farm-expansion', groups: [
-    { src: 'Tiles', cat: 'Tiles', mode: 'set', setName: 'Farm tiles' }
+    { src: 'Tiles', cat: 'Tiles', mode: 'set', setName: 'Farm tiles',
+      atlas: { src: 'Tilemap/tilemap_packed.png', w: 18, h: 18 } }
   ] },
   { slug: 'pixel-food', name: 'Pixel Platformer — Food', style: 'pixel', dir: 'kenney_pixel-platformer-food-expansion', groups: [
-    { src: 'Tiles', cat: 'Tiles', mode: 'set', setName: 'Food tiles' }
+    { src: 'Tiles', cat: 'Tiles', mode: 'set', setName: 'Food tiles',
+      atlas: { src: 'Tilemap/tilemap_packed.png', w: 18, h: 18 } }
   ] },
   { slug: 'pixel-industrial', name: 'Pixel Platformer — Industrial', style: 'pixel', dir: 'kenney_pixel-platformer-industrial-expansion', groups: [
-    { src: 'Tiles', cat: 'Tiles', mode: 'set', setName: 'Industrial tiles' }
+    { src: 'Tiles', cat: 'Tiles', mode: 'set', setName: 'Industrial tiles',
+      atlas: { src: 'Tilemap/tilemap_packed.png', w: 18, h: 18 } }
   ] },
   { slug: 'buildings', name: 'Buildings', style: 'smooth', dir: 'kenney_platformer-art-buildings', groups: [
     { src: 'Tiles', cat: 'auto', mode: 'individual' }
@@ -161,7 +177,8 @@ const PACKS = [
     { src: 'Tiles', cat: 'auto', mode: 'individual' }
   ] },
   { slug: 'tiny-dungeon', name: 'Tiny Dungeon', style: 'pixel', dir: 'kenney_tiny-dungeon', groups: [
-    { src: 'Tiles', cat: 'Tiles', mode: 'set', setName: 'Tiny Dungeon tiles' }
+    { src: 'Tiles', cat: 'Tiles', mode: 'set', setName: 'Tiny Dungeon tiles',
+      atlas: { src: 'Tilemap/tilemap_packed.png', w: 16, h: 16 } }
   ] }
 ];
 
@@ -313,6 +330,15 @@ function listPng(dir, ext) {
    tiles imported as 160) and to the ten terrain themes (363 as 84). So it is a hard failure now,
    with the fix named in the message, rather than a number nobody thinks to check. */
 const collisions = [];
+const hardFails = [];
+function fail(msg) { hardFails.push(msg); }
+/* Width and height straight out of the PNG header — IHDR is always the first chunk, so the two
+   32-bit big-endian numbers live at a fixed offset. Enough to check an atlas divides cleanly
+   without pulling in an image library. */
+function pngSize(p) {
+  const b = fs.readFileSync(p).subarray(0, 24);
+  return { w: b.readUInt32BE(16), h: b.readUInt32BE(20) };
+}
 function addAsset(o) {
   if (seenKeys.has(o.key)) { collisions.push(o.key); return null; }
   seenKeys.add(o.key);
@@ -356,8 +382,43 @@ PACKS.forEach(function (pack) {
           hint: hintFor(g.cat, m.type, m.key), desc: DESC[g.cat], type: m.type, file: m.file });
         packCount++;
       });
+      /* The same art as one spritesheet. This is what a student who owns the set should actually
+         reach for: one request instead of four hundred, and it is how the pack was drawn. */
+      let sheetKey = '';
+      if (g.atlas) {
+        const aSrc = path.join(packDir, g.atlas.src.replace(/\//g, path.sep));
+        if (!fs.existsSync(aSrc)) {
+          fail(pack.slug + ': atlas ' + g.atlas.src + ' does not exist.');
+        } else {
+          const dim = pngSize(aSrc);
+          const cols = dim.w / g.atlas.w, rows = dim.h / g.atlas.h;
+          /* If the sheet does not divide cleanly, or holds a different number of frames than there
+             are loose tiles, then frame N is not tile N and every student using it would be off by
+             an unknown amount. That is worth stopping the whole import for. */
+          if (!Number.isInteger(cols) || !Number.isInteger(rows)) {
+            fail(pack.slug + ': atlas ' + g.atlas.src + ' is ' + dim.w + 'x' + dim.h
+              + ', which does not divide by ' + g.atlas.w + 'x' + g.atlas.h + '. Wrong file, or it has a gutter.');
+          } else if (cols * rows !== made.length) {
+            fail(pack.slug + ': atlas ' + g.atlas.src + ' holds ' + (cols * rows)
+              + ' frames but the folder has ' + made.length + ' tiles — frame N would not be tile N.');
+          } else {
+            const aFn = path.basename(g.atlas.src);
+            sheetKey = pack.slug + (g.ns ? '_' + g.ns : '') + '_sheet';
+            copies.push([aSrc, path.join(outDir, aFn)]);
+            addAsset({ id: sheetKey, key: sheetKey, name: g.setName + ' (one sheet)', cat: g.cat,
+              pack: pack.slug, style: pack.style, cost: 0, bundle: bid,
+              type: 'spritesheet', frameWidth: g.atlas.w, frameHeight: g.atlas.h, frames: cols * rows,
+              file: rel + aFn,
+              hint: "this.add.image(x, y, '" + sheetKey + "', 0)",
+              desc: 'All ' + made.length + ' pictures on one sheet. The last number picks which one — '
+                + '0 is the top-left, then it counts along each row. Loads far faster than adding them '
+                + 'one at a time.' });
+            packCount++;
+          }
+        }
+      }
       bundles.push({ id: bid, name: g.setName, cat: g.cat, pack: pack.slug, style: pack.style,
-        cost: priceBundle(made.length), count: made.length,
+        cost: priceBundle(made.length), count: made.length, sheet: sheetKey || undefined,
         desc: 'Every tile in this set — ' + made.length + ' of them. They are numbered, not named, so '
           + 'the way to use them is to look at the sheet and pick the one you want.',
         members: made.map(function (m) { return m.key; }),
@@ -431,6 +492,12 @@ PACKS.forEach(function (pack) {
 const byDest = {};
 copies.forEach(function (c) { (byDest[c[1]] = byDest[c[1]] || []).push(c[0]); });
 const clashing = Object.keys(byDest).filter(function (d) { return byDest[d].length > 1; });
+if (hardFails.length) {
+  console.error('');
+  console.error('FAILED: ' + hardFails.length + ' problem(s). Nothing was written.');
+  hardFails.forEach(function (m) { console.error('  ' + m); });
+  process.exit(1);
+}
 if (clashing.length || collisions.length) {
   console.error('');
   console.error('FAILED: ' + (clashing.length + collisions.length) + ' collision(s). Nothing was written.');

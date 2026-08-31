@@ -50,15 +50,19 @@ function load(seed) {
   vm.runInContext(src.slice(0, cut > 0 ? cut : src.length), ctx);
   // `let project` / `let state` are lexical bindings, so they are not properties of the context.
   // Pull them out by evaluating an expression inside it.
-  const got = vm.runInContext('({ project: project, state: state })', ctx);
-  return { project: got.project, state: got.state, store: store };
+  /* SCHEMA comes out with them. These assertions are about the plumbing — that a new save is
+     stamped, and that an old one is migrated up to whatever the current version is — not about
+     what today's number happens to be. Hardcoding `1` meant the first schema bump failed the suite
+     for no reason, which trains people to edit the check rather than read it. */
+  const got = vm.runInContext('({ project: project, state: state, schema: SCHEMA })', ctx);
+  return { project: got.project, state: got.state, schema: got.schema, store: store };
 }
 
 console.log('--- fresh install ---');
 {
-  const { project, state } = load({});
-  check('new project is stamped v1', project.v, 1);
-  check('new progress is stamped v1', state.v, 1);
+  const { project, state, schema } = load({});
+  check('new project is stamped at the current version', project.v, schema.project);
+  check('new progress is stamped at the current version', state.v, schema.progress);
   checkTrue('new project has the starter files', typeof project.files['game.js'] === 'string');
 }
 
@@ -66,9 +70,9 @@ console.log('\n--- an existing save from before versioning ---');
 {
   const legacy = JSON.stringify({ files: { 'game.js': '// mine', 'config.js': '// cfg' }, order: ['game.js', 'config.js'] });
   const legacyProgress = JSON.stringify({ xp: 900, stars: 12, done: { '0.0': true } });
-  const { project, state, store } = load({ leagueProject: legacy, leagueProgress: legacyProgress });
+  const { project, state, store, schema } = load({ leagueProject: legacy, leagueProgress: legacyProgress });
   check('un-numbered project is adopted, not replaced', project.files['game.js'], '// mine');
-  check('...and stamped to the current version', project.v, 1);
+  check('...and stamped to the current version', project.v, schema.project);
   check('un-numbered progress keeps its XP', state.xp, 900);
   check('...and its completed lessons', state.done, { '0.0': true });
   check('...and gains keys added since it was written', state.activities, {});

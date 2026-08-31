@@ -117,8 +117,11 @@ waitForServer('http://localhost:' + PORT + '/api/lessons', 40).then(function () 
   const proj = peek('project'), st = peek('state');
   check('a project was created', !!proj && typeof proj.files === 'object',
     proj ? Object.keys(proj.files).length + ' files' : 'none');
-  check('the project is schema-stamped', proj && proj.v === 1, 'v' + (proj && proj.v));
-  check('progress is schema-stamped', st && st.v === 1, 'v' + (st && st.v));
+  /* That it IS stamped, not what the number is. A bump is a normal event — pinning the version here
+     turns every migration into a red suite and teaches people to edit the assertion. check-state.js
+     is the one that proves migration actually works. */
+  check('the project is schema-stamped', proj && typeof proj.v === 'number' && proj.v >= 1, 'v' + (proj && proj.v));
+  check('progress is schema-stamped', st && typeof st.v === 'number' && st.v >= 1, 'v' + (st && st.v));
   check('nothing was quarantined',
     Object.keys(win.localStorage).filter(function (k) { return k.indexOf('.broken.') > -1; }).length === 0);
 

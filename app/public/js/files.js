@@ -1,17 +1,40 @@
 /* files.js — The file tree (source + assets folders), asset detail popup, new/open/save/delete/reset of project files, and the Game Info settings list. */
 /* ---------- files ---------- */
 let folderOpen = { source: true, assets: true };
-function folderHead(id, label, icon, count) {
-  const h = document.createElement('div'); h.className = 'folderhead';
-  h.innerHTML = '<span class="caret mdi ' + (folderOpen[id] ? 'mdi-menu-down' : 'mdi-menu-right') + '"></span>'
-    + '<span class="mdi ' + icon + '"></span>' + label + '<span class="fcount">' + count + '</span>';
-  h.addEventListener('click', function () { folderOpen[id] = !folderOpen[id]; refreshFiles(); });
+/* The folder itself is the open/closed control — no separate caret.
+   A left/down triangle beside a label is the shape of a SELECT, and this is not one: nothing is
+   being chosen, a section is being folded away. The folder icon says the same thing without the
+   wrong promise, and it frees the row's left edge so a child's icon can line up directly under its
+   folder's icon rather than landing between the caret and the folder, which is what made the
+   indentation look accidental. */
+function folderHead(id, label, count, addTitle, onAdd) {
+  const open = !!folderOpen[id];
+  const h = document.createElement('div');
+  h.className = 'folderhead' + (open ? ' open' : '');
+  h.setAttribute('role', 'button');
+  h.setAttribute('tabindex', '0');
+  h.setAttribute('aria-expanded', open ? 'true' : 'false');
+  h.innerHTML = '<span class="mdi ' + (open ? 'mdi-folder-open-outline' : 'mdi-folder-outline') + '"></span>'
+    + '<span class="fname">' + label + '</span><span class="fcount">' + count + '</span>';
+  const toggle = function () { folderOpen[id] = !folderOpen[id]; refreshFiles(); };
+  h.addEventListener('click', toggle);
+  h.addEventListener('keydown', function (e) {
+    if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); toggle(); }
+  });
+  if (onAdd) {
+    const add = document.createElement('button');
+    add.type = 'button'; add.className = 'rowbtn fadd'; add.title = addTitle;
+    add.setAttribute('aria-label', addTitle);
+    add.innerHTML = '<span class="mdi mdi-plus"></span>';
+    add.addEventListener('click', function (e) { e.stopPropagation(); onAdd(); });
+    h.appendChild(add);
+  }
   return h;
 }
 function refreshFiles() {
   const list = $('fileList'); list.innerHTML = '';
   const names = fileNames();
-  list.appendChild(folderHead('source', 'source', 'mdi-folder-outline', names.length));
+  list.appendChild(folderHead('source', 'source', names.length, 'New script', newScript));
   if (folderOpen.source) {
     names.forEach(function (name) {
       const row = document.createElement('div'); row.className = 'filerow' + (name === currentFile ? ' active' : '');
@@ -20,11 +43,11 @@ function refreshFiles() {
       row.appendChild(icon); row.appendChild(lbl);
       row.addEventListener('click', function () { openFile(name); });
       if (STARTER[name] === undefined) {
-        const del = document.createElement('button'); del.className = 'del'; del.title = 'Delete ' + name; del.innerHTML = '<span class="mdi mdi-close"></span>';
+        const del = document.createElement('button'); del.className = 'rowbtn'; del.title = 'Delete ' + name; del.innerHTML = '<span class="mdi mdi-close"></span>';
         del.addEventListener('click', function (e) { e.stopPropagation(); deleteFile(name); });
         row.appendChild(del);
       } else {
-        const rst = document.createElement('button'); rst.className = 'del rst'; rst.title = 'Reset ' + name + ' to the default'; rst.innerHTML = '<span class="mdi mdi-restore"></span>';
+        const rst = document.createElement('button'); rst.className = 'rowbtn rst'; rst.title = 'Reset ' + name + ' to the default'; rst.innerHTML = '<span class="mdi mdi-restore"></span>';
         rst.addEventListener('click', function (e) { e.stopPropagation(); resetFile(name); });
         row.appendChild(rst);
       }
@@ -33,27 +56,123 @@ function refreshFiles() {
   }
   renderAssetFolder(list);
 }
+/* The assets folder shows what this project LOADS, not everything the student owns — those are
+   different things now, because a 400-tile set loaded on every Run is 400 requests. `+` adds from
+   what they own, the `x` on a row takes it out again. Nothing is deleted by removing it: it stays
+   bought, and `+` puts it straight back. */
+function assetThumb(a) {
+  if (a.type === 'audio') return '<span class="mdi mdi-music-note"></span>';
+  if (a.type === 'spritesheet') return '<span class="mdi mdi-view-grid-outline"></span>';
+  return '<img src="' + a.file + '" alt="" loading="lazy">';
+}
 function renderAssetFolder(list) {
+  const inp = (typeof projectAssets === 'function') ? projectAssets() : [];
   const owned = (typeof ownedAssets === 'function') ? ownedAssets() : [];
-  list.appendChild(folderHead('assets', 'assets', 'mdi-folder-image', owned.length));
+  list.appendChild(folderHead('assets', 'assets', inp.length,
+    'Add something you own to this project', openAssetPicker));
   if (!folderOpen.assets) return;
-  if (!owned.length) { const em = document.createElement('div'); em.className = 'assetrow empty'; em.textContent = 'Buy assets in the Store'; list.appendChild(em); return; }
-  owned.slice().sort(function (a, b) { return a.key < b.key ? -1 : 1; }).forEach(function (a) {
+  if (!inp.length) {
+    const em = document.createElement('div'); em.className = 'assetrow empty';
+    em.textContent = owned.length ? 'Nothing added yet — press +' : 'Buy assets in the Store';
+    list.appendChild(em); return;
+  }
+  inp.slice().sort(function (a, b) { return a.key < b.key ? -1 : 1; }).forEach(function (a) {
     const r = document.createElement('div'); r.className = 'assetrow'; r.title = a.name;
-    const thumb = a.type === 'image' ? '<img src="' + a.file + '" alt="">' : '<span class="mdi mdi-music-note"></span>';
-    r.innerHTML = thumb + '<span class="lbl">' + a.key + '</span>';
+    r.innerHTML = assetThumb(a) + '<span class="lbl">' + a.key + '</span>';
     r.addEventListener('click', function () { showAssetInfo(a); });
+    const del = document.createElement('button');
+    del.className = 'rowbtn'; del.title = 'Take ' + a.key + ' out of this project (you keep it)';
+    del.innerHTML = '<span class="mdi mdi-close"></span>';
+    del.addEventListener('click', function (e) {
+      e.stopPropagation();
+      removeProjectAsset(a.key); refreshFiles();
+      toast(a.key + ' removed from the project — you still own it.');
+    });
+    r.appendChild(del);
     list.appendChild(r);
   });
 }
+
+/* Everything owned that is not already in the project, searchable. Clicking a tile adds it and the
+   tile disappears from the picker, so the panel is always "what could I still add?" — which is the
+   question being asked. It stays open, because adding four things should not be four trips. */
+let pickerQuery = '';
+function openAssetPicker() {
+  if (typeof ownedAssets !== 'function') return;
+  modal({
+    title: 'Add to this project',
+    wide: true,
+    /* `html` rather than `message`: modal() wraps message in a <p>, and a grid inside a paragraph
+       is both wrong and narrower than it needs to be. */
+    html: '<p class="pick-lead">Everything you own that is not in the project yet. '
+      + 'Adding it means your game loads it — that is what makes the name work in your code.</p>'
+      + '<input id="pickQ" type="search" placeholder="Search what you own…" aria-label="Search">'
+      + '<div id="pickGrid" class="pick-grid"></div>',
+    okLabel: 'Done', hideCancel: true
+  });
+  pickerQuery = '';
+  const paint = function () {
+    const grid = $('pickGrid'); if (!grid) return;
+    const q = pickerQuery.toLowerCase().replace(/[\s_-]+/g, '');
+    const avail = ownedAssets().filter(function (a) {
+      if (inProject(a.key)) return false;
+      if (!q) return true;
+      return (a.key + a.name + a.cat).toLowerCase().replace(/[\s_-]+/g, '').indexOf(q) >= 0;
+    });
+    grid.innerHTML = '';
+    if (!avail.length) {
+      const em = document.createElement('p'); em.className = 'pick-empty';
+      em.textContent = q ? 'Nothing you own matches that.' : 'Everything you own is already in the project.';
+      grid.appendChild(em); return;
+    }
+    /* Capped, because owning a 400-tile set would otherwise build 400 tiles into a modal. The
+       count tells them to search rather than scroll. */
+    const show = avail.slice(0, 150);
+    show.forEach(function (a) {
+      const b = document.createElement('button');
+      b.type = 'button'; b.className = 'pick' + (a.type === 'image' ? '' : ' icon');
+      b.title = a.name + '  ·  ' + a.key;
+      /* The pack prefix is the same on every tile in a pack, so a truncated full key labels 150
+         tiles identically — "1bit-platformer_t…" over and over. The tail is the part that tells
+         them apart, and the full key is on the tooltip and goes in when they click. */
+      const short = a.key.indexOf(a.pack + '_') === 0 ? a.key.slice(a.pack.length + 1) : a.key;
+      b.innerHTML = assetThumb(a) + '<span>' + short + '</span>';
+      b.addEventListener('click', function () {
+        addProjectAssets(a.key); refreshFiles(); paint();
+        toast('Added ' + a.key + ' — use "' + a.key + '" in your code.');
+      });
+      grid.appendChild(b);
+    });
+    if (avail.length > show.length) {
+      const more = document.createElement('p'); more.className = 'pick-empty';
+      more.textContent = 'Showing ' + show.length + ' of ' + avail.length + '. Search to narrow it down.';
+      grid.appendChild(more);
+    }
+  };
+  paint();
+  const q = $('pickQ');
+  if (q) {
+    let t = 0;
+    q.addEventListener('input', function () {
+      clearTimeout(t); t = setTimeout(function () { pickerQuery = q.value.trim(); paint(); }, 160);
+    });
+    q.focus();
+  }
+}
 function showAssetInfo(a) {
-  const media = a.type === 'image'
-    ? '<div class="asset-preview"><img src="' + a.file + '" alt=""></div>'
-    : '<div class="asset-preview snd"><button id="assetPlay" class="gbtn"><span class="mdi mdi-play"></span>Play sound</button></div>';
-  const kind = (a.type === 'image' ? 'Image' : 'Sound') + ' · ' + a.cat;
+  const media = a.type === 'audio'
+    ? '<div class="asset-preview snd"><button id="assetPlay" class="gbtn"><span class="mdi mdi-play"></span>Play sound</button></div>'
+    : '<div class="asset-preview' + (a.type === 'spritesheet' ? ' sheet' : '') + '"><img src="' + a.file + '" alt=""></div>';
+  const kind = (a.type === 'image' ? 'Image' : a.type === 'spritesheet' ? 'Sheet' : 'Sound') + ' · ' + a.cat;
   const info = '<div class="asset-info">'
     + '<div class="ai-row"><span>Type</span><b>' + kind + '</b></div>'
     + '<div class="ai-row"><span>Name to use</span><code>' + a.key + '</code></div>'
+    /* A sheet is the one asset where the key alone is not enough to use it — the frame number is
+       half the answer, so the range is stated rather than left to be discovered. */
+    + (a.type === 'spritesheet'
+        ? '<div class="ai-row"><span>Pictures on it</span><b>' + a.frames + ' (numbered 0 to ' + (a.frames - 1) + ')</b></div>'
+          + '<div class="ai-row"><span>Each one</span><b>' + a.frameWidth + ' x ' + a.frameHeight + ' pixels</b></div>'
+        : '')
     + '<div class="ai-row"><span>In your code</span><code>' + a.hint + '</code></div>'
     + '<p class="ai-desc">' + (a.desc || '') + '</p></div>';
   modal({ title: a.name, message: media + info, okLabel: 'Insert into code', onOk: function () {
@@ -71,14 +190,18 @@ function deleteFile(name) {
 }
 function openFile(name) { if (reviewing) endReview(); if (!$('view-code').hidden) { project.files[currentFile] = codeEditor.getValue(); saveProject(); } currentFile = name; $('crumb').textContent = name; refreshFiles(); loadCode(); }
 function loadCode() { if (reviewing) { showDiffInEditor(reviewing); return; } const t = project.files[currentFile]; codeEditor.setValue(typeof t === 'string' ? formatJS(t) : '// (empty file)'); codeEditor.refresh(); }
-$('newFileBtn').addEventListener('click', function () {
+/* Named, because two things call it: the New button in the footer and the + on the source folder.
+   The + exists so both folders offer the same gesture in the same place — a panel where one section
+   has an add button and the other does not reads as if the second one cannot be added to. */
+function newScript() {
   modal({ title: 'New script', message: 'Name your script (letters, numbers, - or _). ".js" is added automatically.', input: true, placeholder: 'enemy.js', okLabel: 'Create',
     onOk: function (name) { if (!name) return; name = name.trim(); if (!/\.js$/.test(name)) name += '.js';
       if (!/^[A-Za-z0-9_-]+\.js$/.test(name)) { toast('Use letters, numbers, - or _ only.'); return; }
       if (project.files[name] !== undefined) { toast('A file with that name already exists.'); return; }
       project.files[name] = '// ' + name + '\n// Code you write here runs with the game when you press Run.\n';
       project.order.push(name); saveProject(); refreshFiles(); openFile(name); toast('Created ' + name); } });
-});
+}
+$('newFileBtn').addEventListener('click', newScript);
 function saveFile(cb) { if (reviewing) { toast('Apply or dismiss the suggested change first.'); return; } project.files[currentFile] = codeEditor.getValue(); saveProject(); toast('Saved ✓'); if (cb) cb(); } // saves to the browser only
 $('saveBtn').addEventListener('click', function () { saveFile(); });
 $('runBtn').addEventListener('click', function () { saveFile(function () { runGame(); }); });
@@ -175,6 +298,11 @@ function commitSetting(k, v) {
   // regex matched something it should not have, and writing it would break the student's game.
   if (!validJS(after)) { toast('Could not change ' + k + ' — check ' + file + ' for a typo.'); return; }
   project.files[file] = after; saveProject();
-  if (typeof isGameRunning === 'function' && isGameRunning()) startGame();  // watch it land
+  /* Push the number into the running game rather than rebuilding it. A rebuild threw away the
+     level, the score and where the player was standing, which made the panel useless for the exact
+     thing it exists to do — drag gravity and WATCH. See configBridge in game-runner.js.
+     The file is still written first and stays the source of truth; this only stops the screen from
+     resetting between the drag and the result. */
+  if (typeof isGameRunning === 'function' && isGameRunning()) sendConfigLive(k, v);
   if (!$('view-code').hidden) loadCode();
 }

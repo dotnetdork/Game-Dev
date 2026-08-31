@@ -36,7 +36,7 @@ const PKEY = 'leagueProject';
        replaced, so nothing is ever silently destroyed
    `keepBroken` is the important one. Losing a save to a parse error is recoverable; losing it
    because we cheerfully wrote a fresh default over the top of it is not. */
-const SCHEMA = { project: 1, progress: 1 };
+const SCHEMA = { project: 2, progress: 1 };
 
 function keepBroken(key, raw, why) {
   try {
@@ -45,10 +45,22 @@ function keepBroken(key, raw, why) {
   } catch (e) { /* storage may be full; the warning above is the fallback */ }
 }
 
-/* Each entry migrates FROM its key TO the next version. Empty today by design: v1 is the first
-   numbered shape, and the un-numbered blobs that came before it are handled by adopt() below. */
+/* Each entry migrates FROM its key TO the next version. The un-numbered blobs that came before v1
+   are handled by adopt() in loadProject(). */
 const MIGRATIONS = {
-  project: {},
+  project: {
+    /* v1 -> v2: a project gained an ASSET LIST.
+       Owning a picture and loading it used to be the same thing: every owned asset was injected
+       into the game frame and load.image()d on every single Run. That was fine at 265 assets when
+       nobody owned many. The Store now sells 400-tile sets, so it is 400 requests before create()
+       runs, on a school network.
+       So the two are separate now — `assets` is what this project LOADS, curated in the content
+       browser. Filling it needs `state.unlocked`, which does not exist yet at this point in the
+       boot (state is built further down this file), so it is left null here and materialised by
+       ensureProjectAssets() on first use. Null means "everything owned", which is exactly the old
+       behaviour — an existing student's game cannot break by opening it. */
+    1: function (p) { p.assets = null; return p; }
+  },
   progress: {}
 };
 
@@ -67,7 +79,11 @@ function migrate(kind, data) {
 function defaultProject() {
   const files = {};
   STARTER_ORDER.forEach(function (n) { files[n] = STARTER[n]; });
-  return { v: SCHEMA.project, files: files, order: STARTER_ORDER.slice() };
+  /* A new project starts with the free assets in it — the three 1-bit tiles the starter game is
+     built from, plus the classic player/grass/sky/coin and the two sounds. `window.STORE_ASSETS` is
+     safe to read here: assets-manifest.js is the first script on the page. */
+  const free = (window.STORE_ASSETS || []).filter(function (a) { return a.free; }).map(function (a) { return a.key; });
+  return { v: SCHEMA.project, files: files, order: STARTER_ORDER.slice(), assets: free };
 }
 function loadProject() {
   const raw = Storage.read(PKEY);
