@@ -41,7 +41,32 @@ server.stderr.on('data', function (d) { serverErr += d; });
 
 function done(code) { try { server.kill(); } catch (e) {} process.exit(code); }
 
-waitForServer('http://localhost:' + PORT + '/api/lessons', 40).then(function () {
+/* ---- get past the front door ----
+   The sign-in page is now the front door in every mode, including a local run with nothing
+   configured — so this check has to sign in like a developer does, rather than assuming the app is
+   simply open. It presses a provider button and keeps the cookie.
+
+   That is a gain, not a tax: booting the app now also proves the local sign-in path works, which
+   nothing else covered. If this ever returns no cookie, the failure below says so directly instead
+   of showing up as thirteen unrelated 401s. */
+let COOKIE = '';
+function withAuth(init) {
+  const i = Object.assign({}, init || {});
+  i.headers = Object.assign({}, i.headers || {}, COOKIE ? { Cookie: COOKIE } : {});
+  return i;
+}
+function signIn() {
+  return fetch('http://localhost:' + PORT + '/auth/codeserver', { redirect: 'manual' })
+    .then(function (r) {
+      const raw = r.headers.getSetCookie ? r.headers.getSetCookie() : [r.headers.get('set-cookie')];
+      const hit = (raw || []).filter(Boolean).map(function (c) { return String(c).split(';')[0]; })
+        .filter(function (c) { return c.indexOf('league_session=') === 0; })[0];
+      COOKIE = hit || '';
+      check('signed in through the local door', !!COOKIE, COOKIE ? 'session cookie set' : 'no cookie — is BYPASS off?');
+    });
+}
+
+waitForServer('http://localhost:' + PORT + '/api/lessons', 40).then(signIn).then(function () {
   const pageErrors = [];
   const vc = new VirtualConsole();
   vc.on('jsdomError', function (e) {
@@ -50,7 +75,10 @@ waitForServer('http://localhost:' + PORT + '/api/lessons', 40).then(function () 
     pageErrors.push(e.message);
   });
 
+  const jar = new (require('jsdom').CookieJar)();
+  if (COOKIE) { try { jar.setCookieSync(COOKIE + '; Path=/', 'http://localhost:' + PORT + '/'); } catch (e) {} }
   return JSDOM.fromURL('http://localhost:' + PORT + '/', {
+    cookieJar: jar,
     runScripts: 'dangerously',
     resources: 'usable',
     pretendToBeVisual: true,
@@ -63,7 +91,7 @@ waitForServer('http://localhost:' + PORT + '/api/lessons', 40).then(function () 
             Handing it Node's fetch means the page really does talk to the real server. */
       win.fetch = function (input, init) {
         const url = String(input && input.url ? input.url : input);
-        return fetch(new URL(url, 'http://localhost:' + PORT + '/').href, init);
+        return fetch(new URL(url, 'http://localhost:' + PORT + '/').href, withAuth(init));
       };
       /* 2. Layout. CodeMirror measures text by asking a Range for its rectangle, and jsdom has no
             layout engine at all, so every measurement is missing rather than wrong. Returning
@@ -149,7 +177,7 @@ waitForServer('http://localhost:' + PORT + '/api/lessons', 40).then(function () 
      nobody, and a <cite> in prose is not a picture credit; counting either here would fail the
      build over a picture that is not under-attributed because it is not on screen at all. */
   const onDisk = new Set();
-  return fetch('http://localhost:' + PORT + '/api/lessons')
+  return fetch('http://localhost:' + PORT + '/api/lessons', withAuth())
     .then(function (r) { return r.json(); })
     .then(function (index) {
       (index.modules || []).forEach(function (mod) {
@@ -166,7 +194,7 @@ waitForServer('http://localhost:' + PORT + '/api/lessons', 40).then(function () 
           }
         });
       });
-      return fetch('http://localhost:' + PORT + '/api/credits');
+      return fetch('http://localhost:' + PORT + '/api/credits', withAuth());
     })
     .then(function (r) { return r.ok ? r.json() : Promise.reject(new Error('HTTP ' + r.status)); })
     .then(function (data) {

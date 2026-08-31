@@ -18,6 +18,7 @@ const path = require('path');
 const ai = require('./ai/loader');   // agent + skill prompts, authored as Markdown in ai/
 const usage = require('./ai/usage'); // token + cost meter for paid providers
 const tools = require('./ai/tools'); // read-only lookups an agent can call (Stage 4 Tier 2)
+const auth = require('./auth');      // Google sign-in, restricted to the school domain (off locally)
 
 const app = express();
 app.use(express.json({ limit: '256kb' }));
@@ -156,6 +157,17 @@ app.use((req, res, next) => {
    loader uses XHR and would be refused, and a WebGL texture built from an image with no CORS
    grant taints the context. Both are public files — CC0 art and vendored libraries — so there is
    nothing here to protect, and the alternative was the megabyte of inlined base64 we just removed. */
+/* ---- who is allowed in ----
+   Off entirely unless GOOGLE_CLIENT_ID and friends are set, so `npm start` on a laptop is unchanged
+   and no local workflow needs a Google account. On a public host it is what stops /api/ai being a
+   free Claude proxy for whoever finds the URL. See auth.js for why it is a signed cookie and not a
+   session store, and why the id_token's signature is not re-verified.
+
+   Mounted BEFORE the static middleware on purpose: express.static answers and returns, so a gate
+   installed after it would guard the API and hand out the whole course to anyone. */
+auth.mount(app);
+app.use(auth.requireAuth);
+
 const corsOpen = (res) => { res.setHeader('Access-Control-Allow-Origin', '*'); res.setHeader('Cross-Origin-Resource-Policy', 'cross-origin'); };
 app.use('/assets', express.static(path.join(ROOT, 'public', 'assets'), { setHeaders: corsOpen }));
 app.use('/vendor', express.static(path.join(ROOT, 'public', 'vendor'), { setHeaders: corsOpen }));
@@ -990,7 +1002,24 @@ app.get(/^\/(?!api\/)(?!content\/).*$/, (req, res, next) => {
   res.sendFile(path.join(ROOT, 'public', 'index.html'));
 });
 
-app.listen(PORT, () => {
-  const c = resolveModel('coder'), t = resolveModel('tutor');
-  console.log('Course agent on http://localhost:' + PORT + '  (coder: ' + c.provider + ':' + c.model + ' · tutor: ' + t.provider + ':' + t.model + ')');
-});
+/* A half-configured gate is worse than none: it looks locked and is not. Fail at boot, loudly,
+   rather than serving the whole course to the internet because one variable was misspelt. */
+const authProblem = auth.configProblem();
+if (authProblem) {
+  console.error('[league] ' + authProblem);
+  console.error('[league] refusing to start — see DEPLOY.md.');
+  process.exit(1);
+}
+
+/* Vercel imports this file and calls the exported handler per request; there is no port to listen
+   on and calling listen() there would hold the function open. Locally there is no VERCEL variable
+   and it starts a server exactly as it always has. */
+if (!process.env.VERCEL) {
+  app.listen(PORT, () => {
+    const c = resolveModel('coder'), t = resolveModel('tutor');
+    console.log('Course agent on http://localhost:' + PORT + '  (coder: ' + c.provider + ':' + c.model + ' · tutor: ' + t.provider + ':' + t.model + ')'
+      + (auth.enabled() ? '  · sign-in ON' : ''));
+  });
+}
+
+module.exports = app;

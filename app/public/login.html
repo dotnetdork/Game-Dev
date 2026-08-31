@@ -1,0 +1,186 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Sign in — LEAGUE Game Dev</title>
+<link rel="icon" type="image/png" sizes="32x32" href="img/favicon-32x32.png">
+<link rel="icon" type="image/png" sizes="16x16" href="img/favicon-16x16.png">
+<!-- Deliberately standalone: no styles.css, no app scripts. This is the ONE page a signed-out
+     visitor may see, so it loads nothing the rest of the app owns — and it is also the page shown
+     when sign-in has gone wrong, which is a bad moment to depend on the thing you are guarding. -->
+<style>
+  /* Straight from styles.css rather than imported, for the reason above. Same values, so the two
+     cannot look like different products. */
+  :root{
+    --bg:#0a1728; --panel:#0f2440; --panel2:#13304f; --line:#223a58;
+    --ink:#eaf1f8; --muted:#9fb2cc; --dim:#8b9db1;
+    --brand:#f5820a; --gold:#f5b02e; --teal:#2fd0b6; --focus:#7cc4ff;
+    --font:'Segoe UI',Roboto,Arial,sans-serif;
+  }
+  /* Vendored, not linked from Google. Everything else in this app is self-hosted so it keeps
+     working on a filtered school network with no CDN access, and a login page is the worst possible
+     place to be the exception. SIL Open Font License 1.1. */
+  @font-face{
+    font-family:'Cinzel';
+    src:url('vendor/cinzel/cinzel-latin.woff2') format('woff2');
+    font-weight:600 700; font-style:normal; font-display:swap;
+  }
+  *{box-sizing:border-box;}
+  html,body{height:100%;}
+  body{margin:0;background:var(--bg);color:var(--ink);font-family:var(--font);line-height:1.6;
+    display:flex;align-items:center;justify-content:center;padding:40px 20px;}
+  main{width:100%;max-width:520px;text-align:center;}
+
+  /* The full logo — figures AND wordmark — in LEAGUE orange.
+     The brand file has orange figures over BLACK text, which disappears on a navy background, and
+     the all-white file reads but is not the brand colour. So the white one is used as a MASK and
+     the colour is painted behind it: one image, brand orange, nothing cropped away. */
+  .logo{width:250px;max-width:72%;aspect-ratio:2889/2376;margin:0 auto 18px;
+    background:var(--brand);
+    -webkit-mask:url('img/league-logo-white.png') no-repeat center/contain;
+    mask:url('img/league-logo-white.png') no-repeat center/contain;}
+  /* If a browser cannot do masks it gets the white logo as a plain image rather than an orange
+     rectangle, which is what an unsupported mask would otherwise leave behind. */
+  @supports not ((-webkit-mask: url('')) or (mask: url(''))){
+    .logo{background:center/contain no-repeat url('img/league-logo-white.png');}
+  }
+
+  /* Cinzel is for the app's NAME and nothing else — it is the title on a title screen, not a
+     typeface for reading. Everything below stays in the app's own face. */
+  h1{margin:0 0 4px;font-family:'Cinzel',Georgia,serif;font-weight:700;
+    font-size:clamp(30px,7vw,44px);letter-spacing:.5px;line-height:1.1;color:var(--ink);}
+  .sub{margin:0 0 24px;font-size:12px;font-weight:700;letter-spacing:2px;
+    text-transform:uppercase;color:var(--brand);}
+  p.blurb{margin:0 0 26px;color:var(--muted);font-size:14.5px;text-align:left;}
+  p.blurb b{color:var(--ink);font-weight:600;}
+
+  .card{background:var(--panel);border:1px solid var(--line);border-radius:14px;padding:20px;}
+  .card h2{margin:0 0 16px;font-size:11px;font-weight:700;letter-spacing:1.6px;
+    text-transform:uppercase;color:var(--dim);}
+  .btns{display:flex;flex-direction:column;gap:10px;}
+
+  .btn{display:flex;align-items:center;justify-content:center;gap:11px;width:100%;
+    border-radius:9px;padding:13px 16px;font-family:var(--font);font-size:15px;font-weight:600;
+    text-decoration:none;cursor:pointer;border:1px solid transparent;
+    transition:filter .12s,background .12s,border-color .12s;}
+  .btn svg,.btn img{flex:none;}
+  .btn:focus-visible{outline:3px solid var(--focus);outline-offset:2px;}
+  /* The students' door, so it is the loud one. */
+  .btn.primary{background:var(--brand);color:#241300;}
+  .btn.primary:hover{filter:brightness(1.08);}
+  /* The bolt is brand orange, so on an orange button it would be an orange shape on an orange
+     field. It could be recoloured with a mask — it is a solid silhouette, unlike the flag, which
+     has an opaque white bolt cut into it that a mask would fill in — but the disc keeps the mark in
+     its own colour, which is the point of using the League's mark rather than a generic glyph.
+     A circle rather than a rounded square: this is a free-standing mark, not an app tile, so the
+     shape should read as a badge behind it rather than a box around it. */
+  .btn.primary img{background:#fff5ec;border-radius:50%;padding:4px;}
+  /* Google's brand guidance: white button, their mark at full colour, never recoloured to match a
+     theme. It is the one element here that is not ours to restyle. */
+  .btn.google{background:#fff;color:#1f1f1f;border-color:#dadce0;}
+  .btn.google:hover{background:#f7f8f8;}
+  .btn.ghost{background:transparent;color:var(--muted);border-color:var(--line);}
+  .btn.ghost:hover{border-color:#3a6da3;color:var(--ink);}
+
+  .msg{margin:0 0 20px;padding:12px 14px;border-radius:10px;font-size:13.5px;text-align:left;
+    background:#3a2416;border:1px solid #7a4a1c;color:#ffd9a8;}
+  .msg[hidden]{display:none;}
+  .none{margin:0;color:var(--dim);font-size:13.5px;}
+</style>
+</head>
+<body>
+<main>
+  <div class="logo" role="img" aria-label="The LEAGUE of Amazing Programmers"></div>
+  <h1>Game Dev</h1>
+  <p class="sub">Class access only</p>
+
+  <p id="msg" class="msg" hidden></p>
+
+  <p class="blurb">
+    This is a League class site and it is still being built, so it is not open to the public.
+    <b>Students</b> sign in with their League account — the same one as the CodeServer.
+    <b>Teachers</b> sign in with their <b>@jointheleague.org</b> Google account. If it will not let
+    you in, check you have used your League account and not a personal one.
+  </p>
+
+  <div class="card">
+    <h2>For authentication purposes</h2>
+    <div class="btns" id="btns"></div>
+  </div>
+</main>
+
+<script>
+(function () {
+  var REASON = {
+    notlisted:  'That account is not on the list for this site. Ask your teacher to add you.',
+    domain:     'That is not a League account. Teachers need to use their @jointheleague.org Google account — a personal one will not work.',
+    expired:    'That sign-in took too long and expired. Have another go.',
+    cancelled:  'Sign-in was cancelled.',
+    off:        'That way of signing in is switched off for this site.',
+    /* `npm run demo:login` only. Says what it is rather than pretending to fail. */
+    demo:       'This is a preview of the sign-in page — the buttons are not connected to anything yet.',
+    codeserver: 'League sign-in could not be reached just now. Wait a moment and try again.',
+    google:     'Google could not complete the sign-in. Wait a moment and try again.',
+    github:     'GitHub could not complete the sign-in. Wait a moment and try again.',
+    out:        'You are signed out.'
+  };
+  var q = new URLSearchParams(location.search);
+  var e = q.get('e');
+  if (e && REASON[e]) { var m = document.getElementById('msg'); m.textContent = REASON[e]; m.hidden = false; }
+
+  /* Same-origin paths only. An open redirect here would turn the login page into a phishing hop. */
+  var raw = q.get('next');
+  var next = (raw && raw.charAt(0) === '/' && raw.charAt(1) !== '/') ? raw : null;
+  var suffix = next ? '?next=' + encodeURIComponent(next) : '';
+
+  var GOOGLE_MARK =
+    '<svg width="18" height="18" viewBox="0 0 18 18" aria-hidden="true">' +
+    '<path fill="#4285F4" d="M17.64 9.2c0-.64-.06-1.25-.16-1.84H9v3.48h4.84a4.14 4.14 0 0 1-1.8 2.72v2.26h2.92c1.7-1.57 2.68-3.88 2.68-6.62z"/>' +
+    '<path fill="#34A853" d="M9 18c2.43 0 4.47-.8 5.96-2.18l-2.92-2.26c-.81.54-1.84.86-3.04.86-2.34 0-4.32-1.58-5.03-3.7H.96v2.33A9 9 0 0 0 9 18z"/>' +
+    '<path fill="#FBBC05" d="M3.97 10.72a5.4 5.4 0 0 1 0-3.44V4.95H.96a9 9 0 0 0 0 8.1l3.01-2.33z"/>' +
+    '<path fill="#EA4335" d="M9 3.58c1.32 0 2.5.45 3.44 1.35l2.58-2.58C13.46.9 11.43 0 9 0A9 9 0 0 0 .96 4.95l3.01 2.33C4.68 5.16 6.66 3.58 9 3.58z"/></svg>';
+  var GITHUB_MARK =
+    '<svg width="18" height="18" viewBox="0 0 16 16" fill="currentColor" aria-hidden="true">' +
+    '<path d="M8 0C3.58 0 0 3.58 0 8c0 3.54 2.29 6.53 5.47 7.59.4.07.55-.17.55-.38 0-.19-.01-.82-.01-1.49-2.01.37-2.53-.49-2.69-.94-.09-.23-.48-.94-.82-1.13-.28-.15-.68-.52-.01-.53.63-.01 1.08.58 1.23.82.72 1.21 1.87.87 2.33.66.07-.52.28-.87.51-1.07-1.78-.2-3.64-.89-3.64-3.95 0-.87.31-1.59.82-2.15-.08-.2-.36-1.02.08-2.12 0 0 .67-.21 2.2.82a7.4 7.4 0 0 1 2-.27c.68 0 1.36.09 2 .27 1.53-1.04 2.2-.82 2.2-.82.44 1.1.16 1.92.08 2.12.51.56.82 1.27.82 2.15 0 3.07-1.87 3.75-3.65 3.95.29.25.54.73.54 1.48 0 1.07-.01 1.93-.01 2.2 0 .21.15.46.55.38A8.01 8.01 0 0 0 16 8c0-4.42-3.58-8-8-8z"/></svg>';
+
+  var SHAPE = {
+    /* The League bolt — the same mark as the favicon, so the tab icon and the button a student
+       presses to get in are the same thing. */
+    codeserver: { cls: 'primary', icon: '<img src="img/bolt-icon.png" width="24" height="24" alt="">' },
+    google:     { cls: 'google',  icon: GOOGLE_MARK },
+    github:     { cls: 'ghost',   icon: GITHUB_MARK }
+  };
+  /* Rendered from what the server says is actually configured, so the page can never offer a door
+     that is not there. */
+  var ORDER = ['codeserver', 'google', 'github'];
+
+  fetch('/auth/me', { credentials: 'same-origin' })
+    .then(function (r) { return r.json(); })
+    .then(function (d) {
+      if (d && d.signedIn) { location.replace(next || '/'); return; }
+      var host = document.getElementById('btns');
+      var providers = (d && d.providers) || {};
+      var any = false;
+      ORDER.forEach(function (key) {
+        var p = providers[key];
+        if (!p || !p.on) return;
+        any = true;
+        var a = document.createElement('a');
+        a.className = 'btn ' + SHAPE[key].cls;
+        a.href = '/auth/' + key + suffix;
+        a.innerHTML = SHAPE[key].icon + '<span>Continue with ' + p.label + '</span>';
+        host.appendChild(a);
+      });
+      if (!any) {
+        host.innerHTML = '<p class="none">No way of signing in has been set up on this deployment yet.</p>';
+      }
+    })
+    .catch(function () {
+      document.getElementById('btns').innerHTML =
+        '<p class="none">Could not reach the server. Reload the page to try again.</p>';
+    });
+})();
+</script>
+</body>
+</html>
