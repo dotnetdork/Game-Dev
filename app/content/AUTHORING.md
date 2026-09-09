@@ -49,7 +49,7 @@ decoration), it must have a **```zone or a ```yourturn** (otherwise it insists o
 
 **`kind: sheet`** (the default) is a **board** of the student's own answers — one card per slot of
 `design.md` — with tools above it and the helper beside it. It is for the modules where the work is
-deciding: Game Engines, Game Ideation, Core Mechanics.
+deciding: Game Engines, Concept Ideation, Core Mechanics.
 
 **`kind: build`** is **their real game running above their real code**, with the helper beside it.
 It is for the modules where the work is building: Phaser Programming, Systems Architecture, Asset
@@ -133,7 +133,7 @@ words they are inventing.
 
 ## The student's design notes — `design.md`
 Every project ships with `design.md`: the student's **one-sheet**, six slots, filled in during the
-Game Ideation module and revised by every checkpoint after it. It is the only file in a project that
+Concept Ideation module and revised by every checkpoint after it. It is the only file in a project that
 is not code — the game runner, the linter, `loadCode`'s formatter and the `parses:` rule all skip it
 (`isCodeFile` in js/project.js), and the AI can only write `.js`, so the Build panel cannot rewrite
 it. **Building zones are its editor** (see above); the Code tab is where a student reads it.

@@ -2,7 +2,7 @@
 
 > **This is the v1 outline — 10 modules, 47 lessons — and it is not what the course is.**
 > The course shipped as 5 modules / 22 lessons (commit `0289fe1`) and is now 6 modules / 30
-> lessons: Game Engines · **Game Ideation** · Core Mechanics · Phaser Programming · Systems
+> lessons: Game Engines · **Concept Ideation** · Core Mechanics · Phaser Programming · Systems
 > Architecture · Asset Design, each ending in a checkpoint on the student's own game.
 > **`app/content/course.yaml` is the truth**, and its header comment explains the ordering.
 > Kept because the research notes at the bottom are still the sourcing for that ordering, and

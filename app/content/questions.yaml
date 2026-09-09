@@ -137,7 +137,7 @@ tutor:
       - What is actually happening between one frame and the next?
       - Why would my game run at a different speed on another computer?
       - What is a canvas?
-    Game Ideation:
+    Concept Ideation:
       - How do people come up with game ideas?
       - Is my idea too big?
       - What do I do if I cannot think of anything at all?
@@ -745,7 +745,7 @@ coder:
       - Print something to the console once every second.
       - Make the shape bounce off the edges instead of leaving.
       - Slow the whole game down to half speed.
-    Game Ideation:
+    Concept Ideation:
       - Make the coins run away from the player instead of sitting still.
       - Turn jumping off so I can feel what the game is like without it.
       - Give the player one life and restart when they lose it.

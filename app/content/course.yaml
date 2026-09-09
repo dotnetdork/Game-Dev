@@ -13,7 +13,7 @@
 # the arc Use -> Modify -> Create instead of stopping at Modify, and they are why the module's stars
 # wait — you cannot arrive at the part where you build your own game having built nothing.
 #
-# Game Ideation is second, not first. Not first because the course has to open with a game being
+# Concept Ideation is second, not first. Not first because the course has to open with a game being
 # played rather than a worksheet, and because at minute zero a student has no words to describe an
 # idea with — not "sprite", not "collision". Not later, because the five Core Mechanics lessons
 # after it are every one of them a decision about a game, and a student with no game in mind reads
@@ -44,7 +44,7 @@ modules:
     lessons: [what-an-engine-does, physics-and-collision, what-a-game-is-made-of, from-project-to-playable, your-game-in-one-line]
 
   - id: ideation
-    name: "Game Ideation"
+    name: "Concept Ideation"
     stars: 130
     lessons: [where-ideas-come-from, scope-and-cutting, design-on-one-page, your-one-sheet]
 

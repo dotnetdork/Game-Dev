@@ -13,11 +13,11 @@ const STARTER_ORDER = ['design.md', 'config.js', 'world.js', 'player.js', 'coins
 /* The one-sheet. Five slots, deliberately — a design doc a twelve-year-old will actually fill in is
    a pitch card, not a specification. Its job is not to describe a game, it is to make them CUT: the
    last slot is the one no template has and the one that does the work.
-   It ships empty and stays empty until the Game Ideation module, which is why the top of it says so
+   It ships empty and stays empty until the Concept Ideation module, which is why the top of it says so
    rather than looking like homework nobody set. */
 STARTER['design.md'] = `# My game
 
-Nothing here yet — and that is fine. You fill this in during **Game Ideation**.
+Nothing here yet — and that is fine. You fill this in during **Concept Ideation**.
 
 Right now the game in the other files is the one you were handed. This page is where it turns
 into yours. Real studios write one of these before they build anything, and it fits on one page
