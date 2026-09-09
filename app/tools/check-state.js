@@ -74,9 +74,79 @@ console.log('\n--- an existing save from before versioning ---');
   check('un-numbered project is adopted, not replaced', project.files['game.js'], '// mine');
   check('...and stamped to the current version', project.v, schema.project);
   check('un-numbered progress keeps its XP', state.xp, 900);
-  check('...and its completed lessons', state.done, { '0.0': true });
+  /* This blob has no `v` at all, so it enters the walk at v0 — which makes it the regression test
+     for the explicit `0:` no-op step in MIGRATIONS.progress. Without that step migrate() treats a
+     missing step as "shape unchanged" and stamps straight to the target, carrying the oldest saves
+     past the re-key below without running it. If someone deletes that step, this line fails. */
+  check('...and its completed lessons, re-keyed to the lesson they were about',
+    state.done, { 'what-an-engine-does': true });
   check('...and gains keys added since it was written', state.activities, {});
   check('nothing was quarantined', store.keys().filter(k => k.includes('.broken.')).length, 0);
+}
+
+console.log('\n--- progress from before the course was reordered ---');
+{
+  /* Every position-keyed shape at once. The point of the re-key is that a tick means "this student
+     finished The Core Loop", not "this student finished whatever is fifth" — so each assertion below
+     names the lesson, and would fail if a record had been left on its old seat. */
+  const v1 = JSON.stringify({
+    v: 1, xp: 2400, stars: 310,
+    done: { '1.0': true, '4.3': true },
+    activities: { '2.1': { q0: true, r1: true } },
+    labs: { '2.1:c0': { code: '// mine', revealed: true } },
+    practice: { '4.2:y0': { passed: true, snap: { 'game.js': '// before' } } },
+    modDone: { '0': true, '2': true },
+    badges: { 'Bug Hunter badge': { at: 1700000000000, lesson: '2.4' } },
+    at: '3.0', weekXp: 40, weekStart: 1700000000000,
+    published: [{ name: 'My Game', date: 1700000000000 }], unlocked: { 'coin-gold': true }
+  });
+  const { state, store, schema } = load({ leagueProgress: v1 });
+  check('done is keyed by the lesson', state.done, { 'the-core-loop': true, 'ship-it': true });
+  check('activities move with their lesson, inner keys untouched',
+    state.activities, { 'decisions-and-repeats': { q0: true, r1: true } });
+  // Only the half before the FIRST colon is a lesson; the widget key has to survive intact.
+  check('a lab draft keeps its widget key', state.labs,
+    { 'decisions-and-repeats:c0': { code: '// mine', revealed: true } });
+  check('a practice snapshot keeps its widget key and its contents', state.practice,
+    { 'juice:y0': { passed: true, snap: { 'game.js': '// before' } } });
+  // modDone is what stops the star award firing a second time, so a wrong key here costs stars.
+  check('modDone is keyed by the module', state.modDone, { engines: true, phaser: true });
+  check('a badge points at the lesson that awarded it', state.badges['Bug Hunter badge'].lesson, 'reading-an-error');
+  check('the resume point is a lesson', state.at, 'game-state');
+  check('XP and stars are untouched', [state.xp, state.stars], [2400, 310]);
+  check('everything not keyed by position is untouched',
+    [state.weekXp, state.published[0].name, state.unlocked['coin-gold']], [40, 'My Game', true]);
+  check('it is stamped to the current version', state.v, schema.progress);
+  check('nothing was quarantined', store.keys().filter(k => k.includes('.broken.')).length, 0);
+}
+
+console.log('\n--- the re-key does not destroy what it does not recognise ---');
+{
+  /* A key the table has never heard of is far more likely a lesson added after the table was frozen
+     than it is a mistake. Dropping it would delete a finished lesson to tidy a namespace. */
+  const v1 = JSON.stringify({ v: 1, done: { '9.9': true, 'some-future-lesson': true }, at: 'juice' });
+  const { state } = load({ leagueProgress: v1 });
+  check('an unrecognised key survives under its own name',
+    state.done, { '9.9': true, 'some-future-lesson': true });
+  // `at` is looked up rather than transformed, so a value that is already a slug passes through.
+  check('a resume point that is already a lesson id is left alone', state.at, 'juice');
+}
+
+console.log('\n--- the re-key is idempotent ---');
+{
+  /* Feed the migration its own output back in, labelled v1. It must be a no-op: a slug is not a key
+     in the table, so a second pass changes nothing. This is what makes a failed write safe — the
+     migration runs again on the next boot rather than mangling what it already converted. */
+  const twice = JSON.stringify({
+    v: 1,
+    done: { 'the-core-loop': true }, activities: { 'juice': { q0: true } },
+    labs: { 'juice:c0': { code: '// x' } }, modDone: { engines: true }, at: 'ship-it'
+  });
+  const { state } = load({ leagueProgress: twice });
+  check('a second pass changes nothing',
+    [state.done, state.activities, state.labs, state.modDone, state.at],
+    [{ 'the-core-loop': true }, { 'juice': { q0: true } }, { 'juice:c0': { code: '// x' } },
+     { engines: true }, 'ship-it']);
 }
 
 console.log('\n--- a save from a NEWER build than this one ---');

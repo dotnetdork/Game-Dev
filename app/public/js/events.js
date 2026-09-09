@@ -47,8 +47,8 @@ function emit(name, detail) {
 /* The names, in one place, so a typo is a missing constant instead of an event nobody ever
    receives. `emit('lessson-done')` fails silently forever; `EV.LESSSON_DONE` fails immediately. */
 const EV = {
-  LESSON_DONE: 'lesson:done',        // detail: { id, xp, moduleIndex }
-  MODULE_DONE: 'module:done',        // detail: { moduleIndex, stars }
+  LESSON_DONE: 'lesson:done',        // detail: { id (the lesson's id, not its position), xp, moduleIndex }
+  MODULE_DONE: 'module:done',        // detail: { moduleIndex, moduleId, stars }
   PROGRESS_CHANGED: 'progress:changed',  // XP, Stars or unlocks moved
   PROJECT_CHANGED: 'project:changed',    // the student's files were edited or saved
   LESSON_OPENED: 'lesson:opened',    // detail: { index, id }

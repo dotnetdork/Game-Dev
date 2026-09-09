@@ -3,9 +3,24 @@
    (Markdown with YAML front-matter). Loaded read-only at boot; edit the files, not this code. */
 let course = { id: 'course1', name: 'Course', library: 'Phaser', modules: [] };
 let flat = [];
+/* `id` is the lesson's own id from course.yaml, and `mi`/`li` are where it currently sits.
+   Those are different questions and used to share one answer: `id` was '<mi>.<li>', which every
+   progress store then used as its key. A seat number is not an identity — reorder the course and
+   the ticks stay on the seats. See the note above V1_COURSE in project.js.
+   No `|| (mi + '.' + li)` fallback here. It would look defensive and be the opposite: it would
+   quietly reintroduce position keys for the one input that most needs to fail loudly. */
 function buildFlat() {
   flat = [];
-  course.modules.forEach(function (m, mi) { m.lessons.forEach(function (l, li) { flat.push({ mi: mi, li: li, id: mi + '.' + li, l: l, m: m }); }); });
+  const seen = {};
+  course.modules.forEach(function (m, mi) {
+    m.lessons.forEach(function (l, li) {
+      const id = l.id || '';
+      if (!id) console.warn('[league] course.yaml: a lesson in "' + m.name + '" has no id — its progress cannot be saved.');
+      else if (seen[id]) console.warn('[league] course.yaml: two lessons share the id "' + id + '" — they will share progress.');
+      seen[id] = true;
+      flat.push({ mi: mi, li: li, id: id, l: l, m: m });
+    });
+  });
 }
 function splitFrontMatter(text) {
   const m = text.match(/^---\s*\n([\s\S]*?)\n---\s*\n?([\s\S]*)$/);
@@ -25,7 +40,9 @@ function loadCourse() {
   }).then(function (data) {
     course = { id: data.id, name: data.name || 'Course', library: data.library || 'Phaser', modules: [] };
     (data.modules || []).forEach(function (mod) {
-      const module = { name: mod.name, stars: mod.stars || 0, lessons: [] };
+      // `id` is carried through because state.modDone keys off it — the module's name is shown to
+      // students and may be reworded, and its index moves the moment a module is inserted.
+      const module = { id: mod.id, name: mod.name, stars: mod.stars || 0, lessons: [] };
       course.modules.push(module);
       (mod.lessons || []).forEach(function (l) {
         // `id` is new: the body fetch needs the filename, which used to be implicit in load order.
@@ -126,7 +143,7 @@ function renderOutline() {
     const kids = document.createElement('div'); kids.className = 'kids'; kids.setAttribute('role', 'group');
     m.lessons.forEach(function (l, li) {
       const idx = flat.findIndex(function (f) { return f.mi === mi && f.li === li; });
-      const locked = !lessonUnlocked(idx), done = !!state.done[mi + '.' + li];
+      const locked = !lessonUnlocked(idx), done = !!state.done[l.id];
       const icon = done ? 'mdi-check-circle' : (locked ? 'mdi-lock' : 'mdi-file-document-outline');
       const row = document.createElement('button'); row.type = 'button';
       // `lesson-row`, not `page`: `.page` is the full-screen Store/Gallery layout rule, and it was

@@ -2375,8 +2375,19 @@ function completeLesson() {
   toast(factor < 1
     ? 'Lesson complete!  +' + earned + ' XP  (half, because you read the answer)'
     : 'Lesson complete!  +' + earned + ' XP');
-  const allDone = course.modules[f.mi].lessons.every(function (l, li) { return state.done[f.mi + '.' + li]; });
-  if (allDone && !state.modDone[f.mi]) { state.modDone[f.mi] = true; state.stars += course.modules[f.mi].stars; setTimeout(function () { toast('Module complete: ' + course.modules[f.mi].name + '!  +' + course.modules[f.mi].stars + ' ★'); }, 900); }
+  /* Ask the module which lessons it contains rather than rebuilding their key names out of f.mi
+     and a counter. The arithmetic version was reading seat numbers: reorder the course and it asks
+     about whatever now sits in those seats instead of about this module's lessons. */
+  const mod = course.modules[f.mi];
+  const allDone = mod.lessons.every(function (l) { return !!state.done[l.id]; });
+  /* Keyed by the module's id from course.yaml, not its index, for the same reason and with a
+     sharper edge: modDone is the only thing stopping the star award happening twice. */
+  const modKey = mod.id;
+  if (allDone && !state.modDone[modKey]) {
+    state.modDone[modKey] = true;
+    state.stars += mod.stars;
+    setTimeout(function () { toast('Module complete: ' + mod.name + '!  +' + mod.stars + ' ★'); }, 900);
+  }
   saveState();
   /* Announce it and stop caring who is listening. Everything that has to react to a finished
      lesson — the outline tick, the progress strip, the countdown to the next one — subscribes in
@@ -2386,7 +2397,7 @@ function completeLesson() {
      from scratch and wipe every answer and run-cell edit at the exact moment the student earned
      the reward. Nothing here touches the screen at all now. */
   emit(EV.LESSON_DONE, { id: f.id, xp: f.l.xp, moduleIndex: f.mi, lesson: f });
-  if (allDone && state.modDone[f.mi]) emit(EV.MODULE_DONE, { moduleIndex: f.mi, stars: course.modules[f.mi].stars });
+  if (allDone && state.modDone[modKey]) emit(EV.MODULE_DONE, { moduleIndex: f.mi, moduleId: modKey, stars: mod.stars });
 }
 
 /* Who reacts to a finished lesson. Registered once, at load, so the list of consequences is

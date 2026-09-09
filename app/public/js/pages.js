@@ -328,7 +328,7 @@ function courseProgress() {
   let done = 0, total = 0;
   const mods = (course.modules || []).map(function (m, mi) {
     let d = 0;
-    m.lessons.forEach(function (l, li) { total++; if (state.done[mi + '.' + li]) { d++; done++; } });
+    m.lessons.forEach(function (l) { total++; if (state.done[l.id]) { d++; done++; } });
     return { name: m.name, accent: moduleAccent(mi), done: d, total: m.lessons.length };
   });
   return { done: done, total: total, mods: mods };
@@ -511,8 +511,8 @@ function badgeShortName(name) { return String(name).replace(/\s*badges?\s*$/i, '
 function badgeGroups() {
   return course.modules.map(function (m, mi) {
     const badges = [];
-    m.lessons.forEach(function (l, li) {
-      if (l.reward) badges.push({ name: l.reward, lesson: l.t, id: mi + '.' + li });
+    m.lessons.forEach(function (l) {
+      if (l.reward) badges.push({ name: l.reward, lesson: l.t, id: l.id });
     });
     return { name: m.name, accent: moduleAccent(mi), badges: badges };
   }).filter(function (g) { return g.badges.length; });

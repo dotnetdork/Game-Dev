@@ -427,6 +427,50 @@ files.forEach(function (f) {
 
 checkUpscaleGuard();
 checkDemoNames();
+checkLessonIds();
+
+/* ---- a lesson's id is a storage key, so it has to be one ----
+   state.done, state.activities, state.labs and state.practice all hang off the lesson's id from
+   course.yaml. It used to be the lesson's POSITION, and moving to the id is what makes the course
+   reorderable — but it also means a typo in this file is no longer cosmetic:
+
+     an EMPTY id       collapses every lesson without one into a single record. Finish one and they
+                       all tick. (A blank list entry — `lessons: [a, , b]` — is how you get one.)
+     a DUPLICATE id    merges two lessons' ticks, answers and lab drafts, and lessonIndexById only
+                       ever finds the first of them. Same argument as the duplicate-badge check.
+     a ':' in an id    breaks the "<lessonId>:<widgetKey>" format labs and practice are keyed by.
+     '__proto__'       is swallowed by the prototype setter, then reads back truthy forever, so the
+                       lesson is permanently done and cannot be un-done.
+
+   check-boot.js asserts the same thing against the running app; this one names the file to fix. */
+function checkLessonIds() {
+  const CY = path.join(__dirname, '..', 'content', 'course.yaml');
+  let doc;
+  try { doc = yaml.load(fs.readFileSync(CY, 'utf8')) || {}; }
+  catch (e) { fail('course.yaml', 'does not parse (' + String(e.message).split('\n')[0] + ').'); return; }
+  const seen = {};
+  let n = 0;
+  (doc.modules || []).forEach(function (mod) {
+    const where = 'course.yaml (' + (mod.name || mod.id || '?') + ')';
+    (mod.lessons || []).forEach(function (id) {
+      n++;
+      if (id === null || id === undefined || String(id).trim() === '') {
+        fail(where, 'has a blank lesson id — a lesson with no id cannot save progress.');
+        return;
+      }
+      id = String(id);
+      if (!/^[a-z0-9]+(-[a-z0-9]+)*$/.test(id)) {
+        fail(where, '"' + id + '" is not usable as a progress key. Lowercase letters, digits and single hyphens only.');
+      }
+      if (seen[id]) fail(where, '"' + id + '" is listed twice (also in ' + seen[id] + ') — the two would share progress.');
+      else seen[id] = where;
+      if (!fs.existsSync(path.join(DIR, id + '.md'))) {
+        fail(where, '"' + id + '" has no lessons/' + id + '.md — the outline will show it as missing.');
+      }
+    });
+  });
+  if (!n) fail('course.yaml', 'lists no lessons at all.');
+}
 
 /* ---- `// @demo: name` in a run cell has to name a demo that exists ----
    A run cell can ask for a live picture under the code. If the name is wrong — renamed in

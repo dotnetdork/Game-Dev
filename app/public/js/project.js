@@ -36,13 +36,64 @@ const PKEY = 'leagueProject';
        replaced, so nothing is ever silently destroyed
    `keepBroken` is the important one. Losing a save to a parse error is recoverable; losing it
    because we cheerfully wrote a fresh default over the top of it is not. */
-const SCHEMA = { project: 2, progress: 1 };
+const SCHEMA = { project: 2, progress: 2 };
 
 function keepBroken(key, raw, why) {
   try {
     if (raw) Storage.write(key + '.broken.' + Date.now(), raw);
     console.warn('[league] ' + key + ': ' + why + ' — the old value was kept under ' + key + '.broken.*');
   } catch (e) { /* storage may be full; the warning above is the fallback */ }
+}
+
+/* ---------- re-keying progress from a seat number to a lesson ----------
+   Every progress record used to hang off '<moduleIndex>.<lessonIndex>' — the id buildFlat() makes
+   up in course.js. That is not an identity, it is a seat number. Insert a module at position 2 and
+   seventeen lessons move down one seat while every tick, answer, lab draft and practice snapshot
+   stays behind on the old seat: a student who finished The Core Loop finds that tick sitting on
+   whatever landed at 1.0 instead, and nothing anywhere records which lesson they actually did.
+
+   The key is the lesson's id from course.yaml now — the kebab-case slug that is already in the URL
+   and already in `state.at`. It cannot be reordered, because it is not a position.
+
+   The table below is the 22 lessons of the course as it stood BEFORE the reorder, in that order,
+   and it is FROZEN. This migration has to answer "what was sitting in seat 3.1 when this save was
+   written", and after the reorder course.yaml can no longer answer that. Do not update it when the
+   course changes — being out of date with the live course is the entire point of it. */
+const V1_COURSE = [
+  ['engines',      ['what-an-engine-does', 'physics-and-collision', 'what-a-game-is-made-of', 'from-project-to-playable']],
+  ['mechanics',    ['the-core-loop', 'feedback', 'difficulty-and-flow', 'risk-and-reward', 'progression']],
+  ['phaser',       ['values-and-variables', 'decisions-and-repeats', 'scenes-create-update', 'input-movement-collision', 'reading-an-error']],
+  ['architecture', ['game-state', 'entities-and-components', 'events-not-tangles', 'data-out-of-code']],
+  ['assets',       ['sprites-and-animation', 'sound-design', 'juice', 'ship-it']]
+];
+const V1_LESSON = {};      // '1.0' -> 'the-core-loop'
+const V1_MODULE = {};      // '1'   -> 'mechanics'
+V1_COURSE.forEach(function (m, mi) {
+  V1_MODULE[String(mi)] = m[0];
+  m[1].forEach(function (slug, li) { V1_LESSON[mi + '.' + li] = slug; });
+});
+
+/* Re-key an object through a function.
+   A key the function does not recognise KEEPS ITS NAME rather than being dropped: an unrecognised
+   key is far more likely a lesson added after the table above was frozen than it is a mistake, and
+   deleting a child's finished lesson to tidy up a namespace is not a trade this code gets to make.
+   On a collision the FIRST value wins — two records claiming one lesson means the table is wrong,
+   and quietly overwriting the earlier of them would destroy the one they actually earned. */
+function rekeyed(obj, fn) {
+  const out = {};
+  Object.keys(obj || {}).forEach(function (k) {
+    const nk = fn(k);
+    if (!Object.prototype.hasOwnProperty.call(out, nk)) out[nk] = obj[k];
+  });
+  return out;
+}
+/* labs and practice are keyed '<lessonId>:<widgetKey>' (labKey, below). Only the half before the
+   FIRST colon is a lesson; 'the-core-loop:c0' has to keep its ':c0'. */
+function rekeyedPrefix(obj, fn) {
+  return rekeyed(obj, function (k) {
+    const i = k.indexOf(':');
+    return i < 0 ? fn(k) : fn(k.slice(0, i)) + k.slice(i);
+  });
 }
 
 /* Each entry migrates FROM its key TO the next version. The un-numbered blobs that came before v1
@@ -61,7 +112,39 @@ const MIGRATIONS = {
        behaviour — an existing student's game cannot break by opening it. */
     1: function (p) { p.assets = null; return p; }
   },
-  progress: {}
+  progress: {
+    /* v0 -> v1: nothing changes in the shape. But the step has to EXIST.
+       migrate() treats a missing step as "the shape did not change" and stamps the blob straight to
+       the target version — so without this, a save from before versioning (no `v` at all, therefore
+       v0) would jump past the v1 -> v2 re-key below without running it. Silently, and for exactly
+       the oldest saves, which are the ones with the most in them. */
+    0: function (s) { return s; },
+    /* v1 -> v2: progress is keyed by the lesson, not by where the lesson sits.
+       See the note above V1_COURSE for why, and why that table must never be updated. */
+    1: function (s) {
+      const lesson = function (id) { return V1_LESSON[id] || id; };
+      s.done = rekeyed(s.done, lesson);                       // '1.0'    -> 'the-core-loop'
+      s.activities = rekeyed(s.activities, lesson);           // '1.0'    -> { q0: true }
+      s.labs = rekeyedPrefix(s.labs, lesson);                 // '1.0:c0' -> 'the-core-loop:c0'
+      s.practice = rekeyedPrefix(s.practice, lesson);         // '1.0:y0' -> 'the-core-loop:y0'
+      s.modDone = rekeyed(s.modDone, function (mi) {          // '1'      -> 'mechanics'
+        return V1_MODULE[String(mi)] || String(mi);
+      });
+      /* A badge records which lesson awarded it. The trophy case reads the lesson's title out of
+         the course rather than this field, so nothing on screen changes — but a stored value that
+         says '3.2' once 3.2 is a different lesson is simply false. */
+      Object.keys(s.badges || {}).forEach(function (n) {
+        const b = s.badges[n];
+        if (b && V1_LESSON[b.lesson]) b.lesson = V1_LESSON[b.lesson];
+      });
+      /* `at` has held the slug since the router existed (rememberPlace, js/router.js). A save older
+         than the router has a position there; map that rather than sending the student to lesson
+         one. Looked up rather than transformed, so a value that is ALREADY a slug is not in the
+         table and passes through untouched. */
+      if (V1_LESSON[s.at]) s.at = V1_LESSON[s.at];
+      return s;
+    }
+  }
 };
 
 function migrate(kind, data) {
@@ -324,13 +407,15 @@ const SKEY = 'leagueProgress';
    read with !!, so putting a draft in there would mark an unfinished lab as complete. This holds
    the working state of a lab instead — the code as they left it, whether they have committed to a
    guess, how many runs have failed — keyed "<lessonId>:<widgetKey>". A 50-minute class gets
-   interrupted; coming back to an empty editor is how you lose a 12-year-old. */
+   interrupted; coming back to an empty editor is how you lose a 12-year-old.
+   The lesson half of that key is the lesson's id from course.yaml — a slug, never a position. See
+   the note above V1_COURSE. */
 /* `badges` is new, and it is not a cosmetic addition. Every one of the 22 lessons ends with a
    your-turn step whose card says "Doing this unlocks the <X> badge", and until now nothing anywhere
    awarded, stored or displayed one. The app made a specific promise to a child twenty-two times and
    kept it zero times.
-   Shape: badge name -> { at: <when>, lesson: "<mi.li>" }. Keyed by name because the question a
-   student asks is "have I got the Bug Hunter badge", not "what did lesson 3.2 give me".
+   Shape: badge name -> { at: <when>, lesson: "<lesson id>" }. Keyed by name because the question a
+   student asks is "have I got the Bug Hunter badge", not "what did the twelfth lesson give me".
    No schema bump needed: loadState() merges DEFAULT_STATE first, so an older save gains the key
    with an empty object — which is exactly the case check-state.js already covers. */
 /* `at` is the lesson id the student was last on, for the case the URL cannot answer — they opened

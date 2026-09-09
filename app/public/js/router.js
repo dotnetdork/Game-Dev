@@ -17,6 +17,8 @@
  * Real paths rather than #fragments, because /lesson/what-an-engine-does is a thing you can read
  * out loud to a class and type into a laptop. Lesson ids in course.yaml are already kebab-case, so
  * they ARE the slugs; there is no separate slug table to keep in sync and no way for one to drift.
+ * flat[].id is that same id — the one identity a lesson has, and what every progress store keys
+ * off. It used to be the lesson's position, which is why several reads here said `f.l.id || f.id`.
  *
  * Server side: one catch-all in server.js sends unknown non-file paths to index.html. It sits after
  * express.static, so real files still win.
@@ -117,7 +119,7 @@ function currentRoute() {
     if (v === 'code') view = 'code';
     else if (v === 'play') view = 'game';          // the tab is `play`, the word students read is Game
   }
-  return { kind: 'lesson', id: f.l.id || f.id, mi: f.mi, view: view };
+  return { kind: 'lesson', id: f.id, mi: f.mi, view: view };
 }
 
 /* Called by selectLesson and showPage once they have finished. Pushes only when the address is
@@ -143,7 +145,7 @@ function rememberPlace() {
 
 function lessonIndexById(id) {
   if (typeof flat === 'undefined' || !id) return -1;
-  return flat.findIndex(function (f) { return (f.l.id || f.id) === id; });
+  return flat.findIndex(function (f) { return f.id === id; });
 }
 
 /* Put the app where the URL says. Never pushes — this runs because the URL already changed. */

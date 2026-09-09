@@ -153,6 +153,20 @@ waitForServer('http://localhost:' + PORT + '/api/lessons', 40).then(signIn).then
   check('nothing was quarantined',
     Object.keys(win.localStorage).filter(function (k) { return k.indexOf('.broken.') > -1; }).length === 0);
 
+  /* A lesson's id is its progress key — state.done, activities, labs and practice all hang off it.
+     So these two are not style checks. An empty id collapses every lesson without one into a single
+     record (finish one, they all tick); a duplicate merges two lessons' ticks, answers and lab
+     drafts; a ':' would break the "<lessonId>:<widgetKey>" format that labs and practice use; and
+     '__proto__' would be swallowed by the prototype setter and read back truthy forever.
+     Asserted here rather than in check-lessons because this reads the real course through the real
+     server — so it catches a bad id the moment one is added to course.yaml. */
+  const ids = peek('flat.map(function (f) { return f.id; })') || [];
+  check('every lesson id is a usable storage key', ids.length > 0 && ids.every(function (id) {
+    return /^[a-z0-9]+(-[a-z0-9]+)*$/.test(id);
+  }), ids.filter(function (id) { return !/^[a-z0-9]+(-[a-z0-9]+)*$/.test(id); }).join(', ') || ids.length + ' ids');
+  check('every lesson id is unique', new Set(ids).size === ids.length,
+    ids.length - new Set(ids).size + ' duplicated');
+
   console.log('\n--- the heavy libraries stayed off the boot path ---');
   check('JSHint is not loaded at boot', typeof win.JSHINT === 'undefined');
   check('Prettier is not loaded at boot', typeof win.prettier === 'undefined');
