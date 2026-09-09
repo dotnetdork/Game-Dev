@@ -204,9 +204,23 @@ function resumeIndex() {
   const saved = (typeof state === 'object' && state && state.at) ? lessonIndexById(state.at) : -1;
   if (saved >= 0 && (typeof lessonUnlocked !== 'function' || lessonUnlocked(saved))) return saved;
   if (typeof flat === 'undefined' || typeof lessonUnlocked !== 'function') return 0;
-  let furthest = 0;
-  for (let i = 0; i < flat.length; i++) { if (lessonUnlocked(i)) furthest = i; }
-  return furthest;
+  /* Where they are UP TO — the first lesson they have not finished. NOT the furthest one that
+     happens to be unlocked.
+
+     Those are the same number for a student working through the course in order, which is why the
+     old version looked right. They come apart the moment unlocking is forced: DEV.unlockAll opens
+     every lesson for authoring, so "the last index where lessonUnlocked() is true" became the last
+     lesson in the COURSE, and anyone arriving without a saved place landed on Ship It in Asset
+     Design instead of lesson one.
+
+     Reading progress directly is also the more honest question. Unlock state is a permission; done
+     state is where the student got to, and that is what "resume" means. */
+  const done = (typeof state === 'object' && state && state.done) || {};
+  for (let i = 0; i < flat.length; i++) {
+    if (!done[flat[i].id] && lessonUnlocked(i)) return i;
+  }
+  /* Every lesson finished: leave them at the end rather than sending them back to the beginning. */
+  return flat.length ? flat.length - 1 : 0;
 }
 
 /* Back and forward. The browser has already changed location by the time this fires, so all we do
