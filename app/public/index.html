@@ -370,12 +370,36 @@
           <!-- What you are here to apply. Each one is a real check against their own work, so it
                ticks itself as they go rather than being a list they tick off. -->
           <div class="zone-goals" id="zoneGoals" role="list" aria-label="What to do in this zone"></div>
-          <div class="zone-body">
-            <!-- Two hosts, not one. The tools are painted once per opening and the board repaints
-                 on every edit, so a half-typed item or a shuffle the student is still reading has
-                 to sit outside the thing that gets thrown away. -->
+          <!-- A sheet zone's furniture: tools, then the board of cards. Two hosts, not one, because
+               the tools are painted once per opening and the board repaints on every edit — a
+               half-typed item or a shuffle still being read must not sit inside the thing that gets
+               thrown away. -->
+          <div class="zone-body" id="zoneSheet">
             <div class="zone-tools" id="zoneTools"></div>
             <div id="zoneBoard"></div>
+          </div>
+          <!-- A build zone's furniture: their real game running beside their real code. Different
+               work needs a different room — a board of text boxes is the wrong tool for "make this
+               mechanic run", the same way a code editor would be the wrong tool for "what is your
+               game about". Same shell, swapped contents. -->
+          <div class="zone-build" id="zoneBuild" hidden>
+            <section class="zone-pane" aria-label="Your game">
+              <h2 class="zone-pane-hd"><span class="mdi mdi-play-circle" aria-hidden="true"></span>Your game
+                <span class="zone-run-btns">
+                  <button class="tp tp-play" id="zoneRun" title="Run it" aria-label="Run"><span class="mdi mdi-play" aria-hidden="true"></span></button>
+                  <button class="tp tp-stop" id="zoneStop" title="Stop it" aria-label="Stop" disabled><span class="mdi mdi-stop" aria-hidden="true"></span></button>
+                </span>
+              </h2>
+              <div class="zone-stage" id="zoneStage"></div>
+              <div class="zone-log" id="zoneLog"></div>
+            </section>
+            <section class="zone-pane" aria-label="Your code">
+              <h2 class="zone-pane-hd"><span class="mdi mdi-code-tags" aria-hidden="true"></span>
+                <select id="zoneFile" aria-label="Which file"></select>
+                <button class="zone-save" id="zoneSave" title="Save this file">Save</button>
+              </h2>
+              <div class="zone-editor" id="zoneEditor"></div>
+            </section>
           </div>
           <div class="zone-foot">
             <span class="zone-count" id="zoneCount"></span>

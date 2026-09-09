@@ -43,6 +43,43 @@ be its **module's last lesson** (anywhere else and the stars stop waiting for it
 decoration), it must have a **```zone or a ```yourturn** (otherwise it insists on nothing), and
 **every module must have one**.
 
+### Two kinds of zone
+
+`kind:` picks the furniture, because the two halves of the course need different rooms.
+
+**`kind: sheet`** (the default) is a **board** of the student's own answers — one card per slot of
+`design.md` — with tools above it and the helper beside it. It is for the modules where the work is
+deciding: Game Engines, Game Ideation, Core Mechanics.
+
+**`kind: build`** is **their real game running above their real code**, with the helper beside it.
+It is for the modules where the work is building: Phaser Programming, Systems Architecture, Asset
+Design. Its objectives run **in order** — one live at a time, the next unlocking when the last is
+checked — and the helper hands each one out as a card in the conversation and briefs it against
+their own file. The conversation is the quest log, which is why there is no fourth panel.
+
+A build zone has no `slots:` and no `tools:` (`npm test` refuses both — they are the sign an author
+meant `kind: sheet`), and its goals use `check:` instead of `slot:`.
+
+    ```zone
+    kind: build
+    title: Build Your First Mechanic
+    file: world.js            # which file the editor opens on
+    brief: >
+      What the module just taught, and where to push. This is the biggest lever you have on
+      whether the guide is any use.
+    goals:
+      - say: Write a function for your mechanic
+        brief: One sentence for the guide about what this objective is for.
+        check:
+          - function_added: true
+          - parses: true
+
+`check:` is the practice checker's own rule set, so everything documented under **Your turn** works
+here — plus three added for zones: `function_added: true` (any new top-level name, for when the
+student picks the name), `file_changed: <name>` (that one file differs from how it started, which
+`changed_at_least` cannot express), and `published: true`. The "before" snapshot is taken when the
+zone is first opened.
+
 ### Writing a ```zone
 
     ```zone

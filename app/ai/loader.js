@@ -187,7 +187,16 @@ function buildPrompt(agent, ctx) {
     zoneTitle: (c.zone && c.zone.title) || '(untitled zone)',
     zoneBrief: (c.zone && c.zone.brief) || '(no brief given)',
     zoneBoxes: renderZoneBoxes(c.zone),
-    zoneGoals: renderZoneGoals(c.zone)
+    zoneGoals: renderZoneGoals(c.zone),
+    /* A build zone's extra slots. In a sheet zone these say so plainly rather than being empty —
+       an empty slot in a prompt reads as "there is no code" instead of "there is no code HERE",
+       and the guide starts apologising for something that is not missing. */
+    zoneFile: (c.zone && c.zone.kind === 'build')
+      ? ((c.zone.file || '(no file open)')) : '(this zone has no code in it)',
+    zoneCode: (c.zone && c.zone.kind === 'build')
+      ? (c.zone.code || '(that file is empty)') : '(this zone has no code in it)',
+    zoneLog: (c.zone && c.zone.kind === 'build')
+      ? (c.zone.log || '(they have not run it yet)') : '(this zone has no code in it)'
   });
 }
 

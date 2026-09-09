@@ -172,8 +172,20 @@ function checkZone(where, src) {
   if (!y.title) fail(where, 'has no `title:` — the zone header would be blank.');
   if (!y.brief) fail(where, 'has no `brief:` — the helper would be told nothing about what this zone is for.');
 
+  const kind = y.kind === 'build' ? 'build' : 'sheet';
+  if (y.kind && kind !== y.kind) fail(where, 'has `kind: ' + y.kind + '`, which is not a kind. Use `sheet` or `build`.');
+
   const slots = Array.isArray(y.slots) ? y.slots.map(String) : [];
-  if (!slots.length) { fail(where, 'has no `slots:` — the board would be empty and the zone could never be finished.'); return; }
+  /* A build zone has no board — its furniture is the student's game and their code — so `slots:`
+     is not only unnecessary there, it is a sign the author meant `kind: sheet`. A sheet zone
+     without them is an empty board and a Finish button that can never light up. */
+  if (kind === 'build') {
+    if (slots.length) fail(where, 'is a build zone but has `slots:`. A build zone has no board — did you mean `kind: sheet`?');
+    if (y.tools) fail(where, 'is a build zone but has `tools:`. Tools sit on a board, and a build zone has none.');
+  } else if (!slots.length) {
+    fail(where, 'has no `slots:` — the board would be empty and the zone could never be finished.');
+    return;
+  }
   const key = function (s) { return String(s || '').toLowerCase().replace(/[^a-z0-9]+/g, ''); };
   const known = {};
   slots.forEach(function (s) {
@@ -188,8 +200,19 @@ function checkZone(where, src) {
     const at = where + ' goal ' + (i + 1);
     if (!g || typeof g !== 'object' || Array.isArray(g)) { fail(at, 'is not a set of keys.'); return; }
     if (!g.say) fail(at, 'has no `say:` — the chip on the rail would have no words on it.');
+    /* A build objective is checked with the practice checker's own rules; a sheet goal names a box.
+       One or the other, and neither means the objective can never tick and the zone can never be
+       finished — which is the failure this whole function exists to prevent. */
+    const hasCheck = Array.isArray(g.check) && g.check.length;
     const s = g.slot === undefined || g.slot === null ? '' : String(g.slot);
-    if (!s) { fail(at, 'has no `slot:`, so nothing can ever tick it and the zone cannot be finished.'); return; }
+    if (hasCheck) {
+      g.check.forEach(function (r, ri) {
+        if (!r || typeof r !== 'object' || Array.isArray(r)) fail(at + ' rule ' + (ri + 1), 'is not a set of keys.');
+      });
+      return;
+    }
+    if (!s) { fail(at, 'has neither `slot:` nor `check:`, so nothing can ever tick it and the zone cannot be finished.'); return; }
+    if (kind === 'build') { fail(at, 'uses `slot:`, but a build zone has no board. Objectives there need `check:` rules.'); return; }
     if (s === '*' || s === 'all') return;
     if (!known[key(s)]) fail(at, 'checks the slot "' + s + '", which is not in `slots:` — it can never tick.');
   });

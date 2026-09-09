@@ -211,7 +211,12 @@ function openZoneFromRoute() {
     if (typeof zoneRegistry === 'undefined') return;
     const z = zoneRegistry[0];
     if (z) { if (!openZoneRef) openZone(z); return; }
-    if (++tries > 20) return;              // ~1s; this lesson simply has no zone
+    /* ~5s, not the lab's ~1s. This runs at boot on a cold cache, where selectLesson has to fetch
+       the lesson before there is a zone to find — and on a school Chromebook that is comfortably
+       more than a second. Measured it giving up at one: the link opened the page and not the zone,
+       which looks like the link being wrong rather than slow. Nothing waits on this timer, so the
+       only cost of a longer one is that a lesson genuinely without a zone stops polling later. */
+    if (++tries > 100) return;
     setTimeout(tick, 50);
   };
   tick();

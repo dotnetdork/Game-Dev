@@ -2,7 +2,6 @@
 title: Ship It
 xp: 240
 ai: full
-checkpoint: true
 summary: Your game, your name on it, somebody else playing it.
 ---
 
@@ -229,15 +228,14 @@ explain: A playtest measures what your game communicates without you. The moment
 This is the part that turns a project into a game other people have played. Everything up to now was for you; this is for them.
 
 ```yourturn
-title: Publish your game
-task: Give it a title and put it in the Gallery. This is the last step of the course and the one that counts.
+title: Walk the checklist once
+task: Not publishing yet — that is the checkpoint after this. This is the read-through, so you know what you are dealing with before you start fixing anything.
 steps:
   - Open the Code tab and go through the last-mile checklist above, one line at a time.
-  - Fix the two most embarrassing things you find. Not all of them — two.
-  - Sit somebody in front of it and say nothing for two minutes. Write down where they hesitated.
-  - Fix the top thing they struggled with.
-  - Open the Gallery from the top bar, press Publish my game, and give it a name you are happy to have next to your own.
-reward: Published badge
+  - 'Write what you find in `design.md`, at the bottom, under a heading called `## Before it ships`.'
+  - Be honest and be specific. "The jump is weird" is not a note; "the jump feels floaty at the top" is.
+  - Do not fix anything yet. A list you wrote before you started fixing is the only one that is not a list of what you happened to notice while fixing.
+reward: Last Mile badge
 ```
 
 ## Recap

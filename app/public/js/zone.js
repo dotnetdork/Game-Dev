@@ -130,14 +130,36 @@ function zoneIsolate(on) {
 }
 
 /* ---------- goals ----------
-   A goal is a check against the student's real work, not a box they tick. `slot:` is the only kind
-   this stage has and it is the honest one for a board: that heading has an answer under it. */
+   A goal is a check against the student's real work, never a box they tick. Two kinds, because the
+   two furnitures answer different questions:
+
+     slot:   that heading on the board has an answer under it       (sheet zones)
+     check:  a list of rules against their real project             (build zones)
+
+   `check:` is the practice checker's own rule set — contains, config_changed, function_added,
+   called_in_update, parses, all of it — so a build objective is checked by the same code that
+   checks a your-turn step, and an author who can write one can already write the other. */
 function zoneGoalDone(zone, goal) {
+  if (Array.isArray(goal.check) && goal.check.length) {
+    if (typeof practiceRuleResult !== 'function') return false;
+    return goal.check.every(function (rule) {
+      const r = practiceRuleResult(rule, zone.snap || null);
+      return !!(r && r.ok);
+    });
+  }
   if (goal.slot === '*' || goal.slot === 'all') {
-    return zone.spec.slots.every(function (h) { return !!sheetSlot(zone.sheet, h).answer; });
+    return (zone.spec.slots || []).every(function (h) { return !!sheetSlot(zone.sheet, h).answer; });
   }
   if (goal.slot) return !!sheetSlot(zone.sheet, goal.slot).answer;
   return false;
+}
+/* Which objective is live. A build zone runs its objectives IN ORDER — one at a time, the next
+   unlocking when the last is done. "Here are five things, go" is the shape that loses a
+   thirteen-year-old, and a guide can only brief you on one thing at a time anyway. */
+function zoneActiveIndex(zone) {
+  const goals = zone.spec.goals || [];
+  for (let i = 0; i < goals.length; i++) if (!zoneGoalDone(zone, goals[i])) return i;
+  return -1;
 }
 function zoneProgress(zone) {
   const goals = zone.spec.goals || [];
@@ -147,15 +169,21 @@ function zoneProgress(zone) {
 }
 function paintZoneGoals(zone) {
   const host = $('zoneGoals'); if (!host) return;
+  const build = zone.spec.kind === 'build';
+  const active = build ? zoneActiveIndex(zone) : -1;
   host.innerHTML = '';
-  (zone.spec.goals || []).forEach(function (g) {
+  (zone.spec.goals || []).forEach(function (g, i) {
     const done = zoneGoalDone(zone, g);
+    /* In a build zone the rail is a quest chain: done behind you, one live, the rest still ahead
+       and deliberately dim. Seeing what is coming is part of the fun; being able to start any of
+       them is not, because the order is the teaching. */
+    const ahead = build && !done && i !== active;
     const el = document.createElement('span');
-    el.className = 'zone-goal' + (done ? ' on' : '');
+    el.className = 'zone-goal' + (done ? ' on' : '') + (i === active ? ' now' : '') + (ahead ? ' ahead' : '');
     el.setAttribute('role', 'listitem');
-    el.innerHTML = '<span class="zone-tick" aria-hidden="true">' + (done ? '&#10003;' : '') + '</span>'
+    el.innerHTML = '<span class="zone-tick" aria-hidden="true">' + (done ? '&#10003;' : (build ? (i + 1) : '')) + '</span>'
       + '<span>' + esc(g.say || g.slot || '') + '</span>'
-      + '<span class="sr-only">' + (done ? ' — done' : ' — not done yet') + '</span>';
+      + '<span class="sr-only">' + (done ? ' — done' : (i === active ? ' — this one now' : ' — not done yet')) + '</span>';
     host.appendChild(el);
   });
   const p = zoneProgress(zone);
@@ -165,7 +193,9 @@ function paintZoneGoals(zone) {
   if (btn) {
     const ready = p.total > 0 && p.done >= p.total;
     btn.disabled = !ready || zone.solved;
-    btn.textContent = zone.solved ? 'Finished' : (ready ? 'Finish the zone' : 'Fill the boxes first');
+    btn.textContent = zone.solved ? 'Finished'
+      : ready ? 'Finish the checkpoint'
+      : (build ? 'Objectives first' : 'Fill the boxes first');
   }
 }
 
@@ -449,6 +479,136 @@ function editZoneCard(zone, card, slot, prompt) {
   });
 }
 
+/* ---------- build zones ----------
+   The other furniture. A sheet zone is a board of things the student decides; a build zone is their
+   real game running next to their real code, because "make this mechanic run" cannot be answered in
+   a text box and "what is your game about" cannot be answered in a code editor.
+
+   Everything here drives the SAME project the Code tab does — `project.files`, saved through
+   saveProject. Not a copy: a workspace that edited a copy would send them back to the Code tab to
+   do it again, and the goals check their real project, so a copy would never tick. */
+let zoneEditor = null;
+
+function zoneBuildOpen(zone) {
+  const files = (typeof codeFileNames === 'function' ? codeFileNames() : []);
+  const pick = $('zoneFile');
+  pick.innerHTML = '';
+  files.forEach(function (n) {
+    const o = document.createElement('option'); o.value = n; o.textContent = n; pick.appendChild(o);
+  });
+  /* Start on the file the zone says the work is in. An author knows which file this checkpoint is
+     about, and opening on config.js when the task is in world.js costs a student the first minute. */
+  const want = zone.spec.file && files.indexOf(zone.spec.file) >= 0 ? zone.spec.file : (files[0] || '');
+  pick.value = want;
+  zoneOpenFile(zone, want);
+  pick.onchange = function () { zoneSaveFile(zone); zoneOpenFile(zone, pick.value); };
+}
+
+function zoneOpenFile(zone, name) {
+  const host = $('zoneEditor'); if (!host) return;
+  zone.file = name;
+  host.innerHTML = '';
+  const text = (project.files[name] != null) ? project.files[name] : '';
+  if (typeof CodeMirror === 'function') {
+    zoneEditor = CodeMirror(host, {
+      value: text, mode: 'javascript', theme: 'material-darker',
+      lineNumbers: true, tabSize: 2, indentUnit: 2, matchBrackets: true, autoCloseBrackets: true,
+      extraKeys: {
+        'Ctrl-S': function () { zoneSaveFile(zone); }, 'Cmd-S': function () { zoneSaveFile(zone); },
+        'Ctrl-Enter': function () { zoneRunGame(zone); }, 'Cmd-Enter': function () { zoneRunGame(zone); }
+      }
+    });
+    // Saved on blur as well as on the button, the same as the bench: a student who types and then
+    // reaches for Run should not lose the thing they were about to run.
+    zoneEditor.on('blur', function () { zoneSaveFile(zone); });
+    setTimeout(function () { if (zoneEditor) zoneEditor.refresh(); }, 0);
+  } else {
+    const ta = document.createElement('textarea'); ta.className = 'zone-editor-plain'; ta.value = text;
+    host.appendChild(ta);
+    zoneEditor = { getValue: function () { return ta.value; }, refresh: function () {} };
+    ta.addEventListener('blur', function () { zoneSaveFile(zone); });
+  }
+}
+
+function zoneSaveFile(zone) {
+  if (!zoneEditor || !zone || !zone.file) return;
+  const v = zoneEditor.getValue();
+  if (project.files[zone.file] === v) return;
+  project.files[zone.file] = v;
+  if (typeof saveProject === 'function') saveProject();
+  zone.touched = true;
+  paintZoneGoals(zone);                 // an objective can be satisfied by typing, not only by running
+  zoneWatch(zone);                      // ...and if it just was, the guide says so and hands out the next
+  /* The Code tab may be showing this file behind the overlay. Same reason the sheet repaints it:
+     leaving a stale copy there invites the student to "fix" it back over what they just wrote. */
+  if (typeof currentFile !== 'undefined' && currentFile === zone.file
+      && typeof loadCode === 'function' && $('view-code') && !$('view-code').hidden) loadCode();
+}
+
+/* Their game, in the zone, built by the Game tab's own builder. The sandbox posture is whatever the
+   app's is — see sandboxGame() — so this frame is never more or less exposed than the Game tab, and
+   a fix there fixes both. */
+function zoneRunGame(zone) {
+  zoneSaveFile(zone);
+  const host = $('zoneStage'); if (!host || typeof gameDoc !== 'function') return;
+  host.innerHTML = '';
+  const f = document.createElement('iframe');
+  f.setAttribute('title', 'Your game');
+  if (typeof sandboxGame === 'function' && sandboxGame()) f.setAttribute('sandbox', 'allow-scripts');
+  host.appendChild(f);
+  zoneLogClear();
+  try { f.srcdoc = gameDoc(); } catch (e) { zoneLogLine('error', 'Could not build your game: ' + e.message); }
+  zone.running = true;
+  paintZoneRun(zone);
+  /* After the run, not before: an objective like "it runs without an error" can only be true once
+     it has. Given a moment for the frame to boot and report. */
+  setTimeout(function () { if (openZoneRef === zone) zoneWatch(zone); }, 1200);
+}
+function zoneStopGame(zone) {
+  const host = $('zoneStage'); if (host) host.innerHTML = '';
+  zone.running = false;
+  paintZoneRun(zone);
+}
+function paintZoneRun(zone) {
+  const stop = $('zoneStop'); if (stop) stop.disabled = !zone.running;
+  const run = $('zoneRun'); if (run) run.title = zone.running ? 'Run it again' : 'Run it';
+}
+
+/* The game's console, in the zone. A build checkpoint is where a student's own code goes wrong for
+   the first time, and the whole of the last Phaser lesson was about reading the error — so the
+   error has to be somewhere they can see it without leaving. */
+function zoneLogClear() { const b = $('zoneLog'); if (b) b.innerHTML = ''; }
+function zoneLogLine(level, text) {
+  const b = $('zoneLog'); if (!b) return;
+  const el = document.createElement('div'); el.className = 'zone-log-line ' + level;
+  el.textContent = text;
+  b.appendChild(el);
+  while (b.childElementCount > 60) b.removeChild(b.firstChild);
+  b.scrollTop = b.scrollHeight;
+}
+/* The game frame posts its console through, the same shape the Game tab's capture uses. Bound once
+   and filtered on whether a zone is open, so it cannot fight the Game tab's own dock. */
+window.addEventListener('message', function (e) {
+  const d = e && e.data;
+  if (!d || !d.__gamelog || !openZoneRef || !openZoneRef.running) return;
+  const text = String(d.text || '');
+  zoneLogLine(d.level || 'log', text);
+  /* One known failure, named once, because otherwise it reads as the student's bug.
+     A sandboxed frame has an opaque origin, and an opaque-origin document cannot make ANY
+     subresource request back to the app — measured: allow-scripts fails, allow-scripts
+     allow-same-origin works, no sandbox works, and there is no CSP violation, the CORP header is
+     already cross-origin, and the file serves 200 without cookies. So Phaser never arrives and
+     neither does any asset. It is an app-level issue with DEV.sandboxGame, not anything in their
+     game, and a child staring at "Phaser is not defined" in their own checkpoint has no way to
+     know that. */
+  if (!openZoneRef.blamed && /Phaser is not defined/.test(text)
+      && typeof sandboxGame === 'function' && sandboxGame()) {
+    openZoneRef.blamed = true;
+    zoneLogLine('warn', 'That one is not your code — the game frame cannot load Phaser while it is '
+      + 'sandboxed. Add ?sandbox=0 to the address and reload to run it.');
+  }
+});
+
 /* ---------- opening and closing ---------- */
 function openZone(zone) {
   const view = $('zoneView'); if (!view) return;
@@ -471,8 +631,23 @@ function openZone(zone) {
   if (flag && typeof moduleAccent === 'function' && typeof flat !== 'undefined' && flat[curIdx]) {
     flag.style.color = moduleAccent(flat[curIdx].mi);
   }
-  paintZoneTools(zone);
-  paintZoneBoard(zone);
+  /* Which furniture. A build zone's objectives are checked against the project as it was when they
+     ARRIVED — config_changed and function_added both need a "before", and taking it on open rather
+     than on first check means a student who tunes a number before reading anything still gets
+     credit for it. practiceSnapshot stores it, so it survives closing the zone. */
+  const build = zone.spec.kind === 'build';
+  $('zoneSheet').hidden = build;
+  $('zoneBuild').hidden = !build;
+  if (build) {
+    if (typeof practiceSnapshot === 'function' && typeof lessonWidgetId !== 'undefined') {
+      zone.snap = practiceSnapshot(lessonWidgetId, zone.key);
+    }
+    zoneBuildOpen(zone);
+    paintZoneRun(zone);
+  } else {
+    paintZoneTools(zone);
+    paintZoneBoard(zone);
+  }
   paintZoneGoals(zone);
   zoneBotReset(zone);
 
@@ -486,6 +661,11 @@ function openZone(zone) {
 function closeZone() {
   const zone = openZoneRef; if (!zone) return;
   commitZoneEdit();                       // a half-typed sentence on screen is still their work
+  if (zone.spec.kind === 'build') { zoneSaveFile(zone); zoneStopGame(zone); }
+  zoneEditor = null;
+  $('zoneEditor').innerHTML = '';
+  $('zoneStage').innerHTML = '';
+  zoneLogClear();
   openZoneRef = null;
   zone.ui = null;
   const bot = $('zoneBot'); if (bot) bot.hidden = false;   // back to its default for next time
@@ -644,6 +824,9 @@ function zoneSpec(src) {
     Object.keys(y.prompts).forEach(function (k) { prompts[zoneSlotKey(k)] = String(y.prompts[k]); });
   }
   return {
+    // `sheet` unless told otherwise: it is the older kind and the one a zone with slots wants.
+    kind: y.kind === 'build' ? 'build' : 'sheet',
+    file: y.file || '',
     title: y.title || '', intro: y.intro || '', brief: y.brief || '',
     opener: y.opener || '', reward: y.reward || '',
     slots: slots, prompts: prompts, goals: goals, tools: tools
@@ -724,11 +907,12 @@ function zoneBotReset(zone) {
 function zoneBotOpen(zone) {
   if (zone.greeted) return;
   zone.greeted = true;
-  const empty = (zone.spec.slots || []).filter(function (h) { return !sheetSlot(zone.sheet, h).answer; });
   const hello = zone.spec.opener
-    || 'This is your zone — the board on the left is your game, not ours. I ask questions and I will '
-       + 'not write it for you.';
+    || 'This is your zone — everything here is about your game, not ours. I ask questions and point '
+       + 'at things. I will not write it for you.';
   zoneSay('bot', hello);
+  if (zone.spec.kind === 'build') { zoneBrief(zone); return; }
+  const empty = (zone.spec.slots || []).filter(function (h) { return !sheetSlot(zone.sheet, h).answer; });
   if (empty.length) {
     zoneAsk(zoneNudge(zone, empty), { silent: true });
   } else if (typeof loadQuestions === 'function' && typeof renderStarters === 'function') {
@@ -736,6 +920,72 @@ function zoneBotOpen(zone) {
       renderStarters('zone', $('zoneBotBody'), function (t) { zoneSubmitText(t); }, 'tutor');
     });
   }
+}
+
+/* ---------- the quest chain ----------
+   A build zone is a text adventure with a compiler attached. The objectives are the quest chain,
+   the guide is the character who gives them out, and the conversation IS the quest log — which is
+   why almost none of this is new UI. It is worth being explicit about why the fun is load-bearing
+   rather than decoration: what this replaces is a page of numbered instructions a student reads
+   once and then works alone against, and the thing that actually goes wrong there is that nobody
+   tells them when they got it right. A chain that announces each objective, watches their real
+   project, and says COMPLETE the moment the check passes is the same information with the two
+   parts a game would never leave out — one thing at a time, and an answer the instant you do it. */
+function zoneObjectiveCard(zone, goal, n) {
+  const body = $('zoneBotBody'); if (!body) return;
+  const card = document.createElement('div'); card.className = 'zone-quest';
+  card.innerHTML = '<div class="zone-quest-lab">Objective ' + n + ' of ' + (zone.spec.goals || []).length + '</div>'
+    + '<div class="zone-quest-say"></div>';
+  card.querySelector('.zone-quest-say').textContent = goal.say || '';
+  body.appendChild(card);
+  body.scrollTop = body.scrollHeight;
+}
+function zoneCompleteCard(zone, goal, n) {
+  const body = $('zoneBotBody'); if (!body) return;
+  const card = document.createElement('div'); card.className = 'zone-quest done';
+  card.innerHTML = '<div class="zone-quest-lab">&#10003; Objective ' + n + ' complete</div>'
+    + '<div class="zone-quest-say"></div>';
+  card.querySelector('.zone-quest-say').textContent = goal.say || '';
+  body.appendChild(card);
+  body.scrollTop = body.scrollHeight;
+}
+
+/* Hand out the live objective and have the guide brief it against THEIR game. The card is the
+   quest; the briefing under it is why this objective exists in their game rather than in general,
+   which is the part a printed instruction can never do. */
+function zoneBrief(zone) {
+  const goals = zone.spec.goals || [];
+  const i = zoneActiveIndex(zone);
+  if (i < 0) {
+    zoneSay('bot', '**Every objective done.** Press Finish the zone when you are happy with it.');
+    return;
+  }
+  if (zone.briefed === i) return;
+  zone.briefed = i;
+  zoneObjectiveCard(zone, goals[i], i + 1);
+  zoneAsk(zoneBriefPrompt(zone, goals[i], i), { silent: true });
+}
+function zoneBriefPrompt(zone, goal, i) {
+  return 'The student has just reached objective ' + (i + 1) + ': "' + (goal.say || '') + '". '
+    + (goal.brief ? 'What it is for: ' + goal.brief + ' ' : '')
+    + 'Brief them on it in two or three sentences — what to change, in which of THEIR files, and '
+    + 'why it matters for the game on their one-sheet. Name the file. Do not write the code. '
+    + 'Do not greet them and do not repeat the objective back word for word.';
+}
+
+/* Re-check after anything that could have satisfied the live objective, and make a noise when it
+   has. Called from the editor's save and from Run. */
+function zoneWatch(zone) {
+  if (!zone || zone.spec.kind !== 'build') return;
+  const goals = zone.spec.goals || [];
+  const was = typeof zone.briefed === 'number' ? zone.briefed : -1;
+  const now = zoneActiveIndex(zone);
+  if (now === was) return;                       // nothing moved
+  if (was >= 0 && was < goals.length && zoneGoalDone(zone, goals[was])) {
+    zoneCompleteCard(zone, goals[was], was + 1);
+  }
+  paintZoneGoals(zone);
+  zoneBrief(zone);
 }
 /* What to open on. The first empty box, named — a question about a specific box is answerable, and
    "what would you like to talk about" is not. */
@@ -804,10 +1054,20 @@ function zoneAsk(question, opts) {
    context sent under a name the prompt does not use is dropped silently by fill() and the model
    answers confidently about something else. */
 function zonePayload(zone) {
-  const boxes = (zone.spec.slots || []).map(function (h) {
-    return { heading: h, text: sheetSlot(zone.sheet, h).answer || '' };
+  const build = zone.spec.kind === 'build';
+  /* A build zone has no board of its own, so what goes over as "boxes" is their ONE-SHEET — the
+     game they said they were making. That is the whole point of the guide in a build zone: it is
+     the only thing in the app that can say "your sheet says the platforms vanish, so start in
+     world.js", and it cannot say it without the sheet. */
+  const headings = build
+    ? sheetRead().slots.filter(function (s) { return s.answer; }).map(function (s) { return s.heading; })
+    : (zone.spec.slots || []);
+  const sheet = build ? sheetRead() : zone.sheet;
+  const boxes = headings.map(function (h) {
+    return { heading: h, text: sheetSlot(sheet, h).answer || '' };
   });
-  return {
+  const out = {
+    kind: zone.spec.kind,
     title: zone.spec.title || '',
     brief: zone.spec.brief || '',
     boxes: boxes,
@@ -815,6 +1075,19 @@ function zonePayload(zone) {
       return { say: g.say || g.slot || '', done: zoneGoalDone(zone, g) };
     })
   };
+  if (build) {
+    out.file = zone.file || '';
+    out.code = (zoneEditor && typeof zoneEditor.getValue === 'function') ? zoneEditor.getValue()
+      : String((project.files || {})[zone.file] || '');
+    out.log = zoneLogText();
+  }
+  return out;
+}
+function zoneLogText() {
+  const b = $('zoneLog'); if (!b) return '';
+  return [].slice.call(b.children).slice(-14)
+    .map(function (l) { return '[' + (l.className.split(' ')[1] || 'log') + '] ' + l.textContent; })
+    .join('\n').slice(0, 1200);
 }
 
 /* The sign-off. A separate agent with a separate contract, for the same reason the grader is not
@@ -845,6 +1118,13 @@ function wireZoneChatBox() {
 
 /* ---------- wiring, once, at load ---------- */
 if ($('zoneBotForm')) $('zoneBotForm').addEventListener('submit', function (e) { e.preventDefault(); zoneSubmit(); });
+if ($('zoneRun')) $('zoneRun').addEventListener('click', function () { if (openZoneRef) zoneRunGame(openZoneRef); });
+if ($('zoneStop')) $('zoneStop').addEventListener('click', function () { if (openZoneRef) zoneStopGame(openZoneRef); });
+if ($('zoneSave')) $('zoneSave').addEventListener('click', function () {
+  if (!openZoneRef) return;
+  zoneSaveFile(openZoneRef);
+  if (typeof toast === 'function') toast('Saved ✓');
+});
 if ($('zoneBack')) $('zoneBack').addEventListener('click', closeZone);
 if ($('zoneDone')) $('zoneDone').addEventListener('click', finishZone);
 if ($('zoneBotHide')) $('zoneBotHide').addEventListener('click', function () {

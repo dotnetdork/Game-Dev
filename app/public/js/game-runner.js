@@ -233,10 +233,12 @@ function sendConfigLive(key, value) {
   catch (e) { startGame(); }
 }
 
-function startGame() { // build a self-contained page from the browser-side project and run it in the iframe (no server)
-  conClear();                                          // this run starts with a clean log, on screen and in the buffer
-  autoAddUsedAssets();                                 // before the assets are injected, not after
-  if (typeof noteGameRun === 'function') noteGameRun(); // so the AI can tell "printed nothing" from "never ran"
+/* The whole game as one self-contained page, built from the browser-side project. No server.
+   Factored out of startGame so a second surface can show the same game: a building zone puts a live
+   preview next to the student's code, and a preview built any other way would be a second game that
+   only resembles theirs. One builder, two frames. */
+function gameDoc() {
+  autoAddUsedAssets();          // inside the builder, so every caller gets it and none has to remember
   // load order is the file order in the tree; main.js runs last because it starts the engine
   // codeFileNames, not fileNames: design.md is prose, and a <script> full of prose is a syntax
   // error that kills the whole block — which on this page means a black stage and no game.
@@ -289,13 +291,19 @@ function startGame() { // build a self-contained page from the browser-side proj
     + 'if(w&&w.gravity)w.gravity.y=CONFIG.gravity;}}'
     + '}catch(err){parent.postMessage({__leagueConfigFail:true},"*");}'
     + '});<' + '/script>\n';
-  const html = '<!doctype html><html><head><meta charset="utf-8">'
+  return '<!doctype html><html><head><meta charset="utf-8">'
     + '<style>html,body{margin:0;height:100%;background:#06101c;overflow:hidden}#game{width:100%;height:100vh}</style></head><body>'
     + '<div id="game"></div>\n'
     + capture + pauseShim + configBridge
     + '<' + 'script src="/vendor/phaser/phaser.min.js"><' + '/script>\n'   // vendored: no CDN, works on filtered networks
     + assetInjectScript()
     + scripts + '\n</body></html>';
+}
+
+function startGame() { // run the project in the Game tab's iframe
+  conClear();                                          // this run starts with a clean log, on screen and in the buffer
+  if (typeof noteGameRun === 'function') noteGameRun(); // so the AI can tell "printed nothing" from "never ran"
+  const html = gameDoc();
   fitStage();
   watchGameBoot();
   const gl = $('gameLoading'); if (gl) gl.classList.remove('hidden');

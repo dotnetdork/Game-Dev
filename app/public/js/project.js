@@ -566,11 +566,34 @@ function practiceRuleResult(rule, snap) {
     return { ok: moved.length > 0, why: keys.join(' or ') + ' is still the number it started at' };
   }
   if (rule.function_added) {
-    const name = String(rule.function_added);
     const had = topLevelNames(String((snap && Object.keys(snap).filter(isCodeFile).map(function (n) { return snap[n]; }).join('\n')) || ''));
     const has = topLevelNames(allCode());
+    /* `function_added: true` means ANY new top-level name, rather than one in particular. A
+       building zone's objective is "write a function for your mechanic" — the whole point is that
+       the student chooses what it is called, so there is no name to demand. Naming one is still
+       right where the task names it. */
+    if (rule.function_added === true) {
+      const added = has.filter(function (n) { return had.indexOf(n) < 0; });
+      return { ok: added.length > 0, why: 'there is no new function in your game yet' };
+    }
+    const name = String(rule.function_added);
     return { ok: has.indexOf(name) >= 0 && had.indexOf(name) < 0,
       why: 'there is no new function called ' + name + ' yet' };
+  }
+  /* They have put a game in the Gallery. The last objective of the last zone in the course, and the
+     only check in the set that reads progress rather than code — because publishing is the one
+     thing a student does that leaves no trace in their files. */
+  if (rule.published) {
+    const n = (state && Array.isArray(state.published)) ? state.published.length : 0;
+    return { ok: n > 0, why: 'nothing has been published to the Gallery yet' };
+  }
+  /* One named file is different from how it started. `changed_at_least` counts the whole project,
+     which cannot tell "they wired it into game.js" from "they typed a lot into config.js" — and for
+     a build objective that distinction is the objective. */
+  if (rule.file_changed) {
+    const n = String(rule.file_changed);
+    const before = (snap && typeof snap[n] === 'string') ? snap[n] : '';
+    return { ok: readFile(n) !== before, why: n + ' has not changed yet' };
   }
   if (rule.function_kept) {
     const name = String(rule.function_kept);

@@ -66,4 +66,4 @@ modules:
   - id: assets
     name: "Asset Design"
     stars: 130
-    lessons: [sprites-and-animation, sound-design, juice, ship-it]
+    lessons: [sprites-and-animation, sound-design, juice, ship-it, launch-your-game]

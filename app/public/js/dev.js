@@ -18,7 +18,26 @@ const DEV = {
   unlockAll: true,
 
   /* The game frame runs with an opaque origin so student code cannot reach the app. Leave on.
-     Off only to rule it out if assets ever mysteriously fail to load. */
+     Off only to rule it out if assets ever mysteriously fail to load.
+
+     KNOWN BROKEN, and this is the diagnosis rather than a suspicion. With this on, the game does
+     not run at all: "Phaser is not defined". An opaque-origin document cannot make ANY subresource
+     request back to the app, so neither Phaser nor a single asset arrives. Measured:
+
+       sandbox="allow-scripts"                    Phaser missing
+       sandbox="allow-scripts allow-same-origin"  works
+       no sandbox attribute                       works
+
+     and it is none of the things it looks like: no securitypolicyviolation fires, the CSP already
+     names the origin explicitly beside 'self' (see cspFor in server.js), the responses carry
+     Cross-Origin-Resource-Policy: cross-origin and Access-Control-Allow-Origin: *, and the file
+     serves 200 with credentials omitted. Even a no-cors fetch from inside the frame fails, so it is
+     a hard network block rather than CORS or CSP.
+
+     The real fix is the one the CSP comment already names: serve the game frame from its own
+     origin, which gets it a real origin instead of an opaque one and lets the sandbox stay. Until
+     then this switch is a choice between a sandboxed frame that cannot run and an unsandboxed one
+     that can — so it is left ON deliberately, and `?sandbox=0` is how you run a game today. */
   sandboxGame: true
 };
 

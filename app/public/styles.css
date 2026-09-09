@@ -958,6 +958,67 @@ body.resizing-v #gameFrame{pointer-events:none;}
   display:grid;place-items:center;font-size:9px;color:transparent;}
 .zone-goal.on .zone-tick{border-color:var(--green);background:var(--green);color:#04240f;}
 
+/* ---------- build zones ----------
+   Their real game above their real code. Stacked rather than side by side: the helper already owns
+   a column, and three columns on a 1366px Chromebook gives the editor about 380px, which is not
+   enough to read a line of Phaser in. */
+.zone-build{flex:1;min-height:0;display:grid;grid-template-rows:minmax(200px,42%) 1fr;
+  gap:1px;background:var(--line);}
+.zone-build[hidden]{display:none;}
+.zone-pane{display:flex;flex-direction:column;min-width:0;min-height:0;background:var(--panel);}
+.zone-pane-hd{display:flex;align-items:center;gap:8px;margin:0;padding:6px 12px;
+  font-size:11px;font-weight:700;letter-spacing:1.4px;text-transform:uppercase;color:var(--dim);
+  background:var(--panel2);border-bottom:1px solid var(--line);}
+.zone-run-btns{margin-left:auto;display:flex;gap:5px;}
+.zone-stage{flex:1;min-height:0;background:#06101c;}
+.zone-stage iframe{width:100%;height:100%;border:0;display:block;}
+.zone-stage:empty::after{content:"Press play to run your game";display:grid;place-items:center;
+  height:100%;color:#3f5d85;font-size:12px;letter-spacing:.3px;}
+/* The console, small but never absent. A build checkpoint is where a student's own code goes wrong
+   for the first time, and the Phaser module ended on reading the error — so the error has to be
+   somewhere they can see it without leaving the room. */
+.zone-log{flex:none;height:74px;overflow-y:auto;padding:5px 10px;background:#0a1524;
+  border-top:1px solid var(--line);font-family:Consolas,monospace;font-size:11.5px;line-height:1.55;}
+.zone-log-line{white-space:pre-wrap;color:var(--muted);}
+.zone-log-line.warn{color:var(--gold);}
+.zone-log-line.error{color:#ff8a8a;}
+.zone-editor{flex:1;min-height:0;overflow:hidden;}
+.zone-editor .CodeMirror{height:100%;font-family:Consolas,monospace;font-size:13.5px;line-height:1.6;}
+.zone-editor-plain{width:100%;height:100%;border:0;background:#0b1c33;color:var(--ink);
+  font-family:Consolas,monospace;font-size:13.5px;padding:10px;resize:none;}
+.zone-pane-hd select{background:var(--bg);color:var(--ink);border:1px solid var(--line);
+  border-radius:6px;padding:2px 6px;font-family:var(--font);font-size:12px;text-transform:none;
+  letter-spacing:0;font-weight:600;}
+.zone-save{margin-left:auto;background:none;border:1px solid var(--line);color:var(--muted);
+  border-radius:6px;padding:3px 10px;cursor:pointer;font-family:var(--font);font-size:11.5px;
+  text-transform:none;letter-spacing:0;font-weight:600;}
+.zone-save:hover{border-color:#3a6da3;color:var(--ink);}
+
+/* The quest chain. A build zone's rail is ordered, so it says which one you are on rather than only
+   which are done — the number in the bubble is the objective, and the dim ones are still ahead. */
+.zone-goal.now{border-color:var(--brand);color:var(--ink);background:#2a1a0c;}
+.zone-goal.now .zone-tick{border-color:var(--brand);background:var(--brand);color:#241300;font-weight:700;}
+.zone-goal.ahead{opacity:.45;}
+.zone-goal.ahead .zone-tick{color:var(--dim);}
+
+/* The objective, handed out into the conversation. The chat IS the quest log — which is why this is
+   a card in the stream rather than a fourth panel: a student reads the brief, does the thing, and
+   the COMPLETE lands in the same column they were already looking at. */
+.zone-quest{align-self:stretch;margin:2px 0;padding:10px 12px;border-radius:10px;
+  background:#2a1a0c;border:1px solid #6b4a1c;border-left:3px solid var(--brand);}
+.zone-quest-lab{font-size:9.5px;font-weight:700;letter-spacing:1.1px;text-transform:uppercase;
+  color:var(--brand);margin-bottom:4px;}
+.zone-quest-say{font-size:14px;font-weight:600;line-height:1.4;color:var(--ink);}
+.zone-quest.done{background:#0e2b26;border-color:#1f6b52;border-left-color:var(--green);}
+.zone-quest.done .zone-quest-lab{color:var(--green);}
+.zone-quest.done .zone-quest-say{font-weight:500;color:var(--muted);text-decoration:line-through;
+  text-decoration-color:#2f6b57;}
+
+@media (max-width:900px){
+  .zone-build{grid-template-rows:minmax(160px,38%) 1fr;}
+  .zone-log{height:58px;}
+}
+
 /* ---------- tools ----------
    The thing to play with, above the cards. Each one does the job that zone's lessons taught and
    writes its result into a box, so it is a tool rather than a toy — but it should look like the

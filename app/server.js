@@ -835,7 +835,14 @@ app.post('/api/ai', async (req, res) => {
       }).filter(function (x) { return x.heading; }) : [],
       goals: Array.isArray(b.zone.goals) ? b.zone.goals.slice(0, 12).map(function (g) {
         return { say: String((g && g.say) || '').slice(0, 120), done: !!(g && g.done) };
-      }).filter(function (g) { return g.say; }) : []
+      }).filter(function (g) { return g.say; }) : [],
+      /* A build zone also sends the file the student is looking at and what their game printed.
+         Both are the difference between a guide that can say "line 14 of world.js" and one that can
+         only say "have a look at your code". */
+      kind: b.zone.kind === 'build' ? 'build' : 'sheet',
+      file: String(b.zone.file || '').slice(0, 60),
+      code: String(b.zone.code || '').slice(0, 8000),
+      log: String(b.zone.log || '').slice(0, 1200)
     } : null,
     /* Which screen the student is actually looking at. "Why isn't it working?" is three different
        questions on the Learn, Code and Game tabs, and both agents were answering it blind. */
