@@ -56,7 +56,11 @@ const AGENT_TOOLS = {
   tutor:  /^(1|true|yes|on)$/i.test(process.env.TUTOR_TOOLS  || ''),
   'lab-tutor': /^(1|true|yes|on)$/i.test(process.env.TUTOR_TOOLS || ''),
   quiz:   /^(1|true|yes|on)$/i.test(process.env.QUIZ_TOOLS   || ''),
-  grader: /^(1|true|yes|on)$/i.test(process.env.GRADER_TOOLS || '')
+  grader: /^(1|true|yes|on)$/i.test(process.env.GRADER_TOOLS || ''),
+  /* Both zone agents ride on TUTOR_TOOLS: they are the tutor's job in a different room, and there
+     is nothing in a building zone for a tool to look up — the board is already in the prompt. */
+  'zone-coach': /^(1|true|yes|on)$/i.test(process.env.TUTOR_TOOLS || ''),
+  'zone-check': /^(1|true|yes|on)$/i.test(process.env.TUTOR_TOOLS || '')
 };
 const MAX_TOOL_ROUNDS = Number(process.env.AI_TOOL_ROUNDS || 4);
 const ANTHROPIC_KEY = process.env.ANTHROPIC_API_KEY || '';
@@ -82,7 +86,9 @@ function resolveModel(agent) {
      unless someone deliberately gives it one of its own. Without this it had no entry in
      AGENT_MODELS at all, fell through to DEFAULT_PROVIDER, and a course configured for Anthropic
      tried to reach a local Ollama that was not running: "The AI service is not reachable". */
-  if (!spec && agent === 'lab-tutor') spec = AGENT_MODELS.tutor || ai.agentModel('tutor') || '';
+  if (!spec && (agent === 'lab-tutor' || agent === 'zone-coach')) spec = AGENT_MODELS.tutor || ai.agentModel('tutor') || '';
+  // The zone's sign-off is the grader's job in a different room, so it borrows the grader's model.
+  if (!spec && agent === 'zone-check') spec = AGENT_MODELS.grader || ai.agentModel('grader') || '';
   if (!spec) spec = DEFAULT_PROVIDER + ':' + (PROVIDER_DEFAULT_MODEL[DEFAULT_PROVIDER] || '');
   const i = spec.indexOf(':');
   // `agent` rides along so the usage meter can attribute a call without threading an extra
@@ -342,7 +348,7 @@ app.get('/api/lessons', (req, res) => {
 // ---- which models are running (per agent) ----
 app.get('/api/info', (req, res) => {
   const agents = {};
-  ['coder', 'tutor', 'lab-tutor', 'quiz', 'grader'].forEach(function (a) { const m = resolveModel(a); agents[a] = m.provider + ':' + m.model; });
+  ['coder', 'tutor', 'lab-tutor', 'quiz', 'grader', 'zone-coach', 'zone-check'].forEach(function (a) { const m = resolveModel(a); agents[a] = m.provider + ':' + m.model; });
   res.json({ agents: agents, provider: DEFAULT_PROVIDER, model: resolveModel('coder').model });
 });
 
@@ -675,6 +681,8 @@ const FALLBACK_AGENT_SYSTEMS = {
    Lives in ai/quiz-check.js so it can be tested on its own — see tools/check-quiz.js. */
 const cleanQuizQuestion = require('./ai/quiz-check').cleanQuizQuestion;
 const cleanGrade = require('./ai/grade-check').cleanGrade;
+const cleanSlotOffer = require('./ai/zone-check').cleanSlotOffer;
+const cleanZoneVerdict = require('./ai/zone-check').cleanZoneVerdict;
 /* One turn with the model. Returns { content, assistant, toolCalls } — toolCalls is empty
    unless tools were offered and the model chose to use one. `msgs` is the running conversation
    (history, the new message, and any tool traffic already exchanged). */
@@ -786,7 +794,7 @@ app.post('/api/ai', async (req, res) => {
   const context = ((req.body && req.body.context) || '').toString().slice(0, 4000);
   const history = sanitizeHistory(req.body && req.body.history);
   let agent = (req.body && req.body.agent) || 'coder';
-  if (['coder', 'tutor', 'lab-tutor', 'quiz', 'grader'].indexOf(agent) < 0) agent = 'coder';   // controller: keep to known agents
+  if (['coder', 'tutor', 'lab-tutor', 'quiz', 'grader', 'zone-coach', 'zone-check'].indexOf(agent) < 0) agent = 'coder';   // controller: keep to known agents
   const spec = resolveModel(agent);
 
   // Context the browser sends about where the student is and what exists in their project.
@@ -813,6 +821,21 @@ app.post('/api/ai', async (req, res) => {
       goal: String(b.lab.goal || '').slice(0, 300),
       code: String(b.lab.code || '').slice(0, 6000),
       log: String(b.lab.log || '').slice(0, 1500)
+    } : null,
+    /* A building zone's board, for the zone-coach and zone-check agents. Separate again, and for
+       the same reason the lab's context is: a zone has no code in it at all, and the boxes are the
+       only thing either agent is allowed to talk about. `boxes` doubles as the allowlist the
+       coach's offered wording is checked against — see ai/zone-check.js. */
+    zone: (b.zone && typeof b.zone === 'object') ? {
+      title: String(b.zone.title || '').slice(0, 120),
+      brief: String(b.zone.brief || '').slice(0, 600),
+      boxes: Array.isArray(b.zone.boxes) ? b.zone.boxes.slice(0, 16).map(function (x) {
+        return { heading: String((x && x.heading) || '').slice(0, 80),
+          text: String((x && x.text) || '').slice(0, 600) };
+      }).filter(function (x) { return x.heading; }) : [],
+      goals: Array.isArray(b.zone.goals) ? b.zone.goals.slice(0, 12).map(function (g) {
+        return { say: String((g && g.say) || '').slice(0, 120), done: !!(g && g.done) };
+      }).filter(function (g) { return g.say; }) : []
     } : null,
     /* Which screen the student is actually looking at. "Why isn't it working?" is three different
        questions on the Learn, Code and Game tabs, and both agents were answering it blind. */
@@ -878,6 +901,40 @@ app.post('/api/ai', async (req, res) => {
     try { raw = await callAI(spec, tutorSystem, message, false, history, agentTools); }
     catch (e) { return res.status(502).json({ reply: 'The tutor is not reachable right now (' + e.message + ').' }); }
     return res.json({ reply: (raw || '').trim() || 'Hmm, I am not sure — try rephrasing.' });
+  }
+
+  /* ZONE-COACH: prose, plus optionally one wording for one box on the student's board.
+     A mixed reply rather than a second round trip, because the offer is a rewording of what they
+     just said and arriving a beat later would land under their next message. The structure comes
+     off the end as a line rather than as JSON — see ai/zone-check.js — and cleanSlotOffer strips it
+     whether or not it parsed, so no half-instruction ever reaches a child. The heading is checked
+     against the board the client sent, so the coach can only write to a box the student can see. */
+  if (agent === 'zone-coach') {
+    let raw;
+    const coachSystem = ai.buildPrompt('zone-coach', ctx);
+    if (!coachSystem) return res.status(500).json({ reply: 'The zone helper prompt is missing (ai/agents/zone-coach.md).' });
+    try { raw = await callAI(spec, coachSystem, message, false, history, agentTools); }
+    catch (e) { return res.status(502).json({ reply: 'The helper is not reachable right now (' + e.message + ').' }); }
+    const headings = ((ctx.zone && ctx.zone.boxes) || []).map(function (b2) { return b2.heading; });
+    const out = cleanSlotOffer((raw || '').trim(), headings);
+    return res.json({
+      reply: out.reply.trim() || 'Hmm, I am not sure — tell me a bit more about your game.',
+      slot: out.slot
+    });
+  }
+
+  /* ZONE-CHECK: the last gate before a child is told whether they finished, so it is treated the
+     way the grader is. An unparseable or hintless refusal becomes `{}`, which the browser reads as
+     "could not check" and never as a fail. */
+  if (agent === 'zone-check') {
+    let raw;
+    const checkSystem = ai.buildPrompt('zone-check', ctx);
+    if (!checkSystem) return res.status(500).json({ error: 'The zone check prompt is missing (ai/agents/zone-check.md).' });
+    try { raw = await callAI(spec, checkSystem, message, true, [], agentTools); }
+    catch (e) { return res.status(502).json({ error: 'The zone check agent is not reachable (' + e.message + ').' }); }
+    const v = cleanZoneVerdict(extractJSON(raw) || {});
+    if (!v) console.warn('[ai] dropped a malformed zone verdict: ' + JSON.stringify(raw).slice(0, 300));
+    return res.json({ result: v || {} });
   }
 
   // QUIZ / GRADER. Both are shown to a child as if they were correct, so neither is trusted:

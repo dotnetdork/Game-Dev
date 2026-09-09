@@ -180,8 +180,31 @@ function buildPrompt(agent, ctx) {
        not an error anyone would notice; that is exactly how this went unspotted. */
     taskTitle: c.taskTitle || '(no task given)',
     taskSteps: renderSteps(c.taskSteps),
-    changedCode: c.changedCode || '(nothing appears to have changed)'
+    changedCode: c.changedCode || '(nothing appears to have changed)',
+    /* A building zone's slots. `zoneBoxes` is the student's board — it is both the only thing the
+       coach may talk about and the allowlist its offered wording is checked against, so it has to
+       carry the headings VERBATIM. */
+    zoneTitle: (c.zone && c.zone.title) || '(untitled zone)',
+    zoneBrief: (c.zone && c.zone.brief) || '(no brief given)',
+    zoneBoxes: renderZoneBoxes(c.zone),
+    zoneGoals: renderZoneGoals(c.zone)
   });
+}
+
+/* The board, one box per line, empty ones said to be empty rather than left off. Saying so is the
+   point: the coach's whole job is asking about the box that has nothing in it, and a box that is
+   simply absent from the prompt is one it cannot ask about. */
+function renderZoneBoxes(zone) {
+  const boxes = (zone && zone.boxes) || [];
+  if (!boxes.length) return '(their board is empty)';
+  return boxes.map(function (b) {
+    return '- ' + b.heading + ': ' + (b.text ? b.text : '(EMPTY)');
+  }).join('\n');
+}
+function renderZoneGoals(zone) {
+  const goals = (zone && zone.goals) || [];
+  if (!goals.length) return '(no goals set)';
+  return goals.map(function (g) { return '- [' + (g.done ? 'x' : ' ') + '] ' + g.say; }).join('\n');
 }
 
 /* Optional `model:` in an agent's front-matter. Lower priority than .env. */

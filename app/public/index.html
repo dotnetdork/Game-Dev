@@ -347,6 +347,57 @@
       </aside>
       </div><!-- /lab-split -->
     </div>
+
+    <!-- A building zone, full window. This is what a module's checkpoint IS — not a lesson with
+         cards in it but a workspace the student builds their own game in, so it gets the room the
+         bench gets and for the same reason. Same overlay discipline as .lab-view: one element that
+         lives here in the markup, every handler bound once at load, and only the CONTENTS of the
+         hosts below built and destroyed. Built by openZone() in js/zone.js.
+
+         The difference from the bench is the bot. It is not a panel you go and find — it opens with
+         the zone and it opens the conversation, because the students this is written for mostly do
+         not know what to ask. -->
+    <div class="zone-view" id="zoneView" hidden role="dialog" aria-modal="true" aria-labelledby="zoneTitle">
+      <div class="zone-split">
+        <div class="zone-left">
+          <div class="zone-bar">
+            <!-- The lesson's own icon rather than a back arrow: it names where the button goes. -->
+            <button class="lab-back" id="zoneBack"><span class="mdi mdi-book-open-page-variant" aria-hidden="true"></span>Back</button>
+            <span class="zone-flag mdi mdi-flag-checkered" aria-hidden="true"></span>
+            <span class="lab-title" id="zoneTitle"></span>
+            <button class="outline-btn ai-btn zone-bot-btn" id="zoneBotBtn" aria-expanded="true" aria-controls="zoneBot" title="Show the helper"><span class="mdi mdi-robot" aria-hidden="true"></span><span class="sr-only">Helper</span></button>
+          </div>
+          <!-- What you are here to apply. Each one is a real check against their own work, so it
+               ticks itself as they go rather than being a list they tick off. -->
+          <div class="zone-goals" id="zoneGoals" role="list" aria-label="What to do in this zone"></div>
+          <div class="zone-body" id="zoneBody"></div>
+          <div class="zone-foot">
+            <span class="zone-count" id="zoneCount"></span>
+            <span class="zone-bar-fill"><i id="zoneProg"></i></span>
+            <button class="zone-done" id="zoneDone" disabled>Finish the zone</button>
+          </div>
+        </div>
+        <!-- The same dock, the same bubbles, the same input row as the assistant in the shell and
+             the tutor in the bench. Deliberately not a lookalike: those classes already carry the
+             wrapping, the pre-wrap that keeps a pasted snippet's line breaks, and the Markdown
+             styling for replies. -->
+        <aside class="zone-bot dock right" id="zoneBot" aria-label="Zone helper">
+          <div class="res l" id="zoneRes"></div>
+          <div class="dock-head">
+            <span class="ai-title"><img class="ai-ava" src="img/clearRobotRing4.png" alt="">Talk it through</span>
+            <span class="tag" id="zoneBotTag">model…</span>
+            <button class="ai-collapse" id="zoneBotHide" title="Hide the helper"><span class="mdi mdi-chevron-right" aria-hidden="true"></span></button>
+          </div>
+          <div class="ai">
+            <div class="ai-msgs" id="zoneBotBody"></div>
+            <form class="ai-input" id="zoneBotForm">
+              <textarea id="zoneBotText" rows="1" placeholder="Tell it about your game..." aria-label="Talk to the helper about your game"></textarea>
+              <button type="submit" id="zoneBotSend" title="Send"><span class="mdi mdi-send" aria-hidden="true"></span></button>
+            </form>
+          </div>
+        </aside>
+      </div>
+    </div>
   </div>
 
   <footer class="statusbar">
@@ -387,6 +438,9 @@
 <!-- Before widgets.js: buildRunCell reads DEMOS when a cell carries an @demo directive. -->
 <script src="js/demos.js"></script>
 <script src="js/widgets.js"></script>
+<!-- After widgets.js because a checkpoint's cover is painted by paintLesson2, and before ai.js
+     because the zone borrows wireChatBox at RUNTIME rather than at load — see wireZoneChatBox. -->
+<script src="js/zone.js"></script>
 <script src="js/editor.js"></script>
 <script src="js/game-runner.js"></script>
 <script src="js/files.js"></script>

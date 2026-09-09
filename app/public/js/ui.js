@@ -81,10 +81,13 @@ function openFloating(which) {
    idiom for "bring a panel back" beats two. */
 function paintAIBtn() {
   const b = $('aiBtn'); if (!b) return;
+  // A full-window overlay has its own helper in it, so the shell's button would open a second one
+  // behind the thing on screen.
   const labOpen = typeof openLabRef !== 'undefined' && !!openLabRef;
+  const zoneOpen = typeof openZoneRef !== 'undefined' && !!openZoneRef;
   const pageShowing = !($('page') && $('page').hidden);
   const aiVisible = tier === 'wide' ? !aiCollapsed : floatOpen === 'right';
-  b.hidden = aiVisible || pageShowing || labOpen;
+  b.hidden = aiVisible || pageShowing || labOpen || zoneOpen;
   b.setAttribute('aria-expanded', aiVisible ? 'true' : 'false');
 }
 /* Hiding the outline mirrors hiding the assistant: the chevron in the panel's own header sends it

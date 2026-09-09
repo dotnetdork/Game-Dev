@@ -16,10 +16,10 @@ function resetWidgetHandlers() { Object.keys(widgetHandlers).forEach(function (k
    by kind — q0, q1, r0, c0 — which is the same on every render and after a reload, so the
    activity ledger in project.js has something durable to hang answers on. */
 let lessonWidgetId = '';
-let widgetSeq = { q: 0, r: 0, c: 0, y: 0 };
+let widgetSeq = { q: 0, r: 0, c: 0, y: 0, z: 0 };   // z: building zones, see js/zone.js
 let goalRunKeys = [];        // run cells that declare @expect — the only ones that can be "finished"
 function beginLessonWidgets(lessonId) {
-  lessonWidgetId = lessonId || ''; widgetSeq = { q: 0, r: 0, c: 0, y: 0 }; goalRunKeys = [];
+  lessonWidgetId = lessonId || ''; widgetSeq = { q: 0, r: 0, c: 0, y: 0, z: 0 }; goalRunKeys = [];
   pendingBuilds = []; revealQueue = [];
   clearTimeout(revealFailsafe);
 }
@@ -2134,6 +2134,9 @@ function selectLesson(idx) {
   /* Changing lesson tears down every widget in the old one, including the handler the open bench
      is talking to. Close it first rather than leaving it on screen wired to a lesson that is gone. */
   if (openLabRef) closeLab();
+  // Same reasoning for a building zone: its board is bound to the lesson that built it.
+  if (typeof openZoneRef !== 'undefined' && openZoneRef) closeZone();
+  if (typeof resetZoneAutoOpen === 'function') resetZoneAutoOpen();
   labPendingAdvance = null;
   curIdx = idx; const f = flat[idx];
   revealModuleFor(idx);        // the module this lesson lives in opens; nothing else is touched
@@ -2164,6 +2167,7 @@ function paintLesson2(f, html) {
   renderQuizCells($('lessonBody'));
   renderChallengeCells($('lessonBody'));
   renderYourTurnCells($('lessonBody'));
+  if (typeof mountZones === 'function') mountZones($('lessonBody'));
   wrapTables($('lessonBody'));
   calmClips($('lessonBody'));
   unfloatLonelyAsides($('lessonBody'));
@@ -2214,7 +2218,12 @@ function lessonActivityKeys() {
      module and it is therefore also what the module's stars wait for — completeLesson only awards
      them once every lesson in the module is done, so the gate needs no code of its own.
      Either way they record and award their badge — see renderYourTurnCells. */
-  if (isCheckpoint()) { for (let i = 0; i < widgetSeq.y; i++) keys.push('y' + i); }
+  /* A building zone counts as one thing, because it IS one thing — the student's own game, worked
+     on in a workspace, with its own goals ticking inside it. Splitting that into an activity per
+     goal would put the zone's own progress bar on the lesson page as well, in a different shape.
+     A checkpoint that has no zone yet falls back to counting its practice steps. */
+  if (widgetSeq.z) { for (let i = 0; i < widgetSeq.z; i++) keys.push('z' + i); }
+  else if (isCheckpoint()) { for (let i = 0; i < widgetSeq.y; i++) keys.push('y' + i); }
   // only run cells with an @expect goal can be "finished"; the rest are for tinkering
   goalRunKeys.forEach(function (k) { keys.push(k); });
   return keys;
@@ -2419,7 +2428,10 @@ function wireLessonEvents() {
      a lesson needed, and moving the lesson on underneath the student takes the reward away from
      them before they have seen it. closeLab() picks this up when they come back. */
   on(EV.LESSON_DONE, function (d) {
-    if (openLabRef) { labPendingAdvance = d.lesson; return; }
+    /* Also a building zone, and there it matters more: finishing a zone is what completes a
+       checkpoint, so without this the workspace a student just finished closes itself under them
+       three seconds later and the app moves on. closeLab and closeZone both flush this. */
+    if (openLabRef || (typeof openZoneRef !== 'undefined' && openZoneRef)) { labPendingAdvance = d.lesson; return; }
     startAdvance(d.lesson);
   });
   on(EV.PROGRESS_CHANGED, function () { renderFooter(); });               // XP bar, stars, level

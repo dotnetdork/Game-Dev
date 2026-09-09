@@ -337,7 +337,9 @@ const THINKING = {
   coder: ['Thinking…', 'Reading your game…', 'Working out the smallest change…',
     'Checking which file this belongs in…', 'Writing it carefully…'],
   lab: ['Thinking…', 'Reading your lab code…', 'Looking at what it printed…',
-    'Working out a nudge, not the answer…']
+    'Working out a nudge, not the answer…'],
+  zone: ['Thinking…', 'Reading your board…', 'Looking at what is still empty…',
+    'Working out one question worth asking…', 'Thinking about your game, not ours…']
 };
 function startThinking(el, kind) {
   if (!el) return;

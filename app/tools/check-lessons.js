@@ -25,10 +25,11 @@ const DIR = process.argv[2] || path.join(__dirname, '..', 'content', 'lessons');
 const QUIZ = /```quiz\r?\n([\s\S]*?)```/g;
 const YOURTURN = /```yourturn\r?\n([\s\S]*?)```/g;
 const CHALLENGE = /```challenge\r?\n([\s\S]*?)```/g;
+const ZONE = /```zone\r?\n([\s\S]*?)```/g;
 const KNOWN_TYPES = ['mcq', 'predict', 'parsons', 'fillblank', 'findbug'];
 
 const problems = [];
-let quizzes = 0, yourturns = 0, challenges = 0;
+let quizzes = 0, yourturns = 0, challenges = 0, zones = 0;
 /* How many multiple-choice answers sit at each authored position, tallied for the position-bias
    report at the bottom of this file. */
 const answerAt = {};
@@ -148,6 +149,58 @@ function checkYourTurn(where, src) {
    backtick parses fine for the validator, passes as "solvable", and renders in the app with no
    code, no task and no hint at all. One shipped that way.
    This is the half that asks the question the app asks: can a student see it? */
+/* ---- a building zone has to be able to open ----
+   A zone is declared, not written: the board comes from `slots`, the rail from `goals`, and the
+   helper is told about both. Each of these fails silently and differently if it is wrong, which is
+   why they are checked rather than trusted:
+
+     no slots            an empty board, and a Finish button that can never light up
+     a goal with no slot  a chip on the rail that can never tick, so the zone cannot be finished
+     a goal naming a slot that is not on the board — same thing, and much harder to spot by eye
+     a prompt for a slot that is not on the board — writing nobody will ever read
+
+   `*` is allowed as a goal's slot and means "every box answered". */
+function checkZone(where, src) {
+  let y;
+  try { y = yaml.load(src); }
+  catch (e) {
+    fail(where, 'the YAML does not parse (' + String(e.message).split('\n')[0] + '). A value that '
+      + 'starts with ` or " or contains ": " must be wrapped in quotes.');
+    return;
+  }
+  if (!y || typeof y !== 'object' || Array.isArray(y)) { fail(where, 'is empty or is not a set of keys.'); return; }
+  if (!y.title) fail(where, 'has no `title:` — the zone header would be blank.');
+  if (!y.brief) fail(where, 'has no `brief:` — the helper would be told nothing about what this zone is for.');
+
+  const slots = Array.isArray(y.slots) ? y.slots.map(String) : [];
+  if (!slots.length) { fail(where, 'has no `slots:` — the board would be empty and the zone could never be finished.'); return; }
+  const key = function (s) { return String(s || '').toLowerCase().replace(/[^a-z0-9]+/g, ''); };
+  const known = {};
+  slots.forEach(function (s) {
+    if (!String(s).trim()) { fail(where, 'has a blank entry in `slots:`.'); return; }
+    if (known[key(s)]) fail(where, 'lists the slot "' + s + '" twice — the two cards would edit one box.');
+    known[key(s)] = true;
+  });
+
+  const goals = Array.isArray(y.goals) ? y.goals : [];
+  if (!goals.length) fail(where, 'has no `goals:` — nothing would tick, so Finish could never light up.');
+  goals.forEach(function (g, i) {
+    const at = where + ' goal ' + (i + 1);
+    if (!g || typeof g !== 'object' || Array.isArray(g)) { fail(at, 'is not a set of keys.'); return; }
+    if (!g.say) fail(at, 'has no `say:` — the chip on the rail would have no words on it.');
+    const s = g.slot === undefined || g.slot === null ? '' : String(g.slot);
+    if (!s) { fail(at, 'has no `slot:`, so nothing can ever tick it and the zone cannot be finished.'); return; }
+    if (s === '*' || s === 'all') return;
+    if (!known[key(s)]) fail(at, 'checks the slot "' + s + '", which is not in `slots:` — it can never tick.');
+  });
+
+  if (y.prompts && typeof y.prompts === 'object' && !Array.isArray(y.prompts)) {
+    Object.keys(y.prompts).forEach(function (k) {
+      if (!known[key(k)]) fail(where, 'has a prompt for "' + k + '", which is not in `slots:` — nobody would ever read it.');
+    });
+  }
+}
+
 function checkChallenge(where, src) {
   let c;
   try { c = yaml.load(src); }
@@ -364,7 +417,10 @@ function checkImages(file, text) {
    The position-bias report below is still a report, on the same terms: the shuffle covers it. */
 const PROSE_RUN_MAX = 6;
 const FIRST_ACT_MAX_PCT = 25;
-const ACT_FENCES = ['quiz', 'challenge', 'yourturn', 'run'];
+/* `zone` is here because a building zone IS the work of a checkpoint — a page whose only block is a
+   zone is not a wall of text, it is a door. Without it the pacing check calls a checkpoint a lesson
+   with no activity in it and fails the build. */
+const ACT_FENCES = ['quiz', 'challenge', 'yourturn', 'run', 'zone'];
 
 function pacingOf(text) {
   const body = text.replace(/^---[\s\S]*?\n---\n/, '');
@@ -423,6 +479,7 @@ files.forEach(function (f) {
   quizzes += eachBlock(text, QUIZ, function (i, src) { checkQuiz(f + ' quiz ' + i, src); });
   yourturns += eachBlock(text, YOURTURN, function (i, src) { checkYourTurn(f + ' yourturn ' + i, src); });
   challenges += eachBlock(text, CHALLENGE, function (i, src) { checkChallenge(f + ' challenge ' + i, src); });
+  zones += eachBlock(text, ZONE, function (i, src) { checkZone(f + ' zone ' + i, src); });
 });
 
 checkUpscaleGuard();
@@ -506,9 +563,9 @@ function checkCheckpoints(doc) {
         fail(where, 'is a checkpoint but is not the last lesson in ' + (mod.name || mod.id)
           + '. The module\'s stars only wait for the last one, so this gate does nothing.');
       }
-      if (!/```yourturn/.test(raw)) {
-        fail(where, 'is a checkpoint with no ```yourturn block. It has nothing to insist on, so it '
-          + 'finishes like an ordinary lesson.');
+      if (!/```zone/.test(raw) && !/```yourturn/.test(raw)) {
+        fail(where, 'is a checkpoint with neither a ```zone nor a ```yourturn block. It has nothing '
+          + 'to insist on, so it finishes like an ordinary lesson.');
       }
     });
     if (!found) missing.push(mod.name || mod.id);
@@ -561,7 +618,8 @@ function checkDemoNames() {
   console.log(used + ' run cells carry a live picture, from ' + names.length + ' demos: ' + names.join(', '));
 }
 
-console.log(files.length + ' lessons: ' + quizzes + ' quizzes, ' + challenges + ' labs, ' + yourturns + ' your-turn steps');
+console.log(files.length + ' lessons: ' + quizzes + ' quizzes, ' + challenges + ' labs, '
+  + yourturns + ' your-turn steps, ' + zones + ' building zones');
 if (tiny.length) {
   console.log('note: ' + tiny.length + ' screenshot(s) draw smaller than ' + TINY_W + 'px —');
   tiny.forEach(function (t) { console.log('  ' + t); });

@@ -12,50 +12,101 @@ across the whole course, and have a matching `.md` on disk. `npm test` enforces 
 be the lesson's *position*, which is why reordering the course used to move every student's progress
 onto whatever landed in the vacated slot; that is fixed, and the id is why.
 
-## Checkpoints
-**Every module ends in a checkpoint** — one lesson, marked `checkpoint: true` in its front-matter,
-about the student's *own* game rather than the course's. It is what makes the arc
-use → modify → **create** instead of stopping at modify.
+## Checkpoints, and the building zones they open
+**Every module ends in a checkpoint** — marked `checkpoint: true` in its front-matter, about the
+student's *own* game rather than the course's. It is what makes the arc use → modify → **create**
+instead of stopping at modify.
 
-The flag changes three things:
+**A checkpoint is not a lesson.** Every other page in the course is something to read with things to
+do embedded in it. A checkpoint is the opposite shape: a **building zone**, a full-window workspace
+that opens over the app the way the lab bench does, with a board of the student's own answers on one
+side and a helper bot in the room on the other. So its file contains no prose — just a ```zone
+block declaring the workspace. The page behind is a door: title, one line, what the zone wants, and
+the button.
 
-- the outline draws that row with a chequered flag in the module's colour, under a hairline
-- the lesson header says "Checkpoint · your own game" instead of "Lesson 4 of 4", and says how many
+The `checkpoint: true` flag changes three things:
+
+- the outline draws that row with a chequered flag in the module's colour
+- the page header says "Checkpoint · your own game" instead of "Lesson 4 of 4", and says how many
   stars the module is holding
-- **its `yourturn` steps count towards finishing it.** In an ordinary lesson they do not (see "How a
-  lesson gets completed"), because a practice step reads the student's real game and lessons unlock
-  in a straight line — one child stuck on their own game would wall off the course. A checkpoint is
-  the one place that insists, which is the right place: you cannot arrive at the part where you
-  build your own game having built nothing.
+- **its work counts towards finishing it** — the zone as one activity, or (for a checkpoint with no
+  zone yet) its `yourturn` steps. In an ordinary lesson `yourturn` steps do not count, because a
+  practice step reads the student's real game and lessons unlock in a straight line: one child stuck
+  on their own game would wall off the course. A checkpoint is the one place that insists, which is
+  the right place.
 
 The stars gate needs no extra machinery. A lesson completes only when its activities are done, a
-module's stars only land once every lesson in it is done, and the checkpoint is the last lesson — so
-the module's reward already waits on the student's own game.
+module's stars only land once every lesson in it is done, and the checkpoint is the last lesson.
 
-Two rules `npm test` will fail you on, both because they fail silently otherwise:
+Three rules `npm test` will fail you on, all because they fail silently otherwise: a checkpoint must
+be its **module's last lesson** (anywhere else and the stars stop waiting for it, so the gate is
+decoration), it must have a **```zone or a ```yourturn** (otherwise it insists on nothing), and
+**every module must have one**.
 
-- **A checkpoint must be its module's last lesson.** Anywhere else and the stars stop waiting for
-  it, so the gate becomes decoration.
-- **A checkpoint must have at least one `yourturn` block.** Otherwise there are no `y*` keys to
-  count and it finishes on its quizzes like any other lesson — a checkpoint insisting on nothing.
-- And **every module must have one**, for the same reason the feature exists.
+### Writing a ```zone
 
-Write them short. Framing prose, then `yourturn` blocks with a sentence between each (activity
-fences may not touch). Skip the lab — a sandbox canvas is the wrong tool for "work on your own
-game", and skipping it also means no `solution:` to keep in step.
+    ```zone
+    title: Your One-Sheet
+    intro: One line, shown on the door.
+    reward: Designer badge          # optional; awarded when the zone is finished
+    brief: >
+      What the helper is here to do, and what the student has just been taught. This goes into the
+      bot's prompt and is the single biggest lever on whether it is any use.
+    opener: >
+      The bot's first line, before it asks its first question.
+    slots:
+      - My game is
+      - How you lose
+    prompts:
+      My game is: One sentence somebody could repeat back to you.
+      How you lose: If you cannot lose, you cannot win. What goes wrong?
+    goals:
+      - say: Say how you lose
+        slot: How you lose
+      - say: Every box answered
+        slot: '*'
+    ```
+
+- **`slots`** are the cards on the board, in order, and they are **headings in `design.md`** — the
+  student's own notes file. Matched on the squashed text, so `My game is` finds `## My game is...`.
+  A slot the file has never had is created on first write.
+- **`prompts`** is what an empty card says. Optional; without one the card falls back to the
+  parenthesised hint in the file.
+- **`goals`** are the rail along the top, and each one is a real check: `slot:` means that box has
+  an answer in it, and `'*'` means all of them do. They tick themselves as the student works, and
+  Finish stays disabled until they are all green. A goal naming a slot that is not in `slots` can
+  never tick, so `npm test` refuses it.
+- **`brief`** is worth more effort than anything else here. It is how the bot knows what the student
+  has just learned and what to push on. Say what to ask about first.
+
+Finishing runs a second gate: the `zone-check` agent reads the boxes and decides whether the answers
+are *answers*. It passes unless a box is filler, the heading repeated back, or an answer to a
+different question — and an unreachable server or an unparseable reply resolves in the student's
+favour, exactly as the practice grader does.
+
+### `design.md` is the truth
+The board reads `design.md` when it opens and writes it on every edit. Nothing is stored twice, so a
+student can open the file in the Code tab and read the same thing. An answered slot loses its
+prompt, so the file becomes a design document as it fills in; headings the zone does not declare are
+kept in place, because a later checkpoint adds some and the student adds their own.
+
+Checkpoints later in the course consume it. `contains: {file: design.md, text: 'How you lose'}` in a
+`yourturn` works the same as anywhere else — anchor on a heading the student is told to keep, not on
+words they are inventing.
 
 ## The student's design notes — `design.md`
-Every project ships with `design.md`: the student's **one-sheet**, five slots, filled in during the
+Every project ships with `design.md`: the student's **one-sheet**, six slots, filled in during the
 Game Ideation module and revised by every checkpoint after it. It is the only file in a project that
 is not code — the game runner, the linter, `loadCode`'s formatter and the `parses:` rule all skip it
 (`isCodeFile` in js/project.js), and the AI can only write `.js`, so the Build panel cannot rewrite
-it.
+it. **Building zones are its editor** (see above); the Code tab is where a student reads it.
 
-Checkpoints read it with the ordinary rules: `contains: {file: design.md, text: 'How you lose'}`.
-Anchor on a **heading** the student is told to keep rather than on words they are inventing, and
-pair it with `changed_at_least` so pressing Check having done nothing fails locally instead of
-costing a grader call. What they actually wrote is a judgement, so leave that to the grader — it
-sees `design.md` in the diff.
+A file rather than a Notes tab or a key in progress state, and the reason is one button: **Reset my
+progress** sits under a heading called *Testing* and promises only to clear XP, Stars, assets and
+lessons. Notes kept there would be destroyed by it, silently, and the one-sheet is the only thing in
+a project a student cannot get back by reading the starter. As a file it survives that, survives
+Reset-the-game (which restores code only, deliberately), and stays visible to the tutor and the
+grader — `aiContext()` sends project files and nothing else.
 
 ## How the app reads all this
 At boot the app makes one request, `GET /api/lessons`, which returns the module structure plus

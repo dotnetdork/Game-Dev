@@ -44,7 +44,7 @@ let routerStarted = false;
 const PAGE_ROUTES = ['store', 'gallery', 'leaderboards', 'docs', 'help'];
 /* The panels inside a lesson that are worth their own address. `learn` is deliberately absent: it
    is the default, and /…/what-an-engine-does/learn would be a second URL for the same screen. */
-const LESSON_VIEWS = ['code', 'game', 'lab'];
+const LESSON_VIEWS = ['code', 'game', 'lab', 'zone'];
 
 /* A lesson lives at /<module>/<lesson> — /game-engines/what-an-engine-does.
    The module comes from its NAME, not its course.yaml id: the ids are short internal handles
@@ -109,10 +109,12 @@ function currentRoute() {
   if (pageOpen && page && page !== 'courses') return { kind: 'page', page: page };
   const f = (typeof flat !== 'undefined' && typeof curIdx === 'number') ? flat[curIdx] : null;
   if (!f) return { kind: 'home' };
-  /* The lab wins over the tab underneath it: it is a full-window dialog, so it is what the student
-     is actually looking at, and a link to it should reopen it rather than the tab it covers. */
+  /* A full-window overlay wins over the tab underneath it: it is what the student is actually
+     looking at, and a link to it should reopen it rather than the tab it covers. A zone and a bench
+     cannot both be open — each closes the other — so the order here is only a tie-break. */
   let view = '';
-  if (typeof openLabRef !== 'undefined' && openLabRef) view = 'lab';
+  if (typeof openZoneRef !== 'undefined' && openZoneRef) view = 'zone';
+  else if (typeof openLabRef !== 'undefined' && openLabRef) view = 'lab';
   else {
     const tab = document.querySelector('.vtab.on');
     const v = tab ? tab.getAttribute('data-view') : 'learn';
@@ -177,6 +179,8 @@ function applyRoute(route) {
       if (typeof switchView === 'function') switchView(want === 'game' ? 'play' : 'code');
     } else if (want === 'lab') {
       openLabFromRoute();
+    } else if (want === 'zone') {
+      openZoneFromRoute();
     }
   } finally {
     routeApplying = false;
@@ -194,6 +198,20 @@ function openLabFromRoute() {
     const lab = labRegistry[0];
     if (lab) { openLab(lab); return; }
     if (++tries > 20) return;              // ~1s; the lesson simply has no lab
+    setTimeout(tick, 50);
+  };
+  tick();
+}
+
+/* Open this checkpoint's building zone from a URL. Same shape as openLabFromRoute and for the same
+   reason: selectLesson fetches and renders the body, and the zone is built out of that body. */
+function openZoneFromRoute() {
+  let tries = 0;
+  const tick = function () {
+    if (typeof zoneRegistry === 'undefined') return;
+    const z = zoneRegistry[0];
+    if (z) { if (!openZoneRef) openZone(z); return; }
+    if (++tries > 20) return;              // ~1s; this lesson simply has no zone
     setTimeout(tick, 50);
   };
   tick();
