@@ -919,12 +919,13 @@ body.resizing-v #gameFrame{pointer-events:none;}
 .kids .lesson-row.active::before{background:var(--azure);}
 .kids .lesson-row.done .lbl{color:var(--muted);}
 /* A checkpoint is the end of a module and the one lesson about the student's OWN game, so it should
-   not look like the four rows above it. A weightier label and a hairline above it, which reads as
-   "this closes the group" — no rail and no badge: the chequered flag already says what it is, and a
-   row in a 280px column cannot afford a second ornament. Kept off `.done` so a finished checkpoint
-   greys out with everything else instead of staying loud. */
+   not look like the four rows above it. The weight of the label and the chequered flag are the
+   whole treatment — no rule above it, no rail, no badge. A 280px column cannot afford a second
+   ornament, and a separator drawn between every module's last row and the next module's header was
+   a line doing a job the folder heading already does. No extra spacing either — the row sits in the
+   rhythm of the list like any other lesson. Kept off `.done` so a finished checkpoint greys out
+   with everything else instead of staying loud. */
 .kids .lesson-row.cp:not(.done) .lbl{font-weight:600;color:var(--ink);}
-.kids .lesson-row.cp{margin-top:5px;border-top:1px solid var(--line);padding-top:10px;}
 .kids .lesson-row.cp.locked .lbl{color:var(--lock);font-weight:500;}
 .sec-head{border-radius:8px;transition:background .1s;}
 
