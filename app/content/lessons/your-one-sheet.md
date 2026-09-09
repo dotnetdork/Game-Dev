@@ -26,14 +26,25 @@ slots:
   - How you win
   - How you lose
   - What makes it mine
-  - What I am NOT building
 prompts:
   My game is: One sentence somebody could repeat back to you.
   The one thing you do: Every game is one verb done well. Mario jumps. Minecraft digs. What is yours?
   How you win: What has to happen for somebody to say "I did it"?
   How you lose: If you cannot lose, you cannot win. What goes wrong?
   What makes it mine: The twist. One of them, not three.
-  What I am NOT building: The ideas you love and are cutting anyway. You can build them next time.
+board:
+  - id: game
+    say: My game
+    at: [40, 40, 620, 300]
+    holds: slots
+  - id: cut
+    say: Not building — next time
+    at: [700, 40, 280, 300]
+    hot: true
+    collects: What I am NOT building
+  - id: maybe
+    say: Thinking out loud
+    at: [40, 380, 940, 180]
 goals:
   - say: Name the verb
     slot: The one thing you do

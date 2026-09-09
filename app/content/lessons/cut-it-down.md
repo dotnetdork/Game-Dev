@@ -28,15 +28,29 @@ slots:
   - The one thing you do
   - How you lose
   - What makes it mine
-  - What I am NOT building
-  - What I cut, and when
 prompts:
   My core loop: Three parts, one sentence. You do X, the game answers with Y, and Z sets up the next go.
   The one thing you do: Still one verb? If you have collected a second one, this is where it gets cut.
   How you lose: Now you know about difficulty and fairness — is losing the player's fault, or the game's?
-  What makes it mine: One twist. If there are still three here, two of them belong in the box below.
-  What I am NOT building: Everything you cut. Not a bin — a list you can build from next time.
-  What I cut, and when: 'Write the date and what went. You will want to know later whether the cut was right.'
+  What makes it mine: One twist. If there are still three here, two of them belong on the right.
+board:
+  - id: game
+    say: The game I am building
+    at: [40, 40, 440, 300]
+    holds: slots
+  - id: building
+    say: Going in
+    at: [520, 40, 250, 300]
+    budget: 10
+    collects: What I am building
+  - id: cut
+    say: Not building — next time
+    at: [810, 40, 250, 300]
+    hot: true
+    collects: What I am NOT building
+  - id: loose
+    say: Everything I want
+    at: [40, 380, 1020, 190]
 goals:
   - say: Write your core loop in three parts
     slot: My core loop
@@ -45,16 +59,9 @@ goals:
   - say: One twist, not three
     slot: What makes it mine
   - say: Say what you cut
-    slot: What I cut, and when
-  - say: Every box answered
+    slot: What I am NOT building
+  - say: Every note written
     slot: '*'
 tools:
-  - kind: budget
-    title: Will it fit?
-    say: Everything you want in your game, sized. S is a week, M is two, L is four. You cannot change the weeks — that is the whole point of the thing.
-    weeks: 10
-    into: What I am NOT building
   - kind: readback
-    title: The stranger test
-    say: Your boxes as one paragraph. Read it after you cut, and check the game you are left with is still one you want to make.
 ```

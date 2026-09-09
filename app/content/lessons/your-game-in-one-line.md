@@ -23,10 +23,21 @@ opener: >
   you have not been taught yet. I ask questions and I will not write your game for you.
 slots:
   - My game is
-  - What I am NOT building
 prompts:
   My game is: 'One sentence. Try starting with "A platformer where" and finishing it.'
-  What I am NOT building: The ideas you already know are too big. Writing them down is how you stop thinking about them.
+board:
+  - id: game
+    say: My game
+    at: [40, 40, 420, 200]
+    holds: slots
+  - id: cut
+    say: Not building — next time
+    at: [500, 40, 300, 320]
+    hot: true
+    collects: What I am NOT building
+  - id: maybe
+    say: Ideas, unsorted
+    at: [40, 280, 420, 250]
 goals:
   - say: Say what your game is
     slot: My game is

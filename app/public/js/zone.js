@@ -199,263 +199,379 @@ function paintZoneGoals(zone) {
   }
 }
 
-/* ---------- tools ----------
-   A board of boxes and a bot is a good workspace and a slightly solemn one. Each zone also gets a
-   thing to PLAY with, sitting above the cards — and each one is a real tool rather than decoration:
-   it does the job that zone's lessons just taught, and it writes its result into a box.
-
-   Declared per zone in the ```zone block, so what a tool says is content:
-
-       tools:
-         - kind: mixer
-           into: My game is
-           bases: [a platformer, a climbing game]
-           twists: ['but the floor vanishes behind you']
-
-   Adding a kind means adding a function here. Same shape as demos.js: named from content, written
-   in code, and `check-lessons.js` refuses a `kind:` that does not exist so a typo is a failed build
-   rather than a silently missing tool. */
-const ZONE_TOOLS = {
-
-  /* The blank page, attacked directly. Two lists and a shuffle — the point is not that the machine
-     has a good idea, it is that reading three bad ones makes you say "no, but what about…", which
-     is the whole trick and the thing a stuck eleven-year-old cannot do from nothing. */
-  mixer: function (zone, t, host) {
-    const bases = (t.bases || []).length ? t.bases : ['a platformer', 'a racing game', 'a collecting game'];
-    const twists = (t.twists || []).length ? t.twists : ['but you only get one life', 'but you cannot stop moving'];
-    const out = document.createElement('div'); out.className = 'zone-tool-out';
-    const roll = zoneToolButton('Give me three', 'mdi-dice-5');
-    let seen = 0;
-    roll.addEventListener('click', function () {
-      out.innerHTML = '';
-      const picks = [];
-      for (let i = 0; i < 3 && picks.length < 3; i++) {
-        const p = bases[(Math.random() * bases.length) | 0] + ' ' + twists[(Math.random() * twists.length) | 0];
-        if (picks.indexOf(p) < 0) picks.push(p);
-      }
-      picks.forEach(function (p) {
-        const b = document.createElement('button');
-        b.type = 'button'; b.className = 'zone-pitch'; b.textContent = p;
-        b.addEventListener('click', function () {
-          const slot = sheetSlot(zone.sheet, t.into || zone.spec.slots[0]);
-          slot.answer = p.charAt(0).toUpperCase() + p.slice(1) + '.';
-          zone.touched = true;
-          sheetWrite(zone.sheet);
-          paintZoneBoard(zone); paintZoneGoals(zone);
-          zoneSay('bot', 'In the box — now make it yours. Click the card and change a word, or tell me what is wrong with it.');
-        });
-        out.appendChild(b);
-      });
-      const again = document.createElement('p'); again.className = 'zone-tool-hint';
-      again.textContent = (++seen > 1)
-        ? 'Still nothing? The one you hate is useful too — what is wrong with it?'
-        : 'Click one to start from it. You are meant to change it afterwards.';
-      out.appendChild(again);
-    });
-    host.appendChild(roll); host.appendChild(out);
-  },
-
-  /* The test the lesson names, made pressable. A one-sheet is finished when somebody else could
-     build the right game from it, and the cheapest way to find out is to stop reading it as the
-     person who wrote it. Reading it back as one paragraph does that surprisingly well. */
-  readback: function (zone, t, host) {
-    const out = document.createElement('div'); out.className = 'zone-tool-out';
-    const go = zoneToolButton('Read it back to me', 'mdi-text-box-outline');
-    go.addEventListener('click', function () {
-      const said = (zone.spec.slots || []).map(function (h) {
-        return { h: h, a: sheetSlot(zone.sheet, h).answer };
-      }).filter(function (x) { return x.a; });
-      out.innerHTML = '';
-      if (!said.length) {
-        out.innerHTML = '<p class="zone-tool-hint">Nothing in the boxes yet — fill one in and press this again.</p>';
-        return;
-      }
-      const p = document.createElement('p'); p.className = 'zone-readback';
-      p.textContent = said.map(function (x) { return x.a.replace(/\s+$/, '').replace(/\.?$/, '.'); }).join(' ');
-      out.appendChild(p);
-      const miss = (zone.spec.slots || []).filter(function (h) { return !sheetSlot(zone.sheet, h).answer; });
-      const note = document.createElement('p'); note.className = 'zone-tool-hint';
-      /* Quoted rather than lowercased into the sentence. Lowercasing turned "What I cut" into
-         "what i cut", and it also stopped the names matching the cards they refer to. */
-      note.textContent = miss.length
-        ? 'A stranger reading that would still have to ask about: '
-          + miss.map(function (h) { return '“' + h.replace(/\.+$/, '') + '”'; }).join(', ') + '.'
-        : 'That is your whole game. Read it out loud — if you stumble, the sentence you stumbled on is the one to fix.';
-      out.appendChild(note);
-    });
-    host.appendChild(go); host.appendChild(out);
-  },
-
-  /* Scope, as arithmetic you can drag. The lesson makes the argument; this makes it personal, and
-     it will not let them cheat: the weeks are fixed and the sizes are fixed, so the only thing that
-     can move is the list. Which is the entire point. */
-  budget: function (zone, t, host) {
-    const weeks = Number(t.weeks) || 10;
-    const COST = { S: 1, M: 2, L: 4 };
-    const intoSlot = t.into || 'What I am NOT building';
-    /* Seeded from the box, so a student who has already written a cut list sees it here instead of
-       an empty tool, and closing the zone loses nothing. */
-    if (!zone.budget) {
-      zone.budget = (sheetSlot(zone.sheet, intoSlot).answer || '')
-        .split(/[,\n]+/).map(function (s) { return s.trim().replace(/\.$/, ''); })
-        .filter(Boolean).slice(0, 12)
-        .map(function (s) { return { name: s, size: 'M', building: false }; });
-    }
-    const wrap = document.createElement('div'); wrap.className = 'zone-budget';
-    host.appendChild(wrap);
-
-    const draw = function () {
-      const spent = zone.budget.filter(function (i) { return i.building; })
-        .reduce(function (n, i) { return n + COST[i.size]; }, 0);
-      const over = spent > weeks;
-      wrap.innerHTML = '';
-      const meter = document.createElement('div'); meter.className = 'zone-meter' + (over ? ' over' : '');
-      meter.innerHTML = '<span class="zone-meter-bar"><i style="width:'
-        + Math.min(100, Math.round(100 * spent / weeks)) + '%"></i></span>'
-        + '<span class="zone-meter-say">' + spent + ' of ' + weeks + ' weeks'
-        + (over ? ' — ' + (spent - weeks) + ' over. Something here is not getting built.' : '') + '</span>';
-      wrap.appendChild(meter);
-
-      const list = document.createElement('div'); list.className = 'zone-budget-list';
-      zone.budget.forEach(function (item, i) {
-        const row = document.createElement('div'); row.className = 'zone-budget-row' + (item.building ? ' on' : '');
-        const name = document.createElement('span'); name.className = 'zone-budget-name'; name.textContent = item.name;
-        const size = document.createElement('button');
-        size.type = 'button'; size.className = 'zone-budget-size'; size.textContent = item.size;
-        size.title = 'How big is it? S = a week, M = two, L = four';
-        size.addEventListener('click', function () {
-          item.size = item.size === 'S' ? 'M' : (item.size === 'M' ? 'L' : 'S'); draw();
-        });
-        const swap = document.createElement('button');
-        swap.type = 'button'; swap.className = 'zone-budget-swap';
-        swap.textContent = item.building ? 'Building' : 'Next time';
-        swap.addEventListener('click', function () { item.building = !item.building; draw(); });
-        const del = document.createElement('button');
-        del.type = 'button'; del.className = 'zone-budget-del'; del.innerHTML = '<span class="mdi mdi-close"></span>';
-        del.title = 'Take it off the list';
-        del.addEventListener('click', function () { zone.budget.splice(i, 1); draw(); });
-        row.appendChild(size); row.appendChild(name); row.appendChild(swap); row.appendChild(del);
-        list.appendChild(row);
-      });
-      wrap.appendChild(list);
-
-      const add = document.createElement('form'); add.className = 'zone-budget-add';
-      add.innerHTML = '<input placeholder="Something you want in your game…" maxlength="60" aria-label="Add an idea">';
-      const plus = zoneToolButton('Add', 'mdi-plus');
-      add.appendChild(plus);
-      add.addEventListener('submit', function (e) {
-        e.preventDefault();
-        const box = add.querySelector('input'); const v = box.value.trim();
-        if (!v || zone.budget.length >= 14) return;
-        zone.budget.push({ name: v, size: 'M', building: true });
-        box.value = ''; draw(); add.querySelector('input').focus();
-      });
-      wrap.appendChild(add);
-
-      const cut = zone.budget.filter(function (i) { return !i.building; });
-      const save = zoneToolButton('Put the "next time" list in the box', 'mdi-tray-arrow-down');
-      save.disabled = !cut.length;
-      save.addEventListener('click', function () {
-        sheetSlot(zone.sheet, intoSlot).answer = cut.map(function (i) { return i.name; }).join(', ') + '.';
-        zone.touched = true;
-        sheetWrite(zone.sheet);
-        paintZoneBoard(zone); paintZoneGoals(zone);
-      });
-      wrap.appendChild(save);
-    };
-    draw();
-  }
-};
-
-function zoneToolButton(label, icon) {
-  const b = document.createElement('button');
-  b.type = 'button'; b.className = 'zone-tool-btn';
-  b.innerHTML = '<span class="mdi ' + icon + '" aria-hidden="true"></span>' + esc(label);
-  return b;
-}
-
-/* Tools are painted once per zone opening, not on every board repaint — a tool holding a shuffle
-   the student is reading, or half a typed item, must not be thrown away because a card elsewhere
-   was edited. */
-function paintZoneTools(zone) {
-  const host = $('zoneTools'); if (!host) return;
-  host.innerHTML = '';
-  (zone.spec.tools || []).forEach(function (t) {
-    const fn = ZONE_TOOLS[t.kind];
-    if (!fn) { console.warn('[league] zone tool "' + t.kind + '" does not exist — see ZONE_TOOLS in js/zone.js'); return; }
-    const box = document.createElement('section'); box.className = 'zone-tool';
-    const hd = document.createElement('h3'); hd.className = 'zone-tool-hd';
-    hd.textContent = t.title || t.kind;
-    box.appendChild(hd);
-    if (t.say) { const p = document.createElement('p'); p.className = 'zone-tool-say'; p.textContent = t.say; box.appendChild(p); }
-    try { fn(zone, t, box); } catch (e) { console.warn('[league] zone tool "' + t.kind + '" failed: ' + e.message); return; }
-    host.appendChild(box);
-  });
-}
-
 /* ---------- the board ----------
-   One card per slot, all of them on screen at once. That is the whole reason this is a board and
-   not a form: the empty ones are visible next to the full ones, which is the only way an
-   eleven-year-old can see what is left without being told. */
-function paintZoneBoard(zone) {
-  const host = $('zoneBoard'); if (!host) return;
-  host.innerHTML = '';
-  const board = document.createElement('div'); board.className = 'zone-board';
-  const declared = zone.spec.slots || [];
-  const prompts = zone.spec.prompts || {};
+   A checkpoint is a surface you arrange things on, not a page you fill in — so it is a canvas with
+   sticky notes on it, panned and dragged, and both kinds of checkpoint use the same one. What
+   differs is what the REGIONS mean.
 
-  const cardFor = function (heading, extra) {
-    const slot = sheetSlot(zone.sheet, heading);
-    const prompt = prompts[zoneSlotKey(heading)] || slot.prompt || '';
-    const filled = !!slot.answer;
-    const card = document.createElement('div');
-    card.className = 'zone-card' + (filled ? ' filled' : ' empty') + (extra ? ' extra' : '');
-    card.tabIndex = 0;
-    card.setAttribute('role', 'button');
-    card.setAttribute('aria-label', heading + (filled ? '' : ' — empty') + '. Click to write in it.');
-    card.innerHTML = '<div class="zone-card-lab"><span class="zone-dot' + (filled ? ' on' : '') + '"></span>'
-      + esc(heading.replace(/\.+$/, '')) + '</div>'
-      + '<div class="zone-card-txt">' + (filled ? esc(slot.answer) : esc(prompt)) + '</div>';
-    const edit = function () { editZoneCard(zone, card, slot, prompt); };
-    card.addEventListener('click', edit);
-    card.addEventListener('keydown', function (e) {
-      if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); edit(); }
-    });
-    return card;
-  };
+   The regions are not decoration. On an ideation board they are the data: dragging a sticky out of
+   Building and into Not building is how a student cuts scope, and that is the whole lesson of the
+   module made physical instead of described. A board where dragging changed nothing would be a
+   picture of a workspace.
 
-  declared.forEach(function (h) { board.appendChild(cardFor(h, false)); });
-  /* Slots the file has that this zone does not declare — a heading a later checkpoint added, or one
-     the student wrote. Shown, because hiding a student's own writing in the one place that is
-     supposed to be about their game would be the wrong kind of tidy. */
-  zone.sheet.slots.forEach(function (s) {
-    if (declared.some(function (h) { return zoneSlotKey(h) === s.key; })) return;
-    if (!s.answer) return;                       // an empty undeclared slot is just noise
-    board.appendChild(cardFor(s.heading, true));
-  });
-  host.appendChild(board);
+   What lives where, and why:
+
+     slot text      design.md, as before. It is the one thing a student cannot get back, so it stays
+                    in a file that survives Reset my progress.
+     loose notes    also design.md, under `## Board notes`, one per line — same argument.
+     positions      state.boards[lessonId]. Pure layout, cheap to lose, and no migration needed
+                    because loadState merges DEFAULT_STATE first.
+
+   Two kinds of sticky. A SLOT note is one heading of the one-sheet: always present, never
+   deletable, its text is that slot's answer. A LOOSE note is anything else the student writes, and
+   the region it is sitting in decides what it means. */
+
+const ZONE_NOTE_W = 172;
+const ZONE_NOTE_H = 104;
+const ZONE_COLOURS = ['y', 'b', 'g', 'p', 'o'];
+
+/* Where the notes are, how big, and whether they are pinned. Layout only — see the note above about
+   what is stored where. Stored as an object rather than an [x, y] pair because size and pinning
+   arrived later and a tuple that grows is a tuple somebody reads wrong. */
+function boardState(lessonId) {
+  if (!state.boards) state.boards = {};
+  if (!state.boards[lessonId]) state.boards[lessonId] = { pos: {} };
+  return state.boards[lessonId];
+}
+function noteGeo(zone, id) {
+  const raw = (boardState(zone.lessonId).pos || {})[id];
+  if (!raw) return null;
+  if (Array.isArray(raw)) return { x: raw[0], y: raw[1] };     // boards saved before size and pins
+  return raw;
+}
+function saveNoteGeo(zone, id, patch) {
+  const b = boardState(zone.lessonId);
+  if (!b.pos) b.pos = {};
+  const was = noteGeo(zone, id) || {};
+  b.pos[id] = Object.assign({}, was, patch);
+  if (typeof saveState === 'function') saveState();
+}
+function notePinned(zone, id) { return !!(noteGeo(zone, id) || {}).pin; }
+
+/* ---------- loose notes, in the file ----------
+   `## Board notes` is a slot like any other, one note per line. Keeping them in design.md rather
+   than in progress state costs a little parsing and buys the thing that matters: a student's own
+   writing is never destroyed by a button labelled Testing. */
+const BOARD_SLOT = 'Board notes';
+function looseNotes(sheet) {
+  return (sheetSlot(sheet, BOARD_SLOT).answer || '').split('\n')
+    .map(function (s) { return s.replace(/^[-*]\s*/, '').trim(); })
+    .filter(Boolean);
+}
+function saveLooseNotes(sheet, list) {
+  sheetSlot(sheet, BOARD_SLOT).answer = list.map(function (s) { return '- ' + s; }).join('\n');
+  sheetWrite(sheet);
 }
 
-/* Turn one card into a textarea, in place. Saved on blur and on Ctrl/Cmd-Enter; Escape abandons.
-   In place rather than in a dialog because the point of a board is seeing the rest of it while you
-   write, and a modal over a board hides the thing that told you what to write. */
-/* The card being typed in, if any. Blur is what normally commits an edit, and removing a focused
-   element does NOT reliably fire it — so pressing Back, or Escape, or Finish with a half-typed
-   sentence on screen would throw the sentence away. Everything that tears the board down calls
-   this first. */
+/* ---------- regions ----------
+   Declared per zone with a rectangle and a role:
+     holds: slots            the fixed one-sheet stickies live in here
+     collects: <heading>     every loose note dropped in here composes that slot
+     objectives: done|now|ahead   build boards; the checks place these, not the student
+     budget: <weeks>         a region that costs something — see the meter */
+function zoneRegions(zone) { return zone.spec.board || []; }
+function regionAt(zone, x, y) {
+  const hit = zoneRegions(zone).filter(function (r) {
+    const a = r.at || [0, 0, 0, 0];
+    return x + ZONE_NOTE_W / 2 >= a[0] && x + ZONE_NOTE_W / 2 <= a[0] + a[2]
+      && y + ZONE_NOTE_H / 2 >= a[1] && y + ZONE_NOTE_H / 2 <= a[1] + a[3];
+  });
+  return hit[hit.length - 1] || null;      // the last declared wins, so a nested region can exist
+}
+
+/* ---------- painting ---------- */
+function paintZoneBoard(zone) {
+  const canvas = $('zoneCanvas'); if (!canvas) return;
+  canvas.innerHTML = '';
+  zone.sheet = sheetRead();
+  const build = zone.spec.kind === 'build';
+
+  zoneRegions(zone).forEach(function (r) {
+    const a = r.at || [0, 0, 240, 200];
+    const el = document.createElement('div');
+    el.className = 'zone-field' + (r.hot ? ' hot' : '');
+    el.style.cssText = 'left:' + a[0] + 'px;top:' + a[1] + 'px;width:' + a[2] + 'px;height:' + a[3] + 'px';
+    el.dataset.region = r.id || '';
+    el.innerHTML = '<span class="zone-field-lab">' + esc(r.say || r.id || '') + '</span>';
+    if (r.budget) el.appendChild(regionMeter(zone, r));
+    canvas.appendChild(el);
+  });
+
+  if (build) paintObjectiveNotes(zone, canvas);
+  else paintSlotNotes(zone, canvas);
+  paintLooseNotes(zone, canvas);
+}
+
+/* The fixed stickies: one per declared slot, never deletable, text is that slot's answer. */
+function paintSlotNotes(zone, canvas) {
+  const home = zoneRegions(zone).filter(function (r) { return r.holds === 'slots'; })[0];
+  (zone.spec.slots || []).forEach(function (h, i) {
+    const slot = sheetSlot(zone.sheet, h);
+    const id = 'slot:' + zoneSlotKey(h);
+    const d = defaultSlotPos(home, i);
+    const g = noteGeo(zone, id) || { x: d[0], y: d[1] };
+    const note = makeNote(zone, {
+      id: id, x: g.x, y: g.y, w: g.w, h: g.h, pinned: !!g.pin,
+      colour: ZONE_COLOURS[i % ZONE_COLOURS.length],
+      label: h.replace(/\.+$/, ''),
+      text: slot.answer,
+      hint: (zone.spec.prompts || {})[zoneSlotKey(h)] || slot.prompt || '',
+      onText: function (v) { slot.answer = v; sheetWrite(zone.sheet); }
+    });
+    canvas.appendChild(note);
+  });
+}
+function defaultSlotPos(home, i) {
+  const a = (home && home.at) || [40, 40, 420, 400];
+  const perRow = Math.max(1, Math.floor(a[2] / (ZONE_NOTE_W + 22)));
+  return [a[0] + 22 + (i % perRow) * (ZONE_NOTE_W + 22),
+    a[1] + 34 + Math.floor(i / perRow) * (ZONE_NOTE_H + 26)];
+}
+
+/* Loose notes. Where one sits decides what it means: a note in a `collects:` region is part of
+   that slot, and a note anywhere else is a thought the student has not filed yet. */
+function paintLooseNotes(zone, canvas) {
+  looseNotes(zone.sheet).forEach(function (text, i) {
+    const id = 'note:' + i;
+    const g = noteGeo(zone, id) || { x: 60 + (i % 4) * 30, y: 470 + Math.floor(i / 4) * 24 };
+    canvas.appendChild(makeNote(zone, {
+      id: id, x: g.x, y: g.y, w: g.w, h: g.h, pinned: !!g.pin,
+      colour: 'o', loose: true, index: i,
+      label: regionLabelFor(zone, g.x, g.y), text: text, hint: 'A loose thought.',
+      onText: function (v) {
+        const list = looseNotes(zone.sheet);
+        if (v) list[i] = v; else list.splice(i, 1);
+        saveLooseNotes(zone.sheet, list);
+        paintZoneBoard(zone); paintZoneGoals(zone);
+      },
+      /* Deleting is only offered on notes the student made. A slot note is one heading of their
+         one-sheet: it can be emptied, moved and pinned, but it cannot be got rid of, because the
+         question it is asking does not go away just because they have not answered it. */
+      onDelete: function () {
+        const list = looseNotes(zone.sheet);
+        list.splice(i, 1);
+        saveLooseNotes(zone.sheet, list);
+        /* Positions are keyed by index, so removing one shuffles every note after it onto the
+           previous note's spot. Shift them down to match rather than leaving the board scrambled. */
+        const b = boardState(zone.lessonId);
+        const moved = {};
+        Object.keys(b.pos || {}).forEach(function (k) {
+          const m = k.match(/^note:(\d+)$/);
+          if (!m) { moved[k] = b.pos[k]; return; }
+          const n = Number(m[1]);
+          if (n < i) moved[k] = b.pos[k];
+          else if (n > i) moved['note:' + (n - 1)] = b.pos[k];
+        });
+        b.pos = moved;
+        if (typeof saveState === 'function') saveState();
+        paintZoneBoard(zone); paintZoneGoals(zone);
+      }
+    }));
+  });
+}
+function regionLabelFor(zone, x, y) {
+  const r = regionAt(zone, x, y);
+  return r ? (r.say || r.id) : 'Loose';
+}
+
+/* Build boards: the objectives are stickies, and the CHECKS place them. A student cannot drag one
+   into Done, which is the point — the board reports on their real project rather than accepting
+   their word for it. */
+function paintObjectiveNotes(zone, canvas) {
+  const goals = zone.spec.goals || [];
+  const active = zoneActiveIndex(zone);
+  const lane = function (role) { return zoneRegions(zone).filter(function (r) { return r.objectives === role; })[0]; };
+  const counts = { done: 0, now: 0, ahead: 0 };
+  goals.forEach(function (g, i) {
+    const done = zoneGoalDone(zone, g);
+    const role = done ? 'done' : (i === active ? 'now' : 'ahead');
+    const a = (lane(role) || {}).at || [40, 40, 220, 400];
+    const n = counts[role]++;
+    const note = makeNote(zone, {
+      id: 'obj:' + i, x: a[0] + 20, y: a[1] + 34 + n * (ZONE_NOTE_H + 22),
+      colour: done ? 'g' : (role === 'now' ? 'o' : 'ghost'),
+      label: 'Objective ' + (i + 1) + (role === 'now' ? ' — now' : ''),
+      text: g.say || '', hint: '', fixed: true, done: done,
+      note: role === 'now' ? (g.where || '') : ''
+    });
+    canvas.appendChild(note);
+  });
+}
+
+/* One sticky. Editing happens in place — the point of a board is seeing the rest of it while you
+   write, and a dialog over a board hides the thing that told you what to write. */
+function makeNote(zone, o) {
+  const el = document.createElement('div');
+  el.className = 'zone-note ' + (o.colour || 'y') + (o.text ? '' : ' blank')
+    + (o.done ? ' done' : '') + (o.fixed ? ' fixed' : '') + (o.pinned ? ' pinned' : '');
+  el.style.left = o.x + 'px'; el.style.top = o.y + 'px';
+  if (o.w) el.style.width = o.w + 'px';
+  if (o.h) el.style.height = o.h + 'px';
+  el.dataset.id = o.id;
+  el.tabIndex = o.fixed ? -1 : 0;
+  const body = o.text || o.hint || '';
+  el.innerHTML = (o.done ? '<span class="zone-note-tick" aria-hidden="true">&#10003;</span>' : '')
+    + '<div class="zone-note-lab">' + esc(o.label || '') + '</div>'
+    + '<div class="zone-note-txt">' + esc(body) + '</div>'
+    + (o.note ? '<div class="zone-note-sub">' + esc(o.note) + '</div>' : '');
+  if (o.fixed) { el.setAttribute('aria-label', (o.label || '') + ': ' + (o.text || '')); return el; }
+
+  el.setAttribute('role', 'button');
+  el.setAttribute('aria-label', (o.label || '') + (o.text ? ': ' + o.text : ' — empty')
+    + (o.pinned ? ' — pinned' : '') + '. Click to write, drag to move.');
+
+  /* The controls sit on the note and appear on hover or focus. On it rather than in a toolbar
+     somewhere, because which note you are acting on has to be unambiguous on a board where there
+     are fifteen of them. Keyboard users get them via focus, so they are not mouse-only. */
+  const bar = document.createElement('div');
+  bar.className = 'zone-note-bar';
+  const btn = function (icon, title, fn) {
+    const b = document.createElement('button');
+    b.type = 'button'; b.className = 'zone-note-btn'; b.title = title;
+    b.setAttribute('aria-label', title);
+    b.innerHTML = '<span class="mdi ' + icon + '" aria-hidden="true"></span>';
+    b.addEventListener('pointerdown', function (e) { e.stopPropagation(); });
+    b.addEventListener('click', function (e) { e.stopPropagation(); fn(); });
+    bar.appendChild(b);
+    return b;
+  };
+  btn(o.pinned ? 'mdi-pin' : 'mdi-pin-outline', o.pinned ? 'Unpin — let it move again' : 'Pin it where it is',
+    function () {
+      saveNoteGeo(zone, o.id, { pin: !o.pinned });
+      paintZoneBoard(zone);
+    });
+  if (o.onDelete) {
+    btn('mdi-close', 'Delete this note', function () {
+      if (typeof modal === 'function' && (o.text || '').trim()) {
+        modal({ title: 'Delete this note?', message: '“' + o.text + '”', okLabel: 'Delete it',
+          onOk: o.onDelete });
+      } else o.onDelete();
+    });
+  }
+  el.appendChild(bar);
+
+  /* Resize from the corner. Only the corner, and only bigger than a stub: a note you can shrink to
+     nothing is a note you can lose on a board this size. */
+  const grip = document.createElement('div');
+  grip.className = 'zone-note-grip';
+  grip.setAttribute('aria-hidden', 'true');
+  resizeNote(zone, el, o, grip);
+  el.appendChild(grip);
+
+  if (!o.pinned) dragNote(zone, el, o);
+  const edit = function () { editNote(zone, el, o); };
+  el.addEventListener('keydown', function (e) {
+    if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); edit(); }
+  });
+  if (o.pinned) el.addEventListener('click', function (e) { if (!e.target.closest('.zone-note-btn')) edit(); });
+  el.__edit = edit;
+  return el;
+}
+
+function resizeNote(zone, el, o, grip) {
+  grip.addEventListener('pointerdown', function (e) {
+    e.stopPropagation(); e.preventDefault();
+    const r = el.getBoundingClientRect();
+    const w0 = r.width / zoneScale, h0 = r.height / zoneScale;
+    const sx = e.clientX, sy = e.clientY;
+    grip.setPointerCapture(e.pointerId);
+    el.classList.add('sizing');
+    const move = function (ev) {
+      const w = Math.max(120, w0 + (ev.clientX - sx) / zoneScale);
+      const h = Math.max(80, h0 + (ev.clientY - sy) / zoneScale);
+      el.style.width = w + 'px'; el.style.height = h + 'px';
+    };
+    const up = function () {
+      grip.removeEventListener('pointermove', move); grip.removeEventListener('pointerup', up);
+      el.classList.remove('sizing');
+      saveNoteGeo(zone, o.id, { w: Math.round(parseFloat(el.style.width)), h: Math.round(parseFloat(el.style.height)) });
+    };
+    grip.addEventListener('pointermove', move); grip.addEventListener('pointerup', up);
+  });
+}
+
+/* Drag. A click that never moved opens the note for editing instead — a sticky you cannot type into
+   by clicking would be a very strange sticky. */
+function dragNote(zone, el, o) {
+  el.addEventListener('pointerdown', function (e) {
+    if (el.classList.contains('editing')) return;
+    e.stopPropagation();
+    const canvas = $('zoneCanvas');
+    const startX = e.clientX, startY = e.clientY;
+    const ox = parseFloat(el.style.left) || 0, oy = parseFloat(el.style.top) || 0;
+    let moved = false;
+    el.setPointerCapture(e.pointerId);
+    const move = function (ev) {
+      const dx = (ev.clientX - startX) / zoneScale, dy = (ev.clientY - startY) / zoneScale;
+      if (!moved && Math.abs(dx) + Math.abs(dy) < 4) return;
+      if (!moved) { moved = true; zone.arranging = true; el.classList.add('dragging'); canvas.classList.add('arranging'); }
+      el.style.left = (ox + dx) + 'px'; el.style.top = (oy + dy) + 'px';
+      highlightDrop(zone, ox + dx, oy + dy);
+    };
+    const up = function () {
+      el.removeEventListener('pointermove', move); el.removeEventListener('pointerup', up);
+      el.classList.remove('dragging'); canvas.classList.remove('arranging'); zone.arranging = false;
+      clearDrop();
+      if (!moved) { el.__edit(); return; }
+      const x = parseFloat(el.style.left), y = parseFloat(el.style.top);
+      saveNoteGeo(zone, o.id, { x: Math.round(x), y: Math.round(y) });
+      dropNote(zone, o, x, y);
+    };
+    el.addEventListener('pointermove', move); el.addEventListener('pointerup', up);
+  });
+}
+function highlightDrop(zone, x, y) {
+  const r = regionAt(zone, x, y);
+  $('zoneCanvas').querySelectorAll('.zone-field').forEach(function (f) {
+    f.classList.toggle('over', !!r && f.dataset.region === (r.id || ''));
+  });
+}
+function clearDrop() {
+  $('zoneCanvas').querySelectorAll('.zone-field').forEach(function (f) { f.classList.remove('over'); });
+}
+
+/* Where a note lands is what it MEANS. This is the function that makes the board data rather than
+   layout: drop a loose note into a `collects:` region and it becomes part of that slot; drag it out
+   and it stops being. Cutting scope is a gesture here, which is the whole reason for a canvas. */
+function dropNote(zone, o, x, y) {
+  const r = regionAt(zone, x, y);
+  if (!o.loose) { paintZoneGoals(zone); return; }   // a slot note keeps its meaning wherever it sits
+  const collecting = zoneRegions(zone).filter(function (g) { return g.collects; });
+  if (!collecting.length) return;
+
+  const text = looseNotes(zone.sheet)[o.index];
+  if (!text) return;
+  /* Rebuild every collecting slot from what is now sitting in it. Rebuilding rather than patching,
+     because a note can leave one region and enter another in a single drag and the two halves of
+     that must not be able to disagree. */
+  const list = looseNotes(zone.sheet);
+  collecting.forEach(function (g) {
+    const inside = [];
+    list.forEach(function (t, i) {
+      const p = (i === o.index) ? [x, y] : (notePos(zone, 'note:' + i) || [0, 0]);
+      const at = regionAt(zone, p[0], p[1]);
+      if (at && at.id === g.id) inside.push(t);
+    });
+    sheetSlot(zone.sheet, g.collects).answer = inside.join(', ') + (inside.length ? '.' : '');
+  });
+  sheetWrite(zone.sheet);
+  paintZoneBoard(zone);
+  paintZoneGoals(zone);
+  if (r && r.budget) paintZoneBoard(zone);
+}
+
+/* Type into a sticky, in place. */
 let zoneEditing = null;
 function commitZoneEdit() { if (zoneEditing) zoneEditing(true); }
-
-function editZoneCard(zone, card, slot, prompt) {
-  if (card.classList.contains('editing')) return;
-  commitZoneEdit();                       // one card at a time; the last one keeps what was typed
-  card.classList.add('editing');
-  const txt = card.querySelector('.zone-card-txt');
+function editNote(zone, el, o) {
+  if (el.classList.contains('editing')) return;
+  commitZoneEdit();
+  el.classList.add('editing');
+  const txt = el.querySelector('.zone-note-txt');
   const box = document.createElement('textarea');
-  box.className = 'zone-card-edit';
-  box.value = slot.answer || '';
-  box.placeholder = prompt || 'Write it here.';
-  box.rows = 3;
+  box.className = 'zone-note-edit';
+  box.value = o.text || '';
+  box.placeholder = o.hint || 'Write it here.';
   txt.replaceWith(box);
   box.focus(); box.select();
 
@@ -463,151 +579,161 @@ function editZoneCard(zone, card, slot, prompt) {
   const finish = function (save) {
     if (closed) return; closed = true;
     if (zoneEditing === finish) zoneEditing = null;
-    if (save && box.value.trim() !== (slot.answer || '')) {
-      slot.answer = box.value.trim();
+    if (save && box.value.trim() !== (o.text || '')) {
       zone.touched = true;
-      sheetWrite(zone.sheet);
+      o.onText(box.value.trim());
     }
-    paintZoneBoard(zone);
-    paintZoneGoals(zone);
+    paintZoneBoard(zone); paintZoneGoals(zone);
   };
   zoneEditing = finish;
   box.addEventListener('blur', function () { finish(true); });
+  box.addEventListener('pointerdown', function (e) { e.stopPropagation(); });
   box.addEventListener('keydown', function (e) {
     if (e.key === 'Escape') { e.stopPropagation(); finish(false); }
     else if (e.key === 'Enter' && (e.metaKey || e.ctrlKey)) { e.preventDefault(); finish(true); }
   });
 }
 
-/* ---------- build zones ----------
-   The other furniture. A sheet zone is a board of things the student decides; a build zone is their
-   real game running next to their real code, because "make this mechanic run" cannot be answered in
-   a text box and "what is your game about" cannot be answered in a code editor.
-
-   Everything here drives the SAME project the Code tab does — `project.files`, saved through
-   saveProject. Not a copy: a workspace that edited a copy would send them back to the Code tab to
-   do it again, and the goals check their real project, so a copy would never tick. */
-let zoneEditor = null;
-
-function zoneBuildOpen(zone) {
-  const files = (typeof codeFileNames === 'function' ? codeFileNames() : []);
-  const pick = $('zoneFile');
-  pick.innerHTML = '';
-  files.forEach(function (n) {
-    const o = document.createElement('option'); o.value = n; o.textContent = n; pick.appendChild(o);
+/* A region that costs something. The scope lesson, as a meter you cannot argue with: the weeks are
+   fixed, the sizes are fixed, and the only thing that can move is which notes are sitting in here. */
+function regionMeter(zone, r) {
+  const weeks = Number(r.budget) || 10;
+  const list = looseNotes(zone.sheet);
+  let n = 0;
+  list.forEach(function (t, i) {
+    const p = notePos(zone, 'note:' + i); if (!p) return;
+    const at = regionAt(zone, p[0], p[1]);
+    if (at && at.id === r.id) n++;
   });
-  /* Start on the file the zone says the work is in. An author knows which file this checkpoint is
-     about, and opening on config.js when the task is in world.js costs a student the first minute. */
-  const want = zone.spec.file && files.indexOf(zone.spec.file) >= 0 ? zone.spec.file : (files[0] || '');
-  pick.value = want;
-  zoneOpenFile(zone, want);
-  pick.onchange = function () { zoneSaveFile(zone); zoneOpenFile(zone, pick.value); };
+  const spent = n * 2;                       // a note is about a fortnight; see the lesson
+  const over = spent > weeks;
+  const el = document.createElement('div');
+  el.className = 'zone-field-meter' + (over ? ' over' : '');
+  el.innerHTML = '<span class="zone-field-bar"><i style="width:' + Math.min(100, Math.round(100 * spent / weeks)) + '%"></i></span>'
+    + '<span>' + spent + ' of ' + weeks + ' weeks' + (over ? ' — ' + (spent - weeks) + ' over' : '') + '</span>';
+  return el;
 }
 
-function zoneOpenFile(zone, name) {
-  const host = $('zoneEditor'); if (!host) return;
-  zone.file = name;
+/* ---------- pan and zoom ---------- */
+let zoneScale = 1, zonePanX = 0, zonePanY = 0;
+function applyZoneView() {
+  const c = $('zoneCanvas'); if (!c) return;
+  c.style.transform = 'translate(' + zonePanX + 'px,' + zonePanY + 'px) scale(' + zoneScale + ')';
+  const at = $('zoneZoomAt'); if (at) at.textContent = Math.round(zoneScale * 100) + '%';
+}
+function zoneZoom(by) { zoneScale = Math.max(0.4, Math.min(1.6, zoneScale + by)); applyZoneView(); }
+function boardSize(zone) {
+  let w = 820, h = 520;
+  zoneRegions(zone).forEach(function (r) {
+    const a = r.at || [0, 0, 0, 0];
+    w = Math.max(w, a[0] + a[2] + 40); h = Math.max(h, a[1] + a[3] + 40);
+  });
+  return [w, h];
+}
+/* Shrink the whole board onto the screen. Offered as a button rather than used as the default: a
+   board that opens at 55% is a board whose handwriting you cannot read, and arriving zoomed out is
+   the wrong first impression of a place you are meant to write in. */
+function zoneFit(zone) {
+  const wrap = $('zoneCanvasWrap'); if (!wrap) return;
+  const s = boardSize(zone), b = wrap.getBoundingClientRect();
+  zoneScale = Math.max(0.4, Math.min(1, Math.min((b.width - 24) / s[0], (b.height - 24) / s[1])));
+  zonePanX = Math.max(12, (b.width - s[0] * zoneScale) / 2);
+  zonePanY = 12;
+  applyZoneView();
+}
+/* How a board opens: full size, top-left, nudged in from the edge. Full size because these are
+   things with words on them and 100% is the size they were written at. */
+function zoneHome(zone) {
+  const wrap = $('zoneCanvasWrap'); if (!wrap) return;
+  zoneScale = 1;
+  const b = wrap.getBoundingClientRect(), s = boardSize(zone);
+  // Centred horizontally if it fits, otherwise pinned to the left so the first region is on screen.
+  zonePanX = s[0] < b.width - 40 ? Math.round((b.width - s[0]) / 2) : 12;
+  zonePanY = 12;
+  applyZoneView();
+}
+
+/* ---------- the palette ----------
+   The tools, as things that put notes ON the board rather than panels beside it. A student presses
+   the dice and three ideas land on the canvas to be dragged or thrown away, which is what a
+   whiteboard is for. */
+function paintZonePalette(zone) {
+  const host = $('zonePalette'); if (!host) return;
   host.innerHTML = '';
-  const text = (project.files[name] != null) ? project.files[name] : '';
-  if (typeof CodeMirror === 'function') {
-    zoneEditor = CodeMirror(host, {
-      value: text, mode: 'javascript', theme: 'material-darker',
-      lineNumbers: true, tabSize: 2, indentUnit: 2, matchBrackets: true, autoCloseBrackets: true,
-      extraKeys: {
-        'Ctrl-S': function () { zoneSaveFile(zone); }, 'Cmd-S': function () { zoneSaveFile(zone); },
-        'Ctrl-Enter': function () { zoneRunGame(zone); }, 'Cmd-Enter': function () { zoneRunGame(zone); }
+  const add = function (icon, title, fn) {
+    const b = document.createElement('button');
+    b.type = 'button'; b.className = 'zone-tool'; b.title = title;
+    b.setAttribute('aria-label', title);
+    b.innerHTML = '<span class="mdi ' + icon + '" aria-hidden="true"></span>';
+    b.addEventListener('click', fn);
+    host.appendChild(b);
+  };
+  add('mdi-plus', 'Add a note', function () { addLooseNote(zone, ''); });
+  (zone.spec.tools || []).forEach(function (t) {
+    const tool = ZONE_PALETTE[t.kind];
+    if (!tool) { console.warn('[league] zone tool "' + t.kind + '" does not exist — see ZONE_PALETTE in js/zone.js'); return; }
+    add(tool.icon, tool.title, function () { tool.run(zone, t); });
+  });
+  add('mdi-fit-to-screen', 'Fit the board on screen', function () { zoneFit(zone); });
+}
+
+function addLooseNote(zone, text, at) {
+  const list = looseNotes(zone.sheet);
+  const i = list.length;
+  list.push(text || 'New note');
+  saveLooseNotes(zone.sheet, list);
+  const wrap = $('zoneCanvasWrap').getBoundingClientRect();
+  const p = at || [(-zonePanX + wrap.width / 2) / zoneScale - ZONE_NOTE_W / 2,
+    (-zonePanY + wrap.height / 2) / zoneScale - ZONE_NOTE_H / 2];
+  saveNotePos(zone, 'note:' + i, p[0], p[1]);
+  paintZoneBoard(zone); paintZoneGoals(zone);
+  const el = $('zoneCanvas').querySelector('[data-id="note:' + i + '"]');
+  if (el && el.__edit) el.__edit();
+  return i;
+}
+
+const ZONE_PALETTE = {
+  /* The blank page, attacked directly. The point is not that the machine has a good idea — it is
+     that reading three bad ones makes you say "no, but what about…", which is the trick a stuck
+     eleven-year-old cannot do from nothing. They land as notes to be dragged or binned. */
+  mixer: {
+    icon: 'mdi-dice-5', title: 'Mix up three ideas',
+    run: function (zone, t) {
+      const bases = (t.bases || []).length ? t.bases : ['a platformer', 'a racing game'];
+      const twists = (t.twists || []).length ? t.twists : ['but you only get one life'];
+      const wrap = $('zoneCanvasWrap').getBoundingClientRect();
+      const x0 = (-zonePanX + 40) / zoneScale, y0 = (-zonePanY + wrap.height - 200) / zoneScale;
+      for (let i = 0; i < 3; i++) {
+        const p = bases[(Math.random() * bases.length) | 0] + ' ' + twists[(Math.random() * twists.length) | 0];
+        addLooseNote(zone, p.charAt(0).toUpperCase() + p.slice(1) + '.', [x0 + i * (ZONE_NOTE_W + 14), y0]);
       }
-    });
-    // Saved on blur as well as on the button, the same as the bench: a student who types and then
-    // reaches for Run should not lose the thing they were about to run.
-    zoneEditor.on('blur', function () { zoneSaveFile(zone); });
-    setTimeout(function () { if (zoneEditor) zoneEditor.refresh(); }, 0);
-  } else {
-    const ta = document.createElement('textarea'); ta.className = 'zone-editor-plain'; ta.value = text;
-    host.appendChild(ta);
-    zoneEditor = { getValue: function () { return ta.value; }, refresh: function () {} };
-    ta.addEventListener('blur', function () { zoneSaveFile(zone); });
+      zoneSay('bot', 'Three on the board. Drag the one that makes you think "no, but…" into your game, and bin the rest.');
+    }
+  },
+  /* The test the one-sheet lesson names, made pressable: stop reading it as the person who wrote it. */
+  readback: {
+    icon: 'mdi-text-box-outline', title: 'Read it back as a stranger would',
+    run: function (zone) {
+      const said = (zone.spec.slots || []).map(function (h) { return sheetSlot(zone.sheet, h).answer; }).filter(Boolean);
+      if (!said.length) { zoneSay('bot', 'Nothing on the board yet — write a note and press it again.'); return; }
+      const para = said.map(function (s) { return s.replace(/\s+$/, '').replace(/\.?$/, '.'); }).join(' ');
+      const miss = (zone.spec.slots || []).filter(function (h) { return !sheetSlot(zone.sheet, h).answer; });
+      zoneSay('bot', '**Your game, as a stranger reads it:**\n\n' + para
+        + (miss.length ? '\n\nThey would still have to ask about: ' + miss.map(function (h) { return '“' + h.replace(/\.+$/, '') + '”'; }).join(', ') + '.'
+          : '\n\nRead it out loud. The sentence you stumble on is the one to fix.'));
+    }
   }
-}
+};
 
-function zoneSaveFile(zone) {
-  if (!zoneEditor || !zone || !zone.file) return;
-  const v = zoneEditor.getValue();
-  if (project.files[zone.file] === v) return;
-  project.files[zone.file] = v;
-  if (typeof saveProject === 'function') saveProject();
-  zone.touched = true;
-  paintZoneGoals(zone);                 // an objective can be satisfied by typing, not only by running
-  zoneWatch(zone);                      // ...and if it just was, the guide says so and hands out the next
-  /* The Code tab may be showing this file behind the overlay. Same reason the sheet repaints it:
-     leaving a stale copy there invites the student to "fix" it back over what they just wrote. */
-  if (typeof currentFile !== 'undefined' && currentFile === zone.file
-      && typeof loadCode === 'function' && $('view-code') && !$('view-code').hidden) loadCode();
+/* ---------- build boards and the Code tab ----------
+   A build checkpoint does NOT contain an editor. The student writes code where they always have,
+   and this board is what watches — so the only thing it needs is a way out and back. Closing the
+   zone lands them on the door, one press from here. */
+function zoneToCode() {
+  const zone = openZoneRef; if (!zone) return;
+  closeZone();
+  if (typeof switchView === 'function') switchView('code');
 }
-
-/* Their game, in the zone, built by the Game tab's own builder. The sandbox posture is whatever the
-   app's is — see sandboxGame() — so this frame is never more or less exposed than the Game tab, and
-   a fix there fixes both. */
-function zoneRunGame(zone) {
-  zoneSaveFile(zone);
-  const host = $('zoneStage'); if (!host || typeof gameDoc !== 'function') return;
-  host.innerHTML = '';
-  const f = document.createElement('iframe');
-  f.setAttribute('title', 'Your game');
-  if (typeof sandboxGame === 'function' && sandboxGame()) f.setAttribute('sandbox', 'allow-scripts');
-  host.appendChild(f);
-  zoneLogClear();
-  try { f.srcdoc = gameDoc(); } catch (e) { zoneLogLine('error', 'Could not build your game: ' + e.message); }
-  zone.running = true;
-  paintZoneRun(zone);
-  /* After the run, not before: an objective like "it runs without an error" can only be true once
-     it has. Given a moment for the frame to boot and report. */
-  setTimeout(function () { if (openZoneRef === zone) zoneWatch(zone); }, 1200);
-}
-function zoneStopGame(zone) {
-  const host = $('zoneStage'); if (host) host.innerHTML = '';
-  zone.running = false;
-  paintZoneRun(zone);
-}
-function paintZoneRun(zone) {
-  const stop = $('zoneStop'); if (stop) stop.disabled = !zone.running;
-  const run = $('zoneRun'); if (run) run.title = zone.running ? 'Run it again' : 'Run it';
-}
-
-/* The game's console, in the zone. A build checkpoint is where a student's own code goes wrong for
-   the first time, and the whole of the last Phaser lesson was about reading the error — so the
-   error has to be somewhere they can see it without leaving. */
-function zoneLogClear() { const b = $('zoneLog'); if (b) b.innerHTML = ''; }
-function zoneLogLine(level, text) {
-  const b = $('zoneLog'); if (!b) return;
-  const el = document.createElement('div'); el.className = 'zone-log-line ' + level;
-  el.textContent = text;
-  b.appendChild(el);
-  while (b.childElementCount > 60) b.removeChild(b.firstChild);
-  b.scrollTop = b.scrollHeight;
-}
-/* The game frame posts its console through, the same shape the Game tab's capture uses. Bound once
-   and filtered on whether a zone is open, so it cannot fight the Game tab's own dock. */
-window.addEventListener('message', function (e) {
-  const d = e && e.data;
-  if (!d || !d.__gamelog || !openZoneRef || !openZoneRef.running) return;
-  const text = String(d.text || '');
-  zoneLogLine(d.level || 'log', text);
-  /* One known failure, named once, because otherwise it reads as the student's bug.
-     A sandboxed frame has an opaque origin, and an opaque-origin document cannot make ANY
-     subresource request back to the app — measured: allow-scripts fails, allow-scripts
-     allow-same-origin works, no sandbox works, and there is no CSP violation, the CORP header is
-     already cross-origin, and the file serves 200 without cookies. So Phaser never arrives and
-     neither does any asset. It is an app-level issue with DEV.sandboxGame, not anything in their
-     game, and a child staring at "Phaser is not defined" in their own checkpoint has no way to
-     know that. */
-  if (!openZoneRef.blamed && /Phaser is not defined/.test(text)
-      && typeof sandboxGame === 'function' && sandboxGame()) {
-    openZoneRef.blamed = true;
-    zoneLogLine('warn', 'That one is not your code — the game frame cannot load Phaser while it is '
-      + 'sandboxed. Add ?sandbox=0 to the address and reload to run it.');
-  }
-});
 
 /* ---------- opening and closing ---------- */
 function openZone(zone) {
@@ -631,23 +757,19 @@ function openZone(zone) {
   if (flag && typeof moduleAccent === 'function' && typeof flat !== 'undefined' && flat[curIdx]) {
     flag.style.color = moduleAccent(flat[curIdx].mi);
   }
-  /* Which furniture. A build zone's objectives are checked against the project as it was when they
-     ARRIVED — config_changed and function_added both need a "before", and taking it on open rather
-     than on first check means a student who tunes a number before reading anything still gets
-     credit for it. practiceSnapshot stores it, so it survives closing the zone. */
-  const build = zone.spec.kind === 'build';
-  $('zoneSheet').hidden = build;
-  $('zoneBuild').hidden = !build;
-  if (build) {
-    if (typeof practiceSnapshot === 'function' && typeof lessonWidgetId !== 'undefined') {
-      zone.snap = practiceSnapshot(lessonWidgetId, zone.key);
-    }
-    zoneBuildOpen(zone);
-    paintZoneRun(zone);
-  } else {
-    paintZoneTools(zone);
-    paintZoneBoard(zone);
+  /* A build board's objectives are checked against the project as it was when the student ARRIVED —
+     config_changed and function_added both need a "before", and taking it on open rather than on
+     first check means somebody who tuned a number before reading anything still gets credit for it.
+     practiceSnapshot stores it, so it survives closing the zone. */
+  if (zone.spec.kind === 'build' && typeof practiceSnapshot === 'function'
+      && typeof lessonWidgetId !== 'undefined') {
+    zone.snap = practiceSnapshot(lessonWidgetId, zone.key);
   }
+  const toCode = $('zoneToCode');
+  if (toCode) toCode.hidden = zone.spec.kind !== 'build';
+  paintZonePalette(zone);
+  paintZoneBoard(zone);
+  zoneHome(zone);
   paintZoneGoals(zone);
   zoneBotReset(zone);
 
@@ -661,17 +783,11 @@ function openZone(zone) {
 function closeZone() {
   const zone = openZoneRef; if (!zone) return;
   commitZoneEdit();                       // a half-typed sentence on screen is still their work
-  if (zone.spec.kind === 'build') { zoneSaveFile(zone); zoneStopGame(zone); }
-  zoneEditor = null;
-  $('zoneEditor').innerHTML = '';
-  $('zoneStage').innerHTML = '';
-  zoneLogClear();
   openZoneRef = null;
   zone.ui = null;
-  const bot = $('zoneBot'); if (bot) bot.hidden = false;   // back to its default for next time
-  $('zoneBotBody').innerHTML = '';
-  $('zoneBoard').innerHTML = '';
-  $('zoneTools').innerHTML = '';
+  $('zoneLane').innerHTML = '';
+  $('zoneCanvas').innerHTML = '';
+  $('zonePalette').innerHTML = '';
   $('zoneGoals').innerHTML = '';
   $('zoneView').hidden = true;
   zoneIsolate(false);
@@ -818,6 +934,9 @@ function zoneSpec(src) {
   const y = (typeof parseWidgetYaml === 'function') ? parseWidgetYaml('zone', src, 'z') : {};
   const goals = Array.isArray(y.goals) ? y.goals.filter(function (g) { return g && typeof g === 'object'; }) : [];
   const tools = Array.isArray(y.tools) ? y.tools.filter(function (t) { return t && typeof t === 'object' && t.kind; }) : [];
+  const board = Array.isArray(y.board) ? y.board.filter(function (r) {
+    return r && typeof r === 'object' && r.id && Array.isArray(r.at) && r.at.length === 4;
+  }) : [];
   const slots = Array.isArray(y.slots) ? y.slots.map(String) : [];
   const prompts = {};
   if (y.prompts && typeof y.prompts === 'object') {
@@ -829,7 +948,7 @@ function zoneSpec(src) {
     file: y.file || '',
     title: y.title || '', intro: y.intro || '', brief: y.brief || '',
     opener: y.opener || '', reward: y.reward || '',
-    slots: slots, prompts: prompts, goals: goals, tools: tools
+    slots: slots, prompts: prompts, goals: goals, tools: tools, board: board
   };
 }
 
@@ -838,17 +957,27 @@ function zoneSpec(src) {
    Reached at runtime rather than at load because js/ai.js is loaded after this file, which is the
    trap the bench's own wiring documents: a load-time call slides past the typeof guard and leaves
    the textarea not growing, with nothing to show that it failed. */
+/* ---------- the conversation, laid over the board ----------
+   Not a panel beside the workspace and not objects in board coordinates either. Bubbles floating on
+   the right with the board visible underneath and running on behind them — text messages over a
+   whiteboard. They stay put while the board pans, because a conversation you have to go and find by
+   panning is not a conversation, and because what the assistant says is about the board as a whole
+   rather than about one spot on it. */
 function zoneSay(who, text) {
   if (!who) return null;                                  // called with nothing = "just look again"
-  const body = $('zoneBotBody'); if (!body) return null;
+  const lane = $('zoneLane'); if (!lane) return null;
   const el = document.createElement('div');
-  el.className = 'msg ' + who;
+  el.className = 'zone-bubble ' + who;
   if (who === 'bot' && typeof mdToSafeHTML === 'function') {
     try { el.innerHTML = mdToSafeHTML(text); } catch (e) { el.textContent = String(text); }
   } else el.textContent = text;
-  body.appendChild(el);
-  body.scrollTop = body.scrollHeight;
+  placeInLane(el);
   return el;
+}
+function placeInLane(el) {
+  const lane = $('zoneLane'); if (!lane) return;
+  lane.appendChild(el);
+  lane.scrollTop = lane.scrollHeight;
 }
 
 /* A suggestion the student can accept into a slot. This is the thing that makes the bot part of the
@@ -857,39 +986,36 @@ function zoneSay(who, text) {
    sentence a child pressed a button to accept is not yet theirs, and the second button is how they
    get to make it so. */
 function zoneOffer(zone, offer) {
-  const body = $('zoneBotBody'); if (!body || !offer) return;
+  if (!offer || !openZoneRef) return;
   const card = document.createElement('div'); card.className = 'zone-offer';
   card.innerHTML = '<div class="zone-offer-lab">goes in &ldquo;' + esc(offer.heading.replace(/\.+$/, '')) + '&rdquo;</div>'
     + '<p></p><div class="zone-offer-acts"></div>';
   card.querySelector('p').textContent = offer.text;
   const acts = card.querySelector('.zone-offer-acts');
-  const put = document.createElement('button'); put.className = 'zone-mini go'; put.textContent = 'Put it in the box';
+  const put = document.createElement('button'); put.className = 'zone-mini go'; put.textContent = 'Put it on the board';
   const mine = document.createElement('button'); mine.className = 'zone-mini alt'; mine.textContent = 'Let me word it';
   acts.appendChild(put); acts.appendChild(mine);
 
   const land = function (focusIt) {
-    const slot = sheetSlot(zone.sheet, offer.heading);
-    if (!focusIt) { slot.answer = offer.text; sheetWrite(zone.sheet); }
+    if (!focusIt) sheetSlot(zone.sheet, offer.heading).answer = offer.text;
     zone.touched = true;
+    if (!focusIt) sheetWrite(zone.sheet);
     paintZoneBoard(zone); paintZoneGoals(zone);
-    acts.innerHTML = '<span class="zone-offer-done">' + (focusIt ? 'over to you' : 'in the box') + '</span>';
+    acts.innerHTML = '<span class="zone-offer-done">' + (focusIt ? 'over to you' : 'on the board') + '</span>';
     if (focusIt) {
-      /* Open the card for editing, seeded with their own words rather than the bot's. The offer is
-         still on screen above, so they can read it while they write their version. */
-      const cards = $('zoneBoard').querySelectorAll('.zone-card');
-      for (let i = 0; i < cards.length; i++) {
-        if (cards[i].getAttribute('aria-label').indexOf(offer.heading.replace(/\.+$/, '')) === 0) { cards[i].click(); break; }
-      }
+      /* Open that sticky for editing, empty, so what lands on the board is in their words. The
+         offer is still in the conversation beside it, so they can read it while they write. */
+      const el = $('zoneCanvas').querySelector('[data-id="slot:' + zoneSlotKey(offer.heading) + '"]');
+      if (el && el.__edit) el.__edit();
     }
   };
   put.addEventListener('click', function () { land(false); });
   mine.addEventListener('click', function () { land(true); });
-  body.appendChild(card);
-  body.scrollTop = body.scrollHeight;
+  placeInLane(card);
 }
 
 function zoneBotReset(zone) {
-  const body = $('zoneBotBody'); if (body) body.innerHTML = '';
+  $('zoneLane').innerHTML = '';
   zone.greeted = false;
   zone.chat = [];
   const tag = $('zoneBotTag');
@@ -917,7 +1043,7 @@ function zoneBotOpen(zone) {
     zoneAsk(zoneNudge(zone, empty), { silent: true });
   } else if (typeof loadQuestions === 'function' && typeof renderStarters === 'function') {
     loadQuestions().then(function () {
-      renderStarters('zone', $('zoneBotBody'), function (t) { zoneSubmitText(t); }, 'tutor');
+      renderStarters('zone', $('zoneLane'), function (t) { zoneSubmitText(t); }, 'tutor');
     });
   }
 }
@@ -932,22 +1058,20 @@ function zoneBotOpen(zone) {
    project, and says COMPLETE the moment the check passes is the same information with the two
    parts a game would never leave out — one thing at a time, and an answer the instant you do it. */
 function zoneObjectiveCard(zone, goal, n) {
-  const body = $('zoneBotBody'); if (!body) return;
+  const canvas = $('zoneCanvas'); if (!canvas || !openZoneRef) return;
   const card = document.createElement('div'); card.className = 'zone-quest';
   card.innerHTML = '<div class="zone-quest-lab">Objective ' + n + ' of ' + (zone.spec.goals || []).length + '</div>'
     + '<div class="zone-quest-say"></div>';
   card.querySelector('.zone-quest-say').textContent = goal.say || '';
-  body.appendChild(card);
-  body.scrollTop = body.scrollHeight;
+  placeInLane(card);
 }
 function zoneCompleteCard(zone, goal, n) {
-  const body = $('zoneBotBody'); if (!body) return;
+  const canvas = $('zoneCanvas'); if (!canvas || !openZoneRef) return;
   const card = document.createElement('div'); card.className = 'zone-quest done';
   card.innerHTML = '<div class="zone-quest-lab">&#10003; Objective ' + n + ' complete</div>'
     + '<div class="zone-quest-say"></div>';
   card.querySelector('.zone-quest-say').textContent = goal.say || '';
-  body.appendChild(card);
-  body.scrollTop = body.scrollHeight;
+  placeInLane(card);
 }
 
 /* Hand out the live objective and have the guide brief it against THEIR game. The card is the
@@ -1075,19 +1199,19 @@ function zonePayload(zone) {
       return { say: g.say || g.slot || '', done: zoneGoalDone(zone, g) };
     })
   };
+  /* A build board has no editor in it — the student writes code in the Code tab, where they always
+     have. But the guide still has to be able to say "line 14 of world.js", so their code goes over
+     anyway: the file this objective is about, and the last thing their game printed. Read from the
+     project and the game log rather than from a pane, because there is no pane. */
   if (build) {
-    out.file = zone.file || '';
-    out.code = (zoneEditor && typeof zoneEditor.getValue === 'function') ? zoneEditor.getValue()
-      : String((project.files || {})[zone.file] || '');
-    out.log = zoneLogText();
+    const f = zone.spec.file || 'game.js';
+    out.file = f;
+    out.code = String((project.files || {})[f] || '');
+    out.log = (typeof gameLog !== 'undefined' && Array.isArray(gameLog))
+      ? gameLog.slice(-14).map(function (l) { return '[' + l.level + '] ' + l.text; }).join('\n').slice(0, 1200)
+      : '';
   }
   return out;
-}
-function zoneLogText() {
-  const b = $('zoneLog'); if (!b) return '';
-  return [].slice.call(b.children).slice(-14)
-    .map(function (l) { return '[' + (l.className.split(' ')[1] || 'log') + '] ' + l.textContent; })
-    .join('\n').slice(0, 1200);
 }
 
 /* The sign-off. A separate agent with a separate contract, for the same reason the grader is not
@@ -1117,25 +1241,28 @@ function wireZoneChatBox() {
 }
 
 /* ---------- wiring, once, at load ---------- */
-if ($('zoneBotForm')) $('zoneBotForm').addEventListener('submit', function (e) { e.preventDefault(); zoneSubmit(); });
-if ($('zoneRun')) $('zoneRun').addEventListener('click', function () { if (openZoneRef) zoneRunGame(openZoneRef); });
-if ($('zoneStop')) $('zoneStop').addEventListener('click', function () { if (openZoneRef) zoneStopGame(openZoneRef); });
-if ($('zoneSave')) $('zoneSave').addEventListener('click', function () {
-  if (!openZoneRef) return;
-  zoneSaveFile(openZoneRef);
-  if (typeof toast === 'function') toast('Saved ✓');
+if ($('zoneChatForm')) $('zoneChatForm').addEventListener('submit', function (e) { e.preventDefault(); zoneSubmit(); });
+if ($('zoneToCode')) $('zoneToCode').addEventListener('click', zoneToCode);
+if ($('zoneZoomIn')) $('zoneZoomIn').addEventListener('click', function () { zoneZoom(0.1); });
+if ($('zoneZoomOut')) $('zoneZoomOut').addEventListener('click', function () { zoneZoom(-0.1); });
+if ($('zoneFit')) $('zoneFit').addEventListener('click', function () { if (openZoneRef) zoneFit(openZoneRef); });
+/* Pan by dragging the board itself. Notes stop this from reaching here (they capture the pointer),
+   so grabbing a sticky moves the sticky and grabbing the space between them moves the board. */
+if ($('zoneCanvasWrap')) $('zoneCanvasWrap').addEventListener('pointerdown', function (e) {
+  const w = $('zoneCanvasWrap');
+  if (e.target.closest('.zone-note') || e.target.closest('.zone-palette') || e.target.closest('.zone-zoom')) return;
+  commitZoneEdit();
+  w.classList.add('panning'); w.setPointerCapture(e.pointerId);
+  const sx = e.clientX - zonePanX, sy = e.clientY - zonePanY;
+  const move = function (ev) { zonePanX = ev.clientX - sx; zonePanY = ev.clientY - sy; applyZoneView(); };
+  const up = function () {
+    w.classList.remove('panning');
+    w.removeEventListener('pointermove', move); w.removeEventListener('pointerup', up);
+  };
+  w.addEventListener('pointermove', move); w.addEventListener('pointerup', up);
 });
 if ($('zoneBack')) $('zoneBack').addEventListener('click', closeZone);
 if ($('zoneDone')) $('zoneDone').addEventListener('click', finishZone);
-if ($('zoneBotHide')) $('zoneBotHide').addEventListener('click', function () {
-  $('zoneBot').hidden = true;
-  const b = $('zoneBotBtn'); if (b) { b.hidden = false; b.setAttribute('aria-expanded', 'false'); }
-});
-if ($('zoneBotBtn')) $('zoneBotBtn').addEventListener('click', function () {
-  $('zoneBot').hidden = false;
-  const b = $('zoneBotBtn'); if (b) { b.hidden = true; b.setAttribute('aria-expanded', 'true'); }
-  const t = $('zoneBotText'); if (t) t.focus();
-});
 document.addEventListener('keydown', function (e) {
   if (e.key === 'Escape' && openZoneRef) { closeZone(); e.preventDefault(); }
 });

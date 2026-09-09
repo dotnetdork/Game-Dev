@@ -23,6 +23,20 @@ brief: >
 opener: >
   Last one. Your game does not have to be good — it has to be finished, and those are different
   jobs. Four objectives, and the last one has your name on it.
+board:
+  - id: done
+    say: Done
+    at: [40, 40, 230, 460]
+    objectives: done
+  - id: now
+    say: Now
+    at: [310, 40, 250, 460]
+    objectives: now
+    hot: true
+  - id: ahead
+    say: Still ahead
+    at: [600, 40, 230, 460]
+    objectives: ahead
 goals:
   - say: Fix the two worst things
     brief: Two items off their "Before it ships" list actually fixed in the code. Two, not ten.

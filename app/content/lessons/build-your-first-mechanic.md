@@ -23,6 +23,20 @@ brief: >
 opener: >
   Right — this is your game now, not ours. Four objectives, one at a time, and I will not write any
   of it. Press play whenever you want to see where you are.
+board:
+  - id: done
+    say: Done
+    at: [40, 40, 230, 460]
+    objectives: done
+  - id: now
+    say: Now
+    at: [310, 40, 250, 460]
+    objectives: now
+    hot: true
+  - id: ahead
+    say: Still ahead
+    at: [600, 40, 230, 460]
+    objectives: ahead
 goals:
   - say: Make it feel like your game
     brief: Two numbers in CONFIG changed so the game moves the way their one-sheet describes.

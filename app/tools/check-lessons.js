@@ -175,6 +175,44 @@ function checkZone(where, src) {
   const kind = y.kind === 'build' ? 'build' : 'sheet';
   if (y.kind && kind !== y.kind) fail(where, 'has `kind: ' + y.kind + '`, which is not a kind. Use `sheet` or `build`.');
 
+  /* The board: regions with a rectangle and a role. Each of these fails silently in its own way,
+     which is why none of them is trusted:
+       no `at:`               the region is drawn at 0,0 with no size and is invisible
+       no role at all         a decorative box; legal, but usually a forgotten `collects:`
+       `holds: slots` twice   the fixed stickies would be laid out into two places at once
+       a `collects:` heading  that is also in `slots:` — the same text would be both a fixed sticky
+                              and a pile of notes, and the two would fight over the file */
+  const regions = Array.isArray(y.board) ? y.board : [];
+  const collected = {};
+  const seenRegion = {};
+  let holders = 0;
+  regions.forEach(function (r, i) {
+    const at = where + ' region ' + (i + 1);
+    if (!r || typeof r !== 'object' || Array.isArray(r)) { fail(at, 'is not a set of keys.'); return; }
+    if (!r.id) fail(at, 'has no `id:` — drop targets are matched by it.');
+    else if (seenRegion[r.id]) fail(at, 'reuses the id "' + r.id + '".');
+    seenRegion[r.id] = true;
+    if (!Array.isArray(r.at) || r.at.length !== 4 || r.at.some(function (n) { return typeof n !== 'number'; })) {
+      fail(at, 'needs `at: [x, y, width, height]` in numbers, or it is drawn nowhere.');
+    }
+    if (r.holds === 'slots') holders++;
+    if (r.collects) collected[String(r.collects).toLowerCase().replace(/[^a-z0-9]+/g, '')] = true;
+    if (r.objectives && ['done', 'now', 'ahead'].indexOf(String(r.objectives)) < 0) {
+      fail(at, 'has `objectives: ' + r.objectives + '`. Use done, now or ahead.');
+    }
+  });
+  if (kind === 'sheet' && regions.length && holders !== 1) {
+    fail(where, 'has ' + holders + ' regions with `holds: slots`. Exactly one region has to hold the fixed notes.');
+  }
+  if (kind === 'build' && regions.length) {
+    ['done', 'now', 'ahead'].forEach(function (role) {
+      if (!regions.some(function (r) { return r.objectives === role; })) {
+        fail(where, 'is a build board with no `objectives: ' + role + '` region — objectives in that state would land nowhere.');
+      }
+    });
+  }
+  if (!regions.length) fail(where, 'has no `board:` — there would be no regions and every note would float loose.');
+
   const slots = Array.isArray(y.slots) ? y.slots.map(String) : [];
   /* A build zone has no board — its furniture is the student's game and their code — so `slots:`
      is not only unnecessary there, it is a sign the author meant `kind: sheet`. A sheet zone
@@ -190,9 +228,15 @@ function checkZone(where, src) {
   const known = {};
   slots.forEach(function (s) {
     if (!String(s).trim()) { fail(where, 'has a blank entry in `slots:`.'); return; }
-    if (known[key(s)]) fail(where, 'lists the slot "' + s + '" twice — the two cards would edit one box.');
+    if (known[key(s)]) fail(where, 'lists the slot "' + s + '" twice — the two notes would edit one box.');
+    if (collected[key(s)]) {
+      fail(where, 'lists "' + s + '" in `slots:` AND collects it in a region. It would be both a '
+        + 'fixed note and a pile of notes, and the two would fight over the file.');
+    }
     known[key(s)] = true;
   });
+  // A goal may name a collected heading too — it is a real slot, just written by dropping notes.
+  Object.keys(collected).forEach(function (k) { known[k] = true; });
 
   const goals = Array.isArray(y.goals) ? y.goals : [];
   if (!goals.length) fail(where, 'has no `goals:` — nothing would tick, so Finish could never light up.');
@@ -242,8 +286,8 @@ function checkZone(where, src) {
   });
 }
 
-/* The tool names zone.js actually defines, read off the source. Matching the keys of the ZONE_TOOLS
-   literal is enough and avoids evaluating a file full of DOM calls. */
+/* The tool names zone.js actually defines, read off the source. Matching the keys of the
+   ZONE_PALETTE literal is enough and avoids evaluating a file full of DOM calls. */
 let ZONE_KINDS = null;
 function zoneToolKinds() {
   if (ZONE_KINDS) return ZONE_KINDS;
@@ -251,10 +295,10 @@ function zoneToolKinds() {
   let src = '';
   try { src = fs.readFileSync(path.join(__dirname, '..', 'public', 'js', 'zone.js'), 'utf8'); }
   catch (e) { fail('zone.js', 'could not be read, so zone tools cannot be checked.'); return ZONE_KINDS; }
-  const at = src.indexOf('const ZONE_TOOLS = {');
-  if (at < 0) { fail('zone.js', 'has no ZONE_TOOLS object — zone tools cannot be checked.'); return ZONE_KINDS; }
+  const at = src.indexOf('const ZONE_PALETTE = {');
+  if (at < 0) { fail('zone.js', 'has no ZONE_PALETTE object — zone tools cannot be checked.'); return ZONE_KINDS; }
   const body = src.slice(at, src.indexOf('\n};', at));
-  const re = /^\s{2}([a-z][a-z0-9-]*)\s*:\s*function\s*\(/gm;
+  const re = /^\s{2}([a-z][a-z0-9-]*)\s*:\s*\{/gm;
   let m;
   while ((m = re.exec(body))) ZONE_KINDS.push(m[1]);
   if (!ZONE_KINDS.length) fail('zone.js', 'defines no zone tools at all — this is a bug in that file.');

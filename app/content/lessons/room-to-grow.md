@@ -24,6 +24,20 @@ opener: >
   Nothing you do in here will make your game do anything new. That is the point — this is the work
   that makes the next three weeks possible, and it never looks like progress on the day. Three
   objectives.
+board:
+  - id: done
+    say: Done
+    at: [40, 40, 230, 460]
+    objectives: done
+  - id: now
+    say: Now
+    at: [310, 40, 250, 460]
+    objectives: now
+    hot: true
+  - id: ahead
+    say: Still ahead
+    at: [600, 40, 230, 460]
+    objectives: ahead
 goals:
   - say: Get your loose numbers into CONFIG
     brief: Numbers typed straight into lines moved into CONFIG with names that say what they are.
