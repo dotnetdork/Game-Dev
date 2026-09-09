@@ -149,6 +149,57 @@ console.log('\n--- the re-key is idempotent ---');
      { engines: true }, 'ship-it']);
 }
 
+console.log('\n--- a project from before it had somewhere to write ---');
+{
+  /* design.md is the student's one-sheet. An existing project has to GAIN it, and a project that
+     already has one must keep whatever the student wrote — a migration that overwrote it would
+     destroy the only file in the project you cannot get back by reading the starter. */
+  const v2 = JSON.stringify({ v: 2, files: { 'game.js': '// mine', 'config.js': '// cfg' }, order: ['game.js', 'config.js'], assets: [] });
+  const { project, schema } = load({ leagueProject: v2 });
+  checkTrue('an older project gains design.md', typeof project.files['design.md'] === 'string');
+  check('...at the front of the file tree, where they will look for it', project.order[0], 'design.md');
+  check('...and its own code is untouched', project.files['game.js'], '// mine');
+  check('...and it is stamped to the current version', project.v, schema.project);
+
+  const mine = JSON.stringify({ v: 2, files: { 'game.js': '// g', 'design.md': '# my idea\n\nA ghost game.' }, order: ['game.js', 'design.md'], assets: [] });
+  const second = load({ leagueProject: mine });
+  check('a design doc that already exists is never overwritten',
+    second.project.files['design.md'], '# my idea\n\nA ghost game.');
+  check('...and is not listed twice',
+    second.project.order.filter(function (n) { return n === 'design.md'; }).length, 1);
+}
+
+console.log('\n--- notes are not code ---');
+{
+  /* Everything that walks the project used to assume every file was JavaScript: the game runner
+     wraps each one in a <script>, the linter checks each one, the `parses:` practice rule parses
+     each one. One helper answers "is this code?" so those cannot disagree — a file the runner skips
+     but the checker parses would report a syntax error in a child's game idea. */
+  const { store } = load({});
+  const ctxCheck = (expr) => {
+    const sandbox = { localStorage: makeStore({}), console: { warn(){}, log(){}, error(){} },
+                      window: {}, document: { getElementById: () => null },
+                      renderFooter(){}, saveState(){} };
+    sandbox.globalThis = sandbox;
+    const ctx = vm.createContext(sandbox);
+    vm.runInContext(fs.readFileSync(path.join(SRC, 'events.js'), 'utf8'), ctx);
+    vm.runInContext(fs.readFileSync(path.join(SRC, 'storage.js'), 'utf8'), ctx);
+    vm.runInContext(fs.readFileSync(path.join(SRC, 'starter-code.js'), 'utf8'), ctx);
+    const src = fs.readFileSync(path.join(SRC, 'project.js'), 'utf8');
+    const cut = src.indexOf('/* ---------- per-lesson activity ledger');
+    vm.runInContext(src.slice(0, cut > 0 ? cut : src.length), ctx);
+    return vm.runInContext(expr, ctx);
+  };
+  check('.js is code', ctxCheck("[isCodeFile('game.js'), isCodeFile('enemy.js')]"), [true, true]);
+  check('.md is not', ctxCheck("[isCodeFile('design.md'), isCodeFile('notes.md')]"), [false, false]);
+  check('a new project ships the design doc', ctxCheck("typeof project.files['design.md']"), 'string');
+  check('...and the runner is never handed it',
+    ctxCheck("codeFileNames().indexOf('design.md')"), -1);
+  check('...while every starter script still is',
+    ctxCheck("codeFileNames().sort()"),
+    ['coins.js', 'config.js', 'game.js', 'main.js', 'player.js', 'world.js']);
+}
+
 console.log('\n--- a save from a NEWER build than this one ---');
 {
   const future = JSON.stringify({ v: 99, files: { 'game.js': '// from tomorrow' }, order: ['game.js'] });

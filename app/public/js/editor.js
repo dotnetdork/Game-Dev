@@ -29,7 +29,9 @@ function upgradeEditor() {
     codeToolsReady = true;
     codeEditor.setOption('styleActiveLine', true);
     codeEditor.setOption('foldGutter', true);
-    if (!reviewing) codeEditor.setOption('lint', LINT_OPTS);   // a diff is not valid JS; see startReview
+    // Via setEditorLanguage so the file already open decides: a diff is not valid JS (see
+    // startReview) and neither is design.md, and linting either one is noise at best.
+    if (!reviewing) setEditorLanguage(currentFile);
     codeEditor.refresh();
     if (typeof loadCode === 'function' && !$('view-code').hidden) loadCode();  // re-run now Prettier exists
   }).catch(function (e) {
@@ -38,12 +40,18 @@ function upgradeEditor() {
 }
 codeEditor.setSize('100%', '100%');
 codeEditor.on('cursorActivity', function (cm) { const p = cm.getCursor(); const el = $('cmStatus'); if (el) el.textContent = 'Ln ' + (p.line + 1) + ', Col ' + (p.ch + 1); });
-codeEditor.on('inputRead', function (cm, e) { if (e.text && /[\w.]/.test(e.text[0]) && !cm.state.completionActive) cm.showHint({ hint: CodeMirror.hint.anyword, completeSingle: false }); });
+codeEditor.on('inputRead', function (cm, e) {
+  // Not in prose. Word-completion on every letter typed into a sentence is a popup that never
+  // closes, and the words it offers are the ones already on screen.
+  if (typeof isCodeFile === 'function' && !isCodeFile(currentFile)) return;
+  if (e.text && /[\w.]/.test(e.text[0]) && !cm.state.completionActive) cm.showHint({ hint: CodeMirror.hint.anyword, completeSingle: false });
+});
 /* Click a line number to ask the tutor what that line does — the student's own game is the
    textbook, so reading it should be one click away. */
 codeEditor.on('gutterClick', function (cm, n, gutter) {
   if (reviewing) return;                                                                    // those line numbers are diff rows, not the file
   if (gutter === 'CodeMirror-foldgutter' || gutter === 'CodeMirror-lint-markers') return;   // those gutters have their own jobs
+  if (typeof isCodeFile === 'function' && !isCodeFile(currentFile)) return;                 // "explain this line" of their own writing explains nothing
   const lineText = cm.getLine(n);
   if (!lineText || !lineText.trim()) { toast('That line is empty — click a line with code on it.'); return; }
   const from = Math.max(0, n - 10), to = Math.min(cm.lineCount() - 1, n + 10);
@@ -51,6 +59,27 @@ codeEditor.on('gutterClick', function (cm, n, gutter) {
   explainLine(currentFile, n + 1, lineText, snippet);
 });
 function formatJS(code) { try { return prettier.format(code, { parser: 'babel', plugins: prettierPlugins, printWidth: 100, tabWidth: 2, singleQuote: true }); } catch (e) { return code; } }
+
+/* ---------- the editor follows the file ----------
+   Every file used to be JavaScript. design.md is prose, and pointing the JavaScript mode and JSHint
+   at a page of English produces a screen of red squiggles under a child's game idea — which reads
+   as "you have done this wrong" about the one file where there is no wrong.
+   Only the JavaScript mode is vendored (vendor/codemirror/mode/javascript/), so a text file gets no
+   mode at all. That is the right answer rather than a shortfall: unstyled prose looks like prose.
+   Called from loadCode() on every file switch. */
+function setEditorLanguage(name) {
+  const code = typeof isCodeFile === 'function' ? isCodeFile(name) : true;
+  codeEditor.setOption('mode', code ? 'javascript' : null);
+  // Guarded on codeToolsReady the same way upgradeEditor is: with no addon there is no option to
+  // set, and setting one would throw before the student had even reached the Code tab.
+  if (codeToolsReady && !reviewing) {
+    codeEditor.setOption('lint', code ? LINT_OPTS : false);
+    if (!code) codeEditor.clearGutter('CodeMirror-lint-markers');
+  }
+  // Bracket-closing in prose turns a typed "(" into "()" mid-sentence.
+  codeEditor.setOption('autoCloseBrackets', code);
+  codeEditor.setOption('matchBrackets', code);
+}
 
 /* ---------- reviewing an AI change ----------
    A proposed code change is shown in the editor itself as a diff — removed lines red with a

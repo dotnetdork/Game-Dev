@@ -36,7 +36,7 @@ const PKEY = 'leagueProject';
        replaced, so nothing is ever silently destroyed
    `keepBroken` is the important one. Losing a save to a parse error is recoverable; losing it
    because we cheerfully wrote a fresh default over the top of it is not. */
-const SCHEMA = { project: 2, progress: 2 };
+const SCHEMA = { project: 3, progress: 2 };
 
 function keepBroken(key, raw, why) {
   try {
@@ -110,7 +110,18 @@ const MIGRATIONS = {
        boot (state is built further down this file), so it is left null here and materialised by
        ensureProjectAssets() on first use. Null means "everything owned", which is exactly the old
        behaviour — an existing student's game cannot break by opening it. */
-    1: function (p) { p.assets = null; return p; }
+    1: function (p) { p.assets = null; return p; },
+    /* v2 -> v3: a project gained a place to write in.
+       design.md is the student's one-sheet — the game they are going to make, next to the code of
+       the game they were given. Added rather than replaced: if a project somehow already has the
+       file, whatever is in it is the student's writing and this must not touch it.
+       It goes to the FRONT of `order` because that is where they will look for it, and order is
+       only the file tree — load order skips it entirely (see isCodeFile). */
+    2: function (p) {
+      if (typeof p.files['design.md'] !== 'string') p.files['design.md'] = STARTER['design.md'];
+      if (p.order.indexOf('design.md') < 0) p.order.unshift('design.md');
+      return p;
+    }
   },
   progress: {
     /* v0 -> v1: nothing changes in the shape. But the step has to EXIST.
@@ -187,6 +198,15 @@ function loadProject() {
 let project = loadProject();
 function saveProject() { project.v = SCHEMA.project; Storage.writeJSON(PKEY, project); }
 function fileNames() { const out = project.order.filter(function (n) { return project.files[n] !== undefined; }); Object.keys(project.files).forEach(function (n) { if (out.indexOf(n) < 0) out.push(n); }); return out; }
+/* ---------- which files are code, and which are just writing ----------
+   Every project file used to be JavaScript, and everything that walks the project assumed it: the
+   game runner wraps each one in a <script>, the practice checker parses each one, the editor lints
+   each one. `design.md` is prose — the student's one-sheet, sitting next to the code the way a
+   design doc does in a real project — so each of those places asks this first.
+   Kept here rather than in each caller because "is this file code?" must have one answer. A file
+   the runner skips but the linter checks would report syntax errors in a child's game idea. */
+function isCodeFile(name) { return /\.js$/i.test(String(name || '')); }
+function codeFileNames() { return fileNames().filter(isCodeFile); }
 const CONFIG_FILE = 'config.js';
 // Projects saved before the starter was split still keep CONFIG inside game.js.
 function configFile() { return typeof project.files[CONFIG_FILE] === 'string' ? CONFIG_FILE : 'game.js'; }
@@ -518,17 +538,25 @@ function practiceSnapshot(lessonId, key) {
 function practiceRuleResult(rule, snap) {
   const files = project.files;
   const readFile = function (name) { return typeof files[name] === 'string' ? files[name] : ''; };
-  const allCode = function () { return fileNames().map(readFile).join('\n'); };
+  /* Two "everything" readings, because the project is no longer all code.
+     allCode is for the rules that reason about PROGRAM structure — a function existing, a call
+     inside update(), whether the thing still parses. Handing those a page of English produces
+     nonsense: a sentence with the word "const" in it would register as a declaration.
+     allFiles is for `contains` and `matches` with no `file:`, which AUTHORING.md documents as
+     searching the whole project — and the student's notes are part of their project. A checkpoint
+     that asks "have they written their core loop down" needs to be able to find it. */
+  const allCode = function () { return codeFileNames().map(readFile).join('\n'); };
+  const allFiles = function () { return fileNames().map(readFile).join('\n'); };
 
   if (rule.contains) {
     const f = rule.contains.file, t = String(rule.contains.text || '');
-    const hay = f ? readFile(f) : allCode();
+    const hay = f ? readFile(f) : allFiles();
     return { ok: hay.indexOf(t) >= 0, why: 'nothing in ' + (f || 'your game') + ' contains "' + t + '" yet' };
   }
   if (rule.matches) {
     const f = rule.matches.file, src = String(rule.matches.regex || '');
     let re; try { re = new RegExp(src, 'm'); } catch (e) { return { ok: false, bad: 'the `matches:` pattern is not a valid regular expression: ' + src }; }
-    return { ok: re.test(f ? readFile(f) : allCode()), why: 'nothing in ' + (f || 'your game') + ' matches that pattern yet' };
+    return { ok: re.test(f ? readFile(f) : allFiles()), why: 'nothing in ' + (f || 'your game') + ' matches that pattern yet' };
   }
   if (rule.config_changed) {
     const keys = Array.isArray(rule.config_changed) ? rule.config_changed : [rule.config_changed];
@@ -539,7 +567,7 @@ function practiceRuleResult(rule, snap) {
   }
   if (rule.function_added) {
     const name = String(rule.function_added);
-    const had = topLevelNames(String((snap && Object.keys(snap).map(function (n) { return snap[n]; }).join('\n')) || ''));
+    const had = topLevelNames(String((snap && Object.keys(snap).filter(isCodeFile).map(function (n) { return snap[n]; }).join('\n')) || ''));
     const has = topLevelNames(allCode());
     return { ok: has.indexOf(name) >= 0 && had.indexOf(name) < 0,
       why: 'there is no new function called ' + name + ' yet' };
@@ -553,7 +581,7 @@ function practiceRuleResult(rule, snap) {
        call that is commented out does not count — which is the difference between "I wrote it" and
        "it runs". */
     const name = String(rule.called_in_update);
-    const hit = fileNames().some(function (n) {
+    const hit = codeFileNames().some(function (n) {
       const code = readFile(n);
       const end = fnBodyEnd(code, 'update');
       if (end < 0) return false;
@@ -579,7 +607,9 @@ function practiceRuleResult(rule, snap) {
       why: 'only ' + n + ' line(s) of your game have changed so far' };
   }
   if (rule.parses) {
-    const broken = fileNames().filter(function (n) { return !validJS(readFile(n)); });
+    // Code files only. design.md is prose and never parses as JavaScript, so without this every
+    // `parses: true` rule in the course would fail for every student, permanently.
+    const broken = codeFileNames().filter(function (n) { return !validJS(readFile(n)); });
     return { ok: broken.length === 0, why: broken.length ? broken[0] + ' has a syntax error in it' : '' };
   }
   const named = Object.keys(rule).filter(function (k) { return k !== 'hint'; });

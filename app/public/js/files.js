@@ -38,7 +38,9 @@ function refreshFiles() {
   if (folderOpen.source) {
     names.forEach(function (name) {
       const row = document.createElement('div'); row.className = 'filerow' + (name === currentFile ? ' active' : '');
-      const icon = document.createElement('span'); icon.className = 'mdi mdi-language-javascript';
+      const icon = document.createElement('span');
+      // Not every file in here is code any more — design.md is the student's own writing.
+      icon.className = 'mdi ' + (isCodeFile(name) ? 'mdi-language-javascript' : 'mdi-file-document-outline');
       const lbl = document.createElement('span'); lbl.className = 'lbl'; lbl.textContent = name;
       row.appendChild(icon); row.appendChild(lbl);
       row.addEventListener('click', function () { openFile(name); });
@@ -189,16 +191,31 @@ function deleteFile(name) {
   } });
 }
 function openFile(name) { if (reviewing) endReview(); if (!$('view-code').hidden) { project.files[currentFile] = codeEditor.getValue(); saveProject(); } currentFile = name; $('crumb').textContent = name; refreshFiles(); loadCode(); }
-function loadCode() { if (reviewing) { showDiffInEditor(reviewing); return; } const t = project.files[currentFile]; codeEditor.setValue(typeof t === 'string' ? formatJS(t) : '// (empty file)'); codeEditor.refresh(); }
+function loadCode() {
+  if (reviewing) { showDiffInEditor(reviewing); return; }
+  const t = project.files[currentFile];
+  /* formatJS is Prettier's JavaScript parser. Handed a page of prose it either throws or rewrites
+     it into something that is no longer what the student typed, so only code gets formatted.
+     setEditorLanguage switches the editor's own mode and linting to match — see editor.js. */
+  if (typeof setEditorLanguage === 'function') setEditorLanguage(currentFile);
+  const code = isCodeFile(currentFile);
+  codeEditor.setValue(typeof t === 'string' ? (code ? formatJS(t) : t) : (code ? '// (empty file)' : ''));
+  codeEditor.refresh();
+}
 /* Named, because two things call it: the New button in the footer and the + on the source folder.
    The + exists so both folders offer the same gesture in the same place — a panel where one section
    has an add button and the other does not reads as if the second one cannot be added to. */
 function newScript() {
-  modal({ title: 'New script', message: 'Name your script (letters, numbers, - or _). ".js" is added automatically.', input: true, placeholder: 'enemy.js', okLabel: 'Create',
-    onOk: function (name) { if (!name) return; name = name.trim(); if (!/\.js$/.test(name)) name += '.js';
-      if (!/^[A-Za-z0-9_-]+\.js$/.test(name)) { toast('Use letters, numbers, - or _ only.'); return; }
+  modal({ title: 'New file', message: 'Name it (letters, numbers, - or _). Ends in ".js" for code, or ".md" for notes — ".js" is added if you leave the end off.', input: true, placeholder: 'enemy.js', okLabel: 'Create',
+    onOk: function (name) { if (!name) return; name = name.trim();
+      // A bare name is still a script, which is what it was before .md existed and what almost
+      // every one of these will be. An explicit .md is taken at its word.
+      if (!/\.(js|md)$/i.test(name)) name += '.js';
+      if (!/^[A-Za-z0-9_-]+\.(js|md)$/i.test(name)) { toast('Use letters, numbers, - or _ only.'); return; }
       if (project.files[name] !== undefined) { toast('A file with that name already exists.'); return; }
-      project.files[name] = '// ' + name + '\n// Code you write here runs with the game when you press Run.\n';
+      project.files[name] = isCodeFile(name)
+        ? '// ' + name + '\n// Code you write here runs with the game when you press Run.\n'
+        : '# ' + name.replace(/\.md$/i, '') + '\n\nNotes. This one is for you to read, not for the game to run.\n';
       project.order.push(name); saveProject(); refreshFiles(); openFile(name); toast('Created ' + name); } });
 }
 $('newFileBtn').addEventListener('click', newScript);

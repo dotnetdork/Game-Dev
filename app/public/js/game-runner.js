@@ -197,7 +197,7 @@ function syncGameAudio() {
    set invites. That is the case the sheet is for: one key, added when the set is bought. */
 function autoAddUsedAssets() {
   if (typeof ownedAssets !== 'function') return;
-  const code = fileNames().map(function (n) { return project.files[n] || ''; }).join('\n');
+  const code = codeFileNames().map(function (n) { return project.files[n] || ''; }).join('\n');
   if (!code) return;
   const quoted = {};
   let m; const re = /['"]([A-Za-z0-9_-]{2,60})['"]/g;
@@ -238,7 +238,9 @@ function startGame() { // build a self-contained page from the browser-side proj
   autoAddUsedAssets();                                 // before the assets are injected, not after
   if (typeof noteGameRun === 'function') noteGameRun(); // so the AI can tell "printed nothing" from "never ran"
   // load order is the file order in the tree; main.js runs last because it starts the engine
-  const ordered = fileNames().filter(function (n) { return n !== 'main.js'; });
+  // codeFileNames, not fileNames: design.md is prose, and a <script> full of prose is a syntax
+  // error that kills the whole block — which on this page means a black stage and no game.
+  const ordered = codeFileNames().filter(function (n) { return n !== 'main.js'; });
   const scripts = ordered.map(function (n) { return '<' + 'script>\n' + (project.files[n] || '') + '\n<' + '/script>'; }).join('\n')
     + '\n' + errorReporterScript()                                  // must sit between the game files and main.js
     + (typeof project.files['main.js'] === 'string' ? '<' + 'script>\n' + project.files['main.js'] + '\n<' + '/script>' : '');
