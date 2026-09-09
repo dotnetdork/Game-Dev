@@ -470,6 +470,51 @@ function checkLessonIds() {
     });
   });
   if (!n) fail('course.yaml', 'lists no lessons at all.');
+  checkCheckpoints(doc);
+}
+
+/* ---- a checkpoint has to be able to do its job ----
+   `checkpoint: true` in a lesson's front-matter changes two things: the outline draws that row as
+   the end of its module, and lessonActivityKeys counts the your-turn steps, so the lesson cannot be
+   finished — and the module's stars cannot be earned — until the student's own game satisfies them.
+
+   Both of those depend on facts YAML cannot enforce, and each fails silently in its own way:
+
+     not last in its module   the module's stars stop waiting on it, because completeLesson only
+                              awards them once every lesson is done and there would be lessons
+                              after it. The gate quietly becomes decoration.
+     no `yourturn` block      there are no `y*` keys to count, so the lesson completes on its
+                              quizzes like any other. A checkpoint that insists on nothing.
+
+   Which modules HAVE a checkpoint is reported rather than failed, for now: the course is mid-way
+   through gaining them, and a check that fails on work not done yet gets switched off. Promote it
+   when the list below is empty. */
+function checkCheckpoints(doc) {
+  const missing = [];
+  (doc.modules || []).forEach(function (mod) {
+    const ids = (mod.lessons || []).filter(function (id) { return id && String(id).trim(); }).map(String);
+    let found = null;
+    ids.forEach(function (id, i) {
+      let raw = '';
+      try { raw = fs.readFileSync(path.join(DIR, id + '.md'), 'utf8'); } catch (e) { return; }
+      const fm = raw.replace(/\r\n/g, '\n').match(/^---\n([\s\S]*?)\n---/);
+      if (!fm || !/^checkpoint:\s*true\s*$/m.test(fm[1])) return;
+      found = id;
+      const where = id + '.md';
+      if (i !== ids.length - 1) {
+        fail(where, 'is a checkpoint but is not the last lesson in ' + (mod.name || mod.id)
+          + '. The module\'s stars only wait for the last one, so this gate does nothing.');
+      }
+      if (!/```yourturn/.test(raw)) {
+        fail(where, 'is a checkpoint with no ```yourturn block. It has nothing to insist on, so it '
+          + 'finishes like an ordinary lesson.');
+      }
+    });
+    if (!found) missing.push(mod.name || mod.id);
+  });
+  if (missing.length) {
+    console.log('note: ' + missing.length + ' module(s) have no checkpoint yet — ' + missing.join(', '));
+  }
 }
 
 /* ---- `// @demo: name` in a run cell has to name a demo that exists ----

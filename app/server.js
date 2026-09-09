@@ -240,14 +240,19 @@ function buildIndex() {
         meta = frontMatter(raw);
         reward = rewardOf(raw);
       }
-      catch (e) { return { id: id, title: id, xp: 0, summary: '', ai: 'full', reward: '', missing: true }; }
+      catch (e) { return { id: id, title: id, xp: 0, summary: '', ai: 'full', reward: '', checkpoint: false, missing: true }; }
       return {
         id: id,
         title: meta.title || id,
         xp: meta.xp || 0,
         summary: meta.summary || '',
         ai: meta.ai || 'full',
-        reward: reward
+        reward: reward,
+        /* A checkpoint is the lesson at the end of a module where the student works on their OWN
+           game. It is carried in the index rather than read from the body because the outline draws
+           it differently and the completion rule changes for it, and both of those happen before
+           any body is fetched. See lessonActivityKeys in js/widgets.js. */
+        checkpoint: meta.checkpoint === true
       };
     });
     return { id: mod.id, name: mod.name, stars: mod.stars || 0, lessons: lessons };

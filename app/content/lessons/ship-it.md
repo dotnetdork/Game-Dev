@@ -2,6 +2,7 @@
 title: Ship It
 xp: 240
 ai: full
+checkpoint: true
 summary: Your game, your name on it, somebody else playing it.
 ---
 

@@ -2203,19 +2203,29 @@ function lessonActivityKeys() {
   const keys = [];
   for (let i = 0; i < widgetSeq.q; i++) keys.push('q' + i);
   for (let i = 0; i < widgetSeq.c; i++) keys.push('c' + i);
-  /* Practice steps (`y*`) are deliberately NOT counted, though they used to be.
-     A practice step now checks the student's real game and cannot be waved through, which turns
-     "does this lesson count as finished?" into "has the checker been satisfied?" — and lessons
-     unlock in a straight line, so one student stuck on their own game, or one bug in a rule, would
-     wall off the rest of the course. Reading and questions finish a lesson. The practice steps are
-     counted by the module's checkpoint instead, which is the right place to insist: you cannot
-     arrive at the part where you build your own game having built nothing.
-     They still record and still award their badge — see renderYourTurnCells. */
+  /* Practice steps (`y*`) are not counted in an ORDINARY lesson, though they used to be.
+     A practice step checks the student's real game and cannot be waved through, which turns "does
+     this lesson count as finished?" into "has the checker been satisfied?" — and lessons unlock in
+     a straight line, so one student stuck on their own game, or one bug in a rule, would wall off
+     the rest of the course. Reading and questions finish a lesson.
+     In a CHECKPOINT they are the whole point, and they are counted. That is the difference between
+     the two kinds of lesson: a checkpoint is the one place the course insists, because you cannot
+     arrive at the part where you build your own game having built nothing. It sits at the end of a
+     module and it is therefore also what the module's stars wait for — completeLesson only awards
+     them once every lesson in the module is done, so the gate needs no code of its own.
+     Either way they record and award their badge — see renderYourTurnCells. */
+  if (isCheckpoint()) { for (let i = 0; i < widgetSeq.y; i++) keys.push('y' + i); }
   // only run cells with an @expect goal can be "finished"; the rest are for tinkering
   goalRunKeys.forEach(function (k) { keys.push(k); });
   return keys;
 }
-/* For the checkpoint gate, once checkpoints exist: how many practice steps in a lesson are done. */
+/* Is the lesson on screen a checkpoint? From course.yaml's front-matter via the index, so it is
+   known before the body is fetched — the outline draws these rows differently. */
+function isCheckpoint(f) {
+  const l = f || flat[curIdx];
+  return !!(l && l.l && l.l.cp);
+}
+/* How many practice steps in a lesson are done. */
 function practiceProgress(lessonId, count) {
   const done = lessonActivities(lessonId);
   let n = 0;
