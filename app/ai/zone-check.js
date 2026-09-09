@@ -27,21 +27,25 @@ function cleanSlotOffer(reply, allowed) {
     return { reply: typeof reply === 'string' ? reply : '', slot: null };
   }
   const lines = reply.replace(/\r\n/g, '\n').split('\n');
-  /* Search from the end, and only through trailing blank lines — the instruction is "the very last
-     line". Accepting one from the middle would let a model that mentions the format while
-     explaining itself write to the board. */
-  let at = -1;
-  for (let i = lines.length - 1; i >= 0 && i >= lines.length - 3; i--) {
-    if (!lines[i].trim()) continue;
-    if (/^\s*SLOT\s*:/i.test(lines[i])) at = i;
-    break;
+  /* ANYWHERE in the reply, not only the last line.
+     The prompt asks for the last line and models mostly oblige — but "mostly" is the whole problem:
+     when one puts the line in the middle and keeps talking, a last-line-only parser leaves
+     `SLOT: My game is :: A game where...` sitting in the chat as visible text and writes nothing to
+     the board. That is the worst of both, and it is what shipped. Scanning the whole reply costs
+     nothing and cannot do less than the strict version did.
+     The first well-formed line wins; any others are stripped as prose but ignored, because one
+     reply filling two boxes is a model that has stopped asking one question at a time. */
+  let found = false, m = null;
+  const kept = [];
+  for (let i = 0; i < lines.length; i++) {
+    if (!/^\s*SLOT\s*:/i.test(lines[i])) { kept.push(lines[i]); continue; }
+    if (!found) { found = true; m = lines[i].match(/^\s*SLOT\s*:\s*(.+?)\s*::\s*(.+?)\s*$/i); }
+    // and dropped, parsed or not
   }
-  if (at < 0) return { reply: reply, slot: null };
-
-  const m = lines[at].match(/^\s*SLOT\s*:\s*(.+?)\s*::\s*(.+?)\s*$/i);
-  const rest = lines.slice(0, at).join('\n').replace(/\s+$/, '');
-  // A SLOT: line that does not parse is still removed. Half a machine instruction shown to a child
-  // is worse than no suggestion at all.
+  if (!found) return { reply: reply, slot: null };
+  // Every SLOT: line comes out whether or not it parsed. Half a machine instruction shown to a
+  // child is worse than no suggestion at all.
+  const rest = kept.join('\n').replace(/\n{3,}/g, '\n\n').trim();
   if (!m) return { reply: rest, slot: null };
 
   const want = norm(m[1]);

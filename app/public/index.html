@@ -141,7 +141,14 @@
               <button class="rv-apply" id="reviewApply"><span class="mdi mdi-check"></span>Apply</button>
               <button class="rv-skip" id="reviewSkip">No thanks</button>
             </div>
-            <textarea id="codeeditor"></textarea><div class="cm-statusbar" id="cmStatus">Ln 1, Col 1</div>
+            <!-- A document opens as the page, not as its source: a one-sheet is something you read
+                 back to check it says what you meant, and reading it with the hashes on is reading
+                 the plumbing. Edit is one press away. Only shown on a .md file. -->
+            <div class="doc-bar" id="docBar" role="group" aria-label="Read or edit this document" hidden></div>
+            <div class="doc-preview lesson" id="docPreview" hidden></div>
+            <div class="editor-wrap" id="editorWrap">
+              <textarea id="codeeditor"></textarea><div class="cm-statusbar" id="cmStatus">Ln 1, Col 1</div>
+            </div>
             <!-- Phones read; they do not build. Shown by a media query alone, with no JavaScript
                  state to fall out of step with the width. The tab still works and still arrives
                  somewhere that explains itself, which beats a dead tab or a 320px code editor. -->
@@ -368,7 +375,6 @@
             <!-- A build board has no editor in it on purpose: the student writes code where they
                  always have. So the only thing it needs is a way through to the Code tab. -->
             <button class="zone-tocode" id="zoneToCode" hidden><span class="mdi mdi-code-tags" aria-hidden="true"></span>Open the Code tab</button>
-            <span class="zone-clock" id="zoneClock" hidden aria-live="off"></span>
             <span class="zone-model" id="zoneBotTag">model…</span>
           </div>
           <!-- What you are here to apply. Each one is a real check against their own work, so it

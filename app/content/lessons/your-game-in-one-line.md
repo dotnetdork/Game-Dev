@@ -44,31 +44,5 @@ goals:
   - say: Say what you are not building
     slot: What I am NOT building
 tools:
-  - kind: mixer
-    title: Mix up three ideas
-    into: My game is
-    bases:
-      - a platformer
-      - a climbing game
-      - a racing game
-      - a collecting game
-      - a hiding game
-      - a delivery game
-      - a farming game
-      - a sword-fighting game
-    twists:
-      - but the floor disappears behind you
-      - but you only get one life, ever
-      - but you cannot stop moving
-      - but you play as the thing that is chasing you
-      - but everything you touch turns to gold
-      - but the whole level is dark and you carry one torch
-      - but time rewinds five seconds every time you die
-      - but you cannot jump
-      - but you get slower the more you carry
-      - but somebody else is playing it at the same time and you can see them
-      - but you have to teach a robot to do it instead of doing it
-      - but the level is being built while you run through it
-  - kind: whatif
-  - kind: crazy8
+  - kind: readback
 ```

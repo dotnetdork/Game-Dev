@@ -63,7 +63,5 @@ goals:
   - say: Every note written
     slot: '*'
 tools:
-  - kind: whatif
-  - kind: crazy8
   - kind: readback
 ```

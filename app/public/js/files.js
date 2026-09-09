@@ -1,6 +1,6 @@
 /* files.js — The file tree (source + assets folders), asset detail popup, new/open/save/delete/reset of project files, and the Game Info settings list. */
 /* ---------- files ---------- */
-let folderOpen = { source: true, assets: true };
+let folderOpen = { docs: true, source: true, assets: true };
 /* The folder itself is the open/closed control — no separate caret.
    A left/down triangle beside a label is the shape of a SELECT, and this is not one: nothing is
    being chosen, a section is being folded away. The folder icon says the same thing without the
@@ -33,29 +33,38 @@ function folderHead(id, label, count, addTitle, onAdd) {
 }
 function refreshFiles() {
   const list = $('fileList'); list.innerHTML = '';
-  const names = fileNames();
-  list.appendChild(folderHead('source', 'source', names.length, 'New script', newScript));
-  if (folderOpen.source) {
-    names.forEach(function (name) {
-      const row = document.createElement('div'); row.className = 'filerow' + (name === currentFile ? ' active' : '');
-      const icon = document.createElement('span');
-      // Not every file in here is code any more — design.md is the student's own writing.
-      icon.className = 'mdi ' + (isCodeFile(name) ? 'mdi-language-javascript' : 'mdi-file-document-outline');
-      const lbl = document.createElement('span'); lbl.className = 'lbl'; lbl.textContent = name;
-      row.appendChild(icon); row.appendChild(lbl);
-      row.addEventListener('click', function () { openFile(name); });
-      if (STARTER[name] === undefined) {
-        const del = document.createElement('button'); del.className = 'rowbtn'; del.title = 'Delete ' + name; del.innerHTML = '<span class="mdi mdi-close"></span>';
-        del.addEventListener('click', function (e) { e.stopPropagation(); deleteFile(name); });
-        row.appendChild(del);
-      } else {
-        const rst = document.createElement('button'); rst.className = 'rowbtn rst'; rst.title = 'Reset ' + name + ' to the default'; rst.innerHTML = '<span class="mdi mdi-restore"></span>';
-        rst.addEventListener('click', function (e) { e.stopPropagation(); resetFile(name); });
-        row.appendChild(rst);
-      }
-      list.appendChild(row);
-    });
+  /* Two folders, because there are two kinds of thing in here now and they are not the same job.
+     `documents` is what the student WRITES — the one-sheet and anything else they fill in; `source`
+     is what the game RUNS. Documents sits above source deliberately: what your game is comes before
+     how it works, and it is the folder a student is sent to on their very first checkpoint. */
+  const docs = fileNames().filter(function (n) { return !isCodeFile(n); });
+  const code = codeFileNames();
+
+  const fileRow = function (name) {
+    const row = document.createElement('div'); row.className = 'filerow' + (name === currentFile ? ' active' : '');
+    const icon = document.createElement('span');
+    icon.className = 'mdi ' + (isCodeFile(name) ? 'mdi-language-javascript' : 'mdi-file-document-outline');
+    const lbl = document.createElement('span'); lbl.className = 'lbl'; lbl.textContent = name;
+    row.appendChild(icon); row.appendChild(lbl);
+    row.addEventListener('click', function () { openFile(name); });
+    if (STARTER[name] === undefined) {
+      const del = document.createElement('button'); del.className = 'rowbtn'; del.title = 'Delete ' + name; del.innerHTML = '<span class="mdi mdi-close"></span>';
+      del.addEventListener('click', function (e) { e.stopPropagation(); deleteFile(name); });
+      row.appendChild(del);
+    } else {
+      const rst = document.createElement('button'); rst.className = 'rowbtn rst'; rst.title = 'Reset ' + name + ' to the default'; rst.innerHTML = '<span class="mdi mdi-restore"></span>';
+      rst.addEventListener('click', function (e) { e.stopPropagation(); resetFile(name); });
+      row.appendChild(rst);
+    }
+    list.appendChild(row);
+  };
+
+  if (docs.length) {
+    list.appendChild(folderHead('docs', 'documents', docs.length, 'New document', newDocument));
+    if (folderOpen.docs) docs.forEach(fileRow);
   }
+  list.appendChild(folderHead('source', 'source', code.length, 'New script', newScript));
+  if (folderOpen.source) code.forEach(fileRow);
   renderAssetFolder(list);
 }
 /* The assets folder shows what this project LOADS, not everything the student owns — those are
@@ -191,32 +200,98 @@ function deleteFile(name) {
   } });
 }
 function openFile(name) { if (reviewing) endReview(); if (!$('view-code').hidden) { project.files[currentFile] = codeEditor.getValue(); saveProject(); } currentFile = name; $('crumb').textContent = name; refreshFiles(); loadCode(); }
+/* ---------- documents read before they are edited ----------
+   A markdown file opens as the PAGE, not as its source. A one-sheet is something a student reads
+   back to check it says what they meant, and reading it as `## How you lose` with the hashes on is
+   reading the plumbing. Editing is one press away and the press is remembered per file, so somebody
+   who is mid-edit stays mid-edit when they come back.
+   Code has no preview and no toggle: it is already what it is. */
+let docEditing = {};
+function docPreviewOn(name) { return !isCodeFile(name) && !docEditing[name]; }
+
 function loadCode() {
   if (reviewing) { showDiffInEditor(reviewing); return; }
   const t = project.files[currentFile];
+  const code = isCodeFile(currentFile);
+  const preview = docPreviewOn(currentFile);
+  paintDocBar();
+  const host = $('docPreview');
+  if (host) {
+    host.hidden = !preview;
+    if (preview) {
+      // Rendered through the same sanitiser as every other Markdown in the app; a student's own
+      // file is not a trusted document just because they wrote it.
+      host.innerHTML = (typeof mdToSafeHTML === 'function')
+        ? mdToSafeHTML(typeof t === 'string' ? t : '')
+        : esc(String(t || ''));
+      host.scrollTop = 0;
+    }
+  }
+  const wrap = $('editorWrap'); if (wrap) wrap.hidden = preview;
+  if (preview) return;
   /* formatJS is Prettier's JavaScript parser. Handed a page of prose it either throws or rewrites
      it into something that is no longer what the student typed, so only code gets formatted.
      setEditorLanguage switches the editor's own mode and linting to match — see editor.js. */
   if (typeof setEditorLanguage === 'function') setEditorLanguage(currentFile);
-  const code = isCodeFile(currentFile);
   codeEditor.setValue(typeof t === 'string' ? (code ? formatJS(t) : t) : (code ? '// (empty file)' : ''));
   codeEditor.refresh();
+}
+
+/* The Read / Edit switch, shown only on a document. */
+function paintDocBar() {
+  const bar = $('docBar'); if (!bar) return;
+  const doc = !isCodeFile(currentFile) && !reviewing;
+  bar.hidden = !doc;
+  if (!doc) return;
+  const editing = !docPreviewOn(currentFile);
+  bar.innerHTML = '';
+  [['Read', false, 'mdi-book-open-page-variant'], ['Edit', true, 'mdi-pencil-outline']].forEach(function (m) {
+    const b = document.createElement('button');
+    b.type = 'button'; b.className = 'docmode' + (editing === m[1] ? ' on' : '');
+    b.innerHTML = '<span class="mdi ' + m[2] + '" aria-hidden="true"></span>' + m[0];
+    b.setAttribute('aria-pressed', String(editing === m[1]));
+    b.addEventListener('click', function () {
+      // Leaving Edit writes first: the switch must never be a way to lose a paragraph.
+      if (editing && !m[1]) saveFile();
+      docEditing[currentFile] = m[1];
+      loadCode();
+      if (m[1]) setTimeout(function () { codeEditor.refresh(); codeEditor.focus(); }, 0);
+    });
+    bar.appendChild(b);
+  });
 }
 /* Named, because two things call it: the New button in the footer and the + on the source folder.
    The + exists so both folders offer the same gesture in the same place — a panel where one section
    has an add button and the other does not reads as if the second one cannot be added to. */
 function newScript() {
-  modal({ title: 'New file', message: 'Name it (letters, numbers, - or _). Ends in ".js" for code, or ".md" for notes — ".js" is added if you leave the end off.', input: true, placeholder: 'enemy.js', okLabel: 'Create',
-    onOk: function (name) { if (!name) return; name = name.trim();
-      // A bare name is still a script, which is what it was before .md existed and what almost
-      // every one of these will be. An explicit .md is taken at its word.
-      if (!/\.(js|md)$/i.test(name)) name += '.js';
+  newFile('.js');
+}
+/* The documents folder's own `+`. Same dialog, different default extension — a student adding to
+   the folder full of writing means to write, and making them type ".md" to get that is a small
+   tax on the one action that folder exists for. */
+function newDocument() { newFile('.md'); }
+
+function newFile(ext) {
+  const doc = ext === '.md';
+  modal({
+    title: doc ? 'New document' : 'New script',
+    message: doc
+      ? 'Name it (letters, numbers, - or _). ".md" is added automatically.'
+      : 'Name it (letters, numbers, - or _). ".js" is added automatically.',
+    input: true, placeholder: doc ? 'level-ideas.md' : 'enemy.js', okLabel: 'Create',
+    onOk: function (name) {
+      if (!name) return; name = name.trim();
+      // An explicit extension is taken at its word either way, so a student who types enemy.js in
+      // the documents folder gets a script rather than enemy.js.md.
+      if (!/\.(js|md)$/i.test(name)) name += ext;
       if (!/^[A-Za-z0-9_-]+\.(js|md)$/i.test(name)) { toast('Use letters, numbers, - or _ only.'); return; }
       if (project.files[name] !== undefined) { toast('A file with that name already exists.'); return; }
       project.files[name] = isCodeFile(name)
         ? '// ' + name + '\n// Code you write here runs with the game when you press Run.\n'
-        : '# ' + name.replace(/\.md$/i, '') + '\n\nNotes. This one is for you to read, not for the game to run.\n';
-      project.order.push(name); saveProject(); refreshFiles(); openFile(name); toast('Created ' + name); } });
+        : '# ' + name.replace(/\.md$/i, '').replace(/[-_]+/g, ' ') + '\n\nWrite here. This one is for you to read, not for the game to run.\n';
+      project.order.push(name); saveProject(); refreshFiles(); openFile(name); toast('Created ' + name);
+    }
+  });
 }
 $('newFileBtn').addEventListener('click', newScript);
 function saveFile(cb) { if (reviewing) { toast('Apply or dismiss the suggested change first.'); return; } project.files[currentFile] = codeEditor.getValue(); saveProject(); toast('Saved ✓'); if (cb) cb(); } // saves to the browser only

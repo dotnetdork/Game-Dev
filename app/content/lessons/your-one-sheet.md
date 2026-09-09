@@ -57,7 +57,5 @@ goals:
   - say: Every box answered
     slot: '*'
 tools:
-  - kind: whatif
-  - kind: crazy8
   - kind: readback
 ```

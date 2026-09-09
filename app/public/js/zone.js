@@ -873,20 +873,6 @@ function freeRegion(zone) {
   const rs = zoneRegions(zone);
   return rs.filter(function (r) { return !r.holds && !r.collects && !r.objectives; })[0] || rs[rs.length - 1];
 }
-/* The next few free spots in that region, laid out in rows and skipping anything already there. */
-function freeSpots(zone, n) {
-  const a = (freeRegion(zone) || {}).at || [40, 460, 900, 200];
-  const taken = plannedGeoms(zone).filter(function (g) { return inRect(a, g.x + g.w / 2, g.y + g.h / 2); }).length;
-  const perRow = Math.max(1, Math.floor(a[2] / (ZONE_NOTE_W + 16)));
-  const out = [];
-  for (let i = 0; i < n; i++) {
-    const k = taken + i;
-    out.push([a[0] + 16 + (k % perRow) * (ZONE_NOTE_W + 16),
-      a[1] + 32 + Math.floor(k / perRow) * (ZONE_NOTE_H + 16)]);
-  }
-  return out;
-}
-
 /* Lay the loose notes out in rows, leaving pinned ones and anything already inside a region alone.
    A tidy button that moved everything would undo the arranging, which is the work. */
 function tidyBoard(zone) {
@@ -926,105 +912,14 @@ function addLooseNote(zone, text, at, quiet) {
   return i;
 }
 
-/* SCAMPER, worded for somebody holding a platformer rather than for a product workshop. Seven
-   lenses; the deck is here rather than in content because it is a technique, not course text, and
-   a zone can still override it with `prompts:` if a module wants its own. */
-const SCAMPER = [
-  'SUBSTITUTE — swap one thing for something else. What if the coins were something you did not want to touch?',
-  'SUBSTITUTE — what if the player was not a person? A ghost, a ball, a shadow, a word.',
-  'COMBINE — bolt on a bit of a different game. What if your platformer had a stealth bit?',
-  'COMBINE — two of your own ideas at once. What do you get?',
-  'ADAPT — steal a rule from a game you love and put it in yours. Which rule, and what breaks?',
-  'MODIFY — make one thing enormous. What if the player was ten times bigger?',
-  'MODIFY — make one thing tiny. One life. One platform. One second.',
-  'PUT TO ANOTHER USE — what else could jumping be for, apart from getting up there?',
-  'ELIMINATE — take something away. What if you could not jump at all?',
-  'ELIMINATE — what if the screen went dark and you had to remember the level?',
-  'REVERSE — flip who is chasing whom.',
-  'REVERSE — what if the level was built while you ran through it, instead of before?',
-  'REVERSE — what if you started at the end and had to get back?'
-];
-
-/* The Crazy 8s clock, in the zone bar. Deliberately not a dialog: a timer that covers the board is
-   a timer you close, and then it is not a timer. */
-let zoneTimer = null;
-function startZoneTimer(secs) {
-  clearInterval(zoneTimer);
-  const el = $('zoneClock'); if (!el) return;
-  let left = secs;
-  el.hidden = false;
-  const tick = function () {
-    const m = Math.floor(left / 60), s = left % 60;
-    el.textContent = m + ':' + (s < 10 ? '0' : '') + s;
-    el.classList.toggle('low', left <= 60);
-    if (left <= 0) {
-      clearInterval(zoneTimer); zoneTimer = null;
-      el.textContent = 'Time';
-      if (openZoneRef) zoneSay('bot', '**Time.** Now the useful bit: which one surprised you? Star it, and bin two.');
-      return;
-    }
-    left--;
-  };
-  tick();
-  zoneTimer = setInterval(tick, 1000);
-}
-function stopZoneTimer() {
-  clearInterval(zoneTimer); zoneTimer = null;
-  const el = $('zoneClock'); if (el) el.hidden = true;
-}
-
+/* The board's own tools, over and above the fixed add/link/tidy/fit in the rail.
+   The bar for being in here is high, and two entries have already failed it. A "Crazy 8s" button
+   dealt eight blank stickies and started a clock; a "look at it another way" button opened seven
+   SCAMPER lenses. Both are real techniques and both were dead weight on this board, for the same
+   reason: the assistant is running the interview now, so a student with a half-empty board is
+   already being asked a question, and a second thing asking them a different question is only in
+   the way. A tool earns its place by doing something to what is ALREADY on the board. */
 const ZONE_PALETTE = {
-  /* The blank page, attacked directly. The point is not that the machine has a good idea — it is
-     that reading three bad ones makes you say "no, but what about…", which is the trick a stuck
-     eleven-year-old cannot do from nothing. They land as notes to be dragged or binned. */
-  mixer: {
-    icon: 'mdi-dice-5', title: 'Mix up three ideas',
-    run: function (zone, t) {
-      const bases = (t.bases || []).length ? t.bases : ['a platformer', 'a racing game'];
-      const twists = (t.twists || []).length ? t.twists : ['but you only get one life'];
-      const spots = freeSpots(zone, 3);
-      spots.forEach(function (spot) {
-        const p = bases[(Math.random() * bases.length) | 0] + ' ' + twists[(Math.random() * twists.length) | 0];
-        addLooseNote(zone, p.charAt(0).toUpperCase() + p.slice(1) + '.', spot, true);
-      });
-      paintZoneBoard(zone);
-      zoneSay('bot', 'Three on the board. Drag the one that makes you think "no, but…" into your game, and bin the rest.');
-    }
-  },
-  /* SCAMPER, which is the oldest trick in this book and still the best one for a game that already
-     exists. Seven lenses onto something you have, rather than seven ways to invent something you
-     have not — which is exactly the shape a student in this course needs, because they are holding
-     a platformer and being asked what it becomes. One provocation lands as a note; the note is the
-     question, and what they write under it is the idea. */
-  whatif: {
-    icon: 'mdi-lightbulb-on-outline', title: 'What if…',
-    run: function (zone, t) {
-      const deck = (t.prompts || []).length ? t.prompts : SCAMPER;
-      const seen = zone.scamperSeen || (zone.scamperSeen = []);
-      let pick = null;
-      for (let i = 0; i < 12 && !pick; i++) {
-        const p = deck[(Math.random() * deck.length) | 0];
-        if (seen.indexOf(p) < 0) pick = p;
-      }
-      if (!pick) { seen.length = 0; pick = deck[(Math.random() * deck.length) | 0]; }
-      seen.push(pick);
-      addLooseNote(zone, pick, freeSpots(zone, 1)[0]);
-    }
-  },
-  /* Crazy 8s: eight ideas, fast, because the point is to get past the first one. The timer is the
-     technique — without it a student writes two good ideas and stops, and the whole value is in
-     what comes out after you have run out of good ideas. */
-  crazy8: {
-    icon: 'mdi-timer-outline', title: 'Crazy 8s — eight ideas, eight minutes',
-    run: function (zone) {
-      const spots = freeSpots(zone, 8);
-      spots.forEach(function (p) { addLooseNote(zone, '', p, true); });
-      paintZoneBoard(zone);
-      startZoneTimer(8 * 60);
-      zoneSay('bot', '**Eight notes, eight minutes.** One idea each, and do not stop to judge them — '
-        + 'the good one is usually number six. Bin the rubbish afterwards.');
-    }
-  },
   /* The test the one-sheet lesson names, made pressable: stop reading it as the person who wrote it. */
   readback: {
     icon: 'mdi-text-box-outline', title: 'Read it back as a stranger would',
@@ -1098,7 +993,6 @@ function openZone(zone) {
 function closeZone() {
   const zone = openZoneRef; if (!zone) return;
   commitZoneEdit();                       // a half-typed sentence on screen is still their work
-  stopZoneTimer();
   zoneLinking = null;
   $('zoneCanvasWrap').classList.remove('linking');
   openZoneRef = null;
@@ -1303,33 +1197,69 @@ function placeInLane(el) {
    and puts it in the box. Accepting is one press, and rewording it is the other — because a
    sentence a child pressed a button to accept is not yet theirs, and the second button is how they
    get to make it so. */
-function zoneOffer(zone, offer) {
-  if (!offer || !openZoneRef) return;
-  const card = document.createElement('div'); card.className = 'zone-offer';
-  card.innerHTML = '<div class="zone-offer-lab">goes in &ldquo;' + esc(offer.heading.replace(/\.+$/, '')) + '&rdquo;</div>'
-    + '<p></p><div class="zone-offer-acts"></div>';
-  card.querySelector('p').textContent = offer.text;
-  const acts = card.querySelector('.zone-offer-acts');
-  const put = document.createElement('button'); put.className = 'zone-mini go'; put.textContent = 'Put it on the board';
-  const mine = document.createElement('button'); mine.className = 'zone-mini alt'; mine.textContent = 'Let me word it';
-  acts.appendChild(put); acts.appendChild(mine);
+/* The assistant fills the box itself, as the conversation goes.
+   This used to be an offer with a "Put it on the board" button, and the button was the problem: the
+   student has just answered the question, so being asked to confirm their own answer teaches
+   nothing and breaks the run of the interview. The board is meant to fill in WHILE they talk — they
+   answer, it lands, the next question comes.
 
-  const land = function (focusIt) {
-    if (!focusIt) sheetSlot(zone.sheet, offer.heading).answer = offer.text;
-    zone.touched = true;
-    if (!focusIt) sheetWrite(zone.sheet);
-    paintZoneBoard(zone); paintZoneGoals(zone);
-    acts.innerHTML = '<span class="zone-offer-done">' + (focusIt ? 'over to you' : 'on the board') + '</span>';
-    if (focusIt) {
-      /* Open that sticky for editing, empty, so what lands on the board is in their words. The
-         offer is still in the conversation beside it, so they can read it while they write. */
-      const el = $('zoneCanvas').querySelector('[data-id="slot:' + zoneSlotKey(offer.heading) + '"]');
-      if (el && el.__edit) el.__edit();
-    }
-  };
-  put.addEventListener('click', function () { land(false); });
-  mine.addEventListener('click', function () { land(true); });
+   Nothing replaces the button either — not even an undo. Two undo affordances already exist and
+   both are better than a third: the sticky is editable on the board (click it), and the student can
+   simply tell the assistant it got it wrong, which is the conversation they are already having.
+   What lands in the chat is a receipt, not a question. */
+function zoneLanded(zone, offer) {
+  if (!offer || !openZoneRef) return;
+  /* A collecting region has no single sticky to write into — it IS a pile of notes, and dropNote
+     rebuilds its slot from whatever is sitting in it. So writing the slot directly there would be
+     undone by the next drag. The assistant adds a note inside the region instead, which is exactly
+     what a student does by hand. */
+  const region = zoneRegions(zone).filter(function (r) {
+    return r.collects && zoneSlotKey(r.collects) === zoneSlotKey(offer.heading);
+  })[0];
+  if (region) { landInRegion(zone, region, offer); return; }
+
+  const slot = sheetSlot(zone.sheet, offer.heading);
+  slot.answer = offer.text;
+  zone.touched = true;
+  sheetWrite(zone.sheet);
+  paintZoneBoard(zone); paintZoneGoals(zone);
+  flashNote('slot:' + zoneSlotKey(offer.heading));
+
+  const card = document.createElement('div'); card.className = 'zone-offer landed';
+  card.innerHTML = '<div class="zone-offer-lab">&#10003; written into &ldquo;'
+    + esc(offer.heading.replace(/\.+$/, '')) + '&rdquo;</div><p></p>';
+  card.querySelector('p').textContent = offer.text;
   placeInLane(card);
+}
+/* Drop the assistant's answer into a collecting region as a note, laid out under whatever is
+   already in there, and rebuild that region's slot from the result. */
+function landInRegion(zone, region, offer) {
+  const a = region.at || [0, 0, 240, 200];
+  const inside = plannedGeoms(zone).filter(function (g) { return inRect(regionRect(zone, region), g.x + g.w / 2, g.y + g.h / 2); }).length;
+  const perRow = Math.max(1, Math.floor(a[2] / (ZONE_NOTE_W + 16)));
+  const i = addLooseNote(zone, offer.text, [
+    a[0] + 16 + (inside % perRow) * (ZONE_NOTE_W + 16),
+    a[1] + 32 + Math.floor(inside / perRow) * (ZONE_NOTE_H + 16)
+  ], true);
+  zone.touched = true;
+  dropNote(zone, { loose: true, index: i }, notePos(zone, 'note:' + i)[0], notePos(zone, 'note:' + i)[1]);
+  flashNote('note:' + i);
+
+  const card = document.createElement('div'); card.className = 'zone-offer landed';
+  card.innerHTML = '<div class="zone-offer-lab">&#10003; added to &ldquo;'
+    + esc(region.say || offer.heading) + '&rdquo;</div><p></p>';
+  card.querySelector('p').textContent = offer.text;
+  placeInLane(card);
+}
+function notePos(zone, id) { const g = noteGeo(zone, id) || {}; return [g.x || 0, g.y || 0]; }
+
+/* A moment of gold on the sticky that just changed. Something appearing silently on a board while
+   the student is reading a message on the other side of the screen is something they do not see. */
+function flashNote(id) {
+  const el = $('zoneCanvas').querySelector('[data-id="' + id + '"]');
+  if (!el) return;
+  el.classList.add('landed');
+  setTimeout(function () { el.classList.remove('landed'); }, 1400);
 }
 
 function zoneBotReset(zone) {
@@ -1482,7 +1412,7 @@ function zoneAsk(question, opts) {
         } else pending.textContent = reply;
       }
       zone.chat.push({ role: 'assistant', content: reply });
-      if (d && d.slot && d.slot.heading && d.slot.text) zoneOffer(zone, d.slot);
+      if (d && d.slot && d.slot.heading && d.slot.text) zoneLanded(zone, d.slot);
     })
     .catch(function () {
       if (pending) { if (typeof stopThinking === 'function') stopThinking(pending); pending.textContent = 'Could not reach the helper.'; }
@@ -1501,9 +1431,16 @@ function zonePayload(zone) {
      game they said they were making. That is the whole point of the guide in a build zone: it is
      the only thing in the app that can say "your sheet says the platforms vanish, so start in
      world.js", and it cannot say it without the sheet. */
+  /* A sheet board's boxes are its slots PLUS anything a region collects. The collecting ones are
+     not in `slots:` — they are piles of notes rather than a single sticky — but they are still
+     boxes on the student's board with headings on them, and leaving them out meant the assistant
+     could see "not building" written on the screen, be asked to fill it, and have every attempt
+     silently dropped because the heading was not on its allowlist. */
   const headings = build
     ? sheetRead().slots.filter(function (s) { return s.answer; }).map(function (s) { return s.heading; })
-    : (zone.spec.slots || []);
+    : (zone.spec.slots || []).concat(zoneRegions(zone)
+      .filter(function (r) { return r.collects; })
+      .map(function (r) { return r.collects; }));
   const sheet = build ? sheetRead() : zone.sheet;
   const boxes = headings.map(function (h) {
     return { heading: h, text: sheetSlot(sheet, h).answer || '' };
