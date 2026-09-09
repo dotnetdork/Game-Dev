@@ -297,10 +297,11 @@ function lessonBodyHTML(f, body) {
   const cp = f.l.cp === true;
   const meta = '<div class="lesson-meta">'
     + (cp
-      ? '<span class="lchip cp"><span class="mdi mdi-flag-checkered"></span>Checkpoint &middot; your own game</span>'
+      ? '<span class="lchip cp"><span class="mdi mdi-flag-checkered"></span>Checkpoint</span>'
       : '<span class="lchip"><span class="mdi mdi-book-open-page-variant"></span>Lesson ' + (f.li + 1) + ' of ' + total + '</span>')
     + '<span class="lchip"><span class="mdi mdi-lightning-bolt"></span>+' + f.l.xp + ' XP</span>'
-    + (cp && f.m.stars ? '<span class="lchip"><span class="mdi mdi-star"></span>' + f.m.stars + ' ★ for the module</span>' : '')
+    // The icon is already a star, so the word and the second glyph were saying it three times.
+    + (cp && f.m.stars ? '<span class="lchip" title="Stars for finishing this module"><span class="mdi mdi-star"></span>' + f.m.stars + '</span>' : '')
     + (done ? '<span class="lchip"><span class="mdi mdi-check-circle"></span>Completed</span>' : '')
     + '</div>';
   // No "Complete lesson" button: the lesson completes itself when the work is done. This strip
@@ -315,6 +316,7 @@ function lessonBodyHTML(f, body) {
 function renderLessonProgress(f, dwellFrac, advanceSecs) {
   const el = $('lessonProgress'); if (!el) return;
   const complete = !!state.done[f.id];
+  el.hidden = false;          // a zone page hides it while unfinished; every other state shows it
   if (complete) {
     el.className = 'lesson-progress done';
     el.innerHTML = '<span class="mdi mdi-check-circle"></span><b>Lesson complete</b>'
@@ -341,9 +343,18 @@ function renderLessonProgress(f, dwellFrac, advanceSecs) {
     return;
   }
   const n = activityProgress();
-  /* On a checkpoint the strip has to say WHAT is being counted, because unlike every other lesson
-     the count includes the steps against their own game — and "3 of 4 done" beside a flag reads as
-     "one more question" when it means "go and change your game". */
+  /* A page whose only activity is a building zone hides this entirely while it is unfinished. The
+     door already shows the zone's own checklist, live, and a second bar underneath saying "0 of 1
+     done" is both the same fact and a worse version of it — one is the five things the student has
+     to do and the other is the number of zones on the page. The complete and advancing states above
+     still show, because those are about the lesson rather than about the work. */
+  if (typeof zoneRegistry !== 'undefined' && zoneRegistry.length && lessonPlan.total === zoneRegistry.length) {
+    el.className = 'lesson-progress'; el.hidden = true; return;
+  }
+  el.hidden = false;
+  /* On any other checkpoint the strip has to say WHAT is being counted, because unlike every other
+     lesson the count includes the steps against their own game — and "3 of 4 done" beside a flag
+     reads as "one more question" when it means "go and change your game". */
   const cp = f.l.cp === true;
   el.className = 'lesson-progress' + (cp ? ' cp' : '');
   el.innerHTML = '<span class="mdi ' + (cp ? 'mdi-flag-checkered' : 'mdi-target') + '"></span>'

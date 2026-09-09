@@ -199,6 +199,43 @@ function checkZone(where, src) {
       if (!known[key(k)]) fail(where, 'has a prompt for "' + k + '", which is not in `slots:` — nobody would ever read it.');
     });
   }
+
+  /* Tools are named from content and written in code, the same arrangement demos.js has — so the
+     same failure is possible: a `kind:` that does not exist renders nothing at all, with no error
+     on screen, and the only way to notice is remembering the zone used to have a thing in it.
+     The kinds are read out of zone.js rather than listed here, so adding one cannot leave this
+     check behind. */
+  (Array.isArray(y.tools) ? y.tools : []).forEach(function (t, i) {
+    const at = where + ' tool ' + (i + 1);
+    if (!t || typeof t !== 'object' || Array.isArray(t)) { fail(at, 'is not a set of keys.'); return; }
+    if (!t.kind) { fail(at, 'has no `kind:`, so nothing would be rendered.'); return; }
+    if (zoneToolKinds().indexOf(String(t.kind)) < 0) {
+      fail(at, '"' + t.kind + '" is not a tool that exists. Known: ' + zoneToolKinds().join(', ')
+        + ' (see ZONE_TOOLS in public/js/zone.js).');
+    }
+    if (t.into && !known[key(t.into)]) {
+      fail(at, 'writes into "' + t.into + '", which is not in `slots:` — the box it fills is not on the board.');
+    }
+  });
+}
+
+/* The tool names zone.js actually defines, read off the source. Matching the keys of the ZONE_TOOLS
+   literal is enough and avoids evaluating a file full of DOM calls. */
+let ZONE_KINDS = null;
+function zoneToolKinds() {
+  if (ZONE_KINDS) return ZONE_KINDS;
+  ZONE_KINDS = [];
+  let src = '';
+  try { src = fs.readFileSync(path.join(__dirname, '..', 'public', 'js', 'zone.js'), 'utf8'); }
+  catch (e) { fail('zone.js', 'could not be read, so zone tools cannot be checked.'); return ZONE_KINDS; }
+  const at = src.indexOf('const ZONE_TOOLS = {');
+  if (at < 0) { fail('zone.js', 'has no ZONE_TOOLS object — zone tools cannot be checked.'); return ZONE_KINDS; }
+  const body = src.slice(at, src.indexOf('\n};', at));
+  const re = /^\s{2}([a-z][a-z0-9-]*)\s*:\s*function\s*\(/gm;
+  let m;
+  while ((m = re.exec(body))) ZONE_KINDS.push(m[1]);
+  if (!ZONE_KINDS.length) fail('zone.js', 'defines no zone tools at all — this is a bug in that file.');
+  return ZONE_KINDS;
 }
 
 function checkChallenge(where, src) {

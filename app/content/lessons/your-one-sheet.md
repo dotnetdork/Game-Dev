@@ -45,4 +45,8 @@ goals:
     slot: What makes it mine
   - say: Every box answered
     slot: '*'
+tools:
+  - kind: readback
+    title: The stranger test
+    say: Your boxes, run together as one paragraph — the way somebody who has never met your game would read it. Press it whenever you fill a box in.
 ```

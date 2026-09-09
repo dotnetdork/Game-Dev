@@ -2136,7 +2136,6 @@ function selectLesson(idx) {
   if (openLabRef) closeLab();
   // Same reasoning for a building zone: its board is bound to the lesson that built it.
   if (typeof openZoneRef !== 'undefined' && openZoneRef) closeZone();
-  if (typeof resetZoneAutoOpen === 'function') resetZoneAutoOpen();
   labPendingAdvance = null;
   curIdx = idx; const f = flat[idx];
   revealModuleFor(idx);        // the module this lesson lives in opens; nothing else is touched

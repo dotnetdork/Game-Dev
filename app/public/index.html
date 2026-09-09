@@ -370,7 +370,13 @@
           <!-- What you are here to apply. Each one is a real check against their own work, so it
                ticks itself as they go rather than being a list they tick off. -->
           <div class="zone-goals" id="zoneGoals" role="list" aria-label="What to do in this zone"></div>
-          <div class="zone-body" id="zoneBody"></div>
+          <div class="zone-body">
+            <!-- Two hosts, not one. The tools are painted once per opening and the board repaints
+                 on every edit, so a half-typed item or a shuffle the student is still reading has
+                 to sit outside the thing that gets thrown away. -->
+            <div class="zone-tools" id="zoneTools"></div>
+            <div id="zoneBoard"></div>
+          </div>
           <div class="zone-foot">
             <span class="zone-count" id="zoneCount"></span>
             <span class="zone-bar-fill"><i id="zoneProg"></i></span>

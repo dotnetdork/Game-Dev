@@ -48,4 +48,13 @@ goals:
     slot: What I cut, and when
   - say: Every box answered
     slot: '*'
+tools:
+  - kind: budget
+    title: Will it fit?
+    say: Everything you want in your game, sized. S is a week, M is two, L is four. You cannot change the weeks — that is the whole point of the thing.
+    weeks: 10
+    into: What I am NOT building
+  - kind: readback
+    title: The stranger test
+    say: Your boxes as one paragraph. Read it after you cut, and check the game you are left with is still one you want to make.
 ```
