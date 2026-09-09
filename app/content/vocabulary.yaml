@@ -34,6 +34,10 @@ terms:
   sprite sheet: what-a-game-is-made-of
   tilemap: what-a-game-is-made-of
   asset: what-a-game-is-made-of
+  scope: scope-and-cutting
+  feature creep: scope-and-cutting
+  one-sheet: design-on-one-page
+  design document: design-on-one-page
   core loop: the-core-loop
   variable: values-and-variables
   function: decisions-and-repeats

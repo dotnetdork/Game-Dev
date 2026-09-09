@@ -137,6 +137,17 @@ tutor:
       - What is actually happening between one frame and the next?
       - Why would my game run at a different speed on another computer?
       - What is a canvas?
+    Game Ideation:
+      - How do people come up with game ideas?
+      - Is my idea too big?
+      - What do I do if I cannot think of anything at all?
+      - How do I know whether my idea is any good?
+      - Is it cheating to base my game on one I already like?
+      - Why do I have to write my game down before building it?
+      - What is a one-sheet?
+      - How do real studios decide what to cut?
+      - What counts as one verb?
+      - How much game can somebody actually build in ten weeks?
     Core Mechanics:
       - How do I know if my game is actually fun?
       - What makes a game too hard or too easy?
@@ -195,6 +206,94 @@ tutor:
       - Would my game run the same on a slower computer?
       - What is the difference between the engine and my game?
       - Why can the computer not just draw it once and leave it?
+    your-game-in-one-line:
+      - What makes a good one-sentence description of a game?
+      - How do I start the sentence if I have no idea what I want to make?
+      - Is a platformer a boring choice?
+      - Does my idea have to be original?
+      - What if my sentence is really long?
+      - Where is this file saved, and can I lose it?
+      - What if I change my mind about my idea later?
+      - Why does it matter that somebody else understands my sentence?
+      - Do I have to say how the game looks, or just what you do in it?
+      - Is it a problem if my idea sounds like a game that already exists?
+    where-ideas-come-from:
+      - What does one verb done well actually mean?
+      - How did the person who made Celeste come up with the dash?
+      - Can taking something away really be a whole idea?
+      - What if all three of my twists are boring?
+      - How do I tell a real idea from a wish?
+      - Why is one verb better than five?
+      - What is the difference between a genre and an idea?
+      - Where do professionals get their ideas from?
+      - Is my twist too small to be interesting?
+      - How many ideas should I come up with before I pick one?
+    scope-and-cutting:
+      - What does scope mean?
+      - Why is everybody's first idea too big?
+      - How do I know which thing to cut?
+      - What is feature creep?
+      - How long does a feature actually take to build?
+      - Is a small game a worse game?
+      - What did real studios cut from games I have played?
+      - Why write down the things I am not building?
+      - What is the rule of one?
+      - How do I stop adding things while I am still building the last one?
+    design-on-one-page:
+      - What is a design document?
+      - Why only one page?
+      - Do real studios really write these?
+      - What goes in each slot of a one-sheet?
+      - Why is what is NOT in it a slot at all?
+      - What does could somebody else build this mean as a test?
+      - Am I allowed to change my one-sheet after I write it?
+      - What is the difference between a one-sheet and a wishlist?
+      - Do I have to fill in every slot?
+      - Who is the one-sheet actually for?
+    your-one-sheet:
+      - How do I answer how you lose if my game has no enemies?
+      - What if I cannot decide between two ideas?
+      - Why does it matter whether somebody else could build my game?
+      - How much detail should each slot have?
+      - What if my reader described a completely different game?
+      - Is it bad that my page keeps changing?
+      - What if I have nothing under what makes it mine?
+      - Can two people in the class have similar one-sheets?
+      - How do I stop my page turning into a wishlist?
+      - What do I do with the slots I genuinely do not know yet?
+    cut-it-down:
+      - How do I write my core loop as one sentence?
+      - What does it mean for a loop to close?
+      - How do I know if my loop is any good before I build it?
+      - Why cut things now rather than when I run out of time?
+      - What if everything on my page feels essential?
+      - How do I pick which verb to keep?
+      - Is one obstacle really enough for a whole game?
+      - What is the difference between cutting and giving up?
+      - Why write down what I cut instead of just deleting it?
+      - How will I know later whether the cut was right?
+    build-your-first-mechanic:
+      - Which thing on my page should I build first?
+      - How do I know whether my mechanic belongs in create or update?
+      - What is the smallest version of my idea that would still work?
+      - Why change the numbers before writing new code?
+      - How do I name a function so I can find it again?
+      - What do I do when my new function does nothing at all?
+      - How do I tell whether the game feels right or I am just used to it?
+      - Is it normal for the first version not to work?
+      - How much code should one mechanic be?
+      - Where do I put a rule that only happens once?
+    room-to-grow:
+      - How do I know when my code needs tidying up?
+      - What is a magic number, and why is it a problem?
+      - Why does moving a number into CONFIG make it draggable?
+      - What does it mean for a function to be doing two jobs?
+      - How can a tidy-up not change anything and still be worth doing?
+      - Which of the four tools from this module should I use on my game?
+      - How do I check I have not broken anything while tidying?
+      - Is it worth tidying code I am going to throw away?
+      - What does making room for something actually look like?
+      - Why is adding the eleventh thing harder than the tenth?
     physics-and-collision:
       - What is the difference between overlap and collider?
       - Why does my player fall through the floor?
@@ -460,6 +559,13 @@ tutor:
       - How would I spot something that only exists on one machine?
       - What should this use instead of a fixed path?
       - How do I test that it works somewhere else?
+    scope-and-cutting:
+      - Why does this plan say it is over budget?
+      - Which line of the wishlist should go first?
+      - Why am I not allowed to change how long a feature takes?
+      - What number is the check actually comparing?
+      - How few features does this need before it fits?
+      - Why would changing weeks be cheating?
     the-core-loop:
       - Why does nothing new appear after I collect the coin?
       - What does it mean to set up the next go?
@@ -628,6 +734,17 @@ coder:
       - Print something to the console once every second.
       - Make the shape bounce off the edges instead of leaving.
       - Slow the whole game down to half speed.
+    Game Ideation:
+      - Make the coins run away from the player instead of sitting still.
+      - Turn jumping off so I can feel what the game is like without it.
+      - Give the player one life and restart when they lose it.
+      - Make everything the player touches disappear.
+      - Make the platforms move so I can see whether I like that.
+      - Darken the screen except for a circle around the player.
+      - Swap the player picture for a different one I own.
+      - Add a comment at the top of config.js with my game idea in it.
+      - Make the coins chase each other instead of falling.
+      - Strip the game back to just the player and the ground.
     Core Mechanics:
       - Make the thing I collect respawn somewhere new.
       - Add a reward for taking the risky route.
@@ -684,6 +801,94 @@ coder:
       - Add a comment to every line of the loop.
       - Make the movement smooth instead of jumpy.
       - Draw a trail behind the moving shape.
+    your-game-in-one-line:
+      - Add a comment at the top of config.js saying what my game is.
+      - Rename the player variable to something that fits my idea.
+      - Change the background colour to suit the game I described.
+      - Show my game's name on the screen when it starts.
+      - Make one change to config.js that matches my sentence.
+      - Put my one-line idea in a comment in game.js.
+      - Change the coin count so it matches what I wrote down.
+      - Make the player start somewhere else on the screen.
+      - Give the score text a label that fits my game.
+      - Make the game window a different shape.
+    where-ideas-come-from:
+      - Make the coins move towards the player instead of falling.
+      - Stop the player being able to jump at all.
+      - Make the player die if they touch a platform twice.
+      - Make everything move except the player.
+      - Hide the platforms until the player is close to them.
+      - Make the player bounce forever instead of standing still.
+      - Reverse the controls so left goes right.
+      - Make the coins spawn somewhere random every run.
+      - Turn the ground into something the player falls through.
+      - Show me the smallest change that makes this feel like a different game.
+    scope-and-cutting:
+      - Delete everything from my game except the player and the ground.
+      - Count how many separate features are in my game right now.
+      - Show me which file has the most code in it.
+      - Comment out one feature so I can see the game without it.
+      - Add a comment listing what my game currently does.
+      - Take the coins out so only the jumping is left.
+      - Put back the simplest version of the starter game.
+      - Tell me which part of my game is the most code for the least fun.
+      - Make a list in a comment of everything I would still need to build.
+      - Strip one thing out and tell me what broke.
+    design-on-one-page:
+      - Add a comment header to config.js with my game's slots in it.
+      - Write my win condition into the code as a comment where it will go.
+      - Add a comment in game.js marking where the lose rule belongs.
+      - Show me which file each thing on my one-sheet would live in.
+      - Put the coin count into CONFIG so it matches my page.
+      - Rename the score label to the word I used on my one-sheet.
+      - Add an empty function named after my main mechanic.
+      - Comment every function in game.js with one line about its job.
+      - Add a comment in world.js describing the level I want.
+      - Show me the smallest code change that matches one slot on my page.
+    your-one-sheet:
+      - Add a lose condition so the game can actually end.
+      - Make the game restart when the player falls off the bottom.
+      - Show a message when all the coins are collected.
+      - Add a comment listing the six slots and where each one lives in code.
+      - Make the win condition match what my page says.
+      - Put my game's title into main.js.
+      - Add a counter for whatever my page says the player collects.
+      - Change the coin total to the number on my page.
+      - Add an empty function for the twist on my page.
+      - Tell me which slot on my page would be the hardest to build.
+    cut-it-down:
+      - Comment out everything that is not my one verb.
+      - Make the coin respawn so my loop actually closes.
+      - Add the thing that sets up the next go in my loop.
+      - Remove one feature and show me what still works.
+      - Add a comment in game.js writing out my core loop in three parts.
+      - Make the game end instead of carrying on forever.
+      - Cut the number of coins down to one.
+      - Tell me which part of my code is doing more than my page asks for.
+      - Take out the second kind of obstacle.
+      - Show me the fewest lines that would still be my game.
+    build-your-first-mechanic:
+      - Add a function for my mechanic and call it from update.
+      - Make my new function run once when the game starts instead.
+      - Move the number I just typed in into CONFIG.
+      - Make the platforms fade out after the player lands on them.
+      - Make one of the coins move away when the player gets close.
+      - Add a timer that does something after a few seconds.
+      - Give the player a second ability and put it in its own function.
+      - Print something to the console every time my mechanic runs.
+      - Make my mechanic only happen when the player is on the ground.
+      - Tell me why my new function is not doing anything.
+    room-to-grow:
+      - Move every loose number in my game into CONFIG.
+      - Split the function that is doing two jobs into two functions.
+      - Pull the movement code out so two things can share it.
+      - Take the rules out of update and put them in their own function.
+      - Give my platforms and my coins the same shape so I can treat them alike.
+      - Turn my level layout into a list instead of lines of code.
+      - Show me which of my functions is the longest.
+      - Make it so adding a second kind of enemy would only touch one file.
+      - Replace the repeated code in my game with one function.
+      - Tell me where a new feature would be hardest to add right now.
     physics-and-collision:
       - Add gravity so my player falls.
       - Add a floor the player lands on.

@@ -39,7 +39,7 @@ stay server-side.
 | `public/styles.css` | all app CSS |
 | `public/js/` | the client, split into ordered plain scripts — no build step; each file has a header comment saying what it owns |
 | `public/vendor/` | pinned third-party libs, self-hosted so the app works on filtered school networks ([`VENDORED.md`](app/public/vendor/VENDORED.md)) |
-| `public/assets/` + `assets-manifest.js` | the 265 Kenney CC0 store assets + their catalog |
+| `public/assets/` + `assets-manifest.js` | the Kenney CC0 store assets + their catalog (3,256 across 19 packs) |
 | `public/img/` | League branding images |
 
 ## How it holds together

@@ -486,9 +486,10 @@ function checkLessonIds() {
      no `yourturn` block      there are no `y*` keys to count, so the lesson completes on its
                               quizzes like any other. A checkpoint that insists on nothing.
 
-   Which modules HAVE a checkpoint is reported rather than failed, for now: the course is mid-way
-   through gaining them, and a check that fails on work not done yet gets switched off. Promote it
-   when the list below is empty. */
+   That every module HAS one is fatal too. It landed as a report while the six were being written
+   and was promoted the day the list came up empty, which is the only honest moment to promote it:
+   a module with no checkpoint is a module a student can finish without ever opening their own
+   game, and that is the one thing this whole structure exists to prevent. */
 function checkCheckpoints(doc) {
   const missing = [];
   (doc.modules || []).forEach(function (mod) {
@@ -512,9 +513,10 @@ function checkCheckpoints(doc) {
     });
     if (!found) missing.push(mod.name || mod.id);
   });
-  if (missing.length) {
-    console.log('note: ' + missing.length + ' module(s) have no checkpoint yet — ' + missing.join(', '));
-  }
+  missing.forEach(function (name) {
+    fail('course.yaml (' + name + ')', 'has no checkpoint. Its last lesson needs `checkpoint: true` '
+      + 'and a ```yourturn block, or a student can finish the module without opening their own game.');
+  });
 }
 
 /* ---- `// @demo: name` in a run cell has to name a demo that exists ----

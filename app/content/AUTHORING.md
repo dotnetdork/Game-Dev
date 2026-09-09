@@ -6,6 +6,57 @@ Everything here is editable without touching app code.
 Modules in order; each lists lesson ids that map to lessons/<id>.md.
 `stars` is awarded when the whole module is completed.
 
+**A lesson's id is a storage key.** `state.done`, its answers, its lab drafts and its practice
+snapshots all hang off it, so it has to be lowercase letters, digits and single hyphens, unique
+across the whole course, and have a matching `.md` on disk. `npm test` enforces all four. It used to
+be the lesson's *position*, which is why reordering the course used to move every student's progress
+onto whatever landed in the vacated slot; that is fixed, and the id is why.
+
+## Checkpoints
+**Every module ends in a checkpoint** — one lesson, marked `checkpoint: true` in its front-matter,
+about the student's *own* game rather than the course's. It is what makes the arc
+use → modify → **create** instead of stopping at modify.
+
+The flag changes three things:
+
+- the outline draws that row with a chequered flag in the module's colour, under a hairline
+- the lesson header says "Checkpoint · your own game" instead of "Lesson 4 of 4", and says how many
+  stars the module is holding
+- **its `yourturn` steps count towards finishing it.** In an ordinary lesson they do not (see "How a
+  lesson gets completed"), because a practice step reads the student's real game and lessons unlock
+  in a straight line — one child stuck on their own game would wall off the course. A checkpoint is
+  the one place that insists, which is the right place: you cannot arrive at the part where you
+  build your own game having built nothing.
+
+The stars gate needs no extra machinery. A lesson completes only when its activities are done, a
+module's stars only land once every lesson in it is done, and the checkpoint is the last lesson — so
+the module's reward already waits on the student's own game.
+
+Two rules `npm test` will fail you on, both because they fail silently otherwise:
+
+- **A checkpoint must be its module's last lesson.** Anywhere else and the stars stop waiting for
+  it, so the gate becomes decoration.
+- **A checkpoint must have at least one `yourturn` block.** Otherwise there are no `y*` keys to
+  count and it finishes on its quizzes like any other lesson — a checkpoint insisting on nothing.
+- And **every module must have one**, for the same reason the feature exists.
+
+Write them short. Framing prose, then `yourturn` blocks with a sentence between each (activity
+fences may not touch). Skip the lab — a sandbox canvas is the wrong tool for "work on your own
+game", and skipping it also means no `solution:` to keep in step.
+
+## The student's design notes — `design.md`
+Every project ships with `design.md`: the student's **one-sheet**, five slots, filled in during the
+Game Ideation module and revised by every checkpoint after it. It is the only file in a project that
+is not code — the game runner, the linter, `loadCode`'s formatter and the `parses:` rule all skip it
+(`isCodeFile` in js/project.js), and the AI can only write `.js`, so the Build panel cannot rewrite
+it.
+
+Checkpoints read it with the ordinary rules: `contains: {file: design.md, text: 'How you lose'}`.
+Anchor on a **heading** the student is told to keep rather than on words they are inventing, and
+pair it with `changed_at_least` so pressing Check having done nothing fails locally instead of
+costing a grader call. What they actually wrote is a judgement, so leave that to the grader — it
+sees `design.md` in the diff.
+
 ## How the app reads all this
 At boot the app makes one request, `GET /api/lessons`, which returns the module structure plus
 every lesson's front-matter (title, xp, summary, ai). A lesson's **body** is fetched only when
@@ -26,6 +77,7 @@ Each lessons/<id>.md starts with a YAML block:
     title: Sprites & Movement
     xp: 350
     ai: full          # full | guided | off  (controls the AI panel for this lesson)
+    checkpoint: true  # optional; the module's own-game checkpoint. See "Checkpoints" above
     summary: One line shown under the title.
     ---
     # Markdown body
@@ -60,6 +112,7 @@ put in the lesson decides how it is completed**:
 
 - Every quiz, every challenge, and every run cell that declares `@expect` counts as one activity.
   When all of them are resolved, the lesson completes itself and awards its XP.
+- `yourturn` steps do **not** count — except in a checkpoint, where they do and are the point.
 - A run cell **without** `@expect` does not count — nothing can tell whether the student achieved
   anything, so it stays a tinkering toy.
 - A lesson with **no** activities at all completes on reading: the student has to reach the bottom

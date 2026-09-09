@@ -83,8 +83,17 @@ function tier(tree, side, key, wanted, label) {
   }
 });
 /* Labs are tutor-only: Build is off inside a lab bench, so a coder.labs block would be dead
-   content that reads as if the panel were available there. */
-tier(q, 'tutor', 'labs', lessonIds, 'a lesson');
+   content that reads as if the panel were available there.
+   And only lessons that HAVE a lab. The labs tier is read when the bench is open (scope === 'lab'
+   in pickQuestions), so six openers for a lesson with no ```challenge in it can never be drawn —
+   demanding them buys nothing and costs six lines of writing nobody will read. Asking the lesson
+   files rather than trusting a list also means the requirement follows the content: add a lab and
+   this starts asking for its openers, take one out and the leftover pool is reported as dead. */
+const labLessonIds = lessonIds.filter(function (id) {
+  try { return /```challenge/.test(fs.readFileSync(path.join(CONTENT, 'lessons', id + '.md'), 'utf8')); }
+  catch (e) { return false; }
+});
+tier(q, 'tutor', 'labs', labLessonIds, 'a lesson with a lab');
 if ((q.coder || {}).labs) fail('coder.labs exists, but Build is disabled inside a lab bench — that content can never be shown.');
 
 /* ---- 3: the two trees stay different in kind ---- */
