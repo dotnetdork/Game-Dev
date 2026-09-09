@@ -188,7 +188,12 @@ function paintZoneGoals(zone) {
   });
   const p = zoneProgress(zone);
   const cnt = $('zoneCount'), bar = $('zoneProg'), btn = $('zoneDone');
-  if (cnt) cnt.textContent = p.total ? p.done + ' of ' + p.total + ' done' : '';
+  if (cnt) {
+    cnt.className = 'zone-count' + (p.total && p.done >= p.total ? ' all' : '');
+    cnt.innerHTML = p.total
+      ? '<b>' + p.done + '</b> of <b>' + p.total + '</b> ' + (build ? 'objectives' : 'done')
+      : '';
+  }
   if (bar) bar.style.width = (p.total ? Math.round(100 * p.done / p.total) : 0) + '%';
   if (btn) {
     const ready = p.total > 0 && p.done >= p.total;
@@ -253,13 +258,18 @@ function notePinned(zone, id) { return !!(noteGeo(zone, id) || {}).pin; }
    than in progress state costs a little parsing and buys the thing that matters: a student's own
    writing is never destroyed by a button labelled Testing. */
 const BOARD_SLOT = 'Board notes';
+/* Every line that is a list item, INCLUDING the empty ones. An empty sticky is a real thing on a
+   board — it is what Crazy 8s deals out eight of, and dropping them on read meant that tool
+   silently did nothing. Lines that are not list items are somebody's prose and are left alone. */
 function looseNotes(sheet) {
-  return (sheetSlot(sheet, BOARD_SLOT).answer || '').split('\n')
-    .map(function (s) { return s.replace(/^[-*]\s*/, '').trim(); })
-    .filter(Boolean);
+  const raw = sheetSlot(sheet, BOARD_SLOT).answer || '';
+  if (!raw.trim()) return [];
+  return raw.split('\n')
+    .filter(function (l) { return /^\s*[-*]/.test(l); })
+    .map(function (l) { return l.replace(/^\s*[-*]\s?/, '').trim(); });
 }
 function saveLooseNotes(sheet, list) {
-  sheetSlot(sheet, BOARD_SLOT).answer = list.map(function (s) { return '- ' + s; }).join('\n');
+  sheetSlot(sheet, BOARD_SLOT).answer = list.map(function (s) { return '- ' + (s || ''); }).join('\n');
   sheetWrite(sheet);
 }
 
@@ -270,12 +280,12 @@ function saveLooseNotes(sheet, list) {
      objectives: done|now|ahead   build boards; the checks place these, not the student
      budget: <weeks>         a region that costs something — see the meter */
 function zoneRegions(zone) { return zone.spec.board || []; }
+/* Which region a note at (x, y) is in. Tested against the region's DRAWN rectangle, not its
+   declared one — a region grows to fit what has been dropped in it, and a note sitting in the part
+   it grew is visibly inside a box that would otherwise say it was loose. */
 function regionAt(zone, x, y) {
-  const hit = zoneRegions(zone).filter(function (r) {
-    const a = r.at || [0, 0, 0, 0];
-    return x + ZONE_NOTE_W / 2 >= a[0] && x + ZONE_NOTE_W / 2 <= a[0] + a[2]
-      && y + ZONE_NOTE_H / 2 >= a[1] && y + ZONE_NOTE_H / 2 <= a[1] + a[3];
-  });
+  const cx = x + ZONE_NOTE_W / 2, cy = y + ZONE_NOTE_H / 2;
+  const hit = zoneRegions(zone).filter(function (r) { return inRect(regionRect(zone, r), cx, cy); });
   return hit[hit.length - 1] || null;      // the last declared wins, so a nested region can exist
 }
 
@@ -284,10 +294,11 @@ function paintZoneBoard(zone) {
   const canvas = $('zoneCanvas'); if (!canvas) return;
   canvas.innerHTML = '';
   zone.sheet = sheetRead();
+  geomCache = null;                       // one geometry pass per paint; see plannedGeoms
   const build = zone.spec.kind === 'build';
 
   zoneRegions(zone).forEach(function (r) {
-    const a = r.at || [0, 0, 240, 200];
+    const a = regionRect(zone, r);
     const el = document.createElement('div');
     el.className = 'zone-field' + (r.hot ? ' hot' : '');
     el.style.cssText = 'left:' + a[0] + 'px;top:' + a[1] + 'px;width:' + a[2] + 'px;height:' + a[3] + 'px';
@@ -300,6 +311,94 @@ function paintZoneBoard(zone) {
   if (build) paintObjectiveNotes(zone, canvas);
   else paintSlotNotes(zone, canvas);
   paintLooseNotes(zone, canvas);
+  paintConnections(zone, canvas);
+}
+
+/* ---------- how big a region actually is ----------
+   The declared rectangle is a MINIMUM. A region grows to hold whatever has been dragged into it, so
+   a student who fills the cut list with eleven notes gets a taller box rather than notes hanging
+   out of the bottom of a dashed line that has stopped meaning anything.
+
+   Grows only — never shrinks below what the author drew, so the board does not shuffle about
+   underneath somebody every time they move a note. */
+const REGION_PAD = 20;
+/* How far below a region's current bottom a note still counts as belonging to it. Must stay well
+   under the vertical gap the boards leave between regions, or one would grow into the next. */
+const REGION_GAP = 24;
+function regionRect(zone, r) {
+  const a = (r.at || [0, 0, 240, 200]).slice();
+  const geoms = plannedGeoms(zone);
+  let right = a[0] + a[2], bottom = a[1] + a[3];
+  /* Run to a fixed point rather than once. A note that has overflowed the bottom is, by definition,
+     outside the rectangle — so a single pass can never see the thing it is supposed to grow to fit,
+     and the box stays the size it was while notes hang out of it. Each pass takes in one more row
+     and the next pass can then see the row after that. Six is far past any real board; the cap is
+     only there so a bug cannot spin. */
+  for (let pass = 0; pass < 6; pass++) {
+    const was = right + bottom;
+    geoms.forEach(function (g) {
+      const cx = g.x + g.w / 2;
+      /* Horizontally by the note's centre, vertically by its TOP edge with a row's tolerance. A
+         centre test would need the box to already be tall enough to contain the note it is growing
+         for, which it never is — the padding is smaller than half a note. The tolerance is well
+         under the gap the layouts leave between regions, so one cannot claim another's notes. */
+      if (cx < a[0] || cx > right) return;
+      if (g.y < a[1] || g.y > bottom + REGION_GAP) return;
+      right = Math.max(right, g.x + g.w + REGION_PAD);
+      bottom = Math.max(bottom, g.y + g.h + REGION_PAD);
+    });
+    if (right + bottom === was) break;
+  }
+  return [a[0], a[1], right - a[0], bottom - a[1]];
+}
+function inRect(a, x, y) { return x >= a[0] && x <= a[0] + a[2] && y >= a[1] && y <= a[1] + a[3]; }
+
+/* Every note's box, worked out from the spec and saved state rather than read off the screen.
+   It has to be computable BEFORE anything is painted, because the regions are drawn first and their
+   size depends on what is sitting in them — asking the DOM here would measure the previous paint,
+   which is a frame behind and empty on the first one. Cached per paint, because regionRect calls it
+   once per region and this walks every note. */
+let geomCache = null;
+function plannedGeoms(zone) {
+  if (geomCache) return geomCache;
+  const out = [];
+  const push = function (id, dx, dy) {
+    const g = noteGeo(zone, id) || {};
+    out.push({ id: id, x: g.x === undefined ? dx : g.x, y: g.y === undefined ? dy : g.y,
+      w: g.w || ZONE_NOTE_W, h: g.h || ZONE_NOTE_H });
+  };
+  if (zone.spec.kind === 'build') {
+    /* Objectives are placed by their check state, not by the student, so their boxes come from the
+       same lane arithmetic paintObjectiveNotes uses. */
+    objectivePlaces(zone).forEach(function (p) { out.push({ id: p.id, x: p.x, y: p.y, w: ZONE_NOTE_W, h: ZONE_NOTE_H }); });
+  } else {
+    const home = zoneRegions(zone).filter(function (r) { return r.holds === 'slots'; })[0];
+    (zone.spec.slots || []).forEach(function (h, i) {
+      const d = defaultSlotPos(home, i);
+      push('slot:' + zoneSlotKey(h), d[0], d[1]);
+    });
+  }
+  looseNotes(zone.sheet).forEach(function (t, i) {
+    push('note:' + i, 60 + (i % 4) * 30, 470 + Math.floor(i / 4) * 24);
+  });
+  geomCache = out;
+  return out;
+}
+/* Where each objective sticky goes: its lane, then in order down it. Shared by the painter and the
+   geometry pass so the two cannot disagree about where an objective is. */
+function objectivePlaces(zone) {
+  const goals = zone.spec.goals || [];
+  const active = zoneActiveIndex(zone);
+  const lane = function (role) { return zoneRegions(zone).filter(function (r) { return r.objectives === role; })[0]; };
+  const counts = { done: 0, now: 0, ahead: 0 };
+  return goals.map(function (g, i) {
+    const done = zoneGoalDone(zone, g);
+    const role = done ? 'done' : (i === active ? 'now' : 'ahead');
+    const a = (lane(role) || {}).at || [40, 40, 220, 400];
+    const n = counts[role]++;
+    return { id: 'obj:' + i, i: i, goal: g, role: role, done: done,
+      x: a[0] + 20, y: a[1] + 34 + n * (ZONE_NOTE_H + 22) };
+  });
 }
 
 /* The fixed stickies: one per declared slot, never deletable, text is that slot's answer. */
@@ -311,8 +410,8 @@ function paintSlotNotes(zone, canvas) {
     const d = defaultSlotPos(home, i);
     const g = noteGeo(zone, id) || { x: d[0], y: d[1] };
     const note = makeNote(zone, {
-      id: id, x: g.x, y: g.y, w: g.w, h: g.h, pinned: !!g.pin,
-      colour: ZONE_COLOURS[i % ZONE_COLOURS.length],
+      id: id, x: g.x, y: g.y, w: g.w, h: g.h, pinned: !!g.pin, star: !!g.star,
+      colour: g.colour || ZONE_COLOURS[i % ZONE_COLOURS.length],
       label: h.replace(/\.+$/, ''),
       text: slot.answer,
       hint: (zone.spec.prompts || {})[zoneSlotKey(h)] || slot.prompt || '',
@@ -335,8 +434,8 @@ function paintLooseNotes(zone, canvas) {
     const id = 'note:' + i;
     const g = noteGeo(zone, id) || { x: 60 + (i % 4) * 30, y: 470 + Math.floor(i / 4) * 24 };
     canvas.appendChild(makeNote(zone, {
-      id: id, x: g.x, y: g.y, w: g.w, h: g.h, pinned: !!g.pin,
-      colour: 'o', loose: true, index: i,
+      id: id, x: g.x, y: g.y, w: g.w, h: g.h, pinned: !!g.pin, star: !!g.star,
+      colour: g.colour || 'o', loose: true, index: i,
       label: regionLabelFor(zone, g.x, g.y), text: text, hint: 'A loose thought.',
       onText: function (v) {
         const list = looseNotes(zone.sheet);
@@ -378,23 +477,14 @@ function regionLabelFor(zone, x, y) {
    into Done, which is the point — the board reports on their real project rather than accepting
    their word for it. */
 function paintObjectiveNotes(zone, canvas) {
-  const goals = zone.spec.goals || [];
-  const active = zoneActiveIndex(zone);
-  const lane = function (role) { return zoneRegions(zone).filter(function (r) { return r.objectives === role; })[0]; };
-  const counts = { done: 0, now: 0, ahead: 0 };
-  goals.forEach(function (g, i) {
-    const done = zoneGoalDone(zone, g);
-    const role = done ? 'done' : (i === active ? 'now' : 'ahead');
-    const a = (lane(role) || {}).at || [40, 40, 220, 400];
-    const n = counts[role]++;
-    const note = makeNote(zone, {
-      id: 'obj:' + i, x: a[0] + 20, y: a[1] + 34 + n * (ZONE_NOTE_H + 22),
-      colour: done ? 'g' : (role === 'now' ? 'o' : 'ghost'),
-      label: 'Objective ' + (i + 1) + (role === 'now' ? ' — now' : ''),
-      text: g.say || '', hint: '', fixed: true, done: done,
-      note: role === 'now' ? (g.where || '') : ''
-    });
-    canvas.appendChild(note);
+  objectivePlaces(zone).forEach(function (p) {
+    canvas.appendChild(makeNote(zone, {
+      id: p.id, x: p.x, y: p.y,
+      colour: p.done ? 'g' : (p.role === 'now' ? 'o' : 'ghost'),
+      label: 'Objective ' + (p.i + 1) + (p.role === 'now' ? ' — now' : ''),
+      text: p.goal.say || '', hint: '', fixed: true, done: p.done,
+      note: p.role === 'now' ? (p.goal.where || '') : ''
+    }));
   });
 }
 
@@ -403,7 +493,8 @@ function paintObjectiveNotes(zone, canvas) {
 function makeNote(zone, o) {
   const el = document.createElement('div');
   el.className = 'zone-note ' + (o.colour || 'y') + (o.text ? '' : ' blank')
-    + (o.done ? ' done' : '') + (o.fixed ? ' fixed' : '') + (o.pinned ? ' pinned' : '');
+    + (o.done ? ' done' : '') + (o.fixed ? ' fixed' : '') + (o.pinned ? ' pinned' : '')
+    + (o.star ? ' star' : '');
   el.style.left = o.x + 'px'; el.style.top = o.y + 'px';
   if (o.w) el.style.width = o.w + 'px';
   if (o.h) el.style.height = o.h + 'px';
@@ -435,19 +526,31 @@ function makeNote(zone, o) {
     bar.appendChild(b);
     return b;
   };
-  btn(o.pinned ? 'mdi-pin' : 'mdi-pin-outline', o.pinned ? 'Unpin — let it move again' : 'Pin it where it is',
-    function () {
-      saveNoteGeo(zone, o.id, { pin: !o.pinned });
-      paintZoneBoard(zone);
-    });
-  if (o.onDelete) {
-    btn('mdi-close', 'Delete this note', function () {
-      if (typeof modal === 'function' && (o.text || '').trim()) {
-        modal({ title: 'Delete this note?', message: '“' + o.text + '”', okLabel: 'Delete it',
-          onOk: o.onDelete });
-      } else o.onDelete();
+  /* Dot voting, one note at a time. The canonical way a group picks between ideas, and it is just
+     as useful alone: a student with nine notes and no way to say "that one" ends up keeping all
+     nine. Starred notes stay bright while the rest fade back. */
+  btn(o.star ? 'mdi-star' : 'mdi-star-outline', o.star ? 'Not my favourite after all' : 'This is the one',
+    function () { saveNoteGeo(zone, o.id, { star: !o.star, x: o.x, y: o.y }); paintZoneBoard(zone); });
+  btn('mdi-palette', 'Change its colour', function () {
+    const i = ZONE_COLOURS.indexOf(o.colour);
+    saveNoteGeo(zone, o.id, { colour: ZONE_COLOURS[(i + 1) % ZONE_COLOURS.length], x: o.x, y: o.y });
+    paintZoneBoard(zone);
+  });
+  if (o.loose) {
+    btn('mdi-content-copy', 'Make another like this', function () {
+      addLooseNote(zone, o.text || '', [o.x + 18, o.y + 18]);
     });
   }
+  /* Pinning saves WHERE IT IS, not just that it is pinned. A note that has never been dragged has
+     no saved position, so without writing x and y here it would jump back to its default spot at
+     the very moment the student said "stay there" — which is the opposite of what pinning means. */
+  btn(o.pinned ? 'mdi-pin' : 'mdi-pin-outline', o.pinned ? 'Unpin — let it move again' : 'Pin it where it is',
+    function () {
+      saveNoteGeo(zone, o.id, { pin: !o.pinned, x: o.x, y: o.y });
+      paintZoneBoard(zone);
+    });
+  // No confirm. It is a sticky note on their own board, and the friction is worse than the mistake.
+  if (o.onDelete) btn('mdi-close', 'Delete this note', o.onDelete);
   el.appendChild(bar);
 
   /* Resize from the corner. Only the corner, and only bigger than a stub: a note you can shrink to
@@ -495,6 +598,7 @@ function resizeNote(zone, el, o, grip) {
 function dragNote(zone, el, o) {
   el.addEventListener('pointerdown', function (e) {
     if (el.classList.contains('editing')) return;
+    if (zoneLinking) { e.stopPropagation(); linkClick(zone, o.id); return; }
     e.stopPropagation();
     const canvas = $('zoneCanvas');
     const startX = e.clientX, startY = e.clientY;
@@ -614,6 +718,66 @@ function regionMeter(zone, r) {
   return el;
 }
 
+/* ---------- connections ----------
+   An arrow from one note to another: "this leads to that", "this is a version of that". Ideas do
+   not come in a list, and a board that can only stack notes is a list with extra steps.
+   Stored as pairs of note ids in board state, drawn as one SVG layer under the notes. */
+function boardLinks(zone) {
+  const b = boardState(zone.lessonId);
+  if (!Array.isArray(b.links)) b.links = [];
+  return b.links;
+}
+function paintConnections(zone, canvas) {
+  const links = boardLinks(zone);
+  if (!links.length) return;
+  const by = {};
+  plannedGeoms(zone).forEach(function (g) { by[g.id] = g; });
+  const svg = document.createElementNS('http://www.w3.org/2000/svg', 'svg');
+  svg.setAttribute('class', 'zone-links');
+  let maxX = 0, maxY = 0;
+  const keep = [];
+  links.forEach(function (l) {
+    const a = by[l[0]], b2 = by[l[1]];
+    if (!a || !b2) return;                       // an end has been deleted; drop the line with it
+    keep.push(l);
+    const x1 = a.x + a.w / 2, y1 = a.y + a.h / 2, x2 = b2.x + b2.w / 2, y2 = b2.y + b2.h / 2;
+    maxX = Math.max(maxX, x1, x2); maxY = Math.max(maxY, y1, y2);
+    const line = document.createElementNS('http://www.w3.org/2000/svg', 'line');
+    line.setAttribute('x1', x1); line.setAttribute('y1', y1);
+    line.setAttribute('x2', x2); line.setAttribute('y2', y2);
+    line.setAttribute('class', 'zone-link');
+    line.addEventListener('click', function () {
+      const at = boardLinks(zone).findIndex(function (k) { return k[0] === l[0] && k[1] === l[1]; });
+      if (at >= 0) { boardLinks(zone).splice(at, 1); if (typeof saveState === 'function') saveState(); paintZoneBoard(zone); }
+    });
+    svg.appendChild(line);
+  });
+  if (keep.length !== links.length) { boardState(zone.lessonId).links = keep; if (typeof saveState === 'function') saveState(); }
+  svg.setAttribute('width', maxX + 80); svg.setAttribute('height', maxY + 80);
+  canvas.appendChild(svg);
+}
+/* Linking is a mode, because it needs two clicks and a board where every click might start a line
+   would be a board you cannot use. Escape or a second press of the tool leaves it. */
+let zoneLinking = null;
+function startLinking(zone) {
+  zoneLinking = zoneLinking ? null : { from: null };
+  $('zoneCanvasWrap').classList.toggle('linking', !!zoneLinking);
+  paintZonePalette(zone);
+  if (zoneLinking) zoneSay('bot', 'Linking. Click one note, then another, to draw a line between them. Click a line to remove it.');
+}
+function linkClick(zone, id) {
+  if (!zoneLinking) return false;
+  if (!zoneLinking.from) { zoneLinking.from = id; $('zoneCanvas').querySelector('[data-id="' + id + '"]').classList.add('linkfrom'); return true; }
+  if (zoneLinking.from !== id) {
+    boardLinks(zone).push([zoneLinking.from, id]);
+    if (typeof saveState === 'function') saveState();
+  }
+  zoneLinking = null;
+  $('zoneCanvasWrap').classList.remove('linking');
+  paintZoneBoard(zone); paintZonePalette(zone);
+  return true;
+}
+
 /* ---------- pan and zoom ---------- */
 let zoneScale = 1, zonePanX = 0, zonePanY = 0;
 function applyZoneView() {
@@ -621,7 +785,18 @@ function applyZoneView() {
   c.style.transform = 'translate(' + zonePanX + 'px,' + zonePanY + 'px) scale(' + zoneScale + ')';
   const at = $('zoneZoomAt'); if (at) at.textContent = Math.round(zoneScale * 100) + '%';
 }
-function zoneZoom(by) { zoneScale = Math.max(0.4, Math.min(1.6, zoneScale + by)); applyZoneView(); }
+function zoneZoom(by, at) {
+  const was = zoneScale;
+  zoneScale = Math.max(0.4, Math.min(1.6, +(zoneScale + by).toFixed(2)));
+  /* Zoom towards the pointer rather than the origin, so the thing under the cursor stays under the
+     cursor. Without this, zooming in on a note in the corner sends it off the screen — which reads
+     as the board running away from you. */
+  if (at && was) {
+    zonePanX = at.x - (at.x - zonePanX) * (zoneScale / was);
+    zonePanY = at.y - (at.y - zonePanY) * (zoneScale / was);
+  }
+  applyZoneView();
+}
 function boardSize(zone) {
   let w = 820, h = 520;
   zoneRegions(zone).forEach(function (r) {
@@ -641,15 +816,19 @@ function zoneFit(zone) {
   zonePanY = 12;
   applyZoneView();
 }
-/* How a board opens: full size, top-left, nudged in from the edge. Full size because these are
-   things with words on them and 100% is the size they were written at. */
+/* How a board opens: full size, centred. Full size because these are things with handwriting on
+   them and 100% is the size they were written at; centred because a board that opens against one
+   edge looks like it has already been dragged somewhere.
+   Centred on the WORKING width — the conversation is laid over the right-hand side, so centring on
+   the whole pane would put the middle of the board underneath it. */
+const ZONE_CHAT_W = 360;
 function zoneHome(zone) {
   const wrap = $('zoneCanvasWrap'); if (!wrap) return;
   zoneScale = 1;
   const b = wrap.getBoundingClientRect(), s = boardSize(zone);
-  // Centred horizontally if it fits, otherwise pinned to the left so the first region is on screen.
-  zonePanX = s[0] < b.width - 40 ? Math.round((b.width - s[0]) / 2) : 12;
-  zonePanY = 12;
+  const usable = Math.max(320, b.width - Math.min(ZONE_CHAT_W, b.width * 0.38));
+  zonePanX = Math.round(Math.max(12, (usable - s[0]) / 2));
+  zonePanY = Math.round(Math.max(12, (b.height - s[1]) / 2));
   applyZoneView();
 }
 
@@ -660,36 +839,138 @@ function zoneHome(zone) {
 function paintZonePalette(zone) {
   const host = $('zonePalette'); if (!host) return;
   host.innerHTML = '';
-  const add = function (icon, title, fn) {
+  const add = function (icon, title, fn, on) {
     const b = document.createElement('button');
-    b.type = 'button'; b.className = 'zone-tool'; b.title = title;
+    b.type = 'button'; b.className = 'zone-tool' + (on ? ' on' : ''); b.title = title;
     b.setAttribute('aria-label', title);
     b.innerHTML = '<span class="mdi ' + icon + '" aria-hidden="true"></span>';
     b.addEventListener('click', fn);
     host.appendChild(b);
+    return b;
   };
+  const gap = function () { const s = document.createElement('span'); s.className = 'zone-tool-gap'; host.appendChild(s); };
+
   add('mdi-plus', 'Add a note', function () { addLooseNote(zone, ''); });
+  add('mdi-vector-line', zoneLinking ? 'Stop linking' : 'Link two notes', function () { startLinking(zone); }, !!zoneLinking);
+  gap();
+  /* The thinking tools. Every one of these is a technique that exists because a blank page beats
+     most people, and each of them puts something ON the board rather than telling them about it. */
   (zone.spec.tools || []).forEach(function (t) {
     const tool = ZONE_PALETTE[t.kind];
     if (!tool) { console.warn('[league] zone tool "' + t.kind + '" does not exist — see ZONE_PALETTE in js/zone.js'); return; }
-    add(tool.icon, tool.title, function () { tool.run(zone, t); });
+    add(tool.icon, t.title || tool.title, function () { tool.run(zone, t); });
   });
-  add('mdi-fit-to-screen', 'Fit the board on screen', function () { zoneFit(zone); });
+  gap();
+  add('mdi-broom', 'Tidy the loose notes into a grid', function () { tidyBoard(zone); });
+  add('mdi-fit-to-screen', 'Fit the whole board on screen', function () { zoneFit(zone); });
 }
 
-function addLooseNote(zone, text, at) {
+/* The scratch region — the one with no job. Every tool that deals notes out puts them here rather
+   than wherever the board happens to be scrolled to: dropping eight blank stickies on top of the
+   one-sheet buries the thing the student is supposed to be filling in, and they arrive already
+   filed into a region they have nothing to do with. */
+function freeRegion(zone) {
+  const rs = zoneRegions(zone);
+  return rs.filter(function (r) { return !r.holds && !r.collects && !r.objectives; })[0] || rs[rs.length - 1];
+}
+/* The next few free spots in that region, laid out in rows and skipping anything already there. */
+function freeSpots(zone, n) {
+  const a = (freeRegion(zone) || {}).at || [40, 460, 900, 200];
+  const taken = plannedGeoms(zone).filter(function (g) { return inRect(a, g.x + g.w / 2, g.y + g.h / 2); }).length;
+  const perRow = Math.max(1, Math.floor(a[2] / (ZONE_NOTE_W + 16)));
+  const out = [];
+  for (let i = 0; i < n; i++) {
+    const k = taken + i;
+    out.push([a[0] + 16 + (k % perRow) * (ZONE_NOTE_W + 16),
+      a[1] + 32 + Math.floor(k / perRow) * (ZONE_NOTE_H + 16)]);
+  }
+  return out;
+}
+
+/* Lay the loose notes out in rows, leaving pinned ones and anything already inside a region alone.
+   A tidy button that moved everything would undo the arranging, which is the work. */
+function tidyBoard(zone) {
+  const home = freeRegion(zone);
+  const a = (home && home.at) || [40, 460, 900, 200];
+  const perRow = Math.max(1, Math.floor(a[2] / (ZONE_NOTE_W + 18)));
+  let n = 0;
+  looseNotes(zone.sheet).forEach(function (t, i) {
+    const id = 'note:' + i;
+    const g = noteGeo(zone, id) || {};
+    if (g.pin) return;                                   // pinned means pinned
+    if (g.x !== undefined && regionAt(zone, g.x, g.y)) return;   // already filed somewhere
+    saveNoteGeo(zone, id, {
+      x: a[0] + 18 + (n % perRow) * (ZONE_NOTE_W + 18),
+      y: a[1] + 34 + Math.floor(n / perRow) * (ZONE_NOTE_H + 18)
+    });
+    n++;
+  });
+  paintZoneBoard(zone);
+}
+
+function addLooseNote(zone, text, at, quiet) {
   const list = looseNotes(zone.sheet);
   const i = list.length;
-  list.push(text || 'New note');
+  list.push(text || '');                   // empty, not "New note" — a blank sticky is an invitation
   saveLooseNotes(zone.sheet, list);
   const wrap = $('zoneCanvasWrap').getBoundingClientRect();
   const p = at || [(-zonePanX + wrap.width / 2) / zoneScale - ZONE_NOTE_W / 2,
     (-zonePanY + wrap.height / 2) / zoneScale - ZONE_NOTE_H / 2];
-  saveNotePos(zone, 'note:' + i, p[0], p[1]);
+  saveNoteGeo(zone, 'note:' + i, { x: Math.round(p[0]), y: Math.round(p[1]) });
+  /* `quiet` is for the tools that drop several at once: painting and focusing per note would fight
+     itself eight times over, so the caller paints once at the end. */
+  if (quiet) return i;
   paintZoneBoard(zone); paintZoneGoals(zone);
   const el = $('zoneCanvas').querySelector('[data-id="note:' + i + '"]');
   if (el && el.__edit) el.__edit();
   return i;
+}
+
+/* SCAMPER, worded for somebody holding a platformer rather than for a product workshop. Seven
+   lenses; the deck is here rather than in content because it is a technique, not course text, and
+   a zone can still override it with `prompts:` if a module wants its own. */
+const SCAMPER = [
+  'SUBSTITUTE — swap one thing for something else. What if the coins were something you did not want to touch?',
+  'SUBSTITUTE — what if the player was not a person? A ghost, a ball, a shadow, a word.',
+  'COMBINE — bolt on a bit of a different game. What if your platformer had a stealth bit?',
+  'COMBINE — two of your own ideas at once. What do you get?',
+  'ADAPT — steal a rule from a game you love and put it in yours. Which rule, and what breaks?',
+  'MODIFY — make one thing enormous. What if the player was ten times bigger?',
+  'MODIFY — make one thing tiny. One life. One platform. One second.',
+  'PUT TO ANOTHER USE — what else could jumping be for, apart from getting up there?',
+  'ELIMINATE — take something away. What if you could not jump at all?',
+  'ELIMINATE — what if the screen went dark and you had to remember the level?',
+  'REVERSE — flip who is chasing whom.',
+  'REVERSE — what if the level was built while you ran through it, instead of before?',
+  'REVERSE — what if you started at the end and had to get back?'
+];
+
+/* The Crazy 8s clock, in the zone bar. Deliberately not a dialog: a timer that covers the board is
+   a timer you close, and then it is not a timer. */
+let zoneTimer = null;
+function startZoneTimer(secs) {
+  clearInterval(zoneTimer);
+  const el = $('zoneClock'); if (!el) return;
+  let left = secs;
+  el.hidden = false;
+  const tick = function () {
+    const m = Math.floor(left / 60), s = left % 60;
+    el.textContent = m + ':' + (s < 10 ? '0' : '') + s;
+    el.classList.toggle('low', left <= 60);
+    if (left <= 0) {
+      clearInterval(zoneTimer); zoneTimer = null;
+      el.textContent = 'Time';
+      if (openZoneRef) zoneSay('bot', '**Time.** Now the useful bit: which one surprised you? Star it, and bin two.');
+      return;
+    }
+    left--;
+  };
+  tick();
+  zoneTimer = setInterval(tick, 1000);
+}
+function stopZoneTimer() {
+  clearInterval(zoneTimer); zoneTimer = null;
+  const el = $('zoneClock'); if (el) el.hidden = true;
 }
 
 const ZONE_PALETTE = {
@@ -701,13 +982,47 @@ const ZONE_PALETTE = {
     run: function (zone, t) {
       const bases = (t.bases || []).length ? t.bases : ['a platformer', 'a racing game'];
       const twists = (t.twists || []).length ? t.twists : ['but you only get one life'];
-      const wrap = $('zoneCanvasWrap').getBoundingClientRect();
-      const x0 = (-zonePanX + 40) / zoneScale, y0 = (-zonePanY + wrap.height - 200) / zoneScale;
-      for (let i = 0; i < 3; i++) {
+      const spots = freeSpots(zone, 3);
+      spots.forEach(function (spot) {
         const p = bases[(Math.random() * bases.length) | 0] + ' ' + twists[(Math.random() * twists.length) | 0];
-        addLooseNote(zone, p.charAt(0).toUpperCase() + p.slice(1) + '.', [x0 + i * (ZONE_NOTE_W + 14), y0]);
-      }
+        addLooseNote(zone, p.charAt(0).toUpperCase() + p.slice(1) + '.', spot, true);
+      });
+      paintZoneBoard(zone);
       zoneSay('bot', 'Three on the board. Drag the one that makes you think "no, but…" into your game, and bin the rest.');
+    }
+  },
+  /* SCAMPER, which is the oldest trick in this book and still the best one for a game that already
+     exists. Seven lenses onto something you have, rather than seven ways to invent something you
+     have not — which is exactly the shape a student in this course needs, because they are holding
+     a platformer and being asked what it becomes. One provocation lands as a note; the note is the
+     question, and what they write under it is the idea. */
+  whatif: {
+    icon: 'mdi-lightbulb-on-outline', title: 'What if…',
+    run: function (zone, t) {
+      const deck = (t.prompts || []).length ? t.prompts : SCAMPER;
+      const seen = zone.scamperSeen || (zone.scamperSeen = []);
+      let pick = null;
+      for (let i = 0; i < 12 && !pick; i++) {
+        const p = deck[(Math.random() * deck.length) | 0];
+        if (seen.indexOf(p) < 0) pick = p;
+      }
+      if (!pick) { seen.length = 0; pick = deck[(Math.random() * deck.length) | 0]; }
+      seen.push(pick);
+      addLooseNote(zone, pick, freeSpots(zone, 1)[0]);
+    }
+  },
+  /* Crazy 8s: eight ideas, fast, because the point is to get past the first one. The timer is the
+     technique — without it a student writes two good ideas and stops, and the whole value is in
+     what comes out after you have run out of good ideas. */
+  crazy8: {
+    icon: 'mdi-timer-outline', title: 'Crazy 8s — eight ideas, eight minutes',
+    run: function (zone) {
+      const spots = freeSpots(zone, 8);
+      spots.forEach(function (p) { addLooseNote(zone, '', p, true); });
+      paintZoneBoard(zone);
+      startZoneTimer(8 * 60);
+      zoneSay('bot', '**Eight notes, eight minutes.** One idea each, and do not stop to judge them — '
+        + 'the good one is usually number six. Bin the rubbish afterwards.');
     }
   },
   /* The test the one-sheet lesson names, made pressable: stop reading it as the person who wrote it. */
@@ -783,6 +1098,9 @@ function openZone(zone) {
 function closeZone() {
   const zone = openZoneRef; if (!zone) return;
   commitZoneEdit();                       // a half-typed sentence on screen is still their work
+  stopZoneTimer();
+  zoneLinking = null;
+  $('zoneCanvasWrap').classList.remove('linking');
   openZoneRef = null;
   zone.ui = null;
   $('zoneLane').innerHTML = '';
@@ -1245,6 +1563,17 @@ if ($('zoneChatForm')) $('zoneChatForm').addEventListener('submit', function (e)
 if ($('zoneToCode')) $('zoneToCode').addEventListener('click', zoneToCode);
 if ($('zoneZoomIn')) $('zoneZoomIn').addEventListener('click', function () { zoneZoom(0.1); });
 if ($('zoneZoomOut')) $('zoneZoomOut').addEventListener('click', function () { zoneZoom(-0.1); });
+/* The wheel means zoom on the board and scroll in the conversation. Which one you get is decided by
+   what is under the pointer, not by a mode — that is how every canvas app behaves and it is the one
+   arrangement nobody has to be told about. The conversation's own scrolling is left alone entirely,
+   so a long thread reads normally. */
+if ($('zoneCanvasWrap')) $('zoneCanvasWrap').addEventListener('wheel', function (e) {
+  if (e.target.closest('.zone-chat-over')) return;      // the conversation scrolls itself
+  if (e.target.closest('.zone-note-edit')) return;      // so does a note being typed into
+  e.preventDefault();
+  const b = $('zoneCanvasWrap').getBoundingClientRect();
+  zoneZoom(e.deltaY > 0 ? -0.08 : 0.08, { x: e.clientX - b.left, y: e.clientY - b.top });
+}, { passive: false });
 if ($('zoneFit')) $('zoneFit').addEventListener('click', function () { if (openZoneRef) zoneFit(openZoneRef); });
 /* Pan by dragging the board itself. Notes stop this from reaching here (they capture the pointer),
    so grabbing a sticky moves the sticky and grabbing the space between them moves the board. */

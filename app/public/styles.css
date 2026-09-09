@@ -958,6 +958,62 @@ body.resizing-v #gameFrame{pointer-events:none;}
   display:grid;place-items:center;font-size:9px;color:transparent;}
 .zone-goal.on .zone-tick{border-color:var(--green);background:var(--green);color:#04240f;}
 
+/* ---------- the footer ----------
+   One row: how many done, how far along, and the way out. It was a number, a hairline and a button
+   at three different heights crushed into 9px of padding; the count is a pill now and the bar is
+   thick enough to read at a glance from across a classroom. */
+.zone-foot{display:flex;align-items:center;gap:16px;padding:10px 16px;flex:none;
+  background:var(--panel);border-top:1px solid var(--line);}
+.zone-count{display:inline-flex;align-items:center;gap:7px;flex:none;white-space:nowrap;
+  font-size:12.5px;font-weight:600;color:var(--muted);
+  background:var(--bg);border:1px solid var(--line);border-radius:999px;padding:5px 13px;}
+.zone-count b{color:var(--ink);font-size:14px;font-variant-numeric:tabular-nums;}
+.zone-count.all{border-color:var(--green);color:var(--ink);}
+.zone-count.all b{color:var(--green);}
+.zone-bar-fill{flex:1;min-width:60px;height:8px;border-radius:5px;background:#12283f;
+  overflow:hidden;box-shadow:inset 0 1px 2px rgba(0,0,0,.4);}
+.zone-bar-fill i{display:block;height:100%;width:0;border-radius:5px;
+  background:linear-gradient(90deg,var(--teal),var(--green));transition:width .25s;}
+.zone-done{background:var(--green);color:#04240f;font-weight:700;border:0;border-radius:9px;
+  padding:9px 18px;font-size:13px;cursor:pointer;flex:none;transition:filter .12s;}
+.zone-done:hover:not(:disabled){filter:brightness(1.08);}
+.zone-done:disabled{background:transparent;color:#5d7ba0;cursor:not-allowed;
+  border:1px solid var(--line);padding:8px 17px;}
+
+/* ---------- the door, on the page behind ----------
+   What this checkpoint wants, and the way in. No title — the page heading two inches above already
+   says it, and saying it twice is what made this read as a panel dropped onto a lesson. */
+.zone-cover{position:relative;margin:20px 0;padding:22px 22px 20px;border-radius:14px;
+  background:linear-gradient(180deg,#132a48,var(--panel));
+  border:1px solid #2c5d8a;border-top:3px solid var(--brand);
+  box-shadow:0 10px 28px rgba(0,0,0,.28);}
+.zone-cover-kind{display:flex;align-items:center;gap:8px;margin-bottom:10px;
+  font-size:11px;font-weight:700;letter-spacing:1.6px;text-transform:uppercase;color:var(--brand);}
+.zone-cover-kind .mdi{font-size:16px;}
+.zone-cover-intro{margin:0 0 18px;font-size:16px;line-height:1.55;color:var(--ink);max-width:58ch;}
+/* The checklist is live — it reads design.md — so it is state, not instructions. No marker until a
+   goal is done, then a tick: two goes at a small circle both read as two sizes side by side. */
+.zone-cover-goals{list-style:none;display:flex;flex-wrap:wrap;gap:8px;margin:0 0 20px;padding:0;}
+.zone-cover-goal{display:inline-flex;align-items:center;gap:7px;height:28px;padding:0 13px;
+  font-size:12.5px;line-height:1;white-space:nowrap;
+  border:1px solid var(--line);border-radius:999px;background:var(--bg);color:var(--muted);}
+.zone-cover-goal.on{border-color:var(--green);background:#0e2b26;color:var(--ink);}
+.zone-cover-tick{color:var(--green);font-size:12px;line-height:1;}
+.zone-cover-go{display:flex;align-items:center;justify-content:center;gap:14px;flex-wrap:wrap;}
+.zone-cover-btn{display:inline-flex;align-items:center;gap:8px;flex:none;cursor:pointer;
+  background:var(--brand);color:#241300;border:0;border-radius:10px;
+  padding:11px 20px;font-family:var(--font);font-size:15px;font-weight:700;
+  transition:filter .12s,transform .12s;}
+.zone-cover-btn:hover{filter:brightness(1.08);}
+.zone-cover-btn:active{transform:translateY(1px);}
+.zone-cover-btn:focus-visible{outline:3px solid var(--focus);outline-offset:2px;}
+.zone-cover-btn .mdi{font-size:18px;}
+.zone-cover-btn.again{background:transparent;color:var(--muted);border:1px solid var(--line);
+  font-weight:600;font-size:13.5px;padding:8px 14px;}
+.zone-cover-btn.again:hover{border-color:#3a6da3;color:var(--ink);}
+.zone-cover-note{font-size:13px;color:var(--muted);}
+.zone-cover-note.done{color:var(--green);font-weight:600;}
+
 /* The quest chain, on a build board's rail: ordered, so it says which one you are ON rather than
    only which are done. The dim ones are still ahead, and that is deliberate — seeing what is coming
    is part of it; being able to start any of them is not, because the order is the teaching. */
@@ -1028,11 +1084,36 @@ body.resizing-v #gameFrame{pointer-events:none;}
 .zone-note-edit:focus{outline:none;}
 .zone-note-edit::placeholder{color:currentColor;opacity:.5;font-style:italic;}
 
-.zone-palette{position:absolute;left:12px;top:12px;display:flex;flex-direction:column;gap:6px;z-index:60;}
-.zone-tool{width:34px;height:34px;border-radius:9px;background:var(--panel);border:1px solid var(--line);
-  color:var(--muted);cursor:pointer;display:grid;place-items:center;font-size:16px;}
-.zone-tool:hover{border-color:#3a6da3;color:var(--ink);background:#16325a;}
-.zone-tool:focus-visible{outline:3px solid var(--focus);outline-offset:2px;}
+/* One column of tools down the left, grouped: making things, thinking tools, tidying up. Grouped
+   because eight identical buttons in a line is a thing you have to read every time, and three
+   groups of two or three is a thing you learn once. */
+.zone-palette{position:absolute;left:12px;top:12px;z-index:60;display:flex;flex-direction:column;
+  gap:4px;background:var(--panel);border:1px solid var(--line);border-radius:11px;padding:5px;
+  box-shadow:0 8px 22px rgba(0,0,0,.4);}
+.zone-tool{width:32px;height:32px;border-radius:8px;background:transparent;border:0;
+  color:var(--muted);cursor:pointer;display:grid;place-items:center;font-size:17px;}
+.zone-tool:hover{color:var(--ink);background:#16325a;}
+.zone-tool.on{background:var(--brand);color:#241300;}
+.zone-tool:focus-visible{outline:3px solid var(--focus);outline-offset:-2px;}
+.zone-tool-gap{height:1px;background:var(--line);margin:3px 4px;}
+
+/* Linking is a mode, and a mode has to look like one or the next click is a surprise. */
+.zone-canvas-wrap.linking{cursor:crosshair;}
+.zone-canvas-wrap.linking .zone-note{cursor:crosshair;}
+.zone-note.linkfrom{outline:2px solid var(--gold);outline-offset:3px;}
+.zone-links{position:absolute;left:0;top:0;overflow:visible;pointer-events:none;}
+.zone-link{stroke:#4a79b0;stroke-width:2.5;stroke-dasharray:6 6;pointer-events:stroke;cursor:pointer;}
+.zone-link:hover{stroke:var(--gold);}
+
+/* Starred. Dot voting, one note at a time — the starred ones stay bright and everything else steps
+   back, so "which of these nine" has an answer you can see from across the board. */
+.zone-note.star{box-shadow:0 0 0 2px var(--gold),0 8px 20px rgba(0,0,0,.45);}
+.zone-canvas:has(.zone-note.star) .zone-note:not(.star):not(.fixed){opacity:.72;}
+
+.zone-clock{margin-left:12px;font-family:Consolas,monospace;font-size:13px;font-weight:700;
+  color:var(--gold);background:#2a1a0c;border:1px solid #6b4a1c;border-radius:7px;padding:2px 9px;}
+.zone-clock.low{color:#ffb3b3;background:#3a1616;border-color:#7a2b2b;}
+.zone-clock[hidden]{display:none;}
 /* Bottom LEFT, under the palette. The right-hand side belongs to the conversation, and a zoom
    control tucked behind the chat box is one you cannot press. */
 .zone-zoom{position:absolute;left:12px;bottom:12px;display:flex;gap:4px;align-items:center;z-index:60;
@@ -1085,12 +1166,8 @@ body.resizing-v #gameFrame{pointer-events:none;}
   width:min(360px,38%);display:flex;flex-direction:column;justify-content:flex-end;
   padding:14px 14px 14px 0;gap:10px;pointer-events:none;}
 .zone-chat-over > *{pointer-events:auto;}
-.zone-lane{overflow-y:auto;display:flex;flex-direction:column;align-items:flex-end;gap:8px;
-  scrollbar-width:thin;pointer-events:none;
-  /* Fades into the board at the top instead of ending on a hard edge, so a long conversation reads
-     as sitting on the surface rather than as a list in an invisible box. */
-  -webkit-mask-image:linear-gradient(180deg,transparent,#000 34px);
-  mask-image:linear-gradient(180deg,transparent,#000 34px);}
+.zone-lane{overflow-y:auto;overscroll-behavior:contain;display:flex;flex-direction:column;
+  align-items:flex-end;gap:8px;scrollbar-width:thin;pointer-events:none;}
 .zone-lane > *{pointer-events:auto;}
 .zone-lane:empty{display:none;}
 

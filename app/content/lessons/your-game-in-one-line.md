@@ -45,8 +45,7 @@ goals:
     slot: What I am NOT building
 tools:
   - kind: mixer
-    title: Stuck? Mix one up
-    say: Nobody invents a game out of nothing. Roll a few and wait for the one that makes you say "no, but what about…"
+    title: Mix up three ideas
     into: My game is
     bases:
       - a platformer
@@ -70,4 +69,6 @@ tools:
       - but somebody else is playing it at the same time and you can see them
       - but you have to teach a robot to do it instead of doing it
       - but the level is being built while you run through it
+  - kind: whatif
+  - kind: crazy8
 ```
