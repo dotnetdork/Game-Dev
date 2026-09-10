@@ -218,7 +218,14 @@ body[data-tier] .editor.no-dock{--leftw:0px;}
   height:var(--band);flex:none;}
 .dock-head .tag{color:var(--teal);text-transform:none;font-weight:600;font-size:11px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;max-width:120px;flex:none;}
 .dock-head .ai-title{display:flex;align-items:center;gap:8px;}
-.dock-head .ai-ava{width:20px;height:20px;border-radius:50%;object-fit:cover;background:var(--panel);}
+/* The same mdi-robot the collapsed assistant button uses, rather than the ringed PNG that used to
+   sit here. Two pictures for one assistant is one too many: the button you press to bring the panel
+   back and the panel's own header should be the same thing, so that pressing the robot and getting
+   the robot reads as one object rather than two. It is also a glyph, so it takes the panel's own
+   colour and stays crisp at any size — the PNG was a 20px circle scaled from a much larger ring and
+   went soft on a Chromebook's display. */
+.dock-head .ai-ava{width:20px;height:20px;display:inline-flex;align-items:center;justify-content:center;
+  flex:none;font-size:18px;color:var(--azure);}
 .dock-head{flex-wrap:nowrap;gap:6px;}
 .dock-head .ai-title{flex:1;min-width:0;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;text-transform:none;letter-spacing:0;}
 /* No box behind it. It sat in a bordered, filled chip beside a title and a model tag, which made
