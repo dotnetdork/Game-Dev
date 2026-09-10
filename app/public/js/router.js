@@ -113,7 +113,13 @@ function currentRoute() {
      looking at, and a link to it should reopen it rather than the tab it covers. A zone and a bench
      cannot both be open — each closes the other — so the order here is only a tie-break. */
   let view = '';
-  if (typeof openZoneRef !== 'undefined' && openZoneRef) view = 'zone';
+  /* Only the BOARD is an overlay worth its own address. A checkpoint open as a rail (DEV.buildRail)
+     is furniture beside the Code tab rather than a thing covering it, so the address stays /code —
+     which is also what makes a reload put the student back at their editor rather than at a
+     checkpoint they had already walked away from. */
+  const zoneOverlay = typeof openZoneRef !== 'undefined' && openZoneRef
+    && !(typeof zoneRail !== 'undefined' && zoneRail);
+  if (zoneOverlay) view = 'zone';
   else if (typeof openLabRef !== 'undefined' && openLabRef) view = 'lab';
   else {
     const tab = document.querySelector('.vtab.on');

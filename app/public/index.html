@@ -149,6 +149,29 @@
             <div class="editor-wrap" id="editorWrap">
               <textarea id="codeeditor"></textarea><div class="cm-statusbar" id="cmStatus">Ln 1, Col 1</div>
             </div>
+            <!-- A BUILD checkpoint, as a rail beside the editor instead of a board in front of it.
+                 Off by default; see DEV.buildRail in js/dev.js for the argument on both sides and
+                 how to switch. Every id in here mirrors one in the board overlay below, because the
+                 same functions paint both — see zEl() in js/zone.js. -->
+            <aside class="build-rail" id="buildRail" hidden aria-label="Checkpoint objectives">
+              <div class="br-head">
+                <span class="zone-flag mdi mdi-flag-checkered" aria-hidden="true"></span>
+                <span class="br-title" id="railTitle"></span>
+                <span class="zone-model" id="railBotTag">model…</span>
+                <button class="br-close" id="railClose" title="Leave the checkpoint" aria-label="Leave the checkpoint"><span class="mdi mdi-close" aria-hidden="true"></span></button>
+              </div>
+              <div class="zone-goals" id="railGoals" role="list" aria-label="Objectives in this checkpoint"></div>
+              <div class="zone-lane" id="railLane"></div>
+              <form class="zone-chat" id="railChatForm">
+                <textarea id="railBotText" rows="1" placeholder="Ask about your game..." aria-label="Ask the AI Assistant about your game"></textarea>
+                <button type="submit" id="railBotSend" title="Send"><span class="mdi mdi-send" aria-hidden="true"></span></button>
+              </form>
+              <div class="zone-foot">
+                <span class="zone-count" id="railCount"></span>
+                <span class="zone-bar-fill"><i id="railProg"></i></span>
+                <button class="zone-done" id="railDone" disabled>Finish the checkpoint</button>
+              </div>
+            </aside>
             <!-- Phones read; they do not build. Shown by a media query alone, with no JavaScript
                  state to fall out of step with the width. The tab still works and still arrives
                  somewhere that explains itself, which beats a dead tab or a 320px code editor. -->

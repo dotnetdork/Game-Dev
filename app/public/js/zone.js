@@ -119,6 +119,22 @@ let zoneReturnFocus = null;
 let zoneRegistry = [];          // the zones in the lesson on screen, for the router
 const ZONE_MIN_WIDTH = 700;     // same threshold as the lab bench; see tooSmallToBuild
 
+/* ---------- one checkpoint, two possible homes ----------
+   A build checkpoint can be a BOARD (the full-screen canvas) or a RAIL (a column beside the editor
+   in the Code view). Which one is DEV.buildRail; the argument for each is written out there.
+
+   They are not two implementations. The markup for the rail mirrors the board's, id for id — goals,
+   lane, chat box, count, bar, Finish — and every function that paints any of it goes through zEl()
+   instead of naming an element directly. So the objective chain, the coach, the checks, the
+   completion cards and the badge are all literally the same code in both, and the comparison is
+   about where the furniture sits rather than about two features that drifted apart.
+
+   Design checkpoints are always the board. A one-sheet the coach fills in by interview has nothing
+   to do with the editor, and a rail would be a chat window with no workspace attached. */
+let zoneRail = false;
+function railOn() { return typeof DEV !== 'undefined' && !!DEV.buildRail; }
+function zEl(base) { return $((zoneRail ? 'rail' : 'zone') + base); }
+
 /* Which shell parts go dead while the zone is up. The top bar is deliberately excluded, exactly as
    the bench excludes it: Store, Gallery, Docs and Help keep working, and showPage closes the zone
    before navigating anywhere. */
@@ -168,7 +184,7 @@ function zoneProgress(zone) {
   return { done: n, total: goals.length };
 }
 function paintZoneGoals(zone) {
-  const host = $('zoneGoals'); if (!host) return;
+  const host = zEl('Goals'); if (!host) return;
   const build = zone.spec.kind === 'build';
   const active = build ? zoneActiveIndex(zone) : -1;
   host.innerHTML = '';
@@ -187,7 +203,7 @@ function paintZoneGoals(zone) {
     host.appendChild(el);
   });
   const p = zoneProgress(zone);
-  const cnt = $('zoneCount'), bar = $('zoneProg'), btn = $('zoneDone');
+  const cnt = zEl('Count'), bar = zEl('Prog'), btn = zEl('Done');
   if (cnt) {
     cnt.className = 'zone-count' + (p.total && p.done >= p.total ? ' all' : '');
     cnt.innerHTML = p.total
@@ -958,12 +974,15 @@ function openZone(zone) {
   }
   if (openZoneRef) closeZone();
   openZoneRef = zone;
+  /* Decided here and nowhere else, before anything is painted: every zEl() below reads it. */
+  zoneRail = railOn() && zone.spec.kind === 'build';
   zone.sheet = sheetRead();                     // the file is the truth; read it every opening
   zone.ui = { open: true };
   zoneReturnFocus = (zone.card && zone.card.open) || null;
 
-  $('zoneTitle').textContent = zone.spec.title || 'Building zone';
-  const flag = view.querySelector('.zone-flag');
+  const title = zoneRail ? $('railTitle') : $('zoneTitle');
+  if (title) title.textContent = zone.spec.title || 'Building zone';
+  const flag = (zoneRail ? $('buildRail') : view).querySelector('.zone-flag');
   if (flag && typeof moduleAccent === 'function' && typeof flat !== 'undefined' && flat[curIdx]) {
     flag.style.color = moduleAccent(flat[curIdx].mi);
   }
@@ -977,14 +996,29 @@ function openZone(zone) {
   }
   const toCode = $('zoneToCode');
   if (toCode) toCode.hidden = zone.spec.kind !== 'build';
-  paintZonePalette(zone);
-  paintZoneBoard(zone);
-  zoneHome(zone);
+  /* The board's furniture only exists on the board. In rail mode there is no canvas to lay out, no
+     palette to fill and nothing to centre — the objectives are the chips at the top of the rail,
+     and the workspace is the editor the rail is standing next to. */
+  if (!zoneRail) {
+    paintZonePalette(zone);
+    paintZoneBoard(zone);
+    zoneHome(zone);
+  }
   paintZoneGoals(zone);
   zoneBotReset(zone);
 
-  view.hidden = false;
-  zoneIsolate(true);
+  if (zoneRail) {
+    /* No overlay, nothing made inert: the point of the rail is that the rest of the app stays
+       usable while the checkpoint is open, because the checkpoint is about the code in the editor
+       behind it. Switching to Code is part of opening — the objectives are code checks, so arriving
+       anywhere else would be arriving at the wrong place. */
+    $('buildRail').hidden = false;
+    $('view-code').classList.add('with-rail');
+    if (typeof switchView === 'function') switchView('code');
+  } else {
+    view.hidden = false;
+    zoneIsolate(true);
+  }
   if (typeof syncRoute === 'function') syncRoute();
   if (typeof paintAIBtn === 'function') paintAIBtn();
   zoneBotOpen(zone);                            // the bot speaks first — see the header
@@ -997,12 +1031,18 @@ function closeZone() {
   $('zoneCanvasWrap').classList.remove('linking');
   openZoneRef = null;
   zone.ui = null;
-  $('zoneLane').innerHTML = '';
+  zEl('Lane').innerHTML = '';
   $('zoneCanvas').innerHTML = '';
   $('zonePalette').innerHTML = '';
-  $('zoneGoals').innerHTML = '';
-  $('zoneView').hidden = true;
-  zoneIsolate(false);
+  zEl('Goals').innerHTML = '';
+  if (zoneRail) {
+    $('buildRail').hidden = true;
+    $('view-code').classList.remove('with-rail');
+    zoneRail = false;                     // after the clearing above, which reads it
+  } else {
+    $('zoneView').hidden = true;
+    zoneIsolate(false);
+  }
   if (typeof syncRoute === 'function') syncRoute();
   if (typeof paintAIBtn === 'function') paintAIBtn();
   paintZoneCover(zone);
@@ -1026,7 +1066,7 @@ function finishZone() {
   commitZoneEdit();                       // pressing Finish with a card open counts what is in it
   const p = zoneProgress(zone);
   if (!p.total || p.done < p.total) return;
-  const btn = $('zoneDone');
+  const btn = zEl('Done');
   if (btn) { btn.disabled = true; btn.textContent = 'Reading it…'; }
   zoneSignOff(zone).then(function (verdict) {
     if (openZoneRef !== zone) return;
@@ -1177,7 +1217,7 @@ function zoneSpec(src) {
    rather than about one spot on it. */
 function zoneSay(who, text) {
   if (!who) return null;                                  // called with nothing = "just look again"
-  const lane = $('zoneLane'); if (!lane) return null;
+  const lane = zEl('Lane'); if (!lane) return null;
   const el = document.createElement('div');
   el.className = 'zone-bubble ' + who;
   if (who === 'bot' && typeof mdToSafeHTML === 'function') {
@@ -1187,7 +1227,7 @@ function zoneSay(who, text) {
   return el;
 }
 function placeInLane(el) {
-  const lane = $('zoneLane'); if (!lane) return;
+  const lane = zEl('Lane'); if (!lane) return;
   lane.appendChild(el);
   lane.scrollTop = lane.scrollHeight;
 }
@@ -1263,10 +1303,10 @@ function flashNote(id) {
 }
 
 function zoneBotReset(zone) {
-  $('zoneLane').innerHTML = '';
+  zEl('Lane').innerHTML = '';
   zone.greeted = false;
   zone.chat = [];
-  const tag = $('zoneBotTag');
+  const tag = zEl('BotTag');
   if (tag) {
     const spec = (typeof aiModels !== 'undefined' && (aiModels['zone-coach'] || aiModels.tutor)) || '';
     tag.textContent = spec.replace(/^[^:]+:/, '') || '…';
@@ -1291,7 +1331,7 @@ function zoneBotOpen(zone) {
     zoneAsk(zoneNudge(zone, empty), { silent: true });
   } else if (typeof loadQuestions === 'function' && typeof renderStarters === 'function') {
     loadQuestions().then(function () {
-      renderStarters('zone', $('zoneLane'), function (t) { zoneSubmitText(t); }, 'tutor');
+      renderStarters('zone', zEl('Lane'), function (t) { zoneSubmitText(t); }, 'tutor');
     });
   }
 }
@@ -1345,8 +1385,27 @@ function zoneBriefPrompt(zone, goal, i) {
     + 'Do not greet them and do not repeat the objective back word for word.';
 }
 
-/* Re-check after anything that could have satisfied the live objective, and make a noise when it
-   has. Called from the editor's save and from Run. */
+/* ---------- watching their real project while the checkpoint is open ----------
+   zoneTick is the only caller of zoneWatch, and it is called from saveProject() — the one funnel
+   every code change goes through, whether it came from the editor, from an AI op or from the file
+   tree — and from startGame(), because pressing Play is when a student expects to be judged.
+
+   It was written for the board and never wired up, which nothing revealed because on the board it
+   could not matter: the board's own way to reach the editor CLOSES the checkpoint, so the objectives
+   were always re-checked by the next openZone(). The rail is what makes it load-bearing — there the
+   student edits with the objectives still on screen, and a chain that only advanced on reopen would
+   be a chain that never advanced at all.
+
+   Debounced because saveProject fires on every keystroke's settle, and each tick runs every rule of
+   every objective over every file. */
+let zoneTickTimer = 0;
+function zoneTick() {
+  if (!openZoneRef || openZoneRef.spec.kind !== 'build') return;
+  clearTimeout(zoneTickTimer);
+  zoneTickTimer = setTimeout(function () {
+    if (openZoneRef && openZoneRef.spec.kind === 'build') zoneWatch(openZoneRef);
+  }, 400);
+}
 function zoneWatch(zone) {
   if (!zone || zone.spec.kind !== 'build') return;
   const goals = zone.spec.goals || [];
@@ -1368,12 +1427,12 @@ function zoneNudge(zone, empty) {
 }
 
 function zoneSubmitText(t) {
-  const box = $('zoneBotText');
+  const box = zEl('BotText');
   if (box) { box.value = t; if (typeof growTextarea === 'function') growTextarea(box); }
   zoneSubmit();
 }
 function zoneSubmit() {
-  const box = $('zoneBotText'); if (!box) return;
+  const box = zEl('BotText'); if (!box) return;
   const q = box.value.trim(); if (!q) return;
   box.value = '';
   if (typeof growTextarea === 'function') growTextarea(box);
@@ -1388,7 +1447,7 @@ function zoneAsk(question, opts) {
   if (!silent) zoneSay('user', question);
   const pending = zoneSay('bot', 'Thinking…');
   if (pending && typeof startThinking === 'function') startThinking(pending, 'zone');
-  if (typeof setChatBusy === 'function') setChatBusy($('zoneBotText'), true);
+  if (typeof setChatBusy === 'function') setChatBusy(zEl('BotText'), true);
   const history = zone.chat.slice(-6);
   if (!silent) zone.chat.push({ role: 'user', content: question });
 
@@ -1417,7 +1476,7 @@ function zoneAsk(question, opts) {
     .catch(function () {
       if (pending) { if (typeof stopThinking === 'function') stopThinking(pending); pending.textContent = 'Could not reach the helper.'; }
     })
-    .finally(function () { if (typeof setChatBusy === 'function') setChatBusy($('zoneBotText'), false); });
+    .finally(function () { if (typeof setChatBusy === 'function') setChatBusy(zEl('BotText'), false); });
 }
 
 /* What the model is told about the zone. The board, as it stands — every declared box with whatever
@@ -1488,15 +1547,26 @@ function zoneSignOff(zone) {
     .catch(function () { return null; });          // unreachable is not a refusal
 }
 
-let zoneChatWired = false;
+/* Per box, not once: there are two chat boxes now (the board's and the rail's) and a single
+   already-wired flag would leave whichever opened second with a textarea that does not grow and an
+   Enter key that does nothing. */
+const zoneChatWired = {};
 function wireZoneChatBox() {
-  if (zoneChatWired || typeof wireChatBox !== 'function') return;
-  zoneChatWired = true;
-  wireChatBox($('zoneBotText'), zoneSubmit);
+  if (typeof wireChatBox !== 'function') return;
+  const box = zEl('BotText'); if (!box || zoneChatWired[box.id]) return;
+  zoneChatWired[box.id] = true;
+  wireChatBox(box, zoneSubmit);
 }
 
-/* ---------- wiring, once, at load ---------- */
-if ($('zoneChatForm')) $('zoneChatForm').addEventListener('submit', function (e) { e.preventDefault(); zoneSubmit(); });
+/* ---------- wiring, once, at load ----------
+   Both homes are wired, not whichever one DEV.buildRail happens to name: the flag is a URL override
+   as well as a file constant, so a page can start on one and the markup for the other is present
+   either way. Everything here is idempotent and the hidden one can never be pressed. */
+['zoneChatForm', 'railChatForm'].forEach(function (id) {
+  if ($(id)) $(id).addEventListener('submit', function (e) { e.preventDefault(); zoneSubmit(); });
+});
+['zoneDone', 'railDone'].forEach(function (id) { if ($(id)) $(id).addEventListener('click', finishZone); });
+if ($('railClose')) $('railClose').addEventListener('click', closeZone);
 if ($('zoneToCode')) $('zoneToCode').addEventListener('click', zoneToCode);
 if ($('zoneZoomIn')) $('zoneZoomIn').addEventListener('click', function () { zoneZoom(0.1); });
 if ($('zoneZoomOut')) $('zoneZoomOut').addEventListener('click', function () { zoneZoom(-0.1); });
@@ -1528,7 +1598,10 @@ if ($('zoneCanvasWrap')) $('zoneCanvasWrap').addEventListener('pointerdown', fun
   w.addEventListener('pointermove', move); w.addEventListener('pointerup', up);
 });
 if ($('zoneBack')) $('zoneBack').addEventListener('click', closeZone);
-if ($('zoneDone')) $('zoneDone').addEventListener('click', finishZone);
+/* Escape closes the board, which is a modal dialog and owes the student a way out. It does NOT
+   close the rail: there the student is typing in an editor, and a stray Escape throwing away the
+   checkpoint they are working through would be the worst kind of surprise. The rail has a visible
+   × instead. */
 document.addEventListener('keydown', function (e) {
-  if (e.key === 'Escape' && openZoneRef) { closeZone(); e.preventDefault(); }
+  if (e.key === 'Escape' && openZoneRef && !zoneRail) { closeZone(); e.preventDefault(); }
 });
