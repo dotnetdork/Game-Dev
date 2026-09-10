@@ -217,17 +217,28 @@ body[data-tier] .editor.no-dock{--leftw:0px;}
   text-transform:uppercase;border-bottom:1px solid var(--line);background:var(--panel2);display:flex;justify-content:space-between;align-items:center;
   height:var(--band);flex:none;}
 .dock-head .tag{color:var(--teal);text-transform:none;font-weight:600;font-size:11px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;max-width:120px;flex:none;}
-.dock-head .ai-title{display:flex;align-items:center;gap:8px;}
 /* The same mdi-robot the collapsed assistant button uses, rather than the ringed PNG that used to
    sit here. Two pictures for one assistant is one too many: the button you press to bring the panel
    back and the panel's own header should be the same thing, so that pressing the robot and getting
    the robot reads as one object rather than two. It is also a glyph, so it takes the panel's own
    colour and stays crisp at any size — the PNG was a 20px circle scaled from a much larger ring and
-   went soft on a Chromebook's display. */
-.dock-head .ai-ava{width:20px;height:20px;display:inline-flex;align-items:center;justify-content:center;
-  flex:none;font-size:18px;color:var(--azure);}
+   went soft on a Chromebook's display.
+
+   Sized to the CAP HEIGHT of the label beside it, not to the 20px box the PNG needed. A glyph as
+   tall as the row it sits in makes the words next to it look like a caption under a picture; at 15px
+   the robot and the letters are the same size of thing and the row reads as one label. */
+.dock-head .ai-ava{width:15px;height:15px;display:inline-flex;align-items:center;justify-content:center;
+  flex:none;font-size:15px;line-height:1;color:var(--azure);}
 .dock-head{flex-wrap:nowrap;gap:6px;}
-.dock-head .ai-title{flex:1;min-width:0;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;text-transform:none;letter-spacing:0;}
+/* This is a dock header like the other three and is set like them: uppercase, 1.5px tracked. It used
+   to opt out of both, which is why it read as a different kind of thing from COURSE OUTLINE and
+   CONTENT BROWSER sitting in the identical bar one tab away — same 11px, but mixed case and untracked
+   next to tracked capitals looks like a different size rather than a different style.
+   The tracking is trimmed off the end so the last letter's trailing space does not push the label
+   half a pixel left of centre against the model tag. */
+.dock-head .ai-title{display:flex;align-items:center;gap:7px;flex:1;min-width:0;
+  white-space:nowrap;overflow:hidden;text-overflow:ellipsis;line-height:1;}
+.dock-head .ai-title::after{content:'';margin-left:-1.5px;}
 /* No box behind it. It sat in a bordered, filled chip beside a title and a model tag, which made
    the header read as three competing controls; the glyph alone is enough, and its colour already
    says which mode is on. */
