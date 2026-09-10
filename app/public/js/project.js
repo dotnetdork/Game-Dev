@@ -445,7 +445,7 @@ const SKEY = 'leagueProgress';
    The live threads keep their proposal internals in memory; what is written here is text and
    outcomes only, because a saved diff is both large and unsafe to re-apply against code that has
    changed since. */
-const DEFAULT_STATE = { v: SCHEMA.progress, xp: 0, stars: 250, done: {}, modDone: {}, unlocked: {}, published: [], activities: {}, labs: {}, badges: {}, practice: {}, at: '', weekXp: 0, weekStart: 0, chats: { threads: [], current: {} } };
+const DEFAULT_STATE = { v: SCHEMA.progress, xp: 0, stars: 400, done: {}, modDone: {}, unlocked: {}, published: [], activities: {}, labs: {}, badges: {}, practice: {}, at: '', weekXp: 0, weekStart: 0, chats: { threads: [], current: {} } };
 function loadState() {
   const raw = Storage.read(SKEY);
   if (!raw) return Object.assign({}, DEFAULT_STATE);
@@ -717,6 +717,28 @@ function awardXp(n) {
   weekXp();                                   // rolls the week over first, if it needs it
   state.xp += amt;
   state.weekXp = (state.weekXp || 0) + amt;
+  saveState();
+}
+
+/* ---------- where Stars come from ----------
+   Stars used to arrive in exactly one place: the end of a module, 120-160 at a time, 830 over the
+   whole course. Measured against a Store where a character set costs 130, that is a shop a student
+   visits six times in fifteen hours. So the currency now pays out for the work as it happens:
+
+     lesson finished      30     every content lesson; the steady income
+     checkpoint finished  60     instead of the lesson's 30 - it is the lesson about THEIR game
+     practice passed      20     the "your turn": the one task that touches their own project
+     lab solved           10     only when they solved it - reading the answer still finishes the
+                                 lab, it just does not pay
+
+   plus the module bonus, which stays. About 3,000 over the course from a 400 start, against a
+   catalogue where the biggest 400-tile set is 1,000. Every number is here and nowhere else, so the
+   economy can be tuned in one place and the toasts stay honest. */
+const STARS = { lesson: 30, checkpoint: 60, practice: 20, lab: 10 };
+function awardStars(n) {
+  const amt = Number(n) || 0;
+  if (!amt) return;
+  state.stars = (state.stars || 0) + amt;
   saveState();
 }
 

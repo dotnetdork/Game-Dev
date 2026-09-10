@@ -919,6 +919,12 @@ body.resizing-v #gameFrame{pointer-events:none;}
 .bp-grid.pixel .bk img{image-rendering:pixelated;}
 .bk .mdi{font-size:26px;color:var(--azure);height:40px;display:flex;align-items:center;}
 .bk span{max-width:100%;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;}
+/* A price or a tick in the corner of each piece: what it costs alone, or that it is already theirs. */
+.bk{position:relative;}
+.bk .bk-price,.bk .bk-own{position:absolute;top:3px;right:4px;font-style:normal;font-size:9px;line-height:1;
+  padding:2px 4px;border-radius:4px;background:rgba(6,16,28,.8);color:var(--gold);font-weight:700;}
+.bk .bk-own{color:var(--green);font-size:11px;padding:1px 2px;}
+.bk.own{border-color:#1f4d33;}
 .bk:hover{border-color:#3a6da3;color:#cfe6ff;}
 .bk:focus-visible{outline:2px solid var(--focus);outline-offset:1px;}
 

@@ -4,7 +4,9 @@ Everything here is editable without touching app code.
 
 ## course.yaml
 Modules in order; each lists lesson ids that map to lessons/<id>.md.
-`stars` is awarded when the whole module is completed.
+`stars` is the module bonus, awarded when the whole module is completed. Lessons, practice steps,
+labs and checkpoints pay Stars of their own as they happen — the amounts live in `STARS` in
+`public/js/project.js`, not in content.
 
 **A lesson's id is a storage key.** `state.done`, its answers, its lab drafts and its practice
 snapshots all hang off it, so it has to be lowercase letters, digits and single hyphens, unique

@@ -57,14 +57,11 @@ const CAT_STYLE = {
   UI: { col: '#6b46c1', mdi: 'mdi-gesture-tap-button' },
   Sounds: { col: '#0e7490', mdi: 'mdi-volume-high' }
 };
-/* The Store went from 233 items to 3,246 across nineteen packs. At that size a single scrolling
-   grid of everything is not a shop, it is a haystack — so there are three ways to narrow it (what
-   it is, which pack it came from, and a search box) and the grid is paged.
-
-   PAGING IS NOT COSMETIC. Every card carries an <img>, and 3,246 of them is 3,246 requests the
-   moment the page opens. Lazy loading already keeps them out of the network until they scroll into
-   view, but the DOM cost of building the cards is paid up front either way. STORE_PAGE at a time,
-   with a button for more. */
+/* The Store went from 233 items to 3,256 across nineteen packs, and at one card per item it was a
+   haystack. It is ~100 sets and ~40 loose sounds now, narrowed by one row of category chips, and
+   the grid is still paged: every card carries an <img>, and lazy loading keeps them off the network
+   until they scroll into view, but the DOM cost of building the cards is paid up front either way.
+   STORE_PAGE at a time, with a button for more — which at the current size never appears. */
 const STORE_PAGE = 120;
 let storeFilter = 'All';
 let storeShown = STORE_PAGE;
@@ -88,9 +85,9 @@ function storeArt(a) {
    with ~100 sets and a category row it was a second way of doing what the chips already do, and
    typing "1-bit" into it and getting nothing (the catalogue spells it three ways) was worse than no
    box at all. */
-/* A bundle's members are not sold one at a time, so listing them as cards would be 1,686 buttons
-   that cannot be pressed. They are reachable through the bundle instead — and once it is owned, the
-   card expands to show every key, which is the only way to find `tile_0173` in a set of 400.
+/* A set's members get no card of their own — 3,200 cards is the haystack this replaced. They are
+   reached through the set's preview, where each can be bought alone for the price of one, and where
+   `tile_0173` can actually be found in a set of 400.
 
    The exception is a member that is FREE. The starter game is built from three tiles out of a
    400-tile set, and a student who wants to know what their own player sprite is called has to be
@@ -150,13 +147,21 @@ function showBundlePreview(id) {
   const b = bundleById[id]; if (!b) return;
   const owned = b.free || !!state.unlocked[b.id];
   const px = (b.style === 'pixel' || b.style === '1-bit') ? ' pixel' : '';
+  /* Each piece can be bought on its own, from here, for the price of one. A piece the student
+     already owns — because the set is theirs, or because they bought that one — shows a tick
+     instead of a price and copies its name on click. */
   const grid = (b.members || []).map(function (k) {
     const m = assetByKey[k]; if (!m) return '';
     const short = k.indexOf(b.pack + '_') === 0 ? k.slice(b.pack.length + 1) : k;
-    return '<button type="button" class="bk" data-pkey="' + k + '" title="' + k + '">'
+    const mine = owned || !!m.free || !!state.unlocked[m.id];
+    return '<button type="button" class="bk' + (mine ? ' own' : '') + '" data-pkey="' + k + '" title="'
+      + esc(m.name) + ' — ' + k + (mine ? '' : ' — buy for ★ ' + m.cost) + '">'
       + (m.type === 'audio' ? '<span class="mdi mdi-volume-high" aria-hidden="true"></span>'
          : '<img src="' + m.file + '" alt="' + esc(m.name) + '" loading="lazy" decoding="async">')
-      + '<span>' + esc(short) + '</span></button>';
+      + '<span>' + esc(short) + '</span>'
+      + (mine ? '<i class="bk-own mdi mdi-check-decagram" aria-label="owned"></i>'
+         : (m.cost ? '<i class="bk-price">★ ' + m.cost + '</i>' : ''))
+      + '</button>';
   }).join('');
   const html = '<div class="bp">'
     + '<div class="bp-head"><span class="chip">' + b.cat + '</span><span class="chip set">' + b.count + ' pieces</span>'
@@ -165,17 +170,22 @@ function showBundlePreview(id) {
     + '<p class="bp-use">' + esc(b.desc) + '</p>'
     + '<p class="bp-code">In your code: <code>' + esc(bundleUseLine(b)) + '</code></p>'
     + (b.sheet ? '<p class="bp-code">The whole set as one picture: <code>' + esc(b.sheet) + '</code> — the last number picks the piece, counting from 0 at the top left.</p>' : '')
-    + '<p class="bp-hint">' + (owned ? 'Click a piece to copy its name.' : 'Every piece below is yours to use by name once the set is unlocked.')
-    + (b.members.some(function (k) { return (assetByKey[k] || {}).type === 'audio'; }) ? ' Click a sound to hear it.' : '') + '</p>'
+    + '<p class="bp-hint">' + (owned ? 'Click a piece to copy its name.'
+        : 'Unlock the whole set below, or click one piece to buy just that one. Anything you own copies its name on click.')
+    + (b.members.some(function (k) { return (assetByKey[k] || {}).type === 'audio'; }) ? ' Sounds play when clicked.' : '') + '</p>'
     + '<div class="bp-grid' + px + '">' + grid + '</div></div>';
   modal({ title: b.name, html: html, wide: true,
-    okLabel: owned ? 'Close' : 'Unlock for ★ ' + b.cost, hideCancel: owned,
+    okLabel: owned ? 'Close' : 'Unlock all ' + b.count + ' for ★ ' + b.cost, hideCancel: owned,
     onOk: owned ? null : function () { unlockBundle(b); } });
-  /* Wired after modal() has put the markup on the page. */
+  /* Wired after modal() has put the markup on the page. An owned piece copies its name; one that is
+     not owned goes to the single-piece purchase, and comes back here afterwards so the student sees
+     the tick land where the price was. */
   document.querySelectorAll('#modalBack [data-pkey]').forEach(function (el) {
     el.addEventListener('click', function () {
-      const k = el.getAttribute('data-pkey'), a = assetByKey[k];
-      if (a && a.type === 'audio') { try { new Audio('/' + a.file).play(); } catch (e) {} }
+      const k = el.getAttribute('data-pkey'), a = assetByKey[k]; if (!a) return;
+      if (a.type === 'audio') { try { new Audio('/' + a.file).play(); } catch (e) {} }
+      const mine = owned || a.free || state.unlocked[a.id];
+      if (!mine) { buyAsset(a.id, function () { showBundlePreview(b.id); }); return; }
       try { navigator.clipboard.writeText(k); toast('Copied "' + k + '"'); } catch (e) { toast('Its name is "' + k + '"'); }
     });
   });
@@ -222,7 +232,9 @@ function renderStore() {
     + empty
     + '<div class="cardgrid">' + shown.join('') + '</div>' + more;
 }
-function buyAsset(id) {
+/* One piece, alone — a loose sound from its card, or a picture from inside a set's preview. `after`
+   is what to show once it is bought; the preview passes itself so the tick lands in front of them. */
+function buyAsset(id, after) {
   const a = assets.find(function (x) { return x.id === id; });
   if (!a || a.free || state.unlocked[a.id]) return;
   if (state.stars < a.cost) { toast('Not enough Stars — you need ★ ' + a.cost + '.'); return; }
@@ -234,6 +246,7 @@ function buyAsset(id) {
       if (typeof addProjectAssets === 'function') addProjectAssets(a.key);
       if (typeof refreshFiles === 'function') refreshFiles();
       toast('Unlocked ' + a.name + ' — use "' + a.key + '" in your game.'); showPage('store');
+      if (after) after();
     } });
 }
 /* Unlocking the bundle unlocks everything in it — the members are not stamped individually, so
@@ -490,11 +503,11 @@ function renderDocs() {
 function renderHelp() {
   return '<div class="phead"><div><h2><span class="mdi mdi-help-circle-outline"></span>Help — How this app works</h2><p class="sub">A quick guide to everything on screen.</p></div></div><div class="help-body">'
     + '<h3><span class="mdi mdi-navigation-variant"></span>The top bar</h3><p><b>Courses</b> is where you learn and build. <b>Store</b> sells art and sounds for ★ Stars. <b>Gallery</b> shows games students have published. <b>Leaderboards</b> ranks the class by XP and shows how far through the course you are. <b>Docs</b> is a quick ' + course.library + ' reference, and <b>Help</b> is this page.</p>'
-    + '<h3><span class="mdi mdi-school"></span>Learning (Courses)</h3><p>Work through lessons in order in the left outline. Finishing a lesson earns <b>XP</b>; finishing a whole module earns <b>★ Stars</b>. Locked lessons unlock as you go, and your XP fills the bar in the footer toward the next level.</p>'
+    + '<h3><span class="mdi mdi-school"></span>Learning (Courses)</h3><p>Work through lessons in order in the left outline. Finishing a lesson earns <b>XP</b> and <b>★ Stars</b>; so does every practice step, every lab you solve yourself, and every checkpoint — and finishing a whole module pays a bonus on top. Locked lessons unlock as you go, and your XP fills the bar in the footer toward the next level.</p>'
     + '<h3><span class="mdi mdi-view-split-vertical"></span>The three tabs</h3><p><b>Learn</b> is the lesson. <b>Code</b> is your game\'s code — the <b>source</b> folder holds your scripts and the <b>assets</b> folder holds the art and sounds you own (click one to see how to use it). <b>Save</b> keeps your changes and <b>Run</b> plays them. <b>Play</b> runs your game, with the console and sound controls underneath.</p>'
     + '<h3><span class="mdi mdi-robot"></span>The AI Assistant</h3><p>The panel on the right has two modes — click the icon in its header to switch. <b>Tutor</b> explains things and never touches your code, so ask it "what does this line do?". <b>Build</b> edits your game when you tell it what to change. Some lessons turn Build off on purpose so you try it yourself.</p>'
     + '<p>One thing Build will not do is the <b>Practice</b> exercise at the end of a lesson — it will give you a hint and send you to Tutor instead. That exercise is the only way you find out whether you can do it, so having it done for you costs you the answer to the one question worth asking. Everything else in your game, Build will happily build.</p>'
-    + '<h3><span class="mdi mdi-star"></span>Stars & the Store</h3><p>Earn ★ Stars by finishing modules, then spend them in the <b>Store</b> to unlock art and sounds. Anything you own loads into your game automatically — just use its <b>name</b> (the green key) in your code.</p>'
+    + '<h3><span class="mdi mdi-star"></span>Stars & the Store</h3><p>Earn ★ Stars for every lesson, practice step, lab and checkpoint you finish, then spend them in the <b>Store</b> to unlock art and sounds. Anything you own loads into your game automatically — just use its <b>name</b> (the green key) in your code.</p>'
     + '<h3><span class="mdi mdi-image-outline"></span>Picture credits</h3><p>Lessons show screenshots of real games and sprites drawn by other people. Hovering any picture in a lesson names who made it; this is the same list in one place.</p>'
     + '<div id="creditsList" class="credits-list"><p class="credits-loading">Loading…</p></div>'
     + '<h3><span class="mdi mdi-restart"></span>Testing</h3><p>Reset all saved progress (XP, Stars, unlocked assets, completed lessons) to try the app from scratch.</p>'

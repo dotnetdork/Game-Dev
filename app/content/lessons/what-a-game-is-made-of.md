@@ -203,14 +203,14 @@ reason the AI in this app is *checked* before it's trusted — inventing a pictu
 was the number one way it used to break people's games.
 
 Right now every game in the room has the same little hero in it. Time to fix that. You have been
-carrying **250 Stars** since you started, and the **Store** in the top bar is where they go.
+carrying **400 Stars** since you started, and the **Store** in the top bar is where they go.
 
 ```yourturn
 title: Make the player yours
 task: Buy a set of characters with the Stars you already have, pick the one you like, and put it in your game by name.
 steps:
   - Open the **Store** from the top bar. The number with the star beside it is what you have to spend.
-  - Find **Pixel Platformer characters** (150 ★) and buy it — the search box will find it. Twenty-seven characters, drawn at the same tiny size as your world.
+  - Press **Characters** at the top of the Store and find **Pixel Platformer characters** (130 ★). Click it to see all twenty-seven — drawn at the same tiny size as your world — and unlock the set.
   - Back on the **Code** tab, press **+** on the **assets** folder and pick your favourite. It joins your project, and the message at the bottom tells you its full name — something like `pixel-platformer_chr_tile_0004`.
   - "Open `player.js` and find `'1bit-platformer_tile_0340'` inside `createPlayer` — that is the picture your player is made from. Select it, quotes and all, then click your new character in the assets folder and press **Insert into code**. Or just type the name in its place."
   - Press **Play**. If the player vanishes, look in the console underneath — a name that does not match, letter for letter, is the usual reason.

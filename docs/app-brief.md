@@ -152,7 +152,7 @@ editor — the student writes code where they always have and the board watches.
 Everything is in `localStorage`, versioned, with real migrations:
 
 - **The project** (`SCHEMA.project: 3`) — `game.js`, `main.js`, `design.md`, any extra scripts.
-- **Progress** (`SCHEMA.progress: 2`) — XP, Stars (250 to start), which lessons are done, which
+- **Progress** (`SCHEMA.progress: 2`) — XP, Stars (400 to start; earned per lesson, practice step, lab and checkpoint, plus a module bonus), which lessons are done, which
   modules have paid out, unlocked assets, published games, per-activity answers, lab drafts,
   practice-rule results, badges, chat threads.
 

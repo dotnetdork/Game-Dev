@@ -238,11 +238,20 @@ function frameGroup(base) {
 }
 
 /* ---- prices ----
-   Deliberately reachable. A student earns Stars steadily, and a catalogue priced so that nothing is
-   affordable until week six is a catalogue nobody opens twice. Bundles cost more than one sprite and
-   far less than their contents, because that is the whole point of a bundle. */
-function priceOne(type) { return type === 'audio' ? 30 : 40; }
-function priceBundle(n) { return n <= 4 ? 60 : n <= 12 ? 90 : n <= 60 ? 150 : n <= 200 ? 220 : 300; }
+   Deliberately reachable. A student earns Stars for every lesson, practice step and lab (see STARS
+   in project.js — about 3,000 over the course from a 400 start), so a catalogue priced so nothing is
+   affordable until week six is a catalogue nobody opens twice.
+
+   A set costs more the more it holds, on a curve rather than a line: 30 + 6·n^0.85, to the nearest
+   ten. Four pieces → 50, a nine-frame character → 70, 27 → 130, 89 → 300, 223 → 620, the 400-tile
+   set → 1,000. Big sets cost real money without the biggest one costing eight thousand. And a set is
+   never dearer than its pieces bought one at a time — a two-piece set is 40, not 50 — because a
+   "set" that costs more than its contents is a trick, and children notice. */
+function priceOne(type) { return type === 'audio' ? 15 : 20; }
+function priceBundle(n) {
+  const curve = Math.max(50, Math.round((30 + 6 * Math.pow(n, 0.85)) / 10) * 10);
+  return Math.min(curve, n * priceOne('image'));
+}
 
 /* The sprites a student starts with. EVERYTHING THE STARTER GAME TOUCHES MUST BE IN HERE, or a new
    student's first game opens with missing textures.
@@ -374,7 +383,10 @@ if (fs.existsSync(LEGACY)) {
     seenKeys.add(a.key);
     if (a.free) { /* the starter's own sprites: a card each, marked Included */ }
     else if (a.type === 'audio') { a.cost = priceOne('audio'); }      // sounds stay loose, one price
-    else { a.cost = 0; a.bundle = setBundleId('classic', a.cat); (byCat[a.cat] = byCat[a.cat] || []).push(a); }
+    /* A member carries the price of buying it ALONE, from inside the set's preview. The set is
+       still the only card in the grid; storeSellable() hides members because they have a bundle,
+       not because they have no price. */
+    else { a.cost = priceOne(a.type); a.bundle = setBundleId('classic', a.cat); (byCat[a.cat] = byCat[a.cat] || []).push(a); }
     assets.push(a);
   });
   Object.keys(byCat).sort().forEach(function (cat) {
@@ -464,7 +476,7 @@ PACKS.forEach(function (pack) {
         /* The pack name is used verbatim — running it through pretty() turned "1-Bit Platformer"
            into "1 Bit Platformer", so a student searching the Store for "1-bit" found nothing. */
         addAsset({ id: m.key, key: m.key, name: pack.name + ' ' + pretty(m.base), cat: g.cat,
-          pack: pack.slug, style: pack.style, cost: 0, bundle: bid, free: free || undefined,
+          pack: pack.slug, style: pack.style, cost: free ? 0 : priceOne(m.type), bundle: bid, free: free || undefined,
           hint: hintFor(g.cat, m.type, m.key), desc: DESC[g.cat], type: m.type, file: m.file });
         packCount++;
       });
@@ -525,7 +537,7 @@ PACKS.forEach(function (pack) {
         if (mem.length < 2) {
           const m = mem[0];
           const a = addAsset({ id: m.key, key: m.key, name: pretty(m.base), cat: g.cat, pack: pack.slug,
-            style: pack.style, cost: 0, bundle: setBundleId(pack.slug, g.cat),
+            style: pack.style, cost: priceOne(m.type), bundle: setBundleId(pack.slug, g.cat),
             hint: hintFor(g.cat, m.type, m.key), desc: DESC[g.cat], type: m.type, file: m.file });
           if (a) (catBuckets[g.cat] = catBuckets[g.cat] || []).push(a);
           packCount++;
@@ -534,7 +546,7 @@ PACKS.forEach(function (pack) {
         const bid = 'chr_' + pack.slug + '_' + gname;
         mem.forEach(function (m) {
           addAsset({ id: m.key, key: m.key, name: pretty(m.base), cat: g.cat, pack: pack.slug,
-            style: pack.style, cost: 0, bundle: bid,
+            style: pack.style, cost: priceOne(m.type), bundle: bid,
             hint: hintFor(g.cat, m.type, m.key), desc: DESC[g.cat], type: m.type, file: m.file });
           packCount++;
         });
@@ -563,7 +575,7 @@ PACKS.forEach(function (pack) {
         }
         const bid = g.theme ? 'theme_' + pack.slug + '_' + g.theme.toLowerCase() : setBundleId(pack.slug, cat);
         const a = addAsset({ id: m.key, key: m.key, name: pretty(m.base), cat: cat, pack: pack.slug,
-          style: pack.style, cost: 0, bundle: bid, free: free || undefined,
+          style: pack.style, cost: free ? 0 : priceOne(m.type), bundle: bid, free: free || undefined,
           hint: hintFor(cat, m.type, m.key), desc: DESC[cat], type: m.type, file: m.file });
         packCount++;
         if (!a) return;

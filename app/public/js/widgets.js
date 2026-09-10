@@ -1736,6 +1736,13 @@ function renderChallengeCells(root) {
         if (lab.previewing) return;
         clearTimeout(lab.settleTimer);
         lab.attemptOpen = false; lab.running = false; lab.error = ''; lab.settled = false;
+        /* Stars for solving it, the first time, without having read the answer. `solved` comes
+           back from storage as activityDone(), so a solved lab re-run after a reload pays nothing
+           twice; and a revealed one still completes - it just does not pay. */
+        if (!lab.solved && !lab.revealed) {
+          awardStars(STARS.lab);
+          toast('Lab solved  +' + STARS.lab + ' ★');
+        }
         lab.solved = true;
         if (lab.ui) lab.code = lab.ui.read();
         labSave(lab, { code: lab.code });
@@ -1889,7 +1896,10 @@ function renderYourTurnCells(root) {
          anything starts moving them along. */
       if (c.reward && awardBadge(c.reward, lessonId)) {
         paintReward();
-        toast('Badge earned: ' + c.reward);
+        /* Paid once, on the badge: awardBadge answers false the second time, so a practice step
+           checked again after a reset cannot be farmed. */
+        awardStars(STARS.practice);
+        toast('Badge earned: ' + c.reward + '  +' + STARS.practice + ' ★');
       }
       resolveActivity(key);
     }
@@ -2390,9 +2400,13 @@ function completeLesson() {
   const factor = lessonXpFactor(f.id);
   const earned = Math.max(1, Math.round(f.l.xp * factor));
   awardXp(earned);
-  toast(factor < 1
-    ? 'Lesson complete!  +' + earned + ' XP  (half, because you read the answer)'
-    : 'Lesson complete!  +' + earned + ' XP');
+  /* A checkpoint pays more than a lesson because it is the lesson about their own game, and the
+     one a student is most likely to leave for later. Not halved by a revealed answer: the Stars are
+     for finishing, the XP is for how. */
+  const stars = f.l.cp ? STARS.checkpoint : STARS.lesson;
+  awardStars(stars);
+  toast((f.l.cp ? 'Checkpoint complete!' : 'Lesson complete!') + '  +' + earned + ' XP  +' + stars + ' ★'
+    + (factor < 1 ? '  (XP halved, because you read the answer)' : ''));
   /* Ask the module which lessons it contains rather than rebuilding their key names out of f.mi
      and a counter. The arithmetic version was reading seat numbers: reorder the course and it asks
      about whatever now sits in those seats instead of about this module's lessons. */
