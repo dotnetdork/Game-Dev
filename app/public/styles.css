@@ -23,7 +23,11 @@
      centre column's rule ran five pixels above the two beside it on every page with a dock. One
      value, so a panel added later cannot drift either. */
   --band:44px;
-  --labband:50px;}
+  --labband:50px;
+  /* How much of the Code view a build checkpoint's rail takes when DEV.buildRail is on. Wide enough
+     for the coach to say two sentences without the editor dropping below a usable width: at 1366
+     the code keeps 766px. */
+  --railw:340px;}
 :focus-visible{outline:2px solid var(--focus);outline-offset:2px;border-radius:4px;}
 *{box-sizing:border-box;}
 button{font:inherit;color:inherit;}
@@ -160,6 +164,20 @@ body[data-tier="narrow"] .editor{--leftw:0px;--rightw:0px;}
 body[data-tier="mid"] .dock.right{--floatw:min(340px,86vw);}
 body[data-tier="narrow"] .dock.right{--floatw:min(340px,86vw);}
 body[data-tier="narrow"] .dock.left{--floatw:min(300px,84vw);}
+
+/* ---- collapsing has to out-rank the tier ----
+   The two rules that hide a dock set the same custom properties the tier rules above do, and lost
+   to them on specificity: `body[data-tier="mid"] .editor` is (0,2,1) and a bare
+   `.editor.outline-hidden` is (0,2,0). So between 1180px and 1439px — a 1366 Chromebook, which is
+   the whole target audience — collapsing the outline hid its HEADER and nothing else: the 260px
+   column and every lesson row stayed on screen, and the "show the outline" button appeared next to
+   the outline it was offering to show. Above 1440 there is no tier rule for --leftw, so the same
+   click worked properly, which is why it looked like a wide-screen feature rather than a bug.
+   Naming the attribute here makes these (0,3,1) and settles it by specificity rather than by
+   source order. The bare rules stay above as the fallback for a first paint before the tier is
+   stamped onto <body>. */
+body[data-tier] .editor.outline-hidden{--leftw:0px;}
+body[data-tier] .editor.ai-hidden{--rightw:0px;}
 
 /* Hiding the outline mirrors hiding the assistant exactly: a chevron in the panel's own header
    sends it away, and a button outside brings it back. The chevron points the way the panel goes —
@@ -533,6 +551,42 @@ body[data-tier="narrow"] .dock.left{--floatw:min(300px,84vw);}
    `.lesson` on the preview borrows the typography students already read lessons in. */
 .editor-wrap{position:absolute;inset:0;}
 .editor-wrap[hidden]{display:none;}
+/* ---- a build checkpoint as a rail beside the editor (DEV.buildRail) ----
+   The whole argument for this shape is that the editor stays visible, so the rail takes width off
+   the code rather than covering it: everything that fills the view gets a right inset instead of
+   the rail being laid on top. The board overlay is untouched and still exists — see zEl() in
+   js/zone.js for how one set of functions paints both. */
+#view-code.with-rail > .editor-wrap,
+#view-code.with-rail > .doc-preview{right:var(--railw);}
+#view-code.with-rail > .review-bar,
+#view-code.with-rail > .doc-bar{margin-right:var(--railw);}
+.build-rail{position:absolute;right:0;top:0;bottom:0;width:var(--railw);z-index:40;
+  display:flex;flex-direction:column;min-height:0;
+  background:var(--panel);border-left:1px solid var(--line);}
+.build-rail[hidden]{display:none;}
+.br-head{display:flex;align-items:center;gap:8px;padding:0 8px 0 13px;min-height:var(--labband);
+  flex:none;border-bottom:1px solid var(--line);}
+.br-title{font-weight:700;font-size:13.5px;color:var(--ink);flex:1;min-width:0;
+  overflow:hidden;text-overflow:ellipsis;white-space:nowrap;}
+.br-close{background:none;border:none;color:var(--dim);cursor:pointer;padding:4px;border-radius:6px;
+  display:flex;align-items:center;font-size:16px;}
+.br-close:hover{color:var(--ink);background:var(--panel2);}
+.br-close:focus-visible{outline:2px solid var(--focus);outline-offset:1px;}
+/* The chips wrap down the rail instead of scrolling sideways: in a 340px column a horizontal
+   scroller hides the objectives that have not happened yet, and seeing what is coming is the point
+   of a chain. */
+.build-rail .zone-goals{flex-wrap:wrap;overflow-x:visible;padding:10px 12px;
+  border-bottom:1px solid var(--line);}
+/* The lane is a floating overlay on the board and a plain column here, so the two things that make
+   it float — the pointer-events dance and the shadowed, rounded bubbles — are undone. Sitting on a
+   panel, a drop shadow under every message reads as clutter rather than as depth. */
+.build-rail .zone-lane{flex:1;min-height:0;padding:12px;gap:9px;pointer-events:auto;}
+.build-rail .zone-lane:empty{display:flex;}
+.build-rail .zone-bubble{max-width:100%;box-shadow:none;}
+.build-rail .zone-quest,.build-rail .zone-offer{box-shadow:none;}
+.build-rail .zone-chat{margin:0 12px 12px;box-shadow:none;}
+.build-rail .zone-foot{flex-wrap:wrap;row-gap:9px;padding:10px 12px;border-top:1px solid var(--line);}
+.build-rail .zone-done{width:100%;}
 .doc-bar{position:absolute;right:12px;top:10px;z-index:6;display:flex;gap:2px;
   background:var(--panel);border:1px solid var(--line);border-radius:9px;padding:3px;}
 .doc-bar[hidden]{display:none;}
