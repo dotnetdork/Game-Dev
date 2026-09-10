@@ -179,6 +179,15 @@ body[data-tier="narrow"] .dock.left{--floatw:min(300px,84vw);}
 body[data-tier] .editor.outline-hidden{--leftw:0px;}
 body[data-tier] .editor.ai-hidden{--rightw:0px;}
 
+/* The Design tab takes the whole width. The board is the workspace, not a panel beside one, and a
+   course outline down the side of it is the same mistake the console and the Inspector were: a
+   thing from another tab, on screen because it always has been. Kept separate from `outline-hidden`
+   so it cannot disturb the student's own collapse choice — they get their outline back exactly as
+   they left it the moment they leave this tab. Same specificity trick as the two rules above, and
+   for the same reason: the tier rules also set --leftw. */
+.editor.no-dock{--leftw:0px;}
+body[data-tier] .editor.no-dock{--leftw:0px;}
+
 /* Hiding the outline mirrors hiding the assistant exactly: a chevron in the panel's own header
    sends it away, and a button outside brings it back. The chevron points the way the panel goes —
    the assistant's points right because it leaves to the right, so this one is flipped. */

@@ -99,7 +99,11 @@ function outlineShowing() {
 function paintOutlineBtn() {
   const b = $('outlineBtn'); if (!b) return;
   const on = outlineShowing();
-  b.hidden = on;
+  /* Not on Design. That tab hides the dock on purpose, so a button offering to bring it back would
+     be undoing the layout rather than restoring something the student put away — and at a narrow
+     width it is the only way to slide the panel over the board, which is the thing being avoided. */
+  const noDock = $('editor') && $('editor').classList.contains('no-dock');
+  b.hidden = on || noDock;
   b.setAttribute('aria-expanded', on ? 'true' : 'false');
   const what = $('leftTitle') ? $('leftTitle').textContent.toLowerCase() : 'outline';
   b.title = 'Show the ' + what;

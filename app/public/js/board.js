@@ -856,7 +856,13 @@ function showBoard() {
   theBoard.sheet = sheetRead();
   paintPalette(theBoard);
   paintBoard(theBoard);
-  if (!theBoard.placed) { boardHome(theBoard); theBoard.placed = true; }
+  /* Re-centre when the pane is a different size from the last time we did, and not otherwise.
+     Not once-only: this tab hides the course outline, so the very first show happens as the pane
+     grows by the width of a dock, and a board centred against the old width sits 130px off. Not
+     every time either — that would drag the board back to the middle every time the student came
+     back from the Code tab, throwing away wherever they had panned to. */
+  const w = Math.round($('boardCanvasWrap').getBoundingClientRect().width);
+  if (theBoard.homedAt !== w) { boardHome(theBoard); theBoard.homedAt = w; }
 }
 
 /* ---------- wiring, once, at load ---------- */

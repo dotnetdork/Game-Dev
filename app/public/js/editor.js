@@ -175,6 +175,9 @@ function switchView(view) {
      art and sound, which is exactly the distinction Unreal's name draws. */
   const titleFor = { learn: 'Course Outline', design: 'Course Outline', code: 'Content Browser', play: 'Inspector' };
   ['panel-outline', 'panel-files', 'panel-info'].forEach(function (p) { $(p).hidden = (p !== panelFor[view]); });
+  /* Design gets the whole width — see .editor.no-dock. A class rather than collapsing the outline,
+     so the student's own collapse choice is untouched and comes back with them. */
+  $('editor').classList.toggle('no-dock', view === 'design');
   $('leftTitle').textContent = titleFor[view];
   /* The transport rides in this bar but belongs to the Game view, so it is only on screen there.
      Whether the game is RUNNING is still nothing to do with which tab you are on — that is the whole
@@ -196,7 +199,8 @@ function switchView(view) {
     /* The glyph follows the panel too. It was always the book, so on the Code tab a button that
        opens the file tree was drawn as a lesson — the picture said one thing and the tooltip
        underneath it said another. Sliders for the Inspector, matching what that panel now is. */
-    const iconFor = { learn: 'mdi-book-open-page-variant', code: 'mdi-file-tree', play: 'mdi-tune-variant' };
+    const iconFor = { learn: 'mdi-book-open-page-variant', design: 'mdi-book-open-page-variant',
+      code: 'mdi-file-tree', play: 'mdi-tune-variant' };
     const g = ob.querySelector('.mdi');
     if (g) g.className = 'mdi ' + iconFor[view];
     // One owner for the title, since it also has to say whether the panel is currently showing.
