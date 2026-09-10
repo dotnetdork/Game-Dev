@@ -16,6 +16,21 @@
   "engines": {
     "node": ">=18"
   },
+  "//overrides": [
+    "qs is the query-string parser Express hands every request to. Everything up to 6.15.3 has a",
+    "denial of service an attacker can trigger from a URL (GHSA-4mjr-xmp4-gh2g, GHSA-x5fp-wj9c-mxmx,",
+    "GHSA-q8mj-m7cp-5q26), and 6.16.0 is the fix. Express 4 pins ~6.14.0, so npm resolves a",
+    "vulnerable copy under node_modules/express no matter how often `npm audit fix` is run - it",
+    "reports a fix is available and then cannot apply one. The only other route npm offers is",
+    "`--force`, which upgrades Express to 5 and is a breaking change to a working server.",
+    "So the version is forced here instead. qs 6.14 -> 6.16 is a patch to parsing limits; Express",
+    "calls qs.parse for req.query and nothing else, and check-boot.js drives the real server with",
+    "the real Express, so `npm test` is a genuine check that this still works.",
+    "Revisit when Express 4 widens its own range, and delete this then."
+  ],
+  "overrides": {
+    "qs": "^6.16.0"
+  },
   "dependencies": {
     "@modelcontextprotocol/sdk": "^1.30.0",
     "dotenv": "^16.4.5",
