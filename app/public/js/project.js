@@ -196,7 +196,15 @@ function loadProject() {
   return r.data;
 }
 let project = loadProject();
-function saveProject() { project.v = SCHEMA.project; Storage.writeJSON(PKEY, project); }
+/* Every route into the student's files ends here — the editor's save, an applied AI op, a new or
+   deleted file — which makes it the one honest place to tell an open build checkpoint that its
+   objectives might have just been met. zoneTick debounces and does nothing when no checkpoint is
+   open; see the header above it in zone.js. */
+function saveProject() {
+  project.v = SCHEMA.project;
+  Storage.writeJSON(PKEY, project);
+  if (typeof zoneTick === 'function') zoneTick();
+}
 function fileNames() { const out = project.order.filter(function (n) { return project.files[n] !== undefined; }); Object.keys(project.files).forEach(function (n) { if (out.indexOf(n) < 0) out.push(n); }); return out; }
 /* ---------- which files are code, and which are just writing ----------
    Every project file used to be JavaScript, and everything that walks the project assumed it: the
@@ -547,6 +555,25 @@ function practiceRuleResult(rule, snap) {
      that asks "have they written their core loop down" needs to be able to find it. */
   const allCode = function () { return codeFileNames().map(readFile).join('\n'); };
   const allFiles = function () { return fileNames().map(readFile).join('\n'); };
+
+  /* ---------- no baseline means nothing has changed yet ----------
+     Five of the rules below ask "is this DIFFERENT from when you started", and each one reads its
+     before out of `snap`. Handed no snapshot they each fall back to an empty string, and an empty
+     string makes EVERYTHING look like the student's work: every CONFIG number differs from a
+     number that was never recorded, every function in the starter counts as newly added, every
+     file counts as edited.
+
+     That is not hypothetical. A checkpoint door asks whether each objective is done in order to
+     draw its ticks, and it has no snapshot to ask with — so every build checkpoint greeted the
+     student with "3 of 4 already done" and three green ticks before they had opened it once.
+
+     The honest reading of "different from when you started" with no record of the start is "no".
+     Listed by name rather than caught by a default so that a new comparison rule shows up here as
+     an omission instead of quietly inheriting the bug. */
+  if (!snap && (rule.config_changed || rule.function_added || rule.file_changed || rule.new_file
+      || typeof rule.changed_at_least === 'number')) {
+    return { ok: false, why: 'you have not started this one yet' };
+  }
 
   if (rule.contains) {
     const f = rule.contains.file, t = String(rule.contains.text || '');
