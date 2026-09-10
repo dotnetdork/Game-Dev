@@ -45,8 +45,17 @@
  *      tile pack is meant to be used anyway — and every tile inside is usable by key once owned.
  *
  *   mode 'individual' — packs whose filenames are already words. `grassHillLeft`, `coinGold`,
- *      `doorKnob`. These are listed one by one AND, where the pack has clear themes, offered as a
- *      themed set as well, so a child can buy the one tile they need or the whole snow set.
+ *      `doorKnob`. These used to be listed one by one, 1,295 of them, and the Store was a haystack:
+ *      a child looking for "a platform" scrolled past two hundred cards that were each one tile.
+ *      Now NOTHING that belongs to a pack is sold on its own. An individual group becomes one set
+ *      per pack and category — "New Platformer tiles", "Fish enemies" — and where a pack has
+ *      themes (the ten terrains) the theme is the set. Every piece inside is still usable by its
+ *      own name once the set is owned; what changed is how many cards it takes to find it.
+ *
+ *      Two exceptions. A piece that is FREE keeps a card of its own, marked "Included", so a student
+ *      can find out what their player is called. And SOUNDS are never bundled: a character needs
+ *      every one of its frames, but a sound is used one at a time — a student wants the jump sound,
+ *      not thirty sounds — so each is sold alone, with a play button, for the price of one.
  *
  * ---------------------------------------------------------------------------------------------
  * LICENCE
@@ -271,6 +280,61 @@ const DESC = {
   Sounds: 'A sound effect - play it when something happens in your game.'
 };
 
+/* ---- what a SET is for, in words a student can act on ----
+   A set's description used to say what it contained ("every tile in this set — 400 of them"). What
+   a twelve-year-old needs to know is what to DO with it, and where in their game that goes: the
+   starter is split into files with one job each, so the honest instruction names the file and the
+   function. `KEY` stands for whichever piece they pick — the preview shows every name. */
+const USE = {
+  Tiles: 'ground, walls, platforms and decorations that line up with each other. Buy the set, press + on '
+    + 'the assets folder to add the pieces you want, then place one with this.add.image(x, y, \'KEY\'). '
+    + 'For a platform the player can stand on, use ground.create(x, y, \'KEY\') in world.js.',
+  Backgrounds: 'backdrops and scenery. Put one behind everything with this.add.image(x, y, \'KEY\') as '
+    + 'the FIRST line of create(), so the rest of your game draws on top of it.',
+  Collectibles: 'things to pick up. Add one the way coins.js does — coins.create(x, y, \'KEY\') — and '
+    + 'the player can collect it straight away.',
+  Enemies: 'enemies and hazards. Add one with this.physics.add.sprite(x, y, \'KEY\') in create(), give '
+    + 'it a setVelocityX, and add a collider with the player so it can get in the way.',
+  Characters: 'characters. Use one as your player: in player.js, swap the name inside createPlayer for '
+    + 'its key. Poses like walk and jump are for animating it, which Asset Design teaches.',
+  UI: 'buttons, bars and icons for the screen. Draw one with this.add.image(x, y, \'KEY\').setScrollFactor(0) '
+    + 'so it stays put while the world moves.',
+  Sounds: 'sound effects. Play one with this.sound.play(\'KEY\') the moment something happens — a jump, '
+    + 'a coin, a hit. Press play on any of them in the preview to hear it first.'
+};
+function useFor(cat) { return USE[cat] || USE.Tiles; }
+/* One set per pack and category. "New Platformer tiles", "Fish enemies", "Classic sounds". */
+function setBundleId(slug, cat) { return 'set_' + slug + '_' + cat.toLowerCase(); }
+/* "Fish enemies", "Classic sounds", "Medals UI". A pack whose own name already says the category —
+   "Aliens & Enemies" for enemies, "Background Elements" for backgrounds — is not made to say it
+   twice. UI stays capitalised because "Medals ui" is not a phrase. */
+function setBundleName(packName, cat) {
+  const base = packName.replace(/\s+Pack$/i, '').replace(/\s+—.*$/, '');
+  const word = cat === 'UI' ? 'UI' : cat.toLowerCase();
+  if (new RegExp(cat.replace(/s$/i, ''), 'i').test(base)) return base;
+  return base + ' ' + word;
+}
+function setDesc(n, packName, cat) {
+  return n + ' named ' + (n === 1 ? 'piece' : 'pieces') + ' from the ' + packName + ' pack: ' + useFor(cat);
+}
+function sheetSetDesc(n, sheetKey) {
+  return n + ' tiles, numbered rather than named, and the whole sheet joins your project when you buy it. '
+    + 'Use one with this.add.image(x, y, \'' + sheetKey + '\', 12) — the last number picks the tile, and the '
+    + 'preview shows which is which. Want a tile by its own name instead? Press + on the assets folder.';
+}
+function framesDesc(n, cat, poses) {
+  const thing = cat === 'Enemies' ? 'enemy' : 'character';
+  return n + ' pictures of one ' + thing + ' — ' + poses + '. They come together because you need all of '
+    + 'them to animate it. ' + (cat === 'Enemies'
+      ? 'Add it with this.physics.add.sprite(x, y, \'KEY\') in create(), give it a setVelocityX, and add a collider with the player.'
+      : 'Use the idle one as your player: in player.js, swap the name inside createPlayer for its key. The other poses are for animating it later.');
+}
+function themeDesc(n, theme) {
+  return n + ' ' + theme.toLowerCase() + ' tiles that line up with each other, so a whole world can be built '
+    + 'from them without the edges looking wrong. Buy the set, press + on the assets folder to add the pieces '
+    + 'you want, and build platforms with ground.create(x, y, \'KEY\') in world.js.';
+}
+
 /* ---- the assets that were already here ------------------------------------------------------
    The Store shipped with 265 sprites and sounds from Kenney packs that are NOT in the download
    folder — Platformer Art Deluxe, the UI pack, Digital Audio. They are carried forward verbatim
@@ -301,7 +365,26 @@ const seenKeys = new Set();
 
 if (fs.existsSync(LEGACY)) {
   const old = JSON.parse(fs.readFileSync(LEGACY, 'utf8'));
-  old.forEach(function (a) { seenKeys.add(a.key); assets.push(a); });
+  /* The Classic pack is a pack like any other now: one set per category, nothing sold alone except
+     the free starter sprites. The snapshot still carries each item's old price, and it is ignored
+     on purpose — a student who bought `coinSilver` for 60 Stars before this change still owns it,
+     because assetOwned() checks their own unlocked flag before it checks the bundle. */
+  const byCat = {};
+  old.forEach(function (a) {
+    seenKeys.add(a.key);
+    if (a.free) { /* the starter's own sprites: a card each, marked Included */ }
+    else if (a.type === 'audio') { a.cost = priceOne('audio'); }      // sounds stay loose, one price
+    else { a.cost = 0; a.bundle = setBundleId('classic', a.cat); (byCat[a.cat] = byCat[a.cat] || []).push(a); }
+    assets.push(a);
+  });
+  Object.keys(byCat).sort().forEach(function (cat) {
+    const mem = byCat[cat];
+    bundles.push({ id: setBundleId('classic', cat), name: setBundleName('Classic', cat), cat: cat,
+      pack: 'classic', style: 'smooth', cost: priceBundle(mem.length), count: mem.length,
+      desc: setDesc(mem.length, 'Classic', cat),
+      members: mem.map(function (m) { return m.key; }),
+      preview: spread(mem, 6).map(function (m) { return m.file; }) });
+  });
   packsOut.push({ id: 'classic', name: 'Classic', style: 'smooth', count: old.length });
   console.log('  ' + 'classic'.padEnd(18) + String(old.length).padStart(5) + ' sprites (carried forward)');
 } else {
@@ -351,6 +434,9 @@ PACKS.forEach(function (pack) {
   if (!fs.existsSync(packDir)) { console.error('MISSING  ' + pack.dir + ' — skipping this pack.'); return; }
   let packCount = 0;
   const themeBuckets = {};
+  /* Everything in this pack that is not a themed tile and not a multi-frame character lands in one
+     of these, by category, and becomes a set at the end. */
+  const catBuckets = {};
 
   pack.groups.forEach(function (g) {
     const srcDir = path.join(packDir, g.src.replace(/\//g, path.sep));
@@ -419,8 +505,8 @@ PACKS.forEach(function (pack) {
       }
       bundles.push({ id: bid, name: g.setName, cat: g.cat, pack: pack.slug, style: pack.style,
         cost: priceBundle(made.length), count: made.length, sheet: sheetKey || undefined,
-        desc: 'Every tile in this set — ' + made.length + ' of them. They are numbered, not named, so '
-          + 'the way to use them is to look at the sheet and pick the one you want.',
+        desc: sheetKey ? sheetSetDesc(made.length, sheetKey)
+          : made.length + ' tiles, numbered rather than named: ' + useFor(g.cat),
         members: made.map(function (m) { return m.key; }),
         preview: spread(made, 6).map(function (m) { return m.file; }) });
 
@@ -434,12 +520,14 @@ PACKS.forEach(function (pack) {
            up in the Store as a card that says "1 picture of the same character". These appear
            whenever a pack uses a pose word POSE has never heard of, which will keep happening as
            packs are added, so the shape of the fix is "handle it" rather than "guess every word".
-           Sold individually instead. */
+           It joins the pack's set for its category — a saw blade is one of the "New Platformer
+           enemies" — rather than getting a card of its own. */
         if (mem.length < 2) {
           const m = mem[0];
-          addAsset({ id: m.key, key: m.key, name: pretty(m.base), cat: g.cat, pack: pack.slug,
-            style: pack.style, cost: priceOne(m.type),
+          const a = addAsset({ id: m.key, key: m.key, name: pretty(m.base), cat: g.cat, pack: pack.slug,
+            style: pack.style, cost: 0, bundle: setBundleId(pack.slug, g.cat),
             hint: hintFor(g.cat, m.type, m.key), desc: DESC[g.cat], type: m.type, file: m.file });
+          if (a) (catBuckets[g.cat] = catBuckets[g.cat] || []).push(a);
           packCount++;
           return;
         }
@@ -452,34 +540,54 @@ PACKS.forEach(function (pack) {
         });
         bundles.push({ id: bid, name: pretty(gname), cat: g.cat, pack: pack.slug, style: pack.style,
           cost: priceBundle(mem.length), count: mem.length,
-          desc: mem.length + ' pictures of the same ' + (g.cat === 'Enemies' ? 'enemy' : 'character')
-            + ' — ' + mem.map(function (m) { return words(m.base).split(' ').slice(-1)[0]; }).join(', ')
-            + '. You need all of them to animate it, so they come together.',
+          desc: framesDesc(mem.length, g.cat,
+            mem.map(function (m) { return words(m.base).split(' ').slice(-1)[0]; }).join(', ')),
           members: mem.map(function (m) { return m.key; }),
           preview: spread(mem, 6).map(function (m) { return m.file; }) });
       });
 
     } else {
+      /* Named pieces. Each belongs to exactly one set: its theme if the group has one, otherwise
+         the pack's set for its category. Free pieces carry the flag AND the bundle, so they stay
+         usable on their own and still show up inside the set's preview. */
       made.forEach(function (m) {
         const cat = g.cat === 'auto' ? autoCat(m.base, 'Tiles') : g.cat;
         const free = FREE.has(m.key);
-        addAsset({ id: m.key, key: m.key, name: pretty(m.base), cat: cat, pack: pack.slug,
-          style: pack.style, cost: free ? 0 : priceOne(m.type), free: free || undefined,
+        /* A sound is used one at a time, so it is sold one at a time. */
+        if (m.type === 'audio') {
+          addAsset({ id: m.key, key: m.key, name: pretty(m.base), cat: cat, pack: pack.slug,
+            style: pack.style, cost: free ? 0 : priceOne(m.type), free: free || undefined,
+            hint: hintFor(cat, m.type, m.key), desc: DESC[cat], type: m.type, file: m.file });
+          packCount++;
+          return;
+        }
+        const bid = g.theme ? 'theme_' + pack.slug + '_' + g.theme.toLowerCase() : setBundleId(pack.slug, cat);
+        const a = addAsset({ id: m.key, key: m.key, name: pretty(m.base), cat: cat, pack: pack.slug,
+          style: pack.style, cost: 0, bundle: bid, free: free || undefined,
           hint: hintFor(cat, m.type, m.key), desc: DESC[cat], type: m.type, file: m.file });
         packCount++;
-        if (g.theme) (themeBuckets[g.theme] = themeBuckets[g.theme] || []).push(m);
+        if (!a) return;
+        if (g.theme) (themeBuckets[g.theme] = themeBuckets[g.theme] || []).push(a);
+        else (catBuckets[cat] = catBuckets[cat] || []).push(a);
       });
     }
   });
 
-  /* Themed sets sit alongside the individual tiles rather than replacing them: buy one snow tile,
-     or buy snow. */
+  /* A theme IS the set: buy snow, and every snow tile is yours by name. */
   Object.keys(themeBuckets).sort().forEach(function (theme) {
     const mem = themeBuckets[theme];
     bundles.push({ id: 'theme_' + pack.slug + '_' + theme.toLowerCase(), name: theme + ' terrain',
       cat: 'Tiles', pack: pack.slug, style: pack.style, cost: priceBundle(mem.length), count: mem.length,
-      desc: 'The whole ' + theme.toLowerCase() + ' set — ' + mem.length + ' tiles that line up with '
-        + 'each other, so you can build a world out of them without the edges looking wrong.',
+      desc: themeDesc(mem.length, theme),
+      members: mem.map(function (m) { return m.key; }),
+      preview: spread(mem, 6).map(function (m) { return m.file; }) });
+  });
+  /* And everything else in the pack, one set per category. */
+  Object.keys(catBuckets).sort().forEach(function (cat) {
+    const mem = catBuckets[cat];
+    bundles.push({ id: setBundleId(pack.slug, cat), name: setBundleName(pack.name, cat), cat: cat,
+      pack: pack.slug, style: pack.style, cost: priceBundle(mem.length), count: mem.length,
+      desc: setDesc(mem.length, pack.name, cat),
       members: mem.map(function (m) { return m.key; }),
       preview: spread(mem, 6).map(function (m) { return m.file; }) });
   });
@@ -544,11 +652,16 @@ if (!DRY) {
   fs.writeFileSync(path.join(OUT_DIR, 'CREDITS.txt'), credits);
 }
 
-const indiv = assets.filter(function (a) { return !a.bundle; }).length;
-const inBundle = assets.length - indiv;
+const inBundle = assets.filter(function (a) { return a.bundle; }).length;
+const freeOnes = assets.filter(function (a) { return a.free; }).length;
+/* Free pieces stand alone (the Classic starter sprites do), and so does every sound. Any OTHER piece
+   outside a set is one nobody can ever buy, which is the bug this line exists to catch. */
+const sounds = assets.filter(function (a) { return a.type === 'audio' && !a.free; }).length;
+const stray = assets.filter(function (a) { return !a.bundle && !a.free && a.type !== 'audio'; }).length;
 console.log('');
 console.log(assets.length + ' sprites from ' + packsOut.length + ' packs');
-console.log('  ' + indiv + ' sold individually, ' + inBundle + ' inside ' + bundles.length + ' bundles');
+console.log('  ' + inBundle + ' inside ' + bundles.length + ' sets, ' + sounds + ' sounds sold singly, ' + freeOnes + ' free'
+  + (stray ? ', ' + stray + ' OUTSIDE ANY SET — nobody can buy those; every pack picture must belong to a set' : ''));
 /* --bundles prints what got grouped with what. Worth looking at after touching POSE or frameGroup:
    a bad strip silently welds two different characters into one bundle, and the only symptom is a
    Store card with fourteen frames of what should have been two things. */

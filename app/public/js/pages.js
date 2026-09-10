@@ -67,10 +67,7 @@ const CAT_STYLE = {
    with a button for more. */
 const STORE_PAGE = 120;
 let storeFilter = 'All';
-let storePack = 'All';
-let storeQuery = '';
 let storeShown = STORE_PAGE;
-let storeOpenBundle = null;      // a bundle whose contents are expanded inline
 function storeArt(a) {
   const st = CAT_STYLE[a.cat] || { col: '#2b6cb0', mdi: 'mdi-cube' };
   const bg = 'background:linear-gradient(135deg,' + st.col + ',#0b1a2e)';
@@ -87,18 +84,10 @@ function storeArt(a) {
   return '<div class="art' + pixel + '" style="' + bg + '"><img src="' + a.file + '" alt="' + a.name
     + '" loading="lazy" decoding="async"></div>';
 }
-/* Hyphens, underscores and spaces are all flattened away on both sides, so "1-bit", "1 bit" and
-   "1bit" find the same things. A child typing a pack name into a search box should not have to
-   guess which of the three the catalogue happened to use — and this catalogue uses all three. */
-function loose(s) { return String(s || '').toLowerCase().replace(/[\s_-]+/g, ''); }
-function matchesQuery(o) {
-  if (!storeQuery) return true;
-  const q = loose(storeQuery);
-  if (!q) return true;
-  return loose(o.name).indexOf(q) >= 0
-    || loose(o.key || o.id).indexOf(q) >= 0
-    || loose(o.cat).indexOf(q) >= 0;
-}
+/* There is no search box. There was one, and with 3,000 loose items it was the only way through;
+   with ~100 sets and a category row it was a second way of doing what the chips already do, and
+   typing "1-bit" into it and getting nothing (the catalogue spells it three ways) was worse than no
+   box at all. */
 /* A bundle's members are not sold one at a time, so listing them as cards would be 1,686 buttons
    that cannot be pressed. They are reachable through the bundle instead — and once it is owned, the
    card expands to show every key, which is the only way to find `tile_0173` in a set of 400.
@@ -117,37 +106,79 @@ function buyButton(o, kind) {
   if (state.unlocked[o.id]) return '<span class="owned"><span class="mdi mdi-check-decagram"></span>Owned</span>';
   return '<button class="gbtn" data-' + kind + '="' + o.id + '"><span class="mdi mdi-cart-outline"></span>Buy</button>';
 }
+/* The card shows the first sentence's worth; the whole how-to lives in the preview, where there is
+   room for it and a grid of the pieces it is talking about. */
+function shortDesc(b) {
+  const d = String(b.desc || '');
+  return d.length > 118 ? d.slice(0, 115).replace(/\s+\S*$/, '') + '…' : d;
+}
 function bundleCard(b) {
-  const owned = b.free || !!state.unlocked[b.id];
-  const open = storeOpenBundle === b.id;
   const strip = b.preview.map(function (f) {
     return '<img src="' + f + '" alt="" loading="lazy" decoding="async">';
   }).join('');
-  /* Owned bundles can be opened to reveal the keys. Numbered tiles are unusable otherwise: a
-     student who owns 400 of them still has to be able to find out that the ladder is tile_0089. */
-  const contents = open
-    ? '<div class="bundle-keys">' + b.members.map(function (k) {
-        const m = assetByKey[k]; if (!m) return '';
-        return '<button class="bk" data-key="' + k + '" title="' + k + '">'
-          + (m.type === 'audio' ? '<span class="mdi mdi-volume-high"></span>'
-             : '<img src="' + m.file + '" alt="" loading="lazy" decoding="async">')
-          + '<span>' + k + '</span></button>';
-      }).join('') + '</div>'
-    : '';
   /* Pixel and 1-bit tiles are 16px square. Left at natural size in a 130px strip they read as
      nothing at all, so the strip scales them up and turns off smoothing — a blurred 16px tile is
      worse than a small one. */
   const px = (b.style === 'pixel' || b.style === '1-bit') ? ' pixel' : '';
-  return '<div class="gcard bundle' + (open ? ' open' : '') + '">'
+  /* The whole card opens the preview — four pictures of a set are a promise of the rest, and the
+     rest is what a student clicks a picture to see. The Buy button keeps its own job. The card is
+     focusable and Enter opens it, so a keyboard gets the same door without a second button saying
+     "see all" next to a picture that already means it. */
+  return '<div class="gcard bundle" data-card="' + b.id + '" tabindex="0" aria-label="' + esc(b.name) + ' — see every piece">'
     + '<div class="art strip' + px + '">' + strip + '<span class="bcount">' + b.count + '</span></div>'
     + '<div class="body"><h3>' + b.name + '</h3>'
     + '<div class="tags"><span class="chip">' + b.cat + '</span><span class="chip set">'
     + b.count + ' pieces</span></div>'
-    + '<p class="use">' + b.desc + '</p>'
-    + '<div class="cta">' + priceTag(b) + buyButton(b, 'bundle')
-    + (owned ? '<button class="gbtn ghost" data-openb="' + b.id + '">'
-        + (open ? 'Hide the names' : 'Show the names') + '</button>' : '')
-    + '</div>' + contents + '</div></div>';
+    + '<p class="use">' + esc(shortDesc(b)) + '</p>'
+    + '<div class="cta">' + priceTag(b) + buyButton(b, 'bundle') + '</div></div></div>';
+}
+/* One real line of code for this set, using its own names — the sheet if it has one, otherwise the
+   first piece's hint. A description that says `KEY` is a template; this is the example. */
+function bundleUseLine(b) {
+  if (b.sheet) return "this.add.image(x, y, '" + b.sheet + "', 12)";
+  const first = assetByKey[(b.members || [])[0]];
+  return first ? first.hint : '';
+}
+/* ---- the preview ----
+   Every piece in the set, the full how-to, and the price, in the one big window a student already
+   knows (the badge case). It replaces two things: the inline "show the names" expansion, which only
+   owners could open, and the mystery of what is behind six sample pictures. Pieces copy their name
+   on click, because the next thing anyone does with `tile_0173` is type it, and that is exactly the
+   kind of thing that gets mistyped. Sounds play as well, so a set of sounds can be heard before it
+   is bought. */
+function showBundlePreview(id) {
+  const b = bundleById[id]; if (!b) return;
+  const owned = b.free || !!state.unlocked[b.id];
+  const px = (b.style === 'pixel' || b.style === '1-bit') ? ' pixel' : '';
+  const grid = (b.members || []).map(function (k) {
+    const m = assetByKey[k]; if (!m) return '';
+    const short = k.indexOf(b.pack + '_') === 0 ? k.slice(b.pack.length + 1) : k;
+    return '<button type="button" class="bk" data-pkey="' + k + '" title="' + k + '">'
+      + (m.type === 'audio' ? '<span class="mdi mdi-volume-high" aria-hidden="true"></span>'
+         : '<img src="' + m.file + '" alt="' + esc(m.name) + '" loading="lazy" decoding="async">')
+      + '<span>' + esc(short) + '</span></button>';
+  }).join('');
+  const html = '<div class="bp">'
+    + '<div class="bp-head"><span class="chip">' + b.cat + '</span><span class="chip set">' + b.count + ' pieces</span>'
+    + (owned ? '<span class="owned"><span class="mdi mdi-check-decagram"></span>' + (b.free ? 'Included' : 'Owned') + '</span>' : priceTag(b))
+    + '</div>'
+    + '<p class="bp-use">' + esc(b.desc) + '</p>'
+    + '<p class="bp-code">In your code: <code>' + esc(bundleUseLine(b)) + '</code></p>'
+    + (b.sheet ? '<p class="bp-code">The whole set as one picture: <code>' + esc(b.sheet) + '</code> — the last number picks the piece, counting from 0 at the top left.</p>' : '')
+    + '<p class="bp-hint">' + (owned ? 'Click a piece to copy its name.' : 'Every piece below is yours to use by name once the set is unlocked.')
+    + (b.members.some(function (k) { return (assetByKey[k] || {}).type === 'audio'; }) ? ' Click a sound to hear it.' : '') + '</p>'
+    + '<div class="bp-grid' + px + '">' + grid + '</div></div>';
+  modal({ title: b.name, html: html, wide: true,
+    okLabel: owned ? 'Close' : 'Unlock for ★ ' + b.cost, hideCancel: owned,
+    onOk: owned ? null : function () { unlockBundle(b); } });
+  /* Wired after modal() has put the markup on the page. */
+  document.querySelectorAll('#modalBack [data-pkey]').forEach(function (el) {
+    el.addEventListener('click', function () {
+      const k = el.getAttribute('data-pkey'), a = assetByKey[k];
+      if (a && a.type === 'audio') { try { new Audio('/' + a.file).play(); } catch (e) {} }
+      try { navigator.clipboard.writeText(k); toast('Copied "' + k + '"'); } catch (e) { toast('Its name is "' + k + '"'); }
+    });
+  });
 }
 function assetCard(a) {
   return '<div class="gcard">' + storeArt(a)
@@ -161,18 +192,10 @@ function renderStore() {
   const filterBar = cats.map(function (cx) {
     return '<button data-filter="' + cx + '"' + (cx === storeFilter ? ' class="on"' : '') + '>' + cx + '</button>';
   }).join('');
-  const packBar = '<select id="packPick" aria-label="Which pack">'
-    + '<option value="All">Every pack</option>'
-    + packs.map(function (p) {
-        return '<option value="' + p.id + '"' + (p.id === storePack ? ' selected' : '') + '>'
-          + p.name + ' (' + p.count + ')</option>';
-      }).join('') + '</select>';
-
-  const inScope = function (o) {
-    return (storeFilter === 'All' || o.cat === storeFilter)
-      && (storePack === 'All' || o.pack === storePack)
-      && matchesQuery(o);
-  };
+  /* One row of categories is the whole navigation. A pack picker and a search box both went: with
+     everything sold as sets there are ~100 cards, and a category chip gets a student to the right
+     dozen faster than either. */
+  const inScope = function (o) { return storeFilter === 'All' || o.cat === storeFilter; };
   /* Bundles first. A child looking at Characters should be offered "Character green — 9 pictures"
      before a hundred loose tiles, because the bundle is the thing that actually works. */
   const bs = bundles.filter(inScope);
@@ -187,19 +210,15 @@ function renderStore() {
       + Math.min(STORE_PAGE, total - storeShown) + ' more</button>'
       + '<span class="dim">' + storeShown + ' of ' + total + '</span></div>'
     : '';
-  const empty = total ? '' : '<p class="store-empty">Nothing matches that. Try a different word, '
-    + 'or set the pack back to <b>Every pack</b>.</p>';
+  const empty = total ? '' : '<p class="store-empty">Nothing in that category yet.</p>';
 
   return '<div class="phead"><div><h2><span class="mdi mdi-cart-outline"></span>Store</h2>'
-    + '<p class="sub">Spend ★ Stars to unlock art &amp; sounds. Buy one, then use its <b>name</b> '
-    + '(the green key) in your game — it loads automatically. Characters and enemies come as a set, '
-    + 'because you need every picture to animate one.</p></div>'
+    + '<p class="sub">Spend ★ Stars on sets of art and sound. Click a set to see every piece inside '
+    + 'and how to use it. Once it is yours, use any piece by its <b>name</b> (the green key) and it '
+    + 'loads into your game automatically.</p></div>'
     + '<span class="star-balance"><span class="mdi mdi-star"></span>' + state.stars + '</span></div>'
-    + '<div class="store-filter">' + filterBar + '</div>'
-    + '<div class="store-refine">' + packBar
-    + '<input id="storeQ" type="search" placeholder="Search 3,000+ sprites and sounds…" value="'
-    + esc(storeQuery) + '" aria-label="Search the store">'
-    + '<span class="dim">' + total + ' result' + (total === 1 ? '' : 's') + '</span></div>'
+    + '<div class="store-filter">' + filterBar
+    + '<span class="dim count">' + total + ' set' + (total === 1 ? '' : 's') + '</span></div>'
     + empty
     + '<div class="cardgrid">' + shown.join('') + '</div>' + more;
 }
@@ -221,6 +240,35 @@ function buyAsset(id) {
    ownership is answered by assetOwned() looking at the bundle. One flag rather than four hundred
    keeps saved state small and means a re-import that adds a tile to a set does not leave a student
    owning 399 of 400. */
+function unlockBundle(b) {
+  if (!b || b.free || state.unlocked[b.id]) return;
+  if (state.stars < b.cost) { toast('Not enough Stars — you need ★ ' + b.cost + '.'); return; }
+  state.stars -= b.cost; state.unlocked[b.id] = true; saveState();
+  /* What goes INTO the project depends on what kind of set it is, and the difference matters.
+     A character is nine frames of one thing and all nine belong in the game — that is the whole
+     reason it is a bundle. A 400-tile set is a library to pick from, and adding all of it would
+     be 400 requests on every Run, so what goes in is the one sheet that holds the lot; the
+     loose tiles stay available through + for anyone who wants them by name. The same rule covers
+     the big named sets now that nothing is sold alone: a set of more than a dozen pieces is a
+     library too, and goes in through + rather than all at once. */
+  let msg = 'Unlocked ' + b.name + ' — ' + b.count + ' pieces.';
+  if (typeof addProjectAssets === 'function') {
+    if (b.sheet) {
+      addProjectAssets(b.sheet);
+      msg += ' Added to your project as one sheet: ' + b.sheet + '.';
+    } else if (b.members.length <= 12) {
+      addProjectAssets(b.members);
+      msg += ' Added to your project.';
+    } else {
+      msg += ' Press + on the assets folder to add the ones you want.';
+    }
+  }
+  if (typeof refreshFiles === 'function') refreshFiles();
+  toast(msg); showPage('store');
+  showBundlePreview(b.id);          // straight to the names, which is what they need next
+}
+/* The card's Buy button: one plain confirmation, then the unlock. The preview is the other route,
+   and there the preview itself is the confirmation — every piece is already on screen. */
 function buyBundle(id) {
   const b = bundleById[id];
   if (!b || b.free || state.unlocked[b.id]) return;
@@ -228,27 +276,7 @@ function buyBundle(id) {
   modal({ title: 'Unlock "' + b.name + '"?',
     message: 'Costs ★ ' + b.cost + ' and unlocks all ' + b.count + ' pieces at once. You have ★ ' + state.stars + '.',
     okLabel: 'Unlock it',
-    onOk: function () {
-      state.stars -= b.cost; state.unlocked[b.id] = true; saveState();
-      /* What goes INTO the project depends on what kind of set it is, and the difference matters.
-         A character is nine frames of one thing and all nine belong in the game — that is the whole
-         reason it is a bundle. A 400-tile set is a library to pick from, and adding all of it would
-         be 400 requests on every Run, so what goes in is the one sheet that holds the lot; the
-         loose tiles stay available through + for anyone who wants them by name. */
-      let msg = 'Unlocked ' + b.name + ' — ' + b.count + ' pieces.';
-      if (typeof addProjectAssets === 'function') {
-        if (b.sheet) {
-          addProjectAssets(b.sheet);
-          msg += ' Added to your project as one sheet: ' + b.sheet + '.';
-        } else {
-          addProjectAssets(b.members);
-          msg += ' Added to your project.';
-        }
-      }
-      if (typeof refreshFiles === 'function') refreshFiles();
-      storeOpenBundle = b.id;         // straight to the names, which is what they need next
-      toast(msg); showPage('store');
-    } });
+    onOk: function () { unlockBundle(b); } });
 }
 
 /* ---------- gallery (student games) ----------
@@ -575,28 +603,13 @@ function wirePage(page) {
   document.querySelectorAll('#page [data-buy]').forEach(function (b) { b.addEventListener('click', function () { buyAsset(b.getAttribute('data-buy')); }); });
   document.querySelectorAll('#page [data-filter]').forEach(function (b) { b.addEventListener('click', function () { storeFilter = b.getAttribute('data-filter'); storeShown = STORE_PAGE; showPage('store'); }); });
   document.querySelectorAll('#page [data-bundle]').forEach(function (b) { b.addEventListener('click', function () { buyBundle(b.getAttribute('data-bundle')); }); });
-  document.querySelectorAll('#page [data-openb]').forEach(function (b) { b.addEventListener('click', function () { const id = b.getAttribute('data-openb'); storeOpenBundle = (storeOpenBundle === id) ? null : id; showPage('store'); }); });
-  /* Clicking a key copies it, because the next thing the student does with it is type it into their
-     game, and `tile_0173` is exactly the kind of thing that gets mistyped. */
-  document.querySelectorAll('#page [data-key]').forEach(function (b) { b.addEventListener('click', function () { const k = b.getAttribute('data-key'); try { navigator.clipboard.writeText(k); toast('Copied "' + k + '"'); } catch (e) { toast('Its name is "' + k + '"'); } }); });
+  /* The card is the door to the preview. The Buy button on it keeps its own job, which is what the
+     closest() check is for; Enter on a focused card is the keyboard's click. */
+  document.querySelectorAll('#page .gcard[data-card]').forEach(function (c) {
+    c.addEventListener('click', function (e) { if (e.target.closest('button, a')) return; showBundlePreview(c.getAttribute('data-card')); });
+    c.addEventListener('keydown', function (e) { if (e.key === 'Enter' && e.target === c) showBundlePreview(c.getAttribute('data-card')); });
+  });
   document.querySelectorAll('#page [data-more]').forEach(function (b) { b.addEventListener('click', function () { storeShown += STORE_PAGE; showPage('store'); }); });
-  if (page === 'store') {
-    const pk = $('packPick');
-    if (pk) pk.addEventListener('change', function () { storePack = pk.value; storeShown = STORE_PAGE; showPage('store'); });
-    const q = $('storeQ');
-    /* Re-rendering on every keystroke rebuilds up to 120 cards, so it waits for a pause. The cursor
-       is put back at the end because showPage() replaces the input along with everything else. */
-    if (q) {
-      let t = 0;
-      q.addEventListener('input', function () {
-        clearTimeout(t);
-        t = setTimeout(function () {
-          storeQuery = q.value.trim(); storeShown = STORE_PAGE; showPage('store');
-          const n = $('storeQ'); if (n) { n.focus(); n.setSelectionRange(n.value.length, n.value.length); }
-        }, 220);
-      });
-    }
-  }
   document.querySelectorAll('#page [data-play]').forEach(function (b) { b.addEventListener('click', function () { const a = assets.find(function (x) { return x.id === b.getAttribute('data-play'); }); if (a) { try { new Audio('/' + a.file).play(); } catch (e) {} } }); });
   if (page === 'gallery') { var pb = $('publishBtn'); if (pb) pb.addEventListener('click', publishGame); }
   if (page === 'leaderboards') {

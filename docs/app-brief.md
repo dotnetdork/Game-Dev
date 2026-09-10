@@ -179,7 +179,9 @@ The house convention: land a new check as a *report*, then promote it to fatal o
 prints has emptied.
 
 Assets: 3,256 Kenney CC0 sprites and sounds across 19 packs, credited in
-`app/public/assets/CREDITS.txt`, bought with Stars in the Store, auto-preloaded by key into the game.
+`app/public/assets/CREDITS.txt`, sold in the Store as ~104 sets of pictures plus loose sounds (a
+picture that belongs to a pack is never sold alone; a sound always is; nine starter sprites are
+free), and auto-preloaded by key into the game.
 
 ## 9. Where it is actually weak — read this before critiquing
 
