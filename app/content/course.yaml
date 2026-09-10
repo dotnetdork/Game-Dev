@@ -33,6 +33,14 @@
 # We are not teaching Fortnite; we are teaching what makes a game work, using something they have
 # already played so the idea lands.
 #
+# The assets lesson is SECOND, before physics, and its "your turn" is a purchase. Every student
+# starts with 250 Stars and nothing used to tell them so until lesson 27 - so for twenty-six
+# lessons every screen in the room showed the same game. Now the second lesson ends with a
+# character they chose. Identity is most of what keeps a twelve-year-old going.
+#
+# from-project-to-playable was cut (2026-09-09): 765 words on .exe-versus-web builds for a student
+# who will never make an .exe. It is in content/_archive-v1/ with its openers.
+#
 # The v1 course (47 shorter lessons) is kept in content/_archive-v1/ .
 id: course1
 name: "Game Dev — Level 1"
@@ -41,7 +49,7 @@ modules:
   - id: engines
     name: "Game Engines"
     stars: 120
-    lessons: [what-an-engine-does, physics-and-collision, what-a-game-is-made-of, from-project-to-playable, your-game-in-one-line]
+    lessons: [what-an-engine-does, what-a-game-is-made-of, physics-and-collision, your-game-in-one-line]
 
   - id: ideation
     name: "Concept Ideation"

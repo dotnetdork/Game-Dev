@@ -327,17 +327,6 @@ tutor:
       - Why do games load things before they start?
       - What happens if I ask for a picture that is not there?
       - What is a scene?
-    from-project-to-playable:
-      - Why can I not just send someone my folder?
-      - What does it mean to build a game?
-      - Why would my game work here but not for my friend?
-      - What is a file path and why does it keep breaking?
-      - What does the browser actually need to run my game?
-      - Why do I need a server just to look at my own game?
-      - What is the difference between my project and the game people play?
-      - What would stop my game loading on someone else's computer?
-      - How do I check my game works before I share it?
-      - Why is it a problem if something only exists on my machine?
     the-core-loop:
       - What is a core loop, in plain words?
       - How do I know if my loop is any good?
@@ -542,13 +531,6 @@ tutor:
   # The lab tutor is under instructions to nudge rather than answer, so these are written as the
   # questions a stuck student would actually ask at the bench, not as requests for the fix.
   labs:
-    what-an-engine-does:
-      - Why does my box only move once?
-      - What is supposed to ask for the next frame?
-      - I pressed Run and nothing keeps going. Why?
-      - What does this code do the first time through?
-      - Which line is missing?
-      - How would I check whether my function runs more than once?
     physics-and-collision:
       - Why is nothing falling when gravity is set?
       - What is missing between having a speed and actually moving?
@@ -563,13 +545,6 @@ tutor:
       - Does the name in my code match the name that was loaded?
       - Why does asking for a missing picture fail quietly?
       - Where would I look to see what was preloaded?
-    from-project-to-playable:
-      - What in here would only work on the computer it was written on?
-      - Why does this fail for everybody else?
-      - What is the assumption being made in this code?
-      - How would I spot something that only exists on one machine?
-      - What should this use instead of a fixed path?
-      - How do I test that it works somewhere else?
     scope-and-cutting:
       - Why does this plan say it is over budget?
       - Which line of the wishlist should go first?
@@ -626,6 +601,12 @@ tutor:
       - Is the comparison the right way round?
       - What would make this condition true?
       - Am I using = when I meant ==?
+      - Why does my box only move once?
+      - What is supposed to ask for the next frame?
+      - I pressed Run and nothing keeps going. Why?
+      - What does this code do the first time through?
+      - Which line is missing?
+      - How would I check whether my function runs more than once?
     scenes-create-update:
       - What is happening every frame that should only happen once?
       - Why is it piling up?
@@ -933,17 +914,6 @@ coder:
       - Fix the picture that is not loading.
       - Centre the sprite on the screen.
       - Add a sprite sheet and use one frame from it.
-    from-project-to-playable:
-      - Find anything in my game that would only work on my computer.
-      - Fix my file paths so they work anywhere.
-      - Add a README that says how to run my game.
-      - Check my game for things that will break when I share it.
-      - Make the game fit any window size.
-      - Add a loading screen while things download.
-      - List every file my game actually needs.
-      - Remove anything my game is not using.
-      - Add a message if something fails to load.
-      - Get my game ready to hand in.
     the-core-loop:
       - Make a new coin appear after I collect one.
       - Add a score that goes up each time round the loop.

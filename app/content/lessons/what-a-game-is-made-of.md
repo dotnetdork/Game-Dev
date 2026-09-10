@@ -29,8 +29,8 @@ console.log("code is " + (codeFiles / total * 100).toFixed(1) + "% of this game"
     <span class="art-cell"><img src="/assets/slimeGreen.png" alt="A green slime enemy"><b>slimeGreen</b></span>
     <span class="art-cell"><img src="/assets/heart.png" alt="A red heart, used for lives"><b>heart</b></span>
   </div>
-  <figcaption>Four sprites your game already owns. The name under each one is what you type to
-  load it. <cite><b>Kenney</b> — Platformer Pack, public domain (CC0).</cite></figcaption>
+  <figcaption>Four sprites you already own — they are free in every project. The name under each
+  one is what you type to load it. <cite><b>Kenney</b> — Platformer Pack, public domain (CC0).</cite></figcaption>
 </figure>
 
 A **sprite** is a picture you can move around. Your player, a coin, an enemy — all sprites.
@@ -159,7 +159,7 @@ Every picture in a game is loaded under a name, and the name has to match exactl
 
 ```challenge
 title: Lab — the sprite that never appears
-task: The code asks for a picture that isn't there, so nothing is drawn. Ask for one that exists instead, and notice how the game tells you it could not find something.
+task: The code asks for a picture that isn't there, so nothing is drawn. Ask for one that exists instead, and notice how the game tells you it could not find something.
 goal: The sprite appears on screen instead of a blank space.
 hint: Look at `wanted` and compare it, letter by letter, with what is actually in `owned`. Names have to match exactly.
 solution: |
@@ -202,15 +202,25 @@ A wrong asset name is the single most common reason a game shows a blank screen.
 reason the AI in this app is *checked* before it's trusted — inventing a picture that doesn't exist
 was the number one way it used to break people's games.
 
+Right now every game in the room has the same little hero in it. Time to fix that. You have been
+carrying **250 Stars** since you started, and the **Store** in the top bar is where they go.
 
 ```yourturn
-title: Add an asset you own to your game
-task: Pick something from the Store you already own and put it in your game by name.
+title: Make the player yours
+task: Buy a set of characters with the Stars you already have, pick the one you like, and put it in your game by name.
 steps:
-  - Open the Store from the top bar and find something marked Free or Owned. Note its green key — that is its exact name.
-  - Open `world.js` in the Code tab.
-  - Add it with `this.add.sprite(x, y, "the-key")`, using the key exactly as it is written.
-  - Press Run. If nothing appears, open the console and look — a name that does not match is the usual reason.
+  - Open the **Store** from the top bar. The number with the star beside it is what you have to spend.
+  - Find **Pixel Platformer characters** (150 ★) and buy it — the search box will find it. Twenty-seven characters, drawn at the same tiny size as your world.
+  - Back on the **Code** tab, press **+** on the **assets** folder and pick your favourite. It joins your project, and the message at the bottom tells you its full name — something like `pixel-platformer_chr_tile_0004`.
+  - "Open `player.js` and find `'1bit-platformer_tile_0340'` inside `createPlayer` — that is the picture your player is made from. Select it, quotes and all, then click your new character in the assets folder and press **Insert into code**. Or just type the name in its place."
+  - Press **Play**. If the player vanishes, look in the console underneath — a name that does not match, letter for letter, is the usual reason.
+check:
+  - matches:
+      file: player.js
+      regex: 'pixel-platformer_chr_tile_\d+'
+    hint: "`createPlayer` in player.js is still using the old picture — swap the name in quotes for the key of a character you bought."
+  - parses: true
+    hint: Something no longer parses — check the quotes around your key.
 reward: Asset Handler badge
 ```
 

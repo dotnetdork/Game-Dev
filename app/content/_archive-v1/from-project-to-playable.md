@@ -1,3 +1,10 @@
+<!--
+  ARCHIVED 2026-09-09. Cut from Game Engines: 765 words on .exe-versus-web builds for a student
+  who will never make an .exe, and a "your turn" that was writing a comment. Its one useful
+  sentence - a web game is a link, no install - moved into what-an-engine-does. Kept here, like the
+  v1 lessons, because the lab ("the game that only runs here") and the openers below are worth
+  stealing if shipping ever gets its own lesson again.
+-->
 ---
 title: From Project to Playable
 xp: 200
@@ -195,3 +202,42 @@ reward: Shipper badge
 - The **web** needs neither — the browser is already the runtime, so a build is files and a link.
 - The trade: web gives up some speed and offline for enormous reach.
 - **"Works on my machine"** is usually a path or a setting that only exists where you built it.
+
+
+## Conversation openers this lesson had in questions.yaml
+
+
+### tutor.lessons
+
+- Why can I not just send someone my folder?
+- What does it mean to build a game?
+- Why would my game work here but not for my friend?
+- What is a file path and why does it keep breaking?
+- What does the browser actually need to run my game?
+- Why do I need a server just to look at my own game?
+- What is the difference between my project and the game people play?
+- What would stop my game loading on someone else's computer?
+- How do I check my game works before I share it?
+- Why is it a problem if something only exists on my machine?
+
+### tutor.labs
+
+- What in here would only work on the computer it was written on?
+- Why does this fail for everybody else?
+- What is the assumption being made in this code?
+- How would I spot something that only exists on one machine?
+- What should this use instead of a fixed path?
+- How do I test that it works somewhere else?
+
+### coder.lessons
+
+- Find anything in my game that would only work on my computer.
+- Fix my file paths so they work anywhere.
+- Add a README that says how to run my game.
+- Check my game for things that will break when I share it.
+- Make the game fit any window size.
+- Add a loading screen while things download.
+- List every file my game actually needs.
+- Remove anything my game is not using.
+- Add a message if something fails to load.
+- Get my game ready to hand in.

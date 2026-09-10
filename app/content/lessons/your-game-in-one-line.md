@@ -8,11 +8,11 @@ summary: The first thing in this course that is yours rather than ours.
 
 ```zone
 title: Your Game in One Line
-intro: Four lessons on somebody else's game. This one is about yours — and it is the first thing here that is.
+intro: Three lessons on somebody else's game. This one is about yours — and it is the first thing here that is.
 reward: One-Liner badge
 brief: >
   This is the very first time the student has been asked what THEY want to make, and they have had
-  no design vocabulary yet — four lessons on what an engine does, physics, assets and builds. So
+  no design vocabulary yet — three lessons on what an engine does, assets and physics. So
   keep it to plain words. The starter game is a platformer, so anything shaped like a platformer is
   something they could really build. Their sentence does not have to be original or good; it has to
   be theirs and it has to be one sentence. The second box is the one that teaches the most: writing

@@ -8,3 +8,8 @@ challenges and phrasing worth stealing while the new lessons are written. Nothin
 app only reads what `course.yaml` lists.
 
 Delete this folder once the 22 new lessons are finished and nothing in here is still wanted.
+
+
+## Also here: one v2 lesson
+
+`from-project-to-playable.md` was cut from the live course on 2026-09-09 (see the note at the top of the file). It is a v2 lesson, not v1 - kept for the same reason as the rest.

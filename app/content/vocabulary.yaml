@@ -62,7 +62,7 @@ syntax:
     teaches: decisions-and-repeats
     match: '\bfunction\b|=>'
   - id: console.log
-    teaches: reading-an-error
+    teaches: what-an-engine-does
     match: '\bconsole\s*\.\s*log\b'
   - id: an array
     teaches: data-out-of-code

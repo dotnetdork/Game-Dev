@@ -94,6 +94,49 @@ Two reasons this matters, and the second is the real one:
 
 Code full of well-named functions reads like a description of the game. That's the goal.
 
+Here is a function you met in the very first lesson without knowing it was one: the game loop,
+written out by hand. `requestAnimationFrame(frame)` means *draw me again* — it is the engine's way
+of asking for the next frame. Somebody has left it out.
+
+```challenge
+title: Lab — the world that will not tick
+task: Find the line that asks for the next frame, and put it back.
+goal: The box travels all the way across and the frame counter keeps climbing.
+hint: Look at the very end of `frame()`. A loop keeps going because something asks for the next frame. What is missing?
+solution: |
+  // The goal: the box must travel across the screen, which needs the loop to keep going.
+  let x = 10, frames = 0;
+  function frame() {
+    frames = frames + 1;
+    x = x + 4;
+    ctx.clearRect(0, 0, 300, 200);
+    ctx.fillStyle = "#2fd0b6"; ctx.fillRect(x, 90, 20, 20);
+    ctx.fillStyle = "#eaf1f8"; ctx.font = "13px sans-serif";
+    ctx.fillText("frame " + frames, 10, 20);
+    if (x > 250) { ctx.fillText("It lives!", 10, 40); win(); return; }
+    requestAnimationFrame(frame);      // ask for the next one — this is the loop
+  }
+  frame();
+code: |
+  // The goal: the box must travel across the screen, which needs the loop to keep going.
+  let x = 10, frames = 0;
+  function frame() {
+    frames = frames + 1;
+    x = x + 4;
+    ctx.clearRect(0, 0, 300, 200);
+    ctx.fillStyle = "#2fd0b6"; ctx.fillRect(x, 90, 20, 20);
+    ctx.fillStyle = "#eaf1f8"; ctx.font = "13px sans-serif";
+    ctx.fillText("frame " + frames, 10, 20);
+    if (x > 250) { ctx.fillText("It lives!", 10, 40); win(); return; }
+    // nothing asks for another frame, so this happens exactly once
+  }
+  frame();
+```
+
+Everything above the missing line runs perfectly well without it — exactly once. Then the game
+sits there forever with no crash and no error, looking precisely like a game that is paused. That
+one line is the whole difference between a picture and a game.
+
 ## Putting the three together
 
 <figure class="diagram">
