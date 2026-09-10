@@ -1,3 +1,13 @@
+<!--
+  ARCHIVED 2026-09-09. This was a CHECKPOINT - a gated end-of-module lesson that opened a building
+  zone instead of a page. The whole checkpoint concept was removed: it was the most-built and least
+  validated feature in the app, and gating a module behind a board turned out to be the wrong shape.
+  What replaced it is a persistent DESIGN tab - the same board, always open, iterated across the
+  whole course instead of six times behind a gate.
+  Kept because the zone specs below are real design work: the board layouts, the region roles, the
+  objective checks and the coach briefs are all worth mining if checkpoints come back in another
+  form. Nothing loads this file - the app only reads what course.yaml lists.
+-->
 ---
 title: Room to Grow
 xp: 240
@@ -59,3 +69,32 @@ goals:
           file: design.md
           text: 'Room for:'
 ```
+
+## Conversation openers this lesson had in questions.yaml
+
+
+### tutor.lessons
+
+- How do I know when my code needs tidying up?
+- What is a magic number, and why is it a problem?
+- Why does moving a number into CONFIG make it draggable?
+- What does it mean for a function to be doing two jobs?
+- How can a tidy-up not change anything and still be worth doing?
+- Which of the four tools from this module should I use on my game?
+- How do I check I have not broken anything while tidying?
+- Is it worth tidying code I am going to throw away?
+- What does making room for something actually look like?
+- Why is adding the eleventh thing harder than the tenth?
+
+### coder.lessons
+
+- Move every loose number in my game into CONFIG.
+- Split the function that is doing two jobs into two functions.
+- Pull the movement code out so two things can share it.
+- Take the rules out of update and put them in their own function.
+- Give my platforms and my coins the same shape so I can treat them alike.
+- Turn my level layout into a list instead of lines of code.
+- Show me which of my functions is the longest.
+- Make it so adding a second kind of enemy would only touch one file.
+- Replace the repeated code in my game with one function.
+- Tell me where a new feature would be hardest to add right now.

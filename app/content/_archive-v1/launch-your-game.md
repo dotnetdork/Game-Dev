@@ -1,3 +1,13 @@
+<!--
+  ARCHIVED 2026-09-09. This was a CHECKPOINT - a gated end-of-module lesson that opened a building
+  zone instead of a page. The whole checkpoint concept was removed: it was the most-built and least
+  validated feature in the app, and gating a module behind a board turned out to be the wrong shape.
+  What replaced it is a persistent DESIGN tab - the same board, always open, iterated across the
+  whole course instead of six times behind a gate.
+  Kept because the zone specs below are real design work: the board layouts, the region roles, the
+  objective checks and the coach briefs are all worth mining if checkpoints come back in another
+  form. Nothing loads this file - the app only reads what course.yaml lists.
+-->
 ---
 title: Launch Your Game
 xp: 260
@@ -59,3 +69,32 @@ goals:
     check:
       - published: true
 ```
+
+## Conversation openers this lesson had in questions.yaml
+
+
+### tutor.lessons
+
+- How do I know when my game is finished?
+- What if I find ten things wrong and can only fix two?
+- Why do I have to stay quiet while somebody plays it?
+- What if the person playing it hates it?
+- Is my game good enough to publish?
+- What should I call it?
+- Can I change it after I publish it?
+- What if I run out of time before it is done?
+- How do real studios decide it is finished?
+- Who is going to see this?
+
+### coder.lessons
+
+- Show me the two most obviously broken things in my game.
+- Add a title screen with my game's name on it.
+- Make the game restart properly instead of needing a reload.
+- Find anything in my code that would only work on my computer.
+- Tidy up the comments so somebody else could read this.
+- Make the first ten seconds of my game easier.
+- Tell me which part of my game a new player would not understand.
+- Take out the thing I never finished.
+- Add a message when the player wins.
+- Check every asset my game uses is one I actually own.

@@ -555,7 +555,7 @@ body[data-tier] .editor.ai-hidden{--rightw:0px;}
    The whole argument for this shape is that the editor stays visible, so the rail takes width off
    the code rather than covering it: everything that fills the view gets a right inset instead of
    the rail being laid on top. The board overlay is untouched and still exists — see zEl() in
-   js/zone.js for how one set of functions paints both. */
+   js/board.js for how one set of functions paints both. */
 #view-code.with-rail > .editor-wrap,
 #view-code.with-rail > .doc-preview{right:var(--railw);}
 #view-code.with-rail > .review-bar,
@@ -575,18 +575,18 @@ body[data-tier] .editor.ai-hidden{--rightw:0px;}
 /* The chips wrap down the rail instead of scrolling sideways: in a 340px column a horizontal
    scroller hides the objectives that have not happened yet, and seeing what is coming is the point
    of a chain. */
-.build-rail .zone-goals{flex-wrap:wrap;overflow-x:visible;padding:10px 12px;
+.build-rail .board-goals{flex-wrap:wrap;overflow-x:visible;padding:10px 12px;
   border-bottom:1px solid var(--line);}
 /* The lane is a floating overlay on the board and a plain column here, so the two things that make
    it float — the pointer-events dance and the shadowed, rounded bubbles — are undone. Sitting on a
    panel, a drop shadow under every message reads as clutter rather than as depth. */
-.build-rail .zone-lane{flex:1;min-height:0;padding:12px;gap:9px;pointer-events:auto;}
-.build-rail .zone-lane:empty{display:flex;}
-.build-rail .zone-bubble{max-width:100%;box-shadow:none;}
-.build-rail .zone-quest,.build-rail .zone-offer{box-shadow:none;}
-.build-rail .zone-chat{margin:0 12px 12px;box-shadow:none;}
-.build-rail .zone-foot{flex-wrap:wrap;row-gap:9px;padding:10px 12px;border-top:1px solid var(--line);}
-.build-rail .zone-done{width:100%;}
+.build-rail .board-lane{flex:1;min-height:0;padding:12px;gap:9px;pointer-events:auto;}
+.build-rail .board-lane:empty{display:flex;}
+.build-rail .board-bubble{max-width:100%;box-shadow:none;}
+.build-rail .board-quest,.build-rail .board-offer{box-shadow:none;}
+.build-rail .board-chat{margin:0 12px 12px;box-shadow:none;}
+.build-rail .board-foot{flex-wrap:wrap;row-gap:9px;padding:10px 12px;border-top:1px solid var(--line);}
+.build-rail .board-done{width:100%;}
 .doc-bar{position:absolute;right:12px;top:10px;z-index:6;display:flex;gap:2px;
   background:var(--panel);border:1px solid var(--line);border-radius:9px;padding:3px;}
 .doc-bar[hidden]{display:none;}
@@ -1025,242 +1025,242 @@ body.resizing-v #gameFrame{pointer-events:none;}
 .kids .lesson-row.cp.locked .lbl{color:var(--lock);font-weight:500;}
 .sec-head{border-radius:8px;transition:background .1s;}
 
-/* ---------- building zones ----------
+/* ---------- building boards ----------
    The workspace a module's checkpoint opens. Same overlay geometry as .lab-view — absolute inside
    #editor, which is position:relative, so it covers both docks and the viewport while leaving the
    46px top bar and 30px status bar visible. A student can see they are still in the same app and
    the way out is one obvious button.
-   --labband is reused rather than redeclared: the zone bar and the helper's dock-head have to land
+   --labband is reused rather than redeclared: the board bar and the helper's dock-head have to land
    on the same line for the same reason the bench's do. */
-.zone-view{position:absolute;inset:0;z-index:30;background:var(--bg);
+.board-view{position:absolute;inset:0;z-index:30;background:var(--bg);
   display:flex;flex-direction:column;min-height:0;}
-.zone-split{flex:1;min-height:0;display:flex;position:relative;--zoneaiw:clamp(320px,29vw,560px);}
-.zone-left{flex:1;min-width:0;min-height:0;display:flex;flex-direction:column;}
-.zone-bar{display:flex;align-items:center;gap:12px;padding:9px 14px;min-height:var(--labband);
+.board-split{flex:1;min-height:0;display:flex;position:relative;--zoneaiw:clamp(320px,29vw,560px);}
+.board-left{flex:1;min-width:0;min-height:0;display:flex;flex-direction:column;}
+.board-bar{display:flex;align-items:center;gap:12px;padding:9px 14px;min-height:var(--labband);
   background:var(--panel);border-bottom:1px solid var(--line);}
-.zone-flag{font-size:18px;color:var(--teal);flex:none;}
-.zone-bot-btn{margin-left:auto;flex:none;}
+.board-flag{font-size:18px;color:var(--teal);flex:none;}
+.board-bot-btn{margin-left:auto;flex:none;}
 
 /* What you are here to apply. Each chip is a real check against their own work, so it ticks itself
    — which is why it is a row of state and not a list of instructions. */
-.zone-goals{display:flex;gap:8px;padding:9px 14px;flex:none;overflow-x:auto;
+.board-goals{display:flex;gap:8px;padding:9px 14px;flex:none;overflow-x:auto;
   background:var(--panel2);border-bottom:1px solid var(--line);}
-.zone-goals:empty{display:none;}
-.zone-goal{flex:none;display:flex;align-items:center;gap:7px;font-size:12px;padding:4px 10px;
+.board-goals:empty{display:none;}
+.board-goal{flex:none;display:flex;align-items:center;gap:7px;font-size:12px;padding:4px 10px;
   border:1px solid var(--line);border-radius:999px;background:var(--bg);color:var(--muted);
   white-space:nowrap;}
-.zone-goal.on{border-color:var(--green);color:var(--ink);}
-.zone-tick{width:14px;height:14px;border-radius:50%;border:1.5px solid #33507a;flex:none;
+.board-goal.on{border-color:var(--green);color:var(--ink);}
+.board-tick{width:14px;height:14px;border-radius:50%;border:1.5px solid #33507a;flex:none;
   display:grid;place-items:center;font-size:9px;color:transparent;}
-.zone-goal.on .zone-tick{border-color:var(--green);background:var(--green);color:#04240f;}
+.board-goal.on .board-tick{border-color:var(--green);background:var(--green);color:#04240f;}
 
 /* ---------- the footer ----------
    One row: how many done, how far along, and the way out. It was a number, a hairline and a button
    at three different heights crushed into 9px of padding; the count is a pill now and the bar is
    thick enough to read at a glance from across a classroom. */
-.zone-foot{display:flex;align-items:center;gap:16px;padding:10px 16px;flex:none;
+.board-foot{display:flex;align-items:center;gap:16px;padding:10px 16px;flex:none;
   background:var(--panel);border-top:1px solid var(--line);}
-.zone-count{display:inline-flex;align-items:center;gap:7px;flex:none;white-space:nowrap;
+.board-count{display:inline-flex;align-items:center;gap:7px;flex:none;white-space:nowrap;
   font-size:12.5px;font-weight:600;color:var(--muted);
   background:var(--bg);border:1px solid var(--line);border-radius:999px;padding:5px 13px;}
-.zone-count b{color:var(--ink);font-size:14px;font-variant-numeric:tabular-nums;}
-.zone-count.all{border-color:var(--green);color:var(--ink);}
-.zone-count.all b{color:var(--green);}
-.zone-bar-fill{flex:1;min-width:60px;height:8px;border-radius:5px;background:#12283f;
+.board-count b{color:var(--ink);font-size:14px;font-variant-numeric:tabular-nums;}
+.board-count.all{border-color:var(--green);color:var(--ink);}
+.board-count.all b{color:var(--green);}
+.board-bar-fill{flex:1;min-width:60px;height:8px;border-radius:5px;background:#12283f;
   overflow:hidden;box-shadow:inset 0 1px 2px rgba(0,0,0,.4);}
-.zone-bar-fill i{display:block;height:100%;width:0;border-radius:5px;
+.board-bar-fill i{display:block;height:100%;width:0;border-radius:5px;
   background:linear-gradient(90deg,var(--teal),var(--green));transition:width .25s;}
-.zone-done{background:var(--green);color:#04240f;font-weight:700;border:0;border-radius:9px;
+.board-done{background:var(--green);color:#04240f;font-weight:700;border:0;border-radius:9px;
   padding:9px 18px;font-size:13px;cursor:pointer;flex:none;transition:filter .12s;}
-.zone-done:hover:not(:disabled){filter:brightness(1.08);}
-.zone-done:disabled{background:transparent;color:#5d7ba0;cursor:not-allowed;
+.board-done:hover:not(:disabled){filter:brightness(1.08);}
+.board-done:disabled{background:transparent;color:#5d7ba0;cursor:not-allowed;
   border:1px solid var(--line);padding:8px 17px;}
 
 /* ---------- the door, on the page behind ----------
    What this checkpoint wants, and the way in. No title — the page heading two inches above already
    says it, and saying it twice is what made this read as a panel dropped onto a lesson. */
-.zone-cover{position:relative;margin:20px 0;padding:22px 22px 20px;border-radius:14px;
+.board-cover{position:relative;margin:20px 0;padding:22px 22px 20px;border-radius:14px;
   background:linear-gradient(180deg,#132a48,var(--panel));
   border:1px solid #2c5d8a;border-top:3px solid var(--brand);
   box-shadow:0 10px 28px rgba(0,0,0,.28);}
-.zone-cover-kind{display:flex;align-items:center;gap:8px;margin-bottom:10px;
+.board-cover-kind{display:flex;align-items:center;gap:8px;margin-bottom:10px;
   font-size:11px;font-weight:700;letter-spacing:1.6px;text-transform:uppercase;color:var(--brand);}
-.zone-cover-kind .mdi{font-size:16px;}
-.zone-cover-intro{margin:0 0 18px;font-size:16px;line-height:1.55;color:var(--ink);max-width:58ch;}
+.board-cover-kind .mdi{font-size:16px;}
+.board-cover-intro{margin:0 0 18px;font-size:16px;line-height:1.55;color:var(--ink);max-width:58ch;}
 /* The checklist is live — it reads design.md — so it is state, not instructions. No marker until a
    goal is done, then a tick: two goes at a small circle both read as two sizes side by side. */
-.zone-cover-goals{list-style:none;display:flex;flex-wrap:wrap;gap:8px;margin:0 0 20px;padding:0;}
-.zone-cover-goal{display:inline-flex;align-items:center;gap:7px;height:28px;padding:0 13px;
+.board-cover-goals{list-style:none;display:flex;flex-wrap:wrap;gap:8px;margin:0 0 20px;padding:0;}
+.board-cover-goal{display:inline-flex;align-items:center;gap:7px;height:28px;padding:0 13px;
   font-size:12.5px;line-height:1;white-space:nowrap;
   border:1px solid var(--line);border-radius:999px;background:var(--bg);color:var(--muted);}
-.zone-cover-goal.on{border-color:var(--green);background:#0e2b26;color:var(--ink);}
-.zone-cover-tick{color:var(--green);font-size:12px;line-height:1;}
-.zone-cover-go{display:flex;align-items:center;justify-content:center;gap:14px;flex-wrap:wrap;}
-.zone-cover-btn{display:inline-flex;align-items:center;gap:8px;flex:none;cursor:pointer;
+.board-cover-goal.on{border-color:var(--green);background:#0e2b26;color:var(--ink);}
+.board-cover-tick{color:var(--green);font-size:12px;line-height:1;}
+.board-cover-go{display:flex;align-items:center;justify-content:center;gap:14px;flex-wrap:wrap;}
+.board-cover-btn{display:inline-flex;align-items:center;gap:8px;flex:none;cursor:pointer;
   background:var(--brand);color:#241300;border:0;border-radius:10px;
   padding:11px 20px;font-family:var(--font);font-size:15px;font-weight:700;
   transition:filter .12s,transform .12s;}
-.zone-cover-btn:hover{filter:brightness(1.08);}
-.zone-cover-btn:active{transform:translateY(1px);}
-.zone-cover-btn:focus-visible{outline:3px solid var(--focus);outline-offset:2px;}
-.zone-cover-btn .mdi{font-size:18px;}
-.zone-cover-btn.again{background:transparent;color:var(--muted);border:1px solid var(--line);
+.board-cover-btn:hover{filter:brightness(1.08);}
+.board-cover-btn:active{transform:translateY(1px);}
+.board-cover-btn:focus-visible{outline:3px solid var(--focus);outline-offset:2px;}
+.board-cover-btn .mdi{font-size:18px;}
+.board-cover-btn.again{background:transparent;color:var(--muted);border:1px solid var(--line);
   font-weight:600;font-size:13.5px;padding:8px 14px;}
-.zone-cover-btn.again:hover{border-color:#3a6da3;color:var(--ink);}
-.zone-cover-note{font-size:13px;color:var(--muted);}
-.zone-cover-note.done{color:var(--green);font-weight:600;}
+.board-cover-btn.again:hover{border-color:#3a6da3;color:var(--ink);}
+.board-cover-note{font-size:13px;color:var(--muted);}
+.board-cover-note.done{color:var(--green);font-weight:600;}
 
 /* The quest chain, on a build board's rail: ordered, so it says which one you are ON rather than
    only which are done. The dim ones are still ahead, and that is deliberate — seeing what is coming
    is part of it; being able to start any of them is not, because the order is the teaching. */
-.zone-goal.now{border-color:var(--brand);color:var(--ink);background:#2a1a0c;}
-.zone-goal.now .zone-tick{border-color:var(--brand);background:var(--brand);color:#241300;font-weight:700;}
-.zone-goal.ahead{opacity:.45;}
-.zone-goal.ahead .zone-tick{color:var(--dim);}
+.board-goal.now{border-color:var(--brand);color:var(--ink);background:#2a1a0c;}
+.board-goal.now .board-tick{border-color:var(--brand);background:var(--brand);color:#241300;font-weight:700;}
+.board-goal.ahead{opacity:.45;}
+.board-goal.ahead .board-tick{color:var(--dim);}
 
 /* ---------- the board ----------
    A surface you arrange things on. The dot grid is not decoration: it is the cheapest possible way
    to say "this pans and things go where you put them" before a student has touched anything. */
-.zone-canvas-wrap{flex:1;min-height:0;position:relative;overflow:hidden;cursor:grab;
+.board-canvas-wrap{flex:1;min-height:0;position:relative;overflow:hidden;cursor:grab;
   background:radial-gradient(circle at 1px 1px,#1b3358 1.2px,transparent 0) 0 0/22px 22px, #081525;}
-.zone-canvas-wrap.panning{cursor:grabbing;}
-.zone-canvas{position:absolute;inset:0;transform-origin:0 0;}
+.board-canvas-wrap.panning{cursor:grabbing;}
+.board-canvas{position:absolute;inset:0;transform-origin:0 0;}
 
 /* A region. On an ideation board these are the data — dragging a sticky between them is how scope
    gets cut — so they light up as a note comes over them. */
-.zone-field{position:absolute;border:1.5px dashed #2b4a72;border-radius:16px;pointer-events:none;
+.board-field{position:absolute;border:1.5px dashed #2b4a72;border-radius:16px;pointer-events:none;
   transition:border-color .12s,background .12s;}
-.zone-field-lab{position:absolute;top:-9px;left:16px;background:#081525;padding:0 8px;
+.board-field-lab{position:absolute;top:-9px;left:16px;background:#081525;padding:0 8px;
   font-size:10px;font-weight:700;letter-spacing:1.4px;text-transform:uppercase;color:#54749e;}
-.zone-field.hot{border-color:#2f6b52;}
-.zone-field.hot .zone-field-lab{color:var(--green);}
-.zone-field.over{border-color:var(--gold);background:rgba(245,176,46,.07);}
-.zone-field.over .zone-field-lab{color:var(--gold);}
-.zone-field-meter{position:absolute;left:16px;right:16px;bottom:12px;display:flex;
+.board-field.hot{border-color:#2f6b52;}
+.board-field.hot .board-field-lab{color:var(--green);}
+.board-field.over{border-color:var(--gold);background:rgba(245,176,46,.07);}
+.board-field.over .board-field-lab{color:var(--gold);}
+.board-field-meter{position:absolute;left:16px;right:16px;bottom:12px;display:flex;
   flex-direction:column;gap:4px;font-size:11px;color:var(--muted);}
-.zone-field-bar{height:6px;border-radius:3px;background:#12283f;overflow:hidden;}
-.zone-field-bar i{display:block;height:100%;background:var(--green);transition:width .18s;}
-.zone-field-meter.over{color:var(--gold);}
-.zone-field-meter.over .zone-field-bar i{background:var(--brand);}
+.board-field-bar{height:6px;border-radius:3px;background:#12283f;overflow:hidden;}
+.board-field-bar i{display:block;height:100%;background:var(--green);transition:width .18s;}
+.board-field-meter.over{color:var(--gold);}
+.board-field-meter.over .board-field-bar i{background:var(--brand);}
 
 /* A sticky. Paper colours rather than panel colours, because the whole point is that these are
    things on a surface and not rows in a list. */
-.zone-note{position:absolute;width:172px;min-height:104px;padding:10px 11px;border-radius:3px;
+.board-note{position:absolute;width:172px;min-height:104px;padding:10px 11px;border-radius:3px;
   font-size:12.5px;line-height:1.45;cursor:grab;user-select:none;touch-action:none;
   box-shadow:0 6px 14px rgba(0,0,0,.35);transform:rotate(-.6deg);
   transition:box-shadow .12s,transform .12s;}
-.zone-note:hover{box-shadow:0 10px 22px rgba(0,0,0,.45);}
-.zone-note:focus-visible{outline:3px solid var(--focus);outline-offset:3px;}
-.zone-note.dragging{cursor:grabbing;box-shadow:0 18px 34px rgba(0,0,0,.55);
+.board-note:hover{box-shadow:0 10px 22px rgba(0,0,0,.45);}
+.board-note:focus-visible{outline:3px solid var(--focus);outline-offset:3px;}
+.board-note.dragging{cursor:grabbing;box-shadow:0 18px 34px rgba(0,0,0,.55);
   transform:rotate(0) scale(1.03);z-index:50;}
-.zone-note.editing{cursor:default;transform:rotate(0);z-index:40;}
-.zone-note.fixed{cursor:default;}
-.zone-note-lab{font-size:9px;font-weight:800;letter-spacing:1.1px;text-transform:uppercase;
+.board-note.editing{cursor:default;transform:rotate(0);z-index:40;}
+.board-note.fixed{cursor:default;}
+.board-note-lab{font-size:9px;font-weight:800;letter-spacing:1.1px;text-transform:uppercase;
   opacity:.62;margin-bottom:5px;}
-.zone-note-txt{white-space:pre-wrap;}
-.zone-note-sub{margin-top:6px;font-size:11px;opacity:.7;}
-.zone-note.blank .zone-note-txt{opacity:.55;font-style:italic;}
-.zone-note.y{background:#f5d67a;color:#2a2005;transform:rotate(.8deg);}
-.zone-note.b{background:#8fc4f5;color:#06203a;}
-.zone-note.g{background:#8fe3b4;color:#04240f;transform:rotate(-1.1deg);}
-.zone-note.p{background:#c9aef5;color:#1d0d3a;transform:rotate(.5deg);}
-.zone-note.o{background:#f7b271;color:#2c1503;transform:rotate(-.4deg);}
+.board-note-txt{white-space:pre-wrap;}
+.board-note-sub{margin-top:6px;font-size:11px;opacity:.7;}
+.board-note.blank .board-note-txt{opacity:.55;font-style:italic;}
+.board-note.y{background:#f5d67a;color:#2a2005;transform:rotate(.8deg);}
+.board-note.b{background:#8fc4f5;color:#06203a;}
+.board-note.g{background:#8fe3b4;color:#04240f;transform:rotate(-1.1deg);}
+.board-note.p{background:#c9aef5;color:#1d0d3a;transform:rotate(.5deg);}
+.board-note.o{background:#f7b271;color:#2c1503;transform:rotate(-.4deg);}
 /* Not handed out yet. Drawn as an outline so a student can see what is coming without it looking
    like something they have already been given. */
-.zone-note.ghost{background:transparent;border:1.5px dashed #38598a;color:#7093bb;
+.board-note.ghost{background:transparent;border:1.5px dashed #38598a;color:#7093bb;
   box-shadow:none;transform:none;}
-.zone-note.done{opacity:.58;}
-.zone-note.done .zone-note-txt{text-decoration:line-through;}
-.zone-note-tick{position:absolute;top:-8px;right:-8px;width:21px;height:21px;border-radius:50%;
+.board-note.done{opacity:.58;}
+.board-note.done .board-note-txt{text-decoration:line-through;}
+.board-note-tick{position:absolute;top:-8px;right:-8px;width:21px;height:21px;border-radius:50%;
   background:var(--green);color:#04240f;display:grid;place-items:center;font-size:11px;
   font-weight:800;box-shadow:0 2px 6px rgba(0,0,0,.4);}
 /* Typing happens on the sticky. A dialog over a board hides the thing that told you what to write. */
-.zone-note-edit{width:100%;min-height:66px;resize:none;border:0;border-radius:2px;padding:0;
+.board-note-edit{width:100%;min-height:66px;resize:none;border:0;border-radius:2px;padding:0;
   background:transparent;color:inherit;font-family:var(--font);font-size:12.5px;line-height:1.45;}
-.zone-note-edit:focus{outline:none;}
-.zone-note-edit::placeholder{color:currentColor;opacity:.5;font-style:italic;}
+.board-note-edit:focus{outline:none;}
+.board-note-edit::placeholder{color:currentColor;opacity:.5;font-style:italic;}
 
 /* One column of tools down the left, grouped: making things, thinking tools, tidying up. Grouped
    because eight identical buttons in a line is a thing you have to read every time, and three
    groups of two or three is a thing you learn once. */
-.zone-palette{position:absolute;left:12px;top:12px;z-index:60;display:flex;flex-direction:column;
+.board-palette{position:absolute;left:12px;top:12px;z-index:60;display:flex;flex-direction:column;
   gap:4px;background:var(--panel);border:1px solid var(--line);border-radius:11px;padding:5px;
   box-shadow:0 8px 22px rgba(0,0,0,.4);}
-.zone-tool{width:32px;height:32px;border-radius:8px;background:transparent;border:0;
+.board-tool{width:32px;height:32px;border-radius:8px;background:transparent;border:0;
   color:var(--muted);cursor:pointer;display:grid;place-items:center;font-size:17px;}
-.zone-tool:hover{color:var(--ink);background:#16325a;}
-.zone-tool.on{background:var(--brand);color:#241300;}
-.zone-tool:focus-visible{outline:3px solid var(--focus);outline-offset:-2px;}
-.zone-tool-gap{height:1px;background:var(--line);margin:3px 4px;}
+.board-tool:hover{color:var(--ink);background:#16325a;}
+.board-tool.on{background:var(--brand);color:#241300;}
+.board-tool:focus-visible{outline:3px solid var(--focus);outline-offset:-2px;}
+.board-tool-gap{height:1px;background:var(--line);margin:3px 4px;}
 
 /* The lens picker. A list, not a shuffle — choosing which way to look at your own board is most of
    the thinking, and a button that picks for you takes that away. */
 
 /* Linking is a mode, and a mode has to look like one or the next click is a surprise. */
-.zone-canvas-wrap.linking{cursor:crosshair;}
-.zone-canvas-wrap.linking .zone-note{cursor:crosshair;}
-.zone-note.linkfrom{outline:2px solid var(--gold);outline-offset:3px;}
-.zone-links{position:absolute;left:0;top:0;overflow:visible;pointer-events:none;}
-.zone-link{stroke:#4a79b0;stroke-width:2.5;stroke-dasharray:6 6;pointer-events:stroke;cursor:pointer;}
-.zone-link:hover{stroke:var(--gold);}
+.board-canvas-wrap.linking{cursor:crosshair;}
+.board-canvas-wrap.linking .board-note{cursor:crosshair;}
+.board-note.linkfrom{outline:2px solid var(--gold);outline-offset:3px;}
+.board-links{position:absolute;left:0;top:0;overflow:visible;pointer-events:none;}
+.board-link{stroke:#4a79b0;stroke-width:2.5;stroke-dasharray:6 6;pointer-events:stroke;cursor:pointer;}
+.board-link:hover{stroke:var(--gold);}
 
 /* Starred. Dot voting, one note at a time — the starred ones stay bright and everything else steps
    back, so "which of these nine" has an answer you can see from across the board. */
 /* The sticky the assistant just wrote into. It fills the board while the student is reading a
    message on the other side of the screen, so without this the board changes behind their back. */
-.zone-note.landed{animation:zone-land 1.4s ease-out;}
-@keyframes zone-land{
+.board-note.landed{animation:board-land 1.4s ease-out;}
+@keyframes board-land{
   0%{box-shadow:0 0 0 3px var(--gold),0 10px 26px rgba(0,0,0,.5);transform:scale(1.05) rotate(0);}
   70%{box-shadow:0 0 0 3px var(--gold),0 10px 26px rgba(0,0,0,.5);}
   100%{box-shadow:0 6px 14px rgba(0,0,0,.35);}
 }
-@media (prefers-reduced-motion:reduce){ .zone-note.landed{animation:none;box-shadow:0 0 0 3px var(--gold);} }
-.zone-offer.landed{border-left-color:var(--green);}
-.zone-offer.landed .zone-offer-lab{color:var(--green);}
+@media (prefers-reduced-motion:reduce){ .board-note.landed{animation:none;box-shadow:0 0 0 3px var(--gold);} }
+.board-offer.landed{border-left-color:var(--green);}
+.board-offer.landed .board-offer-lab{color:var(--green);}
 
-.zone-note.star{box-shadow:0 0 0 2px var(--gold),0 8px 20px rgba(0,0,0,.45);}
-.zone-canvas:has(.zone-note.star) .zone-note:not(.star):not(.fixed){opacity:.72;}
+.board-note.star{box-shadow:0 0 0 2px var(--gold),0 8px 20px rgba(0,0,0,.45);}
+.board-canvas:has(.board-note.star) .board-note:not(.star):not(.fixed){opacity:.72;}
 
 /* Bottom LEFT, under the palette. The right-hand side belongs to the conversation, and a zoom
    control tucked behind the chat box is one you cannot press. */
-.zone-zoom{position:absolute;left:12px;bottom:12px;display:flex;gap:4px;align-items:center;z-index:60;
+.board-zoom{position:absolute;left:12px;bottom:12px;display:flex;gap:4px;align-items:center;z-index:60;
   background:var(--panel);border:1px solid var(--line);border-radius:9px;padding:4px 6px;}
-.zone-zoom button{min-width:24px;height:24px;border-radius:6px;background:none;border:0;
+.board-zoom button{min-width:24px;height:24px;border-radius:6px;background:none;border:0;
   color:var(--muted);cursor:pointer;font-size:14px;font-family:var(--font);padding:0 5px;}
-.zone-zoom button:hover{color:var(--ink);}
-.zone-zoom span{font-size:11px;color:var(--dim);min-width:36px;text-align:center;}
+.board-zoom button:hover{color:var(--ink);}
+.board-zoom span{font-size:11px;color:var(--dim);min-width:36px;text-align:center;}
 
-.zone-tocode{margin-left:auto;display:inline-flex;align-items:center;gap:6px;cursor:pointer;
+.board-tocode{margin-left:auto;display:inline-flex;align-items:center;gap:6px;cursor:pointer;
   background:none;border:1px solid var(--line);color:var(--muted);border-radius:7px;
   padding:5px 11px;font-family:var(--font);font-size:12.5px;font-weight:600;}
-.zone-tocode:hover{border-color:#3a6da3;color:var(--ink);}
-.zone-tocode[hidden]{display:none;}
-.zone-tocode + .zone-bot-btn{margin-left:8px;}
+.board-tocode:hover{border-color:#3a6da3;color:var(--ink);}
+.board-tocode[hidden]{display:none;}
+.board-tocode + .board-bot-btn{margin-left:8px;}
 
 /* ---------- note controls ----------
    On the note rather than in a toolbar somewhere, because which of fifteen notes you are acting on
    has to be unambiguous. Hidden until hover or focus so a full board is notes rather than buttons —
    focus is in there so this is not mouse-only. */
-.zone-note-bar{position:absolute;top:4px;right:4px;display:flex;gap:2px;opacity:0;
+.board-note-bar{position:absolute;top:4px;right:4px;display:flex;gap:2px;opacity:0;
   transition:opacity .12s;}
-.zone-note:hover .zone-note-bar,
-.zone-note:focus-within .zone-note-bar,
-.zone-note.pinned .zone-note-bar{opacity:1;}
-.zone-note-btn{width:20px;height:20px;border-radius:5px;border:0;cursor:pointer;padding:0;
+.board-note:hover .board-note-bar,
+.board-note:focus-within .board-note-bar,
+.board-note.pinned .board-note-bar{opacity:1;}
+.board-note-btn{width:20px;height:20px;border-radius:5px;border:0;cursor:pointer;padding:0;
   background:rgba(0,0,0,.12);color:inherit;display:grid;place-items:center;font-size:13px;
   line-height:1;opacity:.72;}
-.zone-note-btn:hover{background:rgba(0,0,0,.24);opacity:1;}
-.zone-note-btn:focus-visible{outline:2px solid var(--focus);outline-offset:1px;}
+.board-note-btn:hover{background:rgba(0,0,0,.24);opacity:1;}
+.board-note-btn:focus-visible{outline:2px solid var(--focus);outline-offset:1px;}
 /* A pinned note is not draggable, and says so by sitting straight while everything else is askew. */
-.zone-note.pinned{cursor:default;transform:none;}
-.zone-note.pinned .zone-note-btn{opacity:.9;}
-.zone-note-grip{position:absolute;right:0;bottom:0;width:16px;height:16px;cursor:nwse-resize;
+.board-note.pinned{cursor:default;transform:none;}
+.board-note.pinned .board-note-btn{opacity:.9;}
+.board-note-grip{position:absolute;right:0;bottom:0;width:16px;height:16px;cursor:nwse-resize;
   opacity:0;transition:opacity .12s;
   background:linear-gradient(135deg,transparent 46%,currentColor 46%,currentColor 54%,transparent 54%,
     transparent 68%,currentColor 68%,currentColor 76%,transparent 76%);}
-.zone-note:hover .zone-note-grip,.zone-note:focus-within .zone-note-grip{opacity:.4;}
-.zone-note.sizing{transform:none;}
-.zone-note.sizing .zone-note-txt{overflow:hidden;}
+.board-note:hover .board-note-grip,.board-note:focus-within .board-note-grip{opacity:.4;}
+.board-note.sizing{transform:none;}
+.board-note.sizing .board-note-txt{overflow:hidden;}
 
 /* ---------- the conversation, on the board ----------
    Bubbles in board coordinates, in a lane down the right. They pan and zoom with the notes because
@@ -1269,70 +1269,70 @@ body.resizing-v #gameFrame{pointer-events:none;}
 /* The column has no surface of its own — the board runs underneath and behind it, and only the
    bubbles and the input have a background. Pointer events pass through the gaps, so the board is
    still draggable in the space between messages. */
-.zone-chat-over{position:absolute;right:0;top:0;bottom:0;z-index:55;
+.board-chat-over{position:absolute;right:0;top:0;bottom:0;z-index:55;
   width:min(360px,38%);display:flex;flex-direction:column;justify-content:flex-end;
   padding:14px 14px 14px 0;gap:10px;pointer-events:none;}
-.zone-chat-over > *{pointer-events:auto;}
-.zone-lane{overflow-y:auto;overscroll-behavior:contain;display:flex;flex-direction:column;
+.board-chat-over > *{pointer-events:auto;}
+.board-lane{overflow-y:auto;overscroll-behavior:contain;display:flex;flex-direction:column;
   align-items:flex-end;gap:8px;scrollbar-width:thin;pointer-events:none;}
-.zone-lane > *{pointer-events:auto;}
-.zone-lane:empty{display:none;}
+.board-lane > *{pointer-events:auto;}
+.board-lane:empty{display:none;}
 
 /* Text messages. Theirs on the right in the app's selection blue, the assistant's on the left in a
    panel colour — the same shape everyone already knows from a phone. */
-.zone-bubble{max-width:94%;font-size:13px;line-height:1.5;border-radius:14px;padding:9px 12px;
+.board-bubble{max-width:94%;font-size:13px;line-height:1.5;border-radius:14px;padding:9px 12px;
   box-shadow:0 6px 18px rgba(0,0,0,.45);}
-.zone-bubble.bot{background:var(--panel);border:1px solid #2c5d8a;color:var(--ink);
+.board-bubble.bot{background:var(--panel);border:1px solid #2c5d8a;color:var(--ink);
   align-self:flex-start;border-bottom-left-radius:5px;}
-.zone-bubble.user{background:var(--sel);color:#fff;border:1px solid #2f6bb0;
+.board-bubble.user{background:var(--sel);color:#fff;border:1px solid #2f6bb0;
   align-self:flex-end;border-bottom-right-radius:5px;}
-.zone-bubble p:first-child{margin-top:0;}
-.zone-bubble p:last-child{margin-bottom:0;}
-.zone-bubble code{background:#0c1e36;border-radius:4px;padding:1px 4px;font-size:12px;}
+.board-bubble p:first-child{margin-top:0;}
+.board-bubble p:last-child{margin-bottom:0;}
+.board-bubble code{background:#0c1e36;border-radius:4px;padding:1px 4px;font-size:12px;}
 
-.zone-chat{flex:none;display:flex;align-items:flex-end;gap:8px;
+.board-chat{flex:none;display:flex;align-items:flex-end;gap:8px;
   background:var(--panel);border:1px solid #2c5d8a;border-radius:13px;padding:7px 8px 7px 12px;
   box-shadow:0 10px 30px rgba(0,0,0,.5);}
-.zone-chat textarea{flex:1;min-width:0;max-height:120px;resize:none;background:transparent;
+.board-chat textarea{flex:1;min-width:0;max-height:120px;resize:none;background:transparent;
   border:0;color:var(--ink);font-family:var(--font);font-size:13.5px;line-height:1.5;padding:5px 0;}
-.zone-chat textarea:focus{outline:none;}
-.zone-chat button{flex:none;width:32px;height:32px;border-radius:9px;border:0;cursor:pointer;
+.board-chat textarea:focus{outline:none;}
+.board-chat button{flex:none;width:32px;height:32px;border-radius:9px;border:0;cursor:pointer;
   background:var(--brand);color:#241300;display:grid;place-items:center;font-size:16px;}
-.zone-chat button:hover{filter:brightness(1.08);}
-.zone-model{margin-left:12px;font-size:11px;color:var(--teal);font-family:Consolas,monospace;}
+.board-chat button:hover{filter:brightness(1.08);}
+.board-model{margin-left:12px;font-size:11px;color:var(--teal);font-family:Consolas,monospace;}
 
 /* The two structured cards float in the lane with the bubbles, full width, because both of them are
    about the board rather than about the sentence before them. */
-.zone-offer,.zone-quest{align-self:stretch;box-shadow:0 6px 18px rgba(0,0,0,.45);}
-.zone-offer{background:#12304f;border:1px solid #2c5d8a;border-left:3px solid var(--gold);
+.board-offer,.board-quest{align-self:stretch;box-shadow:0 6px 18px rgba(0,0,0,.45);}
+.board-offer{background:#12304f;border:1px solid #2c5d8a;border-left:3px solid var(--gold);
   border-radius:10px;padding:9px 11px;}
-.zone-offer-lab{font-size:9.5px;font-weight:700;letter-spacing:.8px;text-transform:uppercase;
+.board-offer-lab{font-size:9.5px;font-weight:700;letter-spacing:.8px;text-transform:uppercase;
   color:var(--gold);margin-bottom:4px;}
-.zone-offer p{margin:0;font-size:13px;line-height:1.45;}
-.zone-mini{font-size:11.5px;border-radius:6px;padding:3px 9px;cursor:pointer;
+.board-offer p{margin:0;font-size:13px;line-height:1.45;}
+.board-mini{font-size:11.5px;border-radius:6px;padding:3px 9px;cursor:pointer;
   border:1px solid transparent;font-family:var(--font);}
-.zone-mini.go{background:var(--gold);color:#2a1c00;font-weight:600;}
-.zone-mini.alt{background:none;border-color:var(--line);color:var(--muted);}
-.zone-mini.alt:hover{border-color:#3a6da3;color:var(--ink);}
+.board-mini.go{background:var(--gold);color:#2a1c00;font-weight:600;}
+.board-mini.alt{background:none;border-color:var(--line);color:var(--muted);}
+.board-mini.alt:hover{border-color:#3a6da3;color:var(--ink);}
 
 /* The objective, handed out into the conversation. The chat IS the quest log — a student reads the
    brief, does the thing in the Code tab, and COMPLETE lands in the same column they were reading. */
-.zone-quest{padding:10px 12px;border-radius:10px;
+.board-quest{padding:10px 12px;border-radius:10px;
   background:#2a1a0c;border:1px solid #6b4a1c;border-left:3px solid var(--brand);}
-.zone-quest-lab{font-size:9.5px;font-weight:700;letter-spacing:1.1px;text-transform:uppercase;
+.board-quest-lab{font-size:9.5px;font-weight:700;letter-spacing:1.1px;text-transform:uppercase;
   color:var(--brand);margin-bottom:4px;}
-.zone-quest-say{font-size:14px;font-weight:600;line-height:1.4;color:var(--ink);}
-.zone-quest.done{background:#0e2b26;border-color:#1f6b52;border-left-color:var(--green);}
-.zone-quest.done .zone-quest-lab{color:var(--green);}
-.zone-quest.done .zone-quest-say{font-weight:500;color:var(--muted);text-decoration:line-through;
+.board-quest-say{font-size:14px;font-weight:600;line-height:1.4;color:var(--ink);}
+.board-quest.done{background:#0e2b26;border-color:#1f6b52;border-left-color:var(--green);}
+.board-quest.done .board-quest-lab{color:var(--green);}
+.board-quest.done .board-quest-say{font-weight:500;color:var(--muted);text-decoration:line-through;
   text-decoration-color:#2f6b57;}
 
 /* The board itself does not reflow — it pans, so a narrow window is a smaller window onto the same
-   board rather than a different layout. Only the fixed chat box needs to give ground. The zone
+   board rather than a different layout. Only the fixed chat box needs to give ground. The board
    refuses to open below 700 at all, so there is no case where it has to fit a phone. */
 @media (max-width:900px){
-  .zone-chat-over{width:46%;padding:10px 10px 10px 0;}
-  .zone-palette{top:8px;left:8px;}
+  .board-chat-over{width:46%;padding:10px 10px 10px 0;}
+  .board-palette{top:8px;left:8px;}
 }
 
 /* leaderboard */

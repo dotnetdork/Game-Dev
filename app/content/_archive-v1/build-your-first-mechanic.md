@@ -1,3 +1,13 @@
+<!--
+  ARCHIVED 2026-09-09. This was a CHECKPOINT - a gated end-of-module lesson that opened a building
+  zone instead of a page. The whole checkpoint concept was removed: it was the most-built and least
+  validated feature in the app, and gating a module behind a board turned out to be the wrong shape.
+  What replaced it is a persistent DESIGN tab - the same board, always open, iterated across the
+  whole course instead of six times behind a gate.
+  Kept because the zone specs below are real design work: the board layouts, the region roles, the
+  objective checks and the coach briefs are all worth mining if checkpoints come back in another
+  form. Nothing loads this file - the app only reads what course.yaml lists.
+-->
 ---
 title: Build Your First Mechanic
 xp: 240
@@ -59,3 +69,32 @@ goals:
           file: design.md
           text: 'Built:'
 ```
+
+## Conversation openers this lesson had in questions.yaml
+
+
+### tutor.lessons
+
+- Which thing on my page should I build first?
+- How do I know whether my mechanic belongs in create or update?
+- What is the smallest version of my idea that would still work?
+- Why change the numbers before writing new code?
+- How do I name a function so I can find it again?
+- What do I do when my new function does nothing at all?
+- How do I tell whether the game feels right or I am just used to it?
+- Is it normal for the first version not to work?
+- How much code should one mechanic be?
+- Where do I put a rule that only happens once?
+
+### coder.lessons
+
+- Add a function for my mechanic and call it from update.
+- Make my new function run once when the game starts instead.
+- Move the number I just typed in into CONFIG.
+- Make the platforms fade out after the player lands on them.
+- Make one of the coins move away when the player gets close.
+- Add a timer that does something after a few seconds.
+- Give the player a second ability and put it in its own function.
+- Print something to the console every time my mechanic runs.
+- Make my mechanic only happen when the player is on the ground.
+- Tell me why my new function is not doing anything.

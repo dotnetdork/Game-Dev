@@ -1,3 +1,13 @@
+<!--
+  ARCHIVED 2026-09-09. This was a CHECKPOINT - a gated end-of-module lesson that opened a building
+  zone instead of a page. The whole checkpoint concept was removed: it was the most-built and least
+  validated feature in the app, and gating a module behind a board turned out to be the wrong shape.
+  What replaced it is a persistent DESIGN tab - the same board, always open, iterated across the
+  whole course instead of six times behind a gate.
+  Kept because the zone specs below are real design work: the board layouts, the region roles, the
+  objective checks and the coach briefs are all worth mining if checkpoints come back in another
+  form. Nothing loads this file - the app only reads what course.yaml lists.
+-->
 ---
 title: Your One-Sheet
 xp: 240
@@ -59,3 +69,32 @@ goals:
 tools:
   - kind: readback
 ```
+
+## Conversation openers this lesson had in questions.yaml
+
+
+### tutor.lessons
+
+- How do I answer how you lose if my game has no enemies?
+- What if I cannot decide between two ideas?
+- Why does it matter whether somebody else could build my game?
+- How much detail should each slot have?
+- What if my reader described a completely different game?
+- Is it bad that my page keeps changing?
+- What if I have nothing under what makes it mine?
+- Can two people in the class have similar one-sheets?
+- How do I stop my page turning into a wishlist?
+- What do I do with the slots I genuinely do not know yet?
+
+### coder.lessons
+
+- Add a lose condition so the game can actually end.
+- Make the game restart when the player falls off the bottom.
+- Show a message when all the coins are collected.
+- Add a comment listing the six slots and where each one lives in code.
+- Make the win condition match what my page says.
+- Put my game's title into main.js.
+- Add a counter for whatever my page says the player collects.
+- Change the coin total to the number on my page.
+- Add an empty function for the twist on my page.
+- Tell me which slot on my page would be the hardest to build.

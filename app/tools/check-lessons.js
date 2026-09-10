@@ -25,11 +25,10 @@ const DIR = process.argv[2] || path.join(__dirname, '..', 'content', 'lessons');
 const QUIZ = /```quiz\r?\n([\s\S]*?)```/g;
 const YOURTURN = /```yourturn\r?\n([\s\S]*?)```/g;
 const CHALLENGE = /```challenge\r?\n([\s\S]*?)```/g;
-const ZONE = /```zone\r?\n([\s\S]*?)```/g;
 const KNOWN_TYPES = ['mcq', 'predict', 'parsons', 'fillblank', 'findbug'];
 
 const problems = [];
-let quizzes = 0, yourturns = 0, challenges = 0, zones = 0;
+let quizzes = 0, yourturns = 0, challenges = 0;
 /* How many multiple-choice answers sit at each authored position, tallied for the position-bias
    report at the bottom of this file. */
 const answerAt = {};
@@ -149,162 +148,6 @@ function checkYourTurn(where, src) {
    backtick parses fine for the validator, passes as "solvable", and renders in the app with no
    code, no task and no hint at all. One shipped that way.
    This is the half that asks the question the app asks: can a student see it? */
-/* ---- a building zone has to be able to open ----
-   A zone is declared, not written: the board comes from `slots`, the rail from `goals`, and the
-   helper is told about both. Each of these fails silently and differently if it is wrong, which is
-   why they are checked rather than trusted:
-
-     no slots            an empty board, and a Finish button that can never light up
-     a goal with no slot  a chip on the rail that can never tick, so the zone cannot be finished
-     a goal naming a slot that is not on the board — same thing, and much harder to spot by eye
-     a prompt for a slot that is not on the board — writing nobody will ever read
-
-   `*` is allowed as a goal's slot and means "every box answered". */
-function checkZone(where, src) {
-  let y;
-  try { y = yaml.load(src); }
-  catch (e) {
-    fail(where, 'the YAML does not parse (' + String(e.message).split('\n')[0] + '). A value that '
-      + 'starts with ` or " or contains ": " must be wrapped in quotes.');
-    return;
-  }
-  if (!y || typeof y !== 'object' || Array.isArray(y)) { fail(where, 'is empty or is not a set of keys.'); return; }
-  if (!y.title) fail(where, 'has no `title:` — the zone header would be blank.');
-  if (!y.brief) fail(where, 'has no `brief:` — the helper would be told nothing about what this zone is for.');
-
-  const kind = y.kind === 'build' ? 'build' : 'sheet';
-  if (y.kind && kind !== y.kind) fail(where, 'has `kind: ' + y.kind + '`, which is not a kind. Use `sheet` or `build`.');
-
-  /* The board: regions with a rectangle and a role. Each of these fails silently in its own way,
-     which is why none of them is trusted:
-       no `at:`               the region is drawn at 0,0 with no size and is invisible
-       no role at all         a decorative box; legal, but usually a forgotten `collects:`
-       `holds: slots` twice   the fixed stickies would be laid out into two places at once
-       a `collects:` heading  that is also in `slots:` — the same text would be both a fixed sticky
-                              and a pile of notes, and the two would fight over the file */
-  const regions = Array.isArray(y.board) ? y.board : [];
-  const collected = {};
-  const seenRegion = {};
-  let holders = 0;
-  regions.forEach(function (r, i) {
-    const at = where + ' region ' + (i + 1);
-    if (!r || typeof r !== 'object' || Array.isArray(r)) { fail(at, 'is not a set of keys.'); return; }
-    if (!r.id) fail(at, 'has no `id:` — drop targets are matched by it.');
-    else if (seenRegion[r.id]) fail(at, 'reuses the id "' + r.id + '".');
-    seenRegion[r.id] = true;
-    if (!Array.isArray(r.at) || r.at.length !== 4 || r.at.some(function (n) { return typeof n !== 'number'; })) {
-      fail(at, 'needs `at: [x, y, width, height]` in numbers, or it is drawn nowhere.');
-    }
-    if (r.holds === 'slots') holders++;
-    if (r.collects) collected[String(r.collects).toLowerCase().replace(/[^a-z0-9]+/g, '')] = true;
-    if (r.objectives && ['done', 'now', 'ahead'].indexOf(String(r.objectives)) < 0) {
-      fail(at, 'has `objectives: ' + r.objectives + '`. Use done, now or ahead.');
-    }
-  });
-  if (kind === 'sheet' && regions.length && holders !== 1) {
-    fail(where, 'has ' + holders + ' regions with `holds: slots`. Exactly one region has to hold the fixed notes.');
-  }
-  if (kind === 'build' && regions.length) {
-    ['done', 'now', 'ahead'].forEach(function (role) {
-      if (!regions.some(function (r) { return r.objectives === role; })) {
-        fail(where, 'is a build board with no `objectives: ' + role + '` region — objectives in that state would land nowhere.');
-      }
-    });
-  }
-  if (!regions.length) fail(where, 'has no `board:` — there would be no regions and every note would float loose.');
-
-  const slots = Array.isArray(y.slots) ? y.slots.map(String) : [];
-  /* A build zone has no board — its furniture is the student's game and their code — so `slots:`
-     is not only unnecessary there, it is a sign the author meant `kind: sheet`. A sheet zone
-     without them is an empty board and a Finish button that can never light up. */
-  if (kind === 'build') {
-    if (slots.length) fail(where, 'is a build zone but has `slots:`. A build zone has no board — did you mean `kind: sheet`?');
-    if (y.tools) fail(where, 'is a build zone but has `tools:`. Tools sit on a board, and a build zone has none.');
-  } else if (!slots.length) {
-    fail(where, 'has no `slots:` — the board would be empty and the zone could never be finished.');
-    return;
-  }
-  const key = function (s) { return String(s || '').toLowerCase().replace(/[^a-z0-9]+/g, ''); };
-  const known = {};
-  slots.forEach(function (s) {
-    if (!String(s).trim()) { fail(where, 'has a blank entry in `slots:`.'); return; }
-    if (known[key(s)]) fail(where, 'lists the slot "' + s + '" twice — the two notes would edit one box.');
-    if (collected[key(s)]) {
-      fail(where, 'lists "' + s + '" in `slots:` AND collects it in a region. It would be both a '
-        + 'fixed note and a pile of notes, and the two would fight over the file.');
-    }
-    known[key(s)] = true;
-  });
-  // A goal may name a collected heading too — it is a real slot, just written by dropping notes.
-  Object.keys(collected).forEach(function (k) { known[k] = true; });
-
-  const goals = Array.isArray(y.goals) ? y.goals : [];
-  if (!goals.length) fail(where, 'has no `goals:` — nothing would tick, so Finish could never light up.');
-  goals.forEach(function (g, i) {
-    const at = where + ' goal ' + (i + 1);
-    if (!g || typeof g !== 'object' || Array.isArray(g)) { fail(at, 'is not a set of keys.'); return; }
-    if (!g.say) fail(at, 'has no `say:` — the chip on the rail would have no words on it.');
-    /* A build objective is checked with the practice checker's own rules; a sheet goal names a box.
-       One or the other, and neither means the objective can never tick and the zone can never be
-       finished — which is the failure this whole function exists to prevent. */
-    const hasCheck = Array.isArray(g.check) && g.check.length;
-    const s = g.slot === undefined || g.slot === null ? '' : String(g.slot);
-    if (hasCheck) {
-      g.check.forEach(function (r, ri) {
-        if (!r || typeof r !== 'object' || Array.isArray(r)) fail(at + ' rule ' + (ri + 1), 'is not a set of keys.');
-      });
-      return;
-    }
-    if (!s) { fail(at, 'has neither `slot:` nor `check:`, so nothing can ever tick it and the zone cannot be finished.'); return; }
-    if (kind === 'build') { fail(at, 'uses `slot:`, but a build zone has no board. Objectives there need `check:` rules.'); return; }
-    if (s === '*' || s === 'all') return;
-    if (!known[key(s)]) fail(at, 'checks the slot "' + s + '", which is not in `slots:` — it can never tick.');
-  });
-
-  if (y.prompts && typeof y.prompts === 'object' && !Array.isArray(y.prompts)) {
-    Object.keys(y.prompts).forEach(function (k) {
-      if (!known[key(k)]) fail(where, 'has a prompt for "' + k + '", which is not in `slots:` — nobody would ever read it.');
-    });
-  }
-
-  /* Tools are named from content and written in code, the same arrangement demos.js has — so the
-     same failure is possible: a `kind:` that does not exist renders nothing at all, with no error
-     on screen, and the only way to notice is remembering the zone used to have a thing in it.
-     The kinds are read out of zone.js rather than listed here, so adding one cannot leave this
-     check behind. */
-  (Array.isArray(y.tools) ? y.tools : []).forEach(function (t, i) {
-    const at = where + ' tool ' + (i + 1);
-    if (!t || typeof t !== 'object' || Array.isArray(t)) { fail(at, 'is not a set of keys.'); return; }
-    if (!t.kind) { fail(at, 'has no `kind:`, so nothing would be rendered.'); return; }
-    if (zoneToolKinds().indexOf(String(t.kind)) < 0) {
-      fail(at, '"' + t.kind + '" is not a tool that exists. Known: ' + zoneToolKinds().join(', ')
-        + ' (see ZONE_TOOLS in public/js/zone.js).');
-    }
-    if (t.into && !known[key(t.into)]) {
-      fail(at, 'writes into "' + t.into + '", which is not in `slots:` — the box it fills is not on the board.');
-    }
-  });
-}
-
-/* The tool names zone.js actually defines, read off the source. Matching the keys of the
-   ZONE_PALETTE literal is enough and avoids evaluating a file full of DOM calls. */
-let ZONE_KINDS = null;
-function zoneToolKinds() {
-  if (ZONE_KINDS) return ZONE_KINDS;
-  ZONE_KINDS = [];
-  let src = '';
-  try { src = fs.readFileSync(path.join(__dirname, '..', 'public', 'js', 'zone.js'), 'utf8'); }
-  catch (e) { fail('zone.js', 'could not be read, so zone tools cannot be checked.'); return ZONE_KINDS; }
-  const at = src.indexOf('const ZONE_PALETTE = {');
-  if (at < 0) { fail('zone.js', 'has no ZONE_PALETTE object — zone tools cannot be checked.'); return ZONE_KINDS; }
-  const body = src.slice(at, src.indexOf('\n};', at));
-  const re = /^\s{2}([a-z][a-z0-9-]*)\s*:\s*\{/gm;
-  let m;
-  while ((m = re.exec(body))) ZONE_KINDS.push(m[1]);
-  if (!ZONE_KINDS.length) fail('zone.js', 'defines no zone tools at all — this is a bug in that file.');
-  return ZONE_KINDS;
-}
-
 function checkChallenge(where, src) {
   let c;
   try { c = yaml.load(src); }
@@ -524,7 +367,7 @@ const FIRST_ACT_MAX_PCT = 25;
 /* `zone` is here because a building zone IS the work of a checkpoint — a page whose only block is a
    zone is not a wall of text, it is a door. Without it the pacing check calls a checkpoint a lesson
    with no activity in it and fails the build. */
-const ACT_FENCES = ['quiz', 'challenge', 'yourturn', 'run', 'zone'];
+const ACT_FENCES = ['quiz', 'challenge', 'yourturn', 'run'];
 
 function pacingOf(text) {
   const body = text.replace(/^---[\s\S]*?\n---\n/, '');
@@ -583,7 +426,6 @@ files.forEach(function (f) {
   quizzes += eachBlock(text, QUIZ, function (i, src) { checkQuiz(f + ' quiz ' + i, src); });
   yourturns += eachBlock(text, YOURTURN, function (i, src) { checkYourTurn(f + ' yourturn ' + i, src); });
   challenges += eachBlock(text, CHALLENGE, function (i, src) { checkChallenge(f + ' challenge ' + i, src); });
-  zones += eachBlock(text, ZONE, function (i, src) { checkZone(f + ' zone ' + i, src); });
 });
 
 checkUpscaleGuard();
@@ -631,53 +473,6 @@ function checkLessonIds() {
     });
   });
   if (!n) fail('course.yaml', 'lists no lessons at all.');
-  checkCheckpoints(doc);
-}
-
-/* ---- a checkpoint has to be able to do its job ----
-   `checkpoint: true` in a lesson's front-matter changes two things: the outline draws that row as
-   the end of its module, and lessonActivityKeys counts the your-turn steps, so the lesson cannot be
-   finished — and the module's stars cannot be earned — until the student's own game satisfies them.
-
-   Both of those depend on facts YAML cannot enforce, and each fails silently in its own way:
-
-     not last in its module   the module's stars stop waiting on it, because completeLesson only
-                              awards them once every lesson is done and there would be lessons
-                              after it. The gate quietly becomes decoration.
-     no `yourturn` block      there are no `y*` keys to count, so the lesson completes on its
-                              quizzes like any other. A checkpoint that insists on nothing.
-
-   That every module HAS one is fatal too. It landed as a report while the six were being written
-   and was promoted the day the list came up empty, which is the only honest moment to promote it:
-   a module with no checkpoint is a module a student can finish without ever opening their own
-   game, and that is the one thing this whole structure exists to prevent. */
-function checkCheckpoints(doc) {
-  const missing = [];
-  (doc.modules || []).forEach(function (mod) {
-    const ids = (mod.lessons || []).filter(function (id) { return id && String(id).trim(); }).map(String);
-    let found = null;
-    ids.forEach(function (id, i) {
-      let raw = '';
-      try { raw = fs.readFileSync(path.join(DIR, id + '.md'), 'utf8'); } catch (e) { return; }
-      const fm = raw.replace(/\r\n/g, '\n').match(/^---\n([\s\S]*?)\n---/);
-      if (!fm || !/^checkpoint:\s*true\s*$/m.test(fm[1])) return;
-      found = id;
-      const where = id + '.md';
-      if (i !== ids.length - 1) {
-        fail(where, 'is a checkpoint but is not the last lesson in ' + (mod.name || mod.id)
-          + '. The module\'s stars only wait for the last one, so this gate does nothing.');
-      }
-      if (!/```zone/.test(raw) && !/```yourturn/.test(raw)) {
-        fail(where, 'is a checkpoint with neither a ```zone nor a ```yourturn block. It has nothing '
-          + 'to insist on, so it finishes like an ordinary lesson.');
-      }
-    });
-    if (!found) missing.push(mod.name || mod.id);
-  });
-  missing.forEach(function (name) {
-    fail('course.yaml (' + name + ')', 'has no checkpoint. Its last lesson needs `checkpoint: true` '
-      + 'and a ```yourturn block, or a student can finish the module without opening their own game.');
-  });
 }
 
 /* ---- `// @demo: name` in a run cell has to name a demo that exists ----
@@ -723,7 +518,7 @@ function checkDemoNames() {
 }
 
 console.log(files.length + ' lessons: ' + quizzes + ' quizzes, ' + challenges + ' labs, '
-  + yourturns + ' your-turn steps, ' + zones + ' building zones');
+  + yourturns + ' your-turn steps');
 if (tiny.length) {
   console.log('note: ' + tiny.length + ' screenshot(s) draw smaller than ' + TINY_W + 'px —');
   tiny.forEach(function (t) { console.log('  ' + t); });

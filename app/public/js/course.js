@@ -48,7 +48,7 @@ function loadCourse() {
         // `id` is new: the body fetch needs the filename, which used to be implicit in load order.
         // `reward` is the badge this lesson's your-turn step awards, so the trophy case can list
         // every badge in the course rather than only the ones already earned.
-        module.lessons.push({ id: l.id, t: l.title, xp: l.xp, d: l.summary, ai: l.ai, reward: l.reward || '', cp: l.checkpoint === true, body: null });
+        module.lessons.push({ id: l.id, t: l.title, xp: l.xp, d: l.summary, ai: l.ai, reward: l.reward || '', body: null });
       });
     });
     buildFlat();
@@ -144,25 +144,16 @@ function renderOutline() {
     m.lessons.forEach(function (l, li) {
       const idx = flat.findIndex(function (f) { return f.mi === mi && f.li === li; });
       const locked = !lessonUnlocked(idx), done = !!state.done[l.id];
-      /* A checkpoint gets the chequered flag, and it keeps the module's own colour so the row reads
-         as the end of THIS module rather than as a generic marker. Done and locked still win the
-         icon: whether a lesson is finished is the more urgent thing to say about it, and a padlock
-         that turned into a flag would stop looking like a padlock. */
-      const cp = l.cp === true;
-      const icon = done ? 'mdi-check-circle'
-        : locked ? 'mdi-lock'
-        : cp ? 'mdi-flag-checkered' : 'mdi-file-document-outline';
+      const icon = done ? 'mdi-check-circle' : locked ? 'mdi-lock' : 'mdi-file-document-outline';
       const row = document.createElement('button'); row.type = 'button';
       // `lesson-row`, not `page`: `.page` is the full-screen Store/Gallery layout rule, and it was
       // leaking height:100% and overflow:auto onto every row in this sidebar.
-      row.className = 'lesson-row' + (idx === curIdx ? ' active' : '') + (done ? ' done' : '') + (locked ? ' locked' : '') + (cp ? ' cp' : '');
+      row.className = 'lesson-row' + (idx === curIdx ? ' active' : '') + (done ? ' done' : '') + (locked ? ' locked' : '');
       row.setAttribute('role', 'treeitem');
       if (idx === curIdx) row.setAttribute('aria-current', 'true');
       if (locked) row.setAttribute('aria-disabled', 'true');
-      row.innerHTML = '<span class="mdi ' + icon + '" aria-hidden="true"'
-        + (cp && !done && !locked ? ' style="color:' + moduleAccent(mi) + '"' : '') + '></span>'
+      row.innerHTML = '<span class="mdi ' + icon + '" aria-hidden="true"></span>'
         + '<span class="lbl">' + esc(l.t) + '</span>'
-        + (cp ? '<span class="sr-only"> (checkpoint — your own game)</span>' : '')
         + (done ? '<span class="sr-only"> (completed)</span>' : locked ? '<span class="sr-only"> (locked)</span>' : '');
       row.addEventListener('click', function () { if (locked) { toast('Complete the previous lesson first.'); return; } selectLesson(idx); });
       kids.appendChild(row);
@@ -291,17 +282,9 @@ function wireTreeKeys() {
 function lessonBodyHTML(f, body) {
   const done = !!state.done[f.id];
   const total = f.m.lessons.length;
-  /* A checkpoint says so instead of counting itself. "Lesson 5 of 5" is the wrong fact about it —
-     it is not the fifth thing to read, it is the part where the reading stops and the student works
-     on their own game, and the module's stars are waiting on it. */
-  const cp = f.l.cp === true;
   const meta = '<div class="lesson-meta">'
-    + (cp
-      ? '<span class="lchip cp"><span class="mdi mdi-flag-checkered"></span>Checkpoint</span>'
-      : '<span class="lchip"><span class="mdi mdi-book-open-page-variant"></span>Lesson ' + (f.li + 1) + ' of ' + total + '</span>')
+    + '<span class="lchip"><span class="mdi mdi-book-open-page-variant"></span>Lesson ' + (f.li + 1) + ' of ' + total + '</span>'
     + '<span class="lchip"><span class="mdi mdi-lightning-bolt"></span>+' + f.l.xp + ' XP</span>'
-    // The icon is already a star, so the word and the second glyph were saying it three times.
-    + (cp && f.m.stars ? '<span class="lchip" title="Stars for finishing this module"><span class="mdi mdi-star"></span>' + f.m.stars + '</span>' : '')
     + (done ? '<span class="lchip"><span class="mdi mdi-check-circle"></span>Completed</span>' : '')
     + '</div>';
   // No "Complete lesson" button: the lesson completes itself when the work is done. This strip
@@ -343,22 +326,10 @@ function renderLessonProgress(f, dwellFrac, advanceSecs) {
     return;
   }
   const n = activityProgress();
-  /* A page whose only activity is a building zone hides this entirely while it is unfinished. The
-     door already shows the zone's own checklist, live, and a second bar underneath saying "0 of 1
-     done" is both the same fact and a worse version of it — one is the five things the student has
-     to do and the other is the number of zones on the page. The complete and advancing states above
-     still show, because those are about the lesson rather than about the work. */
-  if (typeof zoneRegistry !== 'undefined' && zoneRegistry.length && lessonPlan.total === zoneRegistry.length) {
-    el.className = 'lesson-progress'; el.hidden = true; return;
-  }
   el.hidden = false;
-  /* On any other checkpoint the strip has to say WHAT is being counted, because unlike every other
-     lesson the count includes the steps against their own game — and "3 of 4 done" beside a flag
-     reads as "one more question" when it means "go and change your game". */
-  const cp = f.l.cp === true;
-  el.className = 'lesson-progress' + (cp ? ' cp' : '');
-  el.innerHTML = '<span class="mdi ' + (cp ? 'mdi-flag-checkered' : 'mdi-target') + '"></span>'
-    + '<span class="lp-label">' + n + ' of ' + lessonPlan.total + (cp ? ' done — every step has to work in your own game' : ' done') + '</span>'
+  el.className = 'lesson-progress';
+  el.innerHTML = '<span class="mdi mdi-target"></span>'
+    + '<span class="lp-label">' + n + ' of ' + lessonPlan.total + ' done</span>'
     + '<span class="lp-bar"><i style="transform:scaleX(' + (n / lessonPlan.total) + ')"></i></span>'
     + '<span class="lp-xp">+' + f.l.xp + ' XP</span>';
 }
@@ -374,7 +345,11 @@ let currentPracticeTask = null;
    toggle is off — a student who asked Build to change something while reading got an edit they
    could not see, applied to a file they were not looking at. */
 function paintAIModeAvailability(view) {
-  const buildable = view !== 'learn';
+  /* Build edits game files, and neither Learn nor Design has one on screen — on Design the student
+     is arranging what the game IS, which is the one conversation Build has nothing to say about.
+     On both, the panel falls back to the Tutor; on Design the Tutor answers as the design coach.
+     See aiAgentFor() in js/ai.js. */
+  const buildable = view !== 'learn' && view !== 'design';
   const tog = $('modeToggle');
   if (tog) {
     tog.disabled = !buildable;

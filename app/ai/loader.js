@@ -181,39 +181,31 @@ function buildPrompt(agent, ctx) {
     taskTitle: c.taskTitle || '(no task given)',
     taskSteps: renderSteps(c.taskSteps),
     changedCode: c.changedCode || '(nothing appears to have changed)',
-    /* A building zone's slots. `zoneBoxes` is the student's board — it is both the only thing the
-       coach may talk about and the allowlist its offered wording is checked against, so it has to
-       carry the headings VERBATIM. */
-    zoneTitle: (c.zone && c.zone.title) || '(untitled zone)',
-    zoneBrief: (c.zone && c.zone.brief) || '(no brief given)',
-    zoneBoxes: renderZoneBoxes(c.zone),
-    zoneGoals: renderZoneGoals(c.zone),
-    /* A build zone's extra slots. In a sheet zone these say so plainly rather than being empty —
-       an empty slot in a prompt reads as "there is no code" instead of "there is no code HERE",
-       and the guide starts apologising for something that is not missing. */
-    zoneFile: (c.zone && c.zone.kind === 'build')
-      ? ((c.zone.file || '(no file open)')) : '(this zone has no code in it)',
-    zoneCode: (c.zone && c.zone.kind === 'build')
-      ? (c.zone.code || '(that file is empty)') : '(this zone has no code in it)',
-    zoneLog: (c.zone && c.zone.kind === 'build')
-      ? (c.zone.log || '(they have not run it yet)') : '(this zone has no code in it)'
+    /* The design board. `boardBoxes` is the one-sheet as it stands, and it has to carry the headings
+       VERBATIM — the coach's whole job is asking about a named box that is still empty. */
+    boardTitle: (c.board && c.board.title) || 'Design board',
+    boardLesson: (c.board && c.board.lesson) || '(not on a lesson)',
+    boardBoxes: renderBoardBoxes(c.board),
+    boardNotes: renderBoardNotes(c.board)
   });
 }
 
 /* The board, one box per line, empty ones said to be empty rather than left off. Saying so is the
    point: the coach's whole job is asking about the box that has nothing in it, and a box that is
    simply absent from the prompt is one it cannot ask about. */
-function renderZoneBoxes(zone) {
-  const boxes = (zone && zone.boxes) || [];
+function renderBoardBoxes(board) {
+  const boxes = (board && board.boxes) || [];
   if (!boxes.length) return '(their board is empty)';
   return boxes.map(function (b) {
     return '- ' + b.heading + ': ' + (b.text ? b.text : '(EMPTY)');
   }).join('\n');
 }
-function renderZoneGoals(zone) {
-  const goals = (zone && zone.goals) || [];
-  if (!goals.length) return '(no goals set)';
-  return goals.map(function (g) { return '- [' + (g.done ? 'x' : ' ') + '] ' + g.say; }).join('\n');
+/* The loose stickies — everything on the board that is not one of the fixed boxes. Half-formed
+   thoughts, mostly, which is exactly what the coach should be picking up on. */
+function renderBoardNotes(board) {
+  const notes = (board && board.notes) || [];
+  if (!notes.length) return '(no loose notes on it yet)';
+  return notes.map(function (t) { return '- ' + t; }).join('\n');
 }
 
 /* Optional `model:` in an agent's front-matter. Lower priority than .env. */

@@ -1,3 +1,13 @@
+<!--
+  ARCHIVED 2026-09-09. This was a CHECKPOINT - a gated end-of-module lesson that opened a building
+  zone instead of a page. The whole checkpoint concept was removed: it was the most-built and least
+  validated feature in the app, and gating a module behind a board turned out to be the wrong shape.
+  What replaced it is a persistent DESIGN tab - the same board, always open, iterated across the
+  whole course instead of six times behind a gate.
+  Kept because the zone specs below are real design work: the board layouts, the region roles, the
+  objective checks and the coach briefs are all worth mining if checkpoints come back in another
+  form. Nothing loads this file - the app only reads what course.yaml lists.
+-->
 ---
 title: Cut It Down
 xp: 240
@@ -65,3 +75,32 @@ goals:
 tools:
   - kind: readback
 ```
+
+## Conversation openers this lesson had in questions.yaml
+
+
+### tutor.lessons
+
+- How do I write my core loop as one sentence?
+- What does it mean for a loop to close?
+- How do I know if my loop is any good before I build it?
+- Why cut things now rather than when I run out of time?
+- What if everything on my page feels essential?
+- How do I pick which verb to keep?
+- Is one obstacle really enough for a whole game?
+- What is the difference between cutting and giving up?
+- Why write down what I cut instead of just deleting it?
+- How will I know later whether the cut was right?
+
+### coder.lessons
+
+- Comment out everything that is not my one verb.
+- Make the coin respawn so my loop actually closes.
+- Add the thing that sets up the next go in my loop.
+- Remove one feature and show me what still works.
+- Add a comment in game.js writing out my core loop in three parts.
+- Make the game end instead of carrying on forever.
+- Cut the number of coins down to one.
+- Tell me which part of my code is doing more than my page asks for.
+- Take out the second kind of obstacle.
+- Show me the fewest lines that would still be my game.

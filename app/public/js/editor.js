@@ -154,19 +154,26 @@ function switchView(view) {
     b.classList.toggle('on', on);
     b.setAttribute('aria-selected', on ? 'true' : 'false');   // the tablist's state, not just its paint
   });
-  ['learn', 'code', 'play'].forEach(function (v) { $('view-' + v).hidden = (v !== view); });
+  ['learn', 'design', 'code', 'play'].forEach(function (v) { $('view-' + v).hidden = (v !== view); });
+  /* The board measures its own pane to centre itself, and a hidden pane measures zero — so this has
+     to come after the line above, not before it. showBoard also re-reads design.md every time,
+     because a lesson's your-turn and the coach both write to that file behind its back. */
+  if (view === 'design' && typeof showBoard === 'function') showBoard();
   /* Build has nothing to do on the Learn tab — it edits game files, and there are none on screen.
      Offering it there produced edits a student could not see land, so the panel goes to Tutor and
      the mode toggle is disabled while they are reading. It comes straight back on Code and Game. */
   if (typeof paintAIModeAvailability === 'function') paintAIModeAvailability(view);
   // Each tab gets its own address, so /…/what-an-engine-does/code is a link. See js/router.js.
   if (typeof syncRoute === 'function') syncRoute();
-  const panelFor = { learn: 'panel-outline', code: 'panel-files', play: 'panel-info' };
+  /* Design keeps the outline. It has no panel of its own to offer — the board IS the workspace —
+     and the outline is the useful thing to have beside it: the board is open across the whole
+     course now, so "which lesson am I on" is a live question while you are looking at it. */
+  const panelFor = { learn: 'panel-outline', design: 'panel-outline', code: 'panel-files', play: 'panel-info' };
   /* Engine names for engine panels. "Inspector" rather than "Game Info" because the panel edits the
      numbers now, and that is what every engine calls the one that edits the selected thing's
      properties; "Content Browser" rather than "Files" because it holds the scripts AND the bought
      art and sound, which is exactly the distinction Unreal's name draws. */
-  const titleFor = { learn: 'Course Outline', code: 'Content Browser', play: 'Inspector' };
+  const titleFor = { learn: 'Course Outline', design: 'Course Outline', code: 'Content Browser', play: 'Inspector' };
   ['panel-outline', 'panel-files', 'panel-info'].forEach(function (p) { $(p).hidden = (p !== panelFor[view]); });
   $('leftTitle').textContent = titleFor[view];
   /* The transport rides in this bar but belongs to the Game view, so it is only on screen there.
@@ -211,7 +218,9 @@ function switchView(view) {
      thing you came to look at — but the log is where a game that did nothing tells you why, and a
      student who does not know the panel exists reads a blank screen as "my game is broken" with no
      next step. It is collapsible; the default should be the one that answers the question. */
-  if (view === 'learn') showConsole(false); else showConsole(true, true);
+  /* The console belongs to the two tabs that can produce output. Design has no game and no editor
+     in it, so a console there would be a permanently empty panel taking a third of the board. */
+  if (view === 'learn' || view === 'design') showConsole(false); else showConsole(true, true);
   if (view === 'play') requestAnimationFrame(fitStage);
   // The reading rail belongs to the lesson, so it goes away with it.
   if (typeof paintLessonRail === 'function') paintLessonRail();

@@ -313,9 +313,6 @@ function startGame() { // run the project in the Game tab's iframe
   gf.removeAttribute('src'); gf.srcdoc = html;
   gameRunning = true; gamePaused = false;
   paintTransport();
-  /* Pressing Play is when a student expects to be told whether it worked, so an open build
-     checkpoint re-checks here as well as on save. */
-  if (typeof zoneTick === 'function') zoneTick();
 }
 function stopGame() {
   clearBootWatch(); showGameFailed(false);

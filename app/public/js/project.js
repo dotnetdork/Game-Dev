@@ -196,15 +196,7 @@ function loadProject() {
   return r.data;
 }
 let project = loadProject();
-/* Every route into the student's files ends here — the editor's save, an applied AI op, a new or
-   deleted file — which makes it the one honest place to tell an open build checkpoint that its
-   objectives might have just been met. zoneTick debounces and does nothing when no checkpoint is
-   open; see the header above it in zone.js. */
-function saveProject() {
-  project.v = SCHEMA.project;
-  Storage.writeJSON(PKEY, project);
-  if (typeof zoneTick === 'function') zoneTick();
-}
+function saveProject() { project.v = SCHEMA.project; Storage.writeJSON(PKEY, project); }
 function fileNames() { const out = project.order.filter(function (n) { return project.files[n] !== undefined; }); Object.keys(project.files).forEach(function (n) { if (out.indexOf(n) < 0) out.push(n); }); return out; }
 /* ---------- which files are code, and which are just writing ----------
    Every project file used to be JavaScript, and everything that walks the project assumed it: the

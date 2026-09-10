@@ -2145,7 +2145,6 @@ function selectLesson(idx) {
      is talking to. Close it first rather than leaving it on screen wired to a lesson that is gone. */
   if (openLabRef) closeLab();
   // Same reasoning for a building zone: its board is bound to the lesson that built it.
-  if (typeof openZoneRef !== 'undefined' && openZoneRef) closeZone();
   labPendingAdvance = null;
   curIdx = idx; const f = flat[idx];
   revealModuleFor(idx);        // the module this lesson lives in opens; nothing else is touched
@@ -2176,7 +2175,6 @@ function paintLesson2(f, html) {
   renderQuizCells($('lessonBody'));
   renderChallengeCells($('lessonBody'));
   renderYourTurnCells($('lessonBody'));
-  if (typeof mountZones === 'function') mountZones($('lessonBody'));
   wrapTables($('lessonBody'));
   calmClips($('lessonBody'));
   unfloatLonelyAsides($('lessonBody'));
@@ -2231,17 +2229,9 @@ function lessonActivityKeys() {
      on in a workspace, with its own goals ticking inside it. Splitting that into an activity per
      goal would put the zone's own progress bar on the lesson page as well, in a different shape.
      A checkpoint that has no zone yet falls back to counting its practice steps. */
-  if (widgetSeq.z) { for (let i = 0; i < widgetSeq.z; i++) keys.push('z' + i); }
-  else if (isCheckpoint()) { for (let i = 0; i < widgetSeq.y; i++) keys.push('y' + i); }
   // only run cells with an @expect goal can be "finished"; the rest are for tinkering
   goalRunKeys.forEach(function (k) { keys.push(k); });
   return keys;
-}
-/* Is the lesson on screen a checkpoint? From course.yaml's front-matter via the index, so it is
-   known before the body is fetched — the outline draws these rows differently. */
-function isCheckpoint(f) {
-  const l = f || flat[curIdx];
-  return !!(l && l.l && l.l.cp);
 }
 /* How many practice steps in a lesson are done. */
 function practiceProgress(lessonId, count) {
@@ -2400,12 +2390,9 @@ function completeLesson() {
   const factor = lessonXpFactor(f.id);
   const earned = Math.max(1, Math.round(f.l.xp * factor));
   awardXp(earned);
-  /* A checkpoint pays more than a lesson because it is the lesson about their own game, and the
-     one a student is most likely to leave for later. Not halved by a revealed answer: the Stars are
-     for finishing, the XP is for how. */
-  const stars = f.l.cp ? STARS.checkpoint : STARS.lesson;
-  awardStars(stars);
-  toast((f.l.cp ? 'Checkpoint complete!' : 'Lesson complete!') + '  +' + earned + ' XP  +' + stars + ' ★'
+  /* Not halved by a revealed answer: the Stars are for finishing, the XP is for how. */
+  awardStars(STARS.lesson);
+  toast('Lesson complete!  +' + earned + ' XP  +' + STARS.lesson + ' ★'
     + (factor < 1 ? '  (XP halved, because you read the answer)' : ''));
   /* Ask the module which lessons it contains rather than rebuilding their key names out of f.mi
      and a counter. The arithmetic version was reading seat numbers: reorder the course and it asks
@@ -2443,8 +2430,8 @@ function wireLessonEvents() {
   on(EV.LESSON_DONE, function (d) {
     /* Also a building zone, and there it matters more: finishing a zone is what completes a
        checkpoint, so without this the workspace a student just finished closes itself under them
-       three seconds later and the app moves on. closeLab and closeZone both flush this. */
-    if (openLabRef || (typeof openZoneRef !== 'undefined' && openZoneRef)) { labPendingAdvance = d.lesson; return; }
+       three seconds later and the app moves on. closeLab flushes this. */
+    if (openLabRef) { labPendingAdvance = d.lesson; return; }
     startAdvance(d.lesson);
   });
   on(EV.PROGRESS_CHANGED, function () { renderFooter(); });               // XP bar, stars, level

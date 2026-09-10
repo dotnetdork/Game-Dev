@@ -664,13 +664,32 @@ function describeWhere() {
   return bits.join(' ');
 }
 
+/* Which agent the Tutor side of the panel is actually talking to.
+   On the Design tab it is the design coach: the student is arranging what their game IS, and the
+   ordinary tutor is built to explain code — handed "should the platforms vanish?" it answers about
+   syntax, because that is what its prompt is for. Same panel, same chat, same thread; a different
+   prompt behind it, chosen by where the student is standing. */
+function aiAgentFor() {
+  const onDesign = $('view-design') && !$('view-design').hidden;
+  return onDesign ? 'design-coach' : 'tutor';
+}
 function askTutor(question, context) {
   const history = chatHistory('tutor');
   addMsg('user', question); const pending = addMsg('bot', 'Thinking…');
   startThinking(pending, 'tutor');
   setChatBusy($('aiText'), true);
   const c = aiContext();
-  fetch('/api/ai', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ studentId: studentId, agent: 'tutor', message: question, context: context || '', code: project.files['game.js'] || '', history: history, lessonTitle: c.lessonTitle, where: c.where, files: c.files, gameLog: c.gameLog, gameRan: c.gameRan }) })
+  const agent = aiAgentFor();
+  /* The board travels with a design question and not with any other, because it is only meaningful
+     to the coach — and boardPayload is the same shape the checkpoint coach was given, minus the
+     goals it no longer has. */
+  const body = { studentId: studentId, agent: agent, message: question, context: context || '',
+    code: project.files['game.js'] || '', history: history, lessonTitle: c.lessonTitle,
+    where: c.where, files: c.files, gameLog: c.gameLog, gameRan: c.gameRan };
+  if (agent === 'design-coach' && typeof boardPayload === 'function' && typeof theBoard !== 'undefined' && theBoard) {
+    body.board = boardPayload(theBoard);
+  }
+  fetch('/api/ai', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(body) })
     .then(function (r) { return r.json(); }).then(function (d) { setMsg(pending, 'bot', d.reply || '—'); })
     .catch(function () { setMsg(pending, 'bot', 'Could not reach the tutor.'); })
     .finally(function () { setChatBusy($('aiText'), false); persistChats(); renderChatBar(); });

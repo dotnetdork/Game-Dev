@@ -42,9 +42,17 @@ let routeApplying = false;
 let routerStarted = false;
 
 const PAGE_ROUTES = ['store', 'gallery', 'leaderboards', 'docs', 'help'];
-/* The panels inside a lesson that are worth their own address. `learn` is deliberately absent: it
-   is the default, and /…/what-an-engine-does/learn would be a second URL for the same screen. */
-const LESSON_VIEWS = ['code', 'game', 'lab', 'zone'];
+/* Design, Code and Play are TOP-LEVEL, not nested under a lesson: /design, /code, /play.
+   They are the student's own things. The board is their game's design, the editor is their game's
+   source and the stage is their game running — none of the three changes when they turn the page,
+   so hanging them off whichever lesson happened to be open was an address that claimed otherwise.
+   It also made them unshareable in the only way that matters: "open your code" is a link now.
+
+   `learn` has no address of its own because a LESSON is the address — /game-engines/what-an-engine-does
+   is the reading view, and /…/learn would be a second URL for the same screen. The lab stays nested
+   for the opposite reason to the three above: a lab belongs to the one lesson that contains it. */
+const OWN_VIEWS = ['design', 'code', 'play'];
+const LESSON_VIEWS = ['lab'];
 
 /* A lesson lives at /<module>/<lesson> — /game-engines/what-an-engine-does.
    The module comes from its NAME, not its course.yaml id: the ids are short internal handles
@@ -66,6 +74,11 @@ function readRoute() {
   const head = (parts[0] || '').toLowerCase();
   if (!head) return { kind: 'home' };
   if (PAGE_ROUTES.indexOf(head) >= 0) return { kind: 'page', page: head };
+  /* `game` is the old spelling of `play`, from when the tab read "Game". Kept so links written
+     before the rename still land on the stage rather than on Learn. */
+  if (OWN_VIEWS.indexOf(head) >= 0 || head === 'game') {
+    return { kind: 'own', view: head === 'game' ? 'play' : head };
+  }
   /* Two segments is a lesson. The first is read for clarity, not for lookup — the lesson id alone
      identifies it, so a link whose module half is stale (a lesson moved between modules, which the
      course reorder will do) still opens the right lesson and gets its address corrected. `lesson`
@@ -88,6 +101,7 @@ function readRoute() {
 function routePath(route) {
   if (!route) return '/';
   if (route.kind === 'page') return '/' + route.page;
+  if (route.kind === 'own') return '/' + route.view;
   if (route.kind === 'lesson') {
     const mod = moduleSlug(route.mi);
     return '/' + (mod || 'lesson') + '/' + encodeURIComponent(route.id)
@@ -112,22 +126,15 @@ function currentRoute() {
   /* A full-window overlay wins over the tab underneath it: it is what the student is actually
      looking at, and a link to it should reopen it rather than the tab it covers. A zone and a bench
      cannot both be open — each closes the other — so the order here is only a tie-break. */
-  let view = '';
-  /* Only the BOARD is an overlay worth its own address. A checkpoint open as a rail (DEV.buildRail)
-     is furniture beside the Code tab rather than a thing covering it, so the address stays /code —
-     which is also what makes a reload put the student back at their editor rather than at a
-     checkpoint they had already walked away from. */
-  const zoneOverlay = typeof openZoneRef !== 'undefined' && openZoneRef
-    && !(typeof zoneRail !== 'undefined' && zoneRail);
-  if (zoneOverlay) view = 'zone';
-  else if (typeof openLabRef !== 'undefined' && openLabRef) view = 'lab';
-  else {
-    const tab = document.querySelector('.vtab.on');
-    const v = tab ? tab.getAttribute('data-view') : 'learn';
-    if (v === 'code') view = 'code';
-    else if (v === 'play') view = 'game';          // the tab is `play`, the word students read is Game
+  /* A lab belongs to its lesson, so it keeps the lesson's address with /lab on the end. Design,
+     Code and Play are the student's own and get a top-level one — see OWN_VIEWS. */
+  if (typeof openLabRef !== 'undefined' && openLabRef) {
+    return { kind: 'lesson', id: f.id, mi: f.mi, view: 'lab' };
   }
-  return { kind: 'lesson', id: f.id, mi: f.mi, view: view };
+  const tab = document.querySelector('.vtab.on');
+  const v = tab ? tab.getAttribute('data-view') : 'learn';
+  if (OWN_VIEWS.indexOf(v) >= 0) return { kind: 'own', view: v };
+  return { kind: 'lesson', id: f.id, mi: f.mi, view: '' };
 }
 
 /* Called by selectLesson and showPage once they have finished. Pushes only when the address is
@@ -175,19 +182,19 @@ function applyRoute(route) {
         idx = -1;
       }
     }
+    /* /design, /code and /play name no lesson, so they land on wherever the student left off and
+       open that tab over it. There is always a lesson underneath — the outline and the Learn tab
+       have to be about something — it is just not what the address is for. */
     if (idx < 0) idx = resumeIndex();
     selectLesson(idx);
 
-    /* Then the panel within it. The lab has to wait for the lesson's widgets to exist — selectLesson
-       fetches and renders the body, and the lab it is being asked to open is built from that. */
-    const want = route.view || '';
-    if (want === 'code' || want === 'game') {
-      if (typeof switchView === 'function') switchView(want === 'game' ? 'play' : 'code');
-    } else if (want === 'lab') {
-      openLabFromRoute();
-    } else if (want === 'zone') {
-      openZoneFromRoute();
+    if (route.kind === 'own') {
+      if (typeof switchView === 'function') switchView(route.view);
+      return;
     }
+    /* The lab has to wait for the lesson's widgets to exist — selectLesson fetches and renders the
+       body, and the lab it is being asked to open is built from that. */
+    if (route.view === 'lab') openLabFromRoute();
   } finally {
     routeApplying = false;
   }
@@ -211,22 +218,6 @@ function openLabFromRoute() {
 
 /* Open this checkpoint's building zone from a URL. Same shape as openLabFromRoute and for the same
    reason: selectLesson fetches and renders the body, and the zone is built out of that body. */
-function openZoneFromRoute() {
-  let tries = 0;
-  const tick = function () {
-    if (typeof zoneRegistry === 'undefined') return;
-    const z = zoneRegistry[0];
-    if (z) { if (!openZoneRef) openZone(z); return; }
-    /* ~5s, not the lab's ~1s. This runs at boot on a cold cache, where selectLesson has to fetch
-       the lesson before there is a zone to find — and on a school Chromebook that is comfortably
-       more than a second. Measured it giving up at one: the link opened the page and not the zone,
-       which looks like the link being wrong rather than slow. Nothing waits on this timer, so the
-       only cost of a longer one is that a lesson genuinely without a zone stops polling later. */
-    if (++tries > 100) return;
-    setTimeout(tick, 50);
-  };
-  tick();
-}
 
 /* The best lesson to open when the URL does not name one: where they were last, else the furthest
    they have unlocked, else the first. Never a locked lesson, and never lesson 1 for a student who

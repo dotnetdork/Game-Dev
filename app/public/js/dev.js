@@ -38,34 +38,13 @@ const DEV = {
      origin, which gets it a real origin instead of an opaque one and lets the sandbox stay. Until
      then this switch is a choice between a sandboxed frame that cannot run and an unsandboxed one
      that can — so it is left ON deliberately, and `?sandbox=0` is how you run a game today. */
-  sandboxGame: true,
-
-  /* ---- the two shapes a BUILD checkpoint can have, so they can be compared ----
-     OFF (default): a build checkpoint opens the board — the full-screen canvas with Done / Now /
-     Still ahead lanes and the coach laid over it. The objectives are stickies the checks move.
-
-     ON: the same checkpoint opens IN THE CODE VIEW instead, as a rail down the right-hand side:
-     the same objective chain, the same coach, the same checks, the same Finish — beside the editor
-     rather than in front of it.
-
-     The argument for the rail is that a build objective IS a code check (`config_changed`,
-     `function_added`, `file_changed: game.js`), so the student needs the editor and the objective on
-     screen together, and a full-screen board is a modal that hides the editor. The board's own
-     "Open the Code tab" button exists because of that, and it closes the checkpoint to get there.
-
-     The argument for the board is that a checkpoint should feel like a place rather than a panel,
-     and all six should feel like the same kind of thing.
-
-     Try both with ?rail=1 and ?rail=0 on a build checkpoint (Build Your First Mechanic, Room to
-     Grow, Launch Your Game). The three DESIGN checkpoints ignore this switch entirely — the board
-     is the only sensible home for a one-sheet the coach fills in by interview. */
-  buildRail: false
+  sandboxGame: true
 };
 
 /* A one-off override from the URL, e.g. ?unlock=0 to see the locking behave as a student would. */
 try {
   const q = new URLSearchParams(location.search);
-  const map = { unlock: 'unlockAll', sandbox: 'sandboxGame', rail: 'buildRail' };
+  const map = { unlock: 'unlockAll', sandbox: 'sandboxGame' };
   Object.keys(map).forEach(function (k) {
     const v = q.get(k);
     if (v !== null) DEV[map[k]] = (v !== '0' && v !== 'false');
@@ -76,4 +55,3 @@ try {
    glance at the log rather than an afternoon. */
 if (DEV.unlockAll) console.warn('[dev] unlockAll is ON — every lesson is open. Set it to false in js/dev.js for production.');
 if (!DEV.sandboxGame) console.warn('[dev] the game frame is NOT sandboxed.');
-if (DEV.buildRail) console.warn('[dev] buildRail is ON — build checkpoints open as a rail in the Code view, not as a board.');

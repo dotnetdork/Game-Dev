@@ -1,17 +1,26 @@
 # Course structure. Edit to add/reorder modules and lessons.
 # Each lesson id maps to content/lessons/<id>.md
 #
-# Six modules, 30 lessons. Module names are labels, not sentences.
+# Six modules, 24 lessons. Module names are labels, not sentences.
 #
 # There is no "welcome / how this works" module on purpose — that job belongs to the first-run
 # tour, which highlights the real buttons instead of describing them.
 #
 # ---- the shape of it, and why ----
 #
-# Every module ends in a CHECKPOINT (`checkpoint: true` in the lesson's front-matter): the one
-# lesson in that module about the student's OWN game rather than the course's. They are what makes
-# the arc Use -> Modify -> Create instead of stopping at Modify, and they are why the module's stars
-# wait — you cannot arrive at the part where you build your own game having built nothing.
+# There are no CHECKPOINTS any more (removed 2026-09-09). Every module used to end in one: a gated
+# lesson that opened a full-screen board instead of a page, and the module's stars waited behind it.
+# The idea was right and the shape was wrong — six visits to a board, each one a gate, each one
+# arriving as a different kind of thing from every lesson around it.
+#
+# What replaces it is the DESIGN tab, between Learn and Code: the same board, always open, worked on
+# across the whole course instead of six times behind a gate. "Their own game" stopped being a place
+# they are sent to and became a place they can always get back to. The six checkpoint lessons are in
+# content/_archive-v1/ with their zone specs and openers, because the board layouts and the coach
+# briefs in them are worth mining.
+#
+# A lesson that wants design work asks for it in its own `yourturn`, checked with
+# `contains: {file: design.md, ...}` — the same rule any other step uses.
 #
 # Concept Ideation is second, not first. Not first because the course has to open with a game being
 # played rather than a worksheet, and because at minute zero a student has no words to describe an
@@ -24,9 +33,9 @@
 # page and the rest spend the term on a sprite. So the module asks what this platformer becomes,
 # which keeps every idea buildable.
 #
-# The student's answers live in `design.md` in their project (see starter-code.js) and each later
-# checkpoint cashes in one line of it. That is what stops a design doc being homework: it is the
-# backlog, not a document.
+# The student's answers live in `design.md` in their project (see starter-code.js), and the Design
+# tab is the board that edits it. That is what stops a design doc being homework: it is a thing they
+# arrange and keep coming back to, not a form they fill in once.
 #
 # Games kids know (Mario, Minecraft, Fortnite, RuneScape, Roblox) appear all through the course as
 # familiar examples while a mechanic is being explained. They are never the subject of a lesson.
@@ -49,29 +58,29 @@ modules:
   - id: engines
     name: "Game Engines"
     stars: 120
-    lessons: [what-an-engine-does, what-a-game-is-made-of, physics-and-collision, your-game-in-one-line]
+    lessons: [what-an-engine-does, what-a-game-is-made-of, physics-and-collision]
 
   - id: ideation
     name: "Concept Ideation"
     stars: 130
-    lessons: [where-ideas-come-from, scope-and-cutting, design-on-one-page, your-one-sheet]
+    lessons: [where-ideas-come-from, scope-and-cutting, design-on-one-page]
 
   - id: mechanics
     name: "Core Mechanics"
     stars: 140
-    lessons: [the-core-loop, feedback, difficulty-and-flow, risk-and-reward, progression, cut-it-down]
+    lessons: [the-core-loop, feedback, difficulty-and-flow, risk-and-reward, progression]
 
   - id: phaser
     name: "Phaser Programming"
     stars: 160
-    lessons: [values-and-variables, decisions-and-repeats, scenes-create-update, input-movement-collision, reading-an-error, build-your-first-mechanic]
+    lessons: [values-and-variables, decisions-and-repeats, scenes-create-update, input-movement-collision, reading-an-error]
 
   - id: architecture
     name: "Systems Architecture"
     stars: 150
-    lessons: [game-state, entities-and-components, events-not-tangles, data-out-of-code, room-to-grow]
+    lessons: [game-state, entities-and-components, events-not-tangles, data-out-of-code]
 
   - id: assets
     name: "Asset Design"
     stars: 130
-    lessons: [sprites-and-animation, sound-design, juice, ship-it, launch-your-game]
+    lessons: [sprites-and-animation, sound-design, juice, ship-it]

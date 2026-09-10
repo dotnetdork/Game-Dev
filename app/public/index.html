@@ -90,8 +90,9 @@
           </div>
           <div class="vtabs" role="tablist" aria-label="Lesson view">
             <button class="vtab on" data-view="learn" role="tab" aria-selected="true" aria-controls="view-learn"><span class="mdi mdi-book-open-page-variant"></span>Learn</button>
-            <button class="vtab" data-view="code" role="tab" aria-selected="false" aria-controls="view-code"><span class="mdi mdi-code-tags"></span>Code</button>
-            <button class="vtab" data-view="play" role="tab" aria-selected="false" aria-controls="view-play"><span class="mdi mdi-gamepad-variant"></span>Game</button>
+            <button class="vtab" data-view="design" role="tab" aria-selected="false" aria-controls="view-design"><span class="mdi mdi-lightbulb-on-outline"></span>Design</button>
+            <button class="vtab" data-view="code" role="tab" aria-selected="false" aria-controls="view-code"><span class="mdi mdi-file-code-outline"></span>Code</button>
+            <button class="vtab" data-view="play" role="tab" aria-selected="false" aria-controls="view-play"><span class="mdi mdi-nintendo-game-boy"></span>Play</button>
           </div>
           <!-- The transport. Which view you are looking at and whether the game is running are two
                different questions, and every engine keeps them apart: Scene/Game is a tab, Play/Stop
@@ -133,6 +134,29 @@
         </div>
         <div class="viewbody">
           <div class="view" id="view-learn" role="tabpanel" tabindex="-1"><div class="lesson" id="lessonBody"></div></div>
+          <!-- The DESIGN tab: the student's own board, open at any point in the course.
+               This used to be a full-window overlay behind a CHECKPOINT - a gated lesson at the
+               end of every module. The gate is gone (2026-09-09) and the board stayed, because the
+               board was the good half: somewhere to arrange what your game is, that you can get
+               back to on any lesson instead of six times behind a wall. See js/board.js.
+
+               A tab rather than a dialog, so it is not modal, nothing goes inert behind it, and
+               the student can leave it and come back mid-sentence. -->
+          <div class="view" id="view-design" role="tabpanel" tabindex="-1" hidden>
+            <!-- Notes and regions live in here, in board coordinates, and pan and zoom together.
+                 There is no chat on the board: the Design tab uses the shell's AI panel like every
+                 other tab, with Build off and the Tutor answering as the design coach. -->
+            <div class="board-canvas-wrap" id="boardCanvasWrap">
+              <div class="board-canvas" id="boardCanvas"></div>
+              <div class="board-palette" id="boardPalette"></div>
+              <div class="board-zoom">
+                <button id="boardZoomOut" title="Zoom out" aria-label="Zoom out">&minus;</button>
+                <span id="boardZoomAt">100%</span>
+                <button id="boardZoomIn" title="Zoom in" aria-label="Zoom in">+</button>
+                <button id="boardFit" title="Fit the board on screen" aria-label="Fit">Fit</button>
+              </div>
+            </div>
+          </div>
           <div class="view" id="view-code" role="tabpanel" tabindex="-1" hidden>
             <div class="review-bar" id="reviewBar" hidden>
               <span class="mdi mdi-file-compare"></span>
@@ -149,30 +173,8 @@
             <div class="editor-wrap" id="editorWrap">
               <textarea id="codeeditor"></textarea><div class="cm-statusbar" id="cmStatus">Ln 1, Col 1</div>
             </div>
-            <!-- A BUILD checkpoint, as a rail beside the editor instead of a board in front of it.
-                 Off by default; see DEV.buildRail in js/dev.js for the argument on both sides and
-                 how to switch. Every id in here mirrors one in the board overlay below, because the
-                 same functions paint both — see zEl() in js/zone.js. -->
-            <aside class="build-rail" id="buildRail" hidden aria-label="Checkpoint objectives">
-              <div class="br-head">
-                <span class="zone-flag mdi mdi-flag-checkered" aria-hidden="true"></span>
-                <span class="br-title" id="railTitle"></span>
-                <span class="zone-model" id="railBotTag">model…</span>
-                <button class="br-close" id="railClose" title="Leave the checkpoint" aria-label="Leave the checkpoint"><span class="mdi mdi-close" aria-hidden="true"></span></button>
-              </div>
-              <div class="zone-goals" id="railGoals" role="list" aria-label="Objectives in this checkpoint"></div>
-              <div class="zone-lane" id="railLane"></div>
-              <form class="zone-chat" id="railChatForm">
-                <textarea id="railBotText" rows="1" placeholder="Ask about your game..." aria-label="Ask the AI Assistant about your game"></textarea>
-                <button type="submit" id="railBotSend" title="Send"><span class="mdi mdi-send" aria-hidden="true"></span></button>
-              </form>
-              <div class="zone-foot">
-                <span class="zone-count" id="railCount"></span>
-                <span class="zone-bar-fill"><i id="railProg"></i></span>
-                <button class="zone-done" id="railDone" disabled>Finish the checkpoint</button>
-              </div>
-            </aside>
-            <!-- Phones read; they do not build. Shown by a media query alone, with no JavaScript
+
+                        <!-- Phones read; they do not build. Shown by a media query alone, with no JavaScript
                  state to fall out of step with the width. The tab still works and still arrives
                  somewhere that explains itself, which beats a dead tab or a 320px code editor. -->
             <div class="build-gate" role="status">
@@ -378,69 +380,6 @@
       </div><!-- /lab-split -->
     </div>
 
-    <!-- A building zone, full window. This is what a module's checkpoint IS — not a lesson with
-         cards in it but a workspace the student builds their own game in, so it gets the room the
-         bench gets and for the same reason. Same overlay discipline as .lab-view: one element that
-         lives here in the markup, every handler bound once at load, and only the CONTENTS of the
-         hosts below built and destroyed. Built by openZone() in js/zone.js.
-
-         The difference from the bench is the bot. It is not a panel you go and find — it opens with
-         the zone and it opens the conversation, because the students this is written for mostly do
-         not know what to ask. -->
-    <div class="zone-view" id="zoneView" hidden role="dialog" aria-modal="true" aria-labelledby="zoneTitle">
-      <div class="zone-split">
-        <div class="zone-left">
-          <div class="zone-bar">
-            <!-- The lesson's own icon rather than a back arrow: it names where the button goes. -->
-            <button class="lab-back" id="zoneBack"><span class="mdi mdi-book-open-page-variant" aria-hidden="true"></span>Back</button>
-            <span class="zone-flag mdi mdi-flag-checkered" aria-hidden="true"></span>
-            <span class="lab-title" id="zoneTitle"></span>
-            <!-- A build board has no editor in it on purpose: the student writes code where they
-                 always have. So the only thing it needs is a way through to the Code tab. -->
-            <button class="zone-tocode" id="zoneToCode" hidden><span class="mdi mdi-code-tags" aria-hidden="true"></span>Open the Code tab</button>
-            <span class="zone-model" id="zoneBotTag">model…</span>
-          </div>
-          <!-- What you are here to apply. Each one is a real check against their own work, so it
-               ticks itself as they go rather than being a list they tick off. -->
-          <div class="zone-goals" id="zoneGoals" role="list" aria-label="What to do in this zone"></div>
-          <!-- The board. One surface for both kinds of checkpoint, because a checkpoint is a place
-               to arrange your thinking rather than a page to fill in — and the two kinds differ in
-               what the REGIONS mean, not in what the furniture is.
-               Notes are dragged. Regions are the structure, and on an ideation board they are also
-               the data: dragging a sticky out of Building and into Not building is how you cut
-               scope, which is the lesson made physical rather than described. -->
-          <div class="zone-canvas-wrap" id="zoneCanvasWrap">
-            <!-- Notes, regions AND the conversation all live in here, in board coordinates. The
-                 assistant is not a panel beside the board: what it says lands on the board as
-                 bubbles, next to the notes it is talking about, and pans with everything else. -->
-            <div class="zone-canvas" id="zoneCanvas"></div>
-            <div class="zone-palette" id="zonePalette"></div>
-            <!-- The assistant, laid over the board rather than beside it. No panel and no column
-                 chrome — just bubbles and somewhere to type, floating on the right with the board
-                 running underneath. It stays put while the board pans, because a conversation you
-                 have to go and find by panning is not a conversation. -->
-            <div class="zone-chat-over" aria-label="AI Assistant">
-              <div class="zone-lane" id="zoneLane"></div>
-              <form class="zone-chat" id="zoneChatForm">
-                <textarea id="zoneBotText" rows="1" placeholder="Ask about your game..." aria-label="Ask the AI Assistant about your game"></textarea>
-                <button type="submit" id="zoneBotSend" title="Send"><span class="mdi mdi-send" aria-hidden="true"></span></button>
-              </form>
-            </div>
-            <div class="zone-zoom">
-              <button id="zoneZoomOut" title="Zoom out" aria-label="Zoom out">&minus;</button>
-              <span id="zoneZoomAt">100%</span>
-              <button id="zoneZoomIn" title="Zoom in" aria-label="Zoom in">+</button>
-              <button id="zoneFit" title="Fit the board on screen" aria-label="Fit">Fit</button>
-            </div>
-          </div>
-          <div class="zone-foot">
-            <span class="zone-count" id="zoneCount"></span>
-            <span class="zone-bar-fill"><i id="zoneProg"></i></span>
-            <button class="zone-done" id="zoneDone" disabled>Finish the zone</button>
-          </div>
-        </div>
-      </div>
-    </div>
   </div>
 
   <footer class="statusbar">
@@ -482,8 +421,8 @@
 <script src="js/demos.js"></script>
 <script src="js/widgets.js"></script>
 <!-- After widgets.js because a checkpoint's cover is painted by paintLesson2, and before ai.js
-     because the zone borrows wireChatBox at RUNTIME rather than at load — see wireZoneChatBox. -->
-<script src="js/zone.js"></script>
+     because the board borrows wireChatBox at RUNTIME rather than at load — see wireBoardChatBox. -->
+<script src="js/board.js"></script>
 <script src="js/editor.js"></script>
 <script src="js/game-runner.js"></script>
 <script src="js/files.js"></script>
