@@ -20,6 +20,20 @@
  *   github      THE RARE ONE. A named allowlist, for outside collaborators. Not a student route:
  *               GitHub's terms require users to be 13 and a good number of them are younger.
  *
+ *   testers     TEMPORARY, AND IT WILL BE DELETED. A name box and one password shared by everybody,
+ *               for the September 2026 beta sessions — four or five children, on a call, on a URL
+ *               nobody else has. It exists because the CodeServer's OAuth is not finished and the
+ *               testers are booked. Eric's instruction, verbatim: "anything they type in is a
+ *               username, give them a password, same password for everybody. It's not important
+ *               right now."
+ *
+ *               It is not a security control and is not pretending to be one. Its actual job is to
+ *               give each child a STABLE IDENTITY so their game is still there at the second
+ *               session — which Jed named as the single most important thing to have working
+ *               before the testers arrive. The password only keeps a crawler off the AI relay.
+ *
+ *               Turn it on by setting TESTER_PASSWORD. Unset it and the door is gone.
+ *
  * THE SIGN-IN PAGE IS ALWAYS THE FRONT DOOR, including on a laptop. It used to appear only once a
  * provider was configured, which meant the page nobody could get past in production was also the
  * page nobody ever saw in development — a good way for it to rot. Now it is in the flow every time,
@@ -71,6 +85,17 @@ const GH_ALLOW = list(process.env.ALLOWED_GITHUB);
 /* The CodeServer's own accounts are the roll, so this is normally empty and everyone it vouches
    for is let in. Set it to pilot the deployment with a handful of students first. */
 const CS_ALLOW = list(process.env.ALLOWED_CODESERVER);
+
+/* The temporary beta door. One password, any name. See the note at the top of the file — and
+   DEPLOY.md, which says to unset this the day the CodeServer's OAuth works. */
+const TESTER_PASSWORD = String(process.env.TESTER_PASSWORD || '');
+/* A name typed by an eleven-year-old on a call, turned into something safe to use as a storage key.
+   Lower case, one dash for any run of punctuation, and a length limit — because this string ends up
+   in a Redis key and in a cookie, and "Jonathan's Game!!" should not be able to reach either. */
+function testerSlug(raw) {
+  const s = String(raw || '').toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/^-+|-+$/g, '').slice(0, 24);
+  return /^[a-z0-9](?:[a-z0-9-]*[a-z0-9])?$/.test(s) ? s : '';
+}
 
 /* ---------------------------------------------------------------------------------------------
    THE PROVIDERS
@@ -236,7 +261,11 @@ const DEMO = /^(1|true|yes|on)$/i.test(process.env.DEMO_LOGIN || '');
    BYPASS IS THE DANGEROUS ONE, so it is nailed to "not hosted". Unconfigured ON A HOST is a boot
    failure instead (see configProblem): the one arrangement that must never exist is a public URL
    where every button is a way in. */
-const ANY_CONFIGURED = Object.keys(PROVIDERS).some(function (k) { return PROVIDERS[k].ready(); });
+/* The tester door counts as configured, which is the whole point of it: a hosted deployment with
+   nothing but TESTER_PASSWORD and SESSION_SECRET set is a legitimate arrangement — it is the beta —
+   and configProblem must let it boot rather than refusing as an open door. */
+const TESTERS_ON = !!TESTER_PASSWORD;
+const ANY_CONFIGURED = TESTERS_ON || Object.keys(PROVIDERS).some(function (k) { return PROVIDERS[k].ready(); });
 const BYPASS = !DEMO && !ANY_CONFIGURED && !IS_HOSTED;
 
 /* Not protecting anything in bypass mode — every button already lets anyone in — but the cookie
@@ -259,6 +288,10 @@ function providerStatus() {
   Object.keys(PROVIDERS).forEach(function (k) { out[k] = { on: ready(k), label: PROVIDERS[k].label }; });
   return out;
 }
+/* Reported on its own rather than inside providerStatus, because it is not an OAuth provider: the
+   page draws a form for it, not a "Continue with" button. In BYPASS it is off — a laptop with
+   nothing configured already lets you in with one click and does not need a password box too. */
+function testersReady() { return !DEMO && !BYPASS && TESTERS_ON && !!secret(); }
 
 /* Called from server.js at boot, because a half-configured gate is worse than none: it looks shut
    and is not. Every branch here is a way to end up serving the whole course to the internet
@@ -280,7 +313,14 @@ function configProblem() {
     return !!(p.id || p.secret);
   });
   const anyList = DOMAINS.length || EXTRA.length || GH_ALLOW.length || CS_ALLOW.length;
-  if (!touched.length && !anyList && !SECRET) return null;              // off on purpose
+  if (!touched.length && !anyList && !SECRET && !TESTERS_ON) return null;   // off on purpose
+
+  /* A shared password on a public URL is guessable if it is short, and this one is the only thing
+     between a crawler and the paid AI relay. Long enough that guessing it is not the easy route. */
+  if (TESTERS_ON && TESTER_PASSWORD.length < 12) {
+    return 'TESTER_PASSWORD is shorter than 12 characters. It is shared by every tester and sits on '
+      + 'a public URL — make it a long passphrase: node -e "console.log(require(\'crypto\').randomBytes(9).toString(\'base64url\'))"';
+  }
 
   const missing = [];
   touched.forEach(function (k) { PROVIDERS[k].missing().forEach(function (m) { missing.push(m); }); });
@@ -442,6 +482,40 @@ function mount(app) {
     });
   });
 
+  /* ---- the temporary beta door ----
+     A form POST rather than a fetch, so it works with JavaScript off, the browser offers to
+     remember it, and Enter in the password field submits — all free, and all things that matter on
+     a locked-down school Chromebook.
+
+     There is no account to look up. The name IS the identity: it goes through testerSlug and
+     becomes `<slug>@tester`, which is what the per-student store is keyed on. Two children who
+     both type "Jonathan" get the same save, so the names are handed out on the call. */
+  app.post('/auth/testers', function (req, res) {
+    if (!testersReady()) return res.redirect('/login.html?e=off');
+    const body = req.body || {};
+    const slug = testerSlug(body.username);
+    const given = String(body.password || '');
+    const next = safeNext(body.next);
+
+    if (!slug) return res.redirect('/login.html?e=noname&next=' + encodeURIComponent(next));
+
+    /* Hashed before comparing so timingSafeEqual gets two equal-length buffers whatever was typed;
+       comparing the raw strings would throw on a length mismatch and leak the length by doing so. */
+    const h = (s) => crypto.createHash('sha256').update(s).digest();
+    if (!crypto.timingSafeEqual(h(given), h(TESTER_PASSWORD))) {
+      return res.redirect('/login.html?e=badpass&next=' + encodeURIComponent(next));
+    }
+
+    setCookie(res, COOKIE, sign({
+      email: slug + '@tester',
+      /* As typed, for the greeting — "Hi, Jonathan" rather than "Hi, jonathan". */
+      name: String(body.username || '').trim().slice(0, 40),
+      via: 'testers',
+      exp: Date.now() + SESSION_DAYS * 86400000
+    }), SESSION_DAYS * 86400);
+    res.redirect(next);
+  });
+
   app.get('/auth/logout', function (req, res) {
     setCookie(res, COOKIE, '', 0);
     res.redirect('/login.html?e=out');
@@ -452,7 +526,7 @@ function mount(app) {
     const u = currentUser(req);
     res.json(u
       ? { signedIn: true, email: u.email, name: u.name || '', via: u.via || '', local: !!u.local }
-      : { signedIn: false, enabled: enabled(), providers: providerStatus() });
+      : { signedIn: false, enabled: enabled(), providers: providerStatus(), testers: testersReady() });
   });
 }
 
@@ -486,4 +560,4 @@ function requireAuth(req, res, next) {
   res.redirect('/login.html?next=' + encodeURIComponent(req.originalUrl || '/'));
 }
 
-module.exports = { mount, requireAuth, currentUser, enabled, ready, providerStatus, configProblem };
+module.exports = { mount, requireAuth, currentUser, enabled, ready, providerStatus, testersReady, configProblem };

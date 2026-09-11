@@ -87,6 +87,26 @@
     background:#3a2416;border:1px solid #7a4a1c;color:#ffd9a8;}
   .msg[hidden]{display:none;}
   .none{margin:0;color:var(--dim);font-size:13.5px;}
+
+  /* ---- the temporary testing box ----
+     Marked out as temporary by a dashed edge rather than by a label saying "temporary": it is the
+     box everybody will actually use during the beta, so it should be inviting, and it should also
+     be obvious at a glance that it is not part of the finished thing. */
+  .card.testers{display:flex;flex-direction:column;text-align:left;margin-bottom:14px;
+    border-style:dashed;border-color:#3a6da3;background:#0f2137;}
+  .card.testers[hidden]{display:none;}
+  .card.testers .hint{margin:-6px 0 16px;color:var(--muted);font-size:13px;}
+  .card.testers label{font-size:11px;font-weight:700;letter-spacing:1.2px;text-transform:uppercase;
+    color:var(--dim);margin-bottom:6px;}
+  .card.testers input{width:100%;box-sizing:border-box;margin-bottom:14px;padding:12px 13px;
+    border-radius:9px;border:1px solid var(--line);background:#081525;color:var(--ink);
+    font-family:var(--font);font-size:15px;}
+  .card.testers input:focus{outline:none;border-color:#3a6da3;box-shadow:0 0 0 3px rgba(58,109,163,.3);}
+  .card.testers .go{margin-top:2px;}
+
+  /* Under the testing box the OAuth buttons are the thing that is NOT ready, so they read quieter
+     than they do when they are the only way in. */
+  .card.testers:not([hidden]) ~ #oauthCard{background:transparent;border-style:dashed;opacity:.75;}
 </style>
 </head>
 <body>
@@ -97,14 +117,31 @@
 
   <p id="msg" class="msg" hidden></p>
 
-  <p class="blurb">
+  <p class="blurb" id="blurb">
     This is a League class site and it is still being built, so it is not open to the public.
     <b>Students</b> sign in with their League account — the same one as the CodeServer.
     <b>Teachers</b> sign in with their <b>@jointheleague.org</b> Google account. If it will not let
     you in, check you have used your League account and not a personal one.
   </p>
 
-  <div class="card">
+  <!-- The temporary beta door, ABOVE the real one and in a box of its own, because during the
+       September testing sessions it is the door everybody uses and the OAuth buttons below it are
+       not finished. It renders only when the server says TESTER_PASSWORD is set, so it is invisible
+       the moment that variable comes off the deployment. -->
+  <form class="card testers" id="testers" method="post" action="/auth/testers" hidden>
+    <h2>Testing sign-in</h2>
+    <p class="hint">Type the name you were given on the call, and the password. This is temporary —
+      it is how your game finds you again next time.</p>
+    <label for="tname">Your name</label>
+    <input id="tname" name="username" type="text" autocomplete="username" autocapitalize="off"
+           autocorrect="off" spellcheck="false" required maxlength="40" placeholder="e.g. jonathan">
+    <label for="tpass">Password</label>
+    <input id="tpass" name="password" type="password" autocomplete="current-password" required>
+    <input type="hidden" name="next" id="tnext" value="/">
+    <button type="submit" class="btn primary go">Start</button>
+  </form>
+
+  <div class="card" id="oauthCard">
     <h2>For authentication purposes</h2>
     <div class="btns" id="btns"></div>
   </div>
@@ -123,6 +160,8 @@
     codeserver: 'League sign-in could not be reached just now. Wait a moment and try again.',
     google:     'Google could not complete the sign-in. Wait a moment and try again.',
     github:     'GitHub could not complete the sign-in. Wait a moment and try again.',
+    noname:     'Put the name you were given in the first box.',
+    badpass:    'That password is not right. Check it against the one from the call — it is the same for everybody.',
     out:        'You are signed out.'
   };
   var q = new URLSearchParams(location.search);
@@ -159,6 +198,22 @@
     .then(function (r) { return r.json(); })
     .then(function (d) {
       if (d && d.signedIn) { location.replace(next || '/'); return; }
+      /* The temporary box, and where to land after it. The form posts `next` as a hidden field
+         because a form POST cannot carry the query string the OAuth links append. */
+      if (d && d.testers) {
+        var t = document.getElementById('testers');
+        t.hidden = false;
+        document.getElementById('tnext').value = next || '/';
+        /* The standing blurb tells students to use their League account, which is exactly what they
+           cannot do yet — so while the temporary door is open it says what is actually true. */
+        document.getElementById('blurb').innerHTML =
+          'This is a League class site and it is still being built, so it is not open to the public. '
+          + 'You are here to <b>try it out and tell us what you think</b>. Sign in with the name and '
+          + 'password you were given — the same name each time, so your game is waiting for you when '
+          + 'you come back.';
+        /* Focused, because during the beta this is the only field on the page anybody wants. */
+        document.getElementById('tname').focus();
+      }
       var host = document.getElementById('btns');
       var providers = (d && d.providers) || {};
       var any = false;
@@ -173,7 +228,11 @@
         host.appendChild(a);
       });
       if (!any) {
-        host.innerHTML = '<p class="none">No way of signing in has been set up on this deployment yet.</p>';
+        /* With the testing box open this is the honest thing to say — the real doors are the ones
+           being built, and a student on the beta should not read "nothing is set up" as an error. */
+        host.innerHTML = (d && d.testers)
+          ? '<p class="none">League and Google sign-in are still being set up. Use the box above for now.</p>'
+          : '<p class="none">No way of signing in has been set up on this deployment yet.</p>';
       }
     })
     .catch(function () {

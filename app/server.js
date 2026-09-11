@@ -22,6 +22,10 @@ const auth = require('./auth');      // Google sign-in, restricted to the school
 
 const app = express();
 app.use(express.json({ limit: '256kb' }));
+/* One form in the whole app — the temporary tester sign-in. A form POST rather than a fetch so it
+   works with JavaScript off and the browser offers to remember the password; that needs the
+   urlencoded parser, which is built into Express and costs nothing. */
+app.use(express.urlencoded({ extended: false, limit: '4kb' }));
 
 const PORT = process.env.PORT || 3000;
 const ROOT = __dirname;
