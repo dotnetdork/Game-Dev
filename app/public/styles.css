@@ -587,50 +587,14 @@ body[data-tier] .editor.no-dock{--leftw:0px;}
 #view-code.with-rail > .doc-preview{right:var(--railw);}
 #view-code.with-rail > .review-bar,
 #view-code.with-rail > .doc-bar{margin-right:var(--railw);}
-.build-rail{position:absolute;right:0;top:0;bottom:0;width:var(--railw);z-index:40;
-  display:flex;flex-direction:column;min-height:0;
-  background:var(--panel);border-left:1px solid var(--line);}
-.build-rail[hidden]{display:none;}
-.br-head{display:flex;align-items:center;gap:8px;padding:0 8px 0 13px;min-height:var(--labband);
-  flex:none;border-bottom:1px solid var(--line);}
-.br-title{font-weight:700;font-size:13.5px;color:var(--ink);flex:1;min-width:0;
-  overflow:hidden;text-overflow:ellipsis;white-space:nowrap;}
-.br-close{background:none;border:none;color:var(--dim);cursor:pointer;padding:4px;border-radius:6px;
-  display:flex;align-items:center;font-size:16px;}
-.br-close:hover{color:var(--ink);background:var(--panel2);}
-.br-close:focus-visible{outline:2px solid var(--focus);outline-offset:1px;}
 /* The chips wrap down the rail instead of scrolling sideways: in a 340px column a horizontal
    scroller hides the objectives that have not happened yet, and seeing what is coming is the point
    of a chain. */
-.build-rail .board-goals{flex-wrap:wrap;overflow-x:visible;padding:10px 12px;
-  border-bottom:1px solid var(--line);}
 /* The lane is a floating overlay on the board and a plain column here, so the two things that make
    it float — the pointer-events dance and the shadowed, rounded bubbles — are undone. Sitting on a
    panel, a drop shadow under every message reads as clutter rather than as depth. */
-.build-rail .board-lane{flex:1;min-height:0;padding:12px;gap:9px;pointer-events:auto;}
-.build-rail .board-lane:empty{display:flex;}
-.build-rail .board-bubble{max-width:100%;box-shadow:none;}
-.build-rail .board-quest,.build-rail .board-offer{box-shadow:none;}
-.build-rail .board-chat{margin:0 12px 12px;box-shadow:none;}
-.build-rail .board-foot{flex-wrap:wrap;row-gap:9px;padding:10px 12px;border-top:1px solid var(--line);}
-.build-rail .board-done{width:100%;}
-.doc-bar{position:absolute;right:12px;top:10px;z-index:6;display:flex;gap:2px;
-  background:var(--panel);border:1px solid var(--line);border-radius:9px;padding:3px;}
-.doc-bar[hidden]{display:none;}
-.docmode{display:inline-flex;align-items:center;gap:6px;cursor:pointer;border:0;border-radius:7px;
-  background:transparent;color:var(--muted);font-family:var(--font);font-size:12px;font-weight:600;
-  padding:5px 11px;}
-.docmode:hover{color:var(--ink);}
-.docmode.on{background:var(--sel);color:#fff;}
-.docmode .mdi{font-size:14px;}
-.doc-preview{position:absolute;inset:0;overflow-y:auto;padding:26px 30px 60px;
-  max-width:none;background:#08121f;}
-.doc-preview[hidden]{display:none;}
-.doc-preview > :first-child{margin-top:0;}
 /* An unanswered slot still shows its bracketed prompt. Greyed and italic so a page half filled in
    reads as half filled in rather than as prose the student wrote. */
-.doc-preview p{max-width:70ch;}
-.doc-preview h2{margin-top:26px;padding-top:14px;border-top:1px solid var(--line);}
 .cm-statusbar{position:absolute;right:0;bottom:0;z-index:5;background:rgba(8,18,31,.86);border:1px solid var(--line);border-right:0;border-bottom:0;border-top-left-radius:6px;color:var(--dim);font-family:Consolas,monospace;font-size:11px;padding:2px 9px;pointer-events:none;}
 .CodeMirror-hints{z-index:1000;font-family:Consolas,monospace;font-size:12.5px;}
 .CodeMirror-lint-tooltip{z-index:1000;font-family:var(--font);font-size:12px;}
@@ -1059,91 +1023,24 @@ body.resizing-v #gameFrame{pointer-events:none;}
    the way out is one obvious button.
    --labband is reused rather than redeclared: the board bar and the helper's dock-head have to land
    on the same line for the same reason the bench's do. */
-.board-view{position:absolute;inset:0;z-index:30;background:var(--bg);
-  display:flex;flex-direction:column;min-height:0;}
-.board-split{flex:1;min-height:0;display:flex;position:relative;--zoneaiw:clamp(320px,29vw,560px);}
-.board-left{flex:1;min-width:0;min-height:0;display:flex;flex-direction:column;}
-.board-bar{display:flex;align-items:center;gap:12px;padding:9px 14px;min-height:var(--labband);
-  background:var(--panel);border-bottom:1px solid var(--line);}
-.board-flag{font-size:18px;color:var(--teal);flex:none;}
-.board-bot-btn{margin-left:auto;flex:none;}
 
 /* What you are here to apply. Each chip is a real check against their own work, so it ticks itself
    — which is why it is a row of state and not a list of instructions. */
-.board-goals{display:flex;gap:8px;padding:9px 14px;flex:none;overflow-x:auto;
-  background:var(--panel2);border-bottom:1px solid var(--line);}
-.board-goals:empty{display:none;}
-.board-goal{flex:none;display:flex;align-items:center;gap:7px;font-size:12px;padding:4px 10px;
-  border:1px solid var(--line);border-radius:999px;background:var(--bg);color:var(--muted);
-  white-space:nowrap;}
-.board-goal.on{border-color:var(--green);color:var(--ink);}
-.board-tick{width:14px;height:14px;border-radius:50%;border:1.5px solid #33507a;flex:none;
-  display:grid;place-items:center;font-size:9px;color:transparent;}
-.board-goal.on .board-tick{border-color:var(--green);background:var(--green);color:#04240f;}
 
 /* ---------- the footer ----------
    One row: how many done, how far along, and the way out. It was a number, a hairline and a button
    at three different heights crushed into 9px of padding; the count is a pill now and the bar is
    thick enough to read at a glance from across a classroom. */
-.board-foot{display:flex;align-items:center;gap:16px;padding:10px 16px;flex:none;
-  background:var(--panel);border-top:1px solid var(--line);}
-.board-count{display:inline-flex;align-items:center;gap:7px;flex:none;white-space:nowrap;
-  font-size:12.5px;font-weight:600;color:var(--muted);
-  background:var(--bg);border:1px solid var(--line);border-radius:999px;padding:5px 13px;}
-.board-count b{color:var(--ink);font-size:14px;font-variant-numeric:tabular-nums;}
-.board-count.all{border-color:var(--green);color:var(--ink);}
-.board-count.all b{color:var(--green);}
-.board-bar-fill{flex:1;min-width:60px;height:8px;border-radius:5px;background:#12283f;
-  overflow:hidden;box-shadow:inset 0 1px 2px rgba(0,0,0,.4);}
-.board-bar-fill i{display:block;height:100%;width:0;border-radius:5px;
-  background:linear-gradient(90deg,var(--teal),var(--green));transition:width .25s;}
-.board-done{background:var(--green);color:#04240f;font-weight:700;border:0;border-radius:9px;
-  padding:9px 18px;font-size:13px;cursor:pointer;flex:none;transition:filter .12s;}
-.board-done:hover:not(:disabled){filter:brightness(1.08);}
-.board-done:disabled{background:transparent;color:#5d7ba0;cursor:not-allowed;
-  border:1px solid var(--line);padding:8px 17px;}
 
 /* ---------- the door, on the page behind ----------
    What this checkpoint wants, and the way in. No title — the page heading two inches above already
    says it, and saying it twice is what made this read as a panel dropped onto a lesson. */
-.board-cover{position:relative;margin:20px 0;padding:22px 22px 20px;border-radius:14px;
-  background:linear-gradient(180deg,#132a48,var(--panel));
-  border:1px solid #2c5d8a;border-top:3px solid var(--brand);
-  box-shadow:0 10px 28px rgba(0,0,0,.28);}
-.board-cover-kind{display:flex;align-items:center;gap:8px;margin-bottom:10px;
-  font-size:11px;font-weight:700;letter-spacing:1.6px;text-transform:uppercase;color:var(--brand);}
-.board-cover-kind .mdi{font-size:16px;}
-.board-cover-intro{margin:0 0 18px;font-size:16px;line-height:1.55;color:var(--ink);max-width:58ch;}
 /* The checklist is live — it reads design.md — so it is state, not instructions. No marker until a
    goal is done, then a tick: two goes at a small circle both read as two sizes side by side. */
-.board-cover-goals{list-style:none;display:flex;flex-wrap:wrap;gap:8px;margin:0 0 20px;padding:0;}
-.board-cover-goal{display:inline-flex;align-items:center;gap:7px;height:28px;padding:0 13px;
-  font-size:12.5px;line-height:1;white-space:nowrap;
-  border:1px solid var(--line);border-radius:999px;background:var(--bg);color:var(--muted);}
-.board-cover-goal.on{border-color:var(--green);background:#0e2b26;color:var(--ink);}
-.board-cover-tick{color:var(--green);font-size:12px;line-height:1;}
-.board-cover-go{display:flex;align-items:center;justify-content:center;gap:14px;flex-wrap:wrap;}
-.board-cover-btn{display:inline-flex;align-items:center;gap:8px;flex:none;cursor:pointer;
-  background:var(--brand);color:#241300;border:0;border-radius:10px;
-  padding:11px 20px;font-family:var(--font);font-size:15px;font-weight:700;
-  transition:filter .12s,transform .12s;}
-.board-cover-btn:hover{filter:brightness(1.08);}
-.board-cover-btn:active{transform:translateY(1px);}
-.board-cover-btn:focus-visible{outline:3px solid var(--focus);outline-offset:2px;}
-.board-cover-btn .mdi{font-size:18px;}
-.board-cover-btn.again{background:transparent;color:var(--muted);border:1px solid var(--line);
-  font-weight:600;font-size:13.5px;padding:8px 14px;}
-.board-cover-btn.again:hover{border-color:#3a6da3;color:var(--ink);}
-.board-cover-note{font-size:13px;color:var(--muted);}
-.board-cover-note.done{color:var(--green);font-weight:600;}
 
 /* The quest chain, on a build board's rail: ordered, so it says which one you are ON rather than
    only which are done. The dim ones are still ahead, and that is deliberate — seeing what is coming
    is part of it; being able to start any of them is not, because the order is the teaching. */
-.board-goal.now{border-color:var(--brand);color:var(--ink);background:#2a1a0c;}
-.board-goal.now .board-tick{border-color:var(--brand);background:var(--brand);color:#241300;font-weight:700;}
-.board-goal.ahead{opacity:.45;}
-.board-goal.ahead .board-tick{color:var(--dim);}
 
 /* ---------- the board ----------
    A surface you arrange things on. The dot grid is not decoration: it is the cheapest possible way
@@ -1163,12 +1060,6 @@ body.resizing-v #gameFrame{pointer-events:none;}
 .board-field.hot .board-field-lab{color:var(--green);}
 .board-field.over{border-color:var(--gold);background:rgba(245,176,46,.07);}
 .board-field.over .board-field-lab{color:var(--gold);}
-.board-field-meter{position:absolute;left:16px;right:16px;bottom:12px;display:flex;
-  flex-direction:column;gap:4px;font-size:11px;color:var(--muted);}
-.board-field-bar{height:6px;border-radius:3px;background:#12283f;overflow:hidden;}
-.board-field-bar i{display:block;height:100%;background:var(--green);transition:width .18s;}
-.board-field-meter.over{color:var(--gold);}
-.board-field-meter.over .board-field-bar i{background:var(--brand);}
 
 /* A sticky. Paper colours rather than panel colours, because the whole point is that these are
    things on a surface and not rows in a list. */
@@ -1242,8 +1133,6 @@ body.resizing-v #gameFrame{pointer-events:none;}
   100%{box-shadow:0 6px 14px rgba(0,0,0,.35);}
 }
 @media (prefers-reduced-motion:reduce){ .board-note.landed{animation:none;box-shadow:0 0 0 3px var(--gold);} }
-.board-offer.landed{border-left-color:var(--green);}
-.board-offer.landed .board-offer-lab{color:var(--green);}
 
 .board-note.star{box-shadow:0 0 0 2px var(--gold),0 8px 20px rgba(0,0,0,.45);}
 .board-canvas:has(.board-note.star) .board-note:not(.star):not(.fixed){opacity:.72;}
@@ -1257,12 +1146,6 @@ body.resizing-v #gameFrame{pointer-events:none;}
 .board-zoom button:hover{color:var(--ink);}
 .board-zoom span{font-size:11px;color:var(--dim);min-width:36px;text-align:center;}
 
-.board-tocode{margin-left:auto;display:inline-flex;align-items:center;gap:6px;cursor:pointer;
-  background:none;border:1px solid var(--line);color:var(--muted);border-radius:7px;
-  padding:5px 11px;font-family:var(--font);font-size:12.5px;font-weight:600;}
-.board-tocode:hover{border-color:#3a6da3;color:var(--ink);}
-.board-tocode[hidden]{display:none;}
-.board-tocode + .board-bot-btn{margin-left:8px;}
 
 /* ---------- note controls ----------
    On the note rather than in a toolbar somewhere, because which of fifteen notes you are acting on
@@ -1296,75 +1179,26 @@ body.resizing-v #gameFrame{pointer-events:none;}
 /* The column has no surface of its own — the board runs underneath and behind it, and only the
    bubbles and the input have a background. Pointer events pass through the gaps, so the board is
    still draggable in the space between messages. */
-.board-chat-over{position:absolute;right:0;top:0;bottom:0;z-index:55;
-  width:min(360px,38%);display:flex;flex-direction:column;justify-content:flex-end;
-  padding:14px 14px 14px 0;gap:10px;pointer-events:none;}
-.board-chat-over > *{pointer-events:auto;}
-.board-lane{overflow-y:auto;overscroll-behavior:contain;display:flex;flex-direction:column;
-  align-items:flex-end;gap:8px;scrollbar-width:thin;pointer-events:none;}
-.board-lane > *{pointer-events:auto;}
-.board-lane:empty{display:none;}
 
 /* Text messages. Theirs on the right in the app's selection blue, the assistant's on the left in a
    panel colour — the same shape everyone already knows from a phone. */
-.board-bubble{max-width:94%;font-size:13px;line-height:1.5;border-radius:14px;padding:9px 12px;
-  box-shadow:0 6px 18px rgba(0,0,0,.45);}
-.board-bubble.bot{background:var(--panel);border:1px solid #2c5d8a;color:var(--ink);
-  align-self:flex-start;border-bottom-left-radius:5px;}
-.board-bubble.user{background:var(--sel);color:#fff;border:1px solid #2f6bb0;
-  align-self:flex-end;border-bottom-right-radius:5px;}
-.board-bubble p:first-child{margin-top:0;}
-.board-bubble p:last-child{margin-bottom:0;}
-.board-bubble code{background:#0c1e36;border-radius:4px;padding:1px 4px;font-size:12px;}
 
-.board-chat{flex:none;display:flex;align-items:flex-end;gap:8px;
-  background:var(--panel);border:1px solid #2c5d8a;border-radius:13px;padding:7px 8px 7px 12px;
-  box-shadow:0 10px 30px rgba(0,0,0,.5);}
-.board-chat textarea{flex:1;min-width:0;max-height:120px;resize:none;background:transparent;
-  border:0;color:var(--ink);font-family:var(--font);font-size:13.5px;line-height:1.5;padding:5px 0;}
-.board-chat textarea:focus{outline:none;}
-.board-chat button{flex:none;width:32px;height:32px;border-radius:9px;border:0;cursor:pointer;
-  background:var(--brand);color:#241300;display:grid;place-items:center;font-size:16px;}
-.board-chat button:hover{filter:brightness(1.08);}
-.board-model{margin-left:12px;font-size:11px;color:var(--teal);font-family:Consolas,monospace;}
 
 /* The two structured cards float in the lane with the bubbles, full width, because both of them are
    about the board rather than about the sentence before them. */
-.board-offer,.board-quest{align-self:stretch;box-shadow:0 6px 18px rgba(0,0,0,.45);}
-.board-offer{background:#12304f;border:1px solid #2c5d8a;border-left:3px solid var(--gold);
-  border-radius:10px;padding:9px 11px;}
-.board-offer-lab{font-size:9.5px;font-weight:700;letter-spacing:.8px;text-transform:uppercase;
-  color:var(--gold);margin-bottom:4px;}
-.board-offer p{margin:0;font-size:13px;line-height:1.45;}
-.board-mini{font-size:11.5px;border-radius:6px;padding:3px 9px;cursor:pointer;
-  border:1px solid transparent;font-family:var(--font);}
-.board-mini.go{background:var(--gold);color:#2a1c00;font-weight:600;}
-.board-mini.alt{background:none;border-color:var(--line);color:var(--muted);}
-.board-mini.alt:hover{border-color:#3a6da3;color:var(--ink);}
 
 /* The objective, handed out into the conversation. The chat IS the quest log — a student reads the
    brief, does the thing in the Code tab, and COMPLETE lands in the same column they were reading. */
-.board-quest{padding:10px 12px;border-radius:10px;
-  background:#2a1a0c;border:1px solid #6b4a1c;border-left:3px solid var(--brand);}
-.board-quest-lab{font-size:9.5px;font-weight:700;letter-spacing:1.1px;text-transform:uppercase;
-  color:var(--brand);margin-bottom:4px;}
-.board-quest-say{font-size:14px;font-weight:600;line-height:1.4;color:var(--ink);}
-.board-quest.done{background:#0e2b26;border-color:#1f6b52;border-left-color:var(--green);}
-.board-quest.done .board-quest-lab{color:var(--green);}
-.board-quest.done .board-quest-say{font-weight:500;color:var(--muted);text-decoration:line-through;
-  text-decoration-color:#2f6b57;}
 
 /* The board itself does not reflow — it pans, so a narrow window is a smaller window onto the same
    board rather than a different layout. Only the fixed chat box needs to give ground. The board
    refuses to open below 700 at all, so there is no case where it has to fit a phone. */
 @media (max-width:900px){
-  .board-chat-over{width:46%;padding:10px 10px 10px 0;}
   .board-palette{top:8px;left:8px;}
 }
 
 /* leaderboard */
 .board{max-width:1080px;margin:0 auto;}
-.board-controls{display:flex;align-items:center;gap:12px;flex-wrap:wrap;margin-bottom:20px;}
 .seg{display:inline-flex;background:var(--panel);border:1px solid var(--line);border-radius:9px;overflow:hidden;}
 .seg button{background:none;border:0;color:var(--muted);padding:9px 16px;font-weight:700;cursor:pointer;font-size:12.5px;font-family:var(--font);transition:background .12s,color .12s;}
 .seg button:hover{color:var(--ink);}

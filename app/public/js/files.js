@@ -33,11 +33,11 @@ function folderHead(id, label, count, addTitle, onAdd) {
 }
 function refreshFiles() {
   const list = $('fileList'); list.innerHTML = '';
-  /* Two folders, because there are two kinds of thing in here now and they are not the same job.
-     `documents` is what the student WRITES — the one-sheet and anything else they fill in; `source`
-     is what the game RUNS. Documents sits above source deliberately: what your game is comes before
-     how it works, and it is the folder a student is sent to on their very first checkpoint. */
-  const docs = fileNames().filter(function (n) { return !isCodeFile(n); });
+  /* Code and assets. There used to be a `documents` folder above these holding design.md, and it
+     went when the Design tab arrived: the board IS that file's editor, and a second way in — a row
+     in this tree that opens the same writing as raw markdown — is a second place to look for one
+     thing. The file is still in the project, still written by the board and still read by every
+     `contains: {file: design.md}` check; it is simply not somewhere you browse to any more. */
   const code = codeFileNames();
 
   const fileRow = function (name) {
@@ -59,10 +59,6 @@ function refreshFiles() {
     list.appendChild(row);
   };
 
-  if (docs.length) {
-    list.appendChild(folderHead('docs', 'documents', docs.length, 'New document', newDocument));
-    if (folderOpen.docs) docs.forEach(fileRow);
-  }
   list.appendChild(folderHead('source', 'source', code.length, 'New script', newScript));
   if (folderOpen.source) code.forEach(fileRow);
   renderAssetFolder(list);
@@ -200,76 +196,25 @@ function deleteFile(name) {
   } });
 }
 function openFile(name) { if (reviewing) endReview(); if (!$('view-code').hidden) { project.files[currentFile] = codeEditor.getValue(); saveProject(); } currentFile = name; $('crumb').textContent = name; refreshFiles(); loadCode(); }
-/* ---------- documents read before they are edited ----------
-   A markdown file opens as the PAGE, not as its source. A one-sheet is something a student reads
-   back to check it says what they meant, and reading it as `## How you lose` with the hashes on is
-   reading the plumbing. Editing is one press away and the press is remembered per file, so somebody
-   who is mid-edit stays mid-edit when they come back.
-   Code has no preview and no toggle: it is already what it is. */
-let docEditing = {};
-function docPreviewOn(name) { return !isCodeFile(name) && !docEditing[name]; }
-
+/* The Code tab shows code. The Read/Edit toggle and the rendered-markdown preview that used to live
+   here went with the documents folder: design.md is edited on the Design tab now, as a board, and
+   the only markdown this tree could have opened was that one file. */
 function loadCode() {
   if (reviewing) { showDiffInEditor(reviewing); return; }
   const t = project.files[currentFile];
-  const code = isCodeFile(currentFile);
-  const preview = docPreviewOn(currentFile);
-  paintDocBar();
-  const host = $('docPreview');
-  if (host) {
-    host.hidden = !preview;
-    if (preview) {
-      // Rendered through the same sanitiser as every other Markdown in the app; a student's own
-      // file is not a trusted document just because they wrote it.
-      host.innerHTML = (typeof mdToSafeHTML === 'function')
-        ? mdToSafeHTML(typeof t === 'string' ? t : '')
-        : esc(String(t || ''));
-      host.scrollTop = 0;
-    }
-  }
-  const wrap = $('editorWrap'); if (wrap) wrap.hidden = preview;
-  if (preview) return;
   /* formatJS is Prettier's JavaScript parser. Handed a page of prose it either throws or rewrites
      it into something that is no longer what the student typed, so only code gets formatted.
      setEditorLanguage switches the editor's own mode and linting to match — see editor.js. */
+  const code = isCodeFile(currentFile);
   if (typeof setEditorLanguage === 'function') setEditorLanguage(currentFile);
   codeEditor.setValue(typeof t === 'string' ? (code ? formatJS(t) : t) : (code ? '// (empty file)' : ''));
   codeEditor.refresh();
 }
 
-/* The Read / Edit switch, shown only on a document. */
-function paintDocBar() {
-  const bar = $('docBar'); if (!bar) return;
-  const doc = !isCodeFile(currentFile) && !reviewing;
-  bar.hidden = !doc;
-  if (!doc) return;
-  const editing = !docPreviewOn(currentFile);
-  bar.innerHTML = '';
-  [['Read', false, 'mdi-book-open-page-variant'], ['Edit', true, 'mdi-pencil-outline']].forEach(function (m) {
-    const b = document.createElement('button');
-    b.type = 'button'; b.className = 'docmode' + (editing === m[1] ? ' on' : '');
-    b.innerHTML = '<span class="mdi ' + m[2] + '" aria-hidden="true"></span>' + m[0];
-    b.setAttribute('aria-pressed', String(editing === m[1]));
-    b.addEventListener('click', function () {
-      // Leaving Edit writes first: the switch must never be a way to lose a paragraph.
-      if (editing && !m[1]) saveFile();
-      docEditing[currentFile] = m[1];
-      loadCode();
-      if (m[1]) setTimeout(function () { codeEditor.refresh(); codeEditor.focus(); }, 0);
-    });
-    bar.appendChild(b);
-  });
-}
-/* Named, because two things call it: the New button in the footer and the + on the source folder.
-   The + exists so both folders offer the same gesture in the same place — a panel where one section
-   has an add button and the other does not reads as if the second one cannot be added to. */
+/* Named, because two things call it: the New button in the footer and the + on the source folder. */
 function newScript() {
   newFile('.js');
 }
-/* The documents folder's own `+`. Same dialog, different default extension — a student adding to
-   the folder full of writing means to write, and making them type ".md" to get that is a small
-   tax on the one action that folder exists for. */
-function newDocument() { newFile('.md'); }
 
 function newFile(ext) {
   const doc = ext === '.md';

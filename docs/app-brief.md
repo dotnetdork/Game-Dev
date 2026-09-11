@@ -10,9 +10,9 @@ deliberately not a sales document. The last two sections are the honest ones.
 
 **Game Dev** is a browser-based game-development course for The League of Amazing Programmers,
 aimed at students roughly 10–14 working on school-managed Chromebooks. It is a single-page app
-styled as a game engine's studio: a course outline down the left, a Learn / Code / Play viewport in
-the middle, an AI assistant on the right. The student reads and modifies one real Phaser 3
-platformer across ~31 lessons in 6 modules, directs an AI to do some of the heavy typing, earns
+styled as a game engine's studio: a course outline down the left, a Learn / Design / Code / Play
+viewport in the middle, an AI assistant on the right. The student reads and modifies one real Phaser 3
+platformer across 24 lessons in 6 modules, directs an AI to do some of the heavy typing, earns
 Stars and XP, spends Stars on real art and sound in an in-app store, and finishes with one game
 they can publish and show people. Everything the student makes lives in their own browser; the
 server hosts files and relays AI calls and stores nothing of theirs.
@@ -54,14 +54,15 @@ That is the entire backend. There is no database.
 **Client** — `app/public/`, one `index.html`, one `styles.css` (~2,600 lines), and 19 plain
 `<script>` files loaded in a fixed order. **There is no bundler and no build step.** Each file has a
 header comment declaring what it owns. Rough sizes: `widgets.js` 2,438 lines (the lesson
-interactives), `zone.js` 1,534 (the checkpoint boards), `ai.js` 820, `project.js` 743, `pages.js`
+interactives), `board.js` ~1,050 (the Design tab board), `ai.js` 820, `project.js` 743, `pages.js`
 610, `course.js` 415, `game-runner.js` 400, `files.js` 400.
 
 **Top-level surfaces**, reachable from the nav bar: **Game Dev** (the course itself), **Courses**,
 **Store** (spend Stars on assets), **Gallery** (published student games), **Leaderboards**, **Docs**,
-**Help**. Inside a lesson there are three views: **Learn** (the lesson), **Code** (a CodeMirror
-editor over the student's project files), **Play** (the running game). URLs are real —
-`/module/lesson-id/view` — so a lesson is linkable and the back button works.
+**Help**. Inside a lesson there are four tabs: **Learn** (the lesson), **Design** (the student's own design
+board — see §6), **Code** (a CodeMirror editor over their project files), **Play** (the running
+game). URLs are real: a lesson is `/module/lesson-id`, and Design, Code and Play are top-level
+(`/design`, `/code`, `/play`) because none of the three belongs to a particular lesson.
 
 **The game runs in an `iframe srcdoc`**: the app assembles a self-contained HTML document — vendored
 Phaser, a console shim that pipes errors back out, an injector for whatever assets the student owns,
@@ -70,7 +71,7 @@ iframe is currently an unresolved trade-off.)
 
 ## 4. Content is data, not code
 
-- `app/content/course.yaml` — 6 modules, 31 lessons, star values. Heavily commented with the
+- `app/content/course.yaml` — 6 modules, 24 lessons, star values. Heavily commented with the
   *reasoning* for the order, not just the order.
 - `app/content/lessons/*.md` — one file per lesson. Prose plus fenced interactive blocks.
 - `app/content/questions.yaml` (1,144 lines) — the conversation openers each AI agent offers, keyed
@@ -89,19 +90,18 @@ iframe is currently an unresolved trade-off.)
 | ` ```quiz ` | Multiple choice, checked locally, every option needs its own feedback line and the whole thing needs an `explain:` |
 | ` ```challenge ` | An embedded mini-game the student edits until `win()` fires; winning completes the lesson |
 | ` ```yourturn ` | A task against the student's **real project**, with a deterministic `check:` rule (`config_changed`, `function_added`, `called_in_update`, `contains`, `published`, …) |
-| ` ```zone ` | A checkpoint board — see §6 |
 
 ## 5. The AI
 
 `POST /api/ai` is a **relay**, not a chatbot. It routes by *agent*, and each agent is a Markdown file
-in `app/ai/agents/` — `tutor`, `coder`, `quiz`, `grader`, `lab-tutor`, `zone-coach`, `zone-check` —
+in `app/ai/agents/` — `tutor`, `coder`, `quiz`, `grader`, `lab-tutor`, `design-coach` —
 composed with reusable skill files in `app/ai/skills/` (`kid-communication.md`,
 `phaser-rules.md`, `explain-a-line.md`, `guided-mode.md`). These hot-reload, so tuning the AI's
 behaviour means editing prose. Each agent gets its own `provider:model` from `.env`, so the app runs
 against local Ollama, OpenRouter, or Anthropic interchangeably. **Keys never reach the browser.**
 
 The critical pattern, repeated for every agent: **a deterministic validator sits between the model
-and the child.** `app/ai/quiz-check.js`, `grade-check.js`, `zone-check.js`. Their shared contract is
+and the child.** `app/ai/quiz-check.js` and `grade-check.js`. Their shared contract is
 *reject, never repair* — a malformed reply is treated as an ordinary event on the happy path, the
 validator returns `null` for "could not vouch for this", and the caller turns that into "nothing
 happened" rather than into an error message. The coder agent returns JSON *ops* rather than code;
@@ -110,49 +110,50 @@ the client applies them, parse-checks the result, and reverts on failure.
 There is also an MCP server (`app/ai/mcp-server.js`) exposing the course to external tools:
 `get_lesson`, `search_phaser_docs`, `search_store`, `read_file`, `list_owned_assets`.
 
-## 6. Checkpoints and building zones — the part the client is least sure about
+## 6. The Design tab — where the student's own game lives
 
-Every module ends in a **checkpoint** (`checkpoint: true` in the lesson's front-matter). Its stated
-job: the one lesson in that module about the student's *own* game rather than the course's game. The
-arc is Use → Modify → **Create**, with a Create slice at the end of every module rather than a
-capstone bolted on the end. Module Stars are withheld until every lesson including the checkpoint is
-done, so *you cannot arrive at the part where you build your own game having built nothing*.
+The four tabs inside a lesson are **Learn · Design · Code · Play**. Design is the student's own
+design board, open on every lesson from the first to the last, and it is the app's answer to "work
+on your own game".
 
-The six checkpoints: `your-game-in-one-line`, `your-one-sheet`, `cut-it-down`,
-`build-your-first-mechanic`, `room-to-grow`, `launch-your-game`.
-
-A checkpoint does not open a lesson page. It opens a **zone** — a full-screen, Miro-like board:
-
-- **A pannable, zoomable canvas** with dotted-line **regions** ("MY GAME", "NOT BUILDING — NEXT
-  TIME", "IDEAS, UNSORTED"). Regions auto-resize to fit what is dropped in them.
-- **Sticky notes** — some are fixed slots bound to the design document, some are loose notes the
+- **A pannable, zoomable canvas** with dotted-line **regions** — "MY GAME", "NOT BUILDING — NEXT
+  TIME", "IDEAS, UNSORTED". Regions auto-resize to fit what is dropped in them.
+- **Sticky notes** — one fixed sticky per heading of the one-sheet, plus as many loose notes as the
   student adds. Draggable, editable, pinnable, resizable, deletable. Notes can be linked.
-- **A goal strip** across the top and a progress bar along the bottom ("1 of 2 done").
-- **An AI assistant floating over the right-hand side** as chat bubbles laid on the board, not a
-  panel beside it.
-- **The board is the editor for a real file.** The zones read and write `design.md`, a markdown file
-  in the student's own project, visible in the Documents folder of the content browser and openable
-  as a rendered document or as editable markdown. The one-sheet is *the backlog the checkpoints
-  consume* — ideation produces it, each later checkpoint cashes in one line of it. That is what is
-  supposed to stop a design doc being homework.
+- **The board is the editor for a real file.** It reads and writes `design.md` in the student's own
+  project. Dragging a sticky from "My game" into "Not building" rewrites that file — cutting scope is
+  something the student *does* rather than something a lesson describes.
+- **Nothing else is on the tab.** No outline, no console, no Inspector, no second chat. The shell's
+  AI panel serves it like every other tab, with **Build disabled** (it edits game files and there are
+  none here) and the **Tutor** answering as the `design-coach` agent, which is given the board's
+  boxes, its loose notes and the lesson the student is on. The coach asks; the student writes.
+- Lessons reach it with an ordinary `yourturn` — "open the Design tab and…" — checked with
+  `contains: {file: design.md, …}` like any other step.
 
-The most recent design move: **the assistant conducts an interview and fills the board as it goes.**
-The student is not asked to write notes; they are asked questions, and their answers land on the
-board as stickies with a gold flash and a one-line receipt in the chat. Two "thinking tool" buttons
-(Crazy 8s, a SCAMPER lens picker) were just removed for being redundant with that interview. What
-remains in the toolbar: add a note, link two notes, read the sheet back as a stranger would, tidy,
-fit to screen.
+**This replaced a CHECKPOINT system, removed 2026-09-09, and the history matters when reading older
+docs in this repo.** Every module used to end in a checkpoint: a gated lesson that opened this same
+board full-screen with objectives, a progress rail, a Finish button, a badge and a coach conducting
+an interview that filled the boxes in for the student. Module Stars waited behind it. The board was
+the good half and the gate was the bad half — six walls, each arriving as a different kind of thing
+from every lesson around it, none of them somewhere a student could go back to. The course went from
+30 lessons to 24; the six checkpoint files are in `content/_archive-v1/` with their board specs.
 
-**Design intent behind the wording**, worth knowing when critiquing: these are explicitly *not*
-lessons and explicitly *not* a coding space. They are workspaces. A build checkpoint contains no
-editor — the student writes code where they always have and the board watches.
+Two deliberate consequences worth knowing when critiquing:
+
+- **The coach no longer writes on the board.** It could, and did — a trailing `SLOT:` line in its
+  reply wrote straight into `design.md`. That went with the checkpoints: a board an assistant fills
+  in is not the student's design.
+- **Design, Code and Play have top-level addresses** (`/design`, `/code`, `/play`) rather than being
+  nested under a lesson, because none of the three changes when you turn the page. Only a lesson and
+  its lab are lesson-scoped.
 
 ## 7. State, and how progress is stored
 
 Everything is in `localStorage`, versioned, with real migrations:
 
 - **The project** (`SCHEMA.project: 3`) — `game.js`, `main.js`, `design.md`, any extra scripts.
-- **Progress** (`SCHEMA.progress: 2`) — XP, Stars (400 to start; earned per lesson, practice step, lab and checkpoint, plus a module bonus), which lessons are done, which
+- **Progress** (`SCHEMA.progress: 2`) — XP, Stars (400 to start; earned per lesson, practice step
+  and lab, plus a module bonus), which lessons are done, which
   modules have paid out, unlocked assets, published games, per-activity answers, lab drafts,
   practice-rule results, badges, chat threads.
 
@@ -171,7 +172,7 @@ distinctive things about the repo — they check the *content* as strictly as th
 `check-state` (every migration, plus idempotency) · `subset-icons --check` (an icon used but not in
 the font subset renders as a blank box) · `check-quiz` · `check-grade` · `check-lessons` (pacing —
 no two activity fences adjacent, first activity inside the first 25% of blocks; quiz feedback arity;
-zone specs; lesson ids) · `check-challenges` · `check-questions` (minimum pool sizes per lesson) ·
+lesson ids) · `check-challenges` · `check-questions` (minimum pool sizes per lesson) ·
 `check-assets` · `check-vocab` (the prerequisite graph) · `check-mcp` · `check-gamelog` ·
 `check-boot` (boots the real server with jsdom and asserts the app actually renders).
 
@@ -185,30 +186,30 @@ free), and auto-preloaded by key into the game.
 
 ## 9. Where it is actually weak — read this before critiquing
 
-The client's own summary is *"it feels kind of like a jumbled prototype of an idea. It's a little
-cluttered, the checkpoints are a little strange — I enjoy the direction, but I'm not sure they are
-as useful as I intended."* That judgement should be taken as a finding, not as a mood. Specific
-things a critic should be pointed at:
+The client's own summary, September 2026: *"it feels kind of like a jumbled prototype of an idea.
+It's a little cluttered, the checkpoints are a little strange — I enjoy the direction, but I'm not
+sure they are as useful as I intended."* That judgement was taken as a finding rather than a mood,
+and the checkpoints were removed because of it. What follows is what is still true.
 
 1. **Density.** The studio shell (outline + viewport + AI panel + console dock + file tree + Star/XP
-   footer + nav bar) puts a great many controls on screen at once for a ten-year-old. The zone board
-   adds a second, differently-shaped interface with its own toolbar, its own zoom, and its own chat.
-2. **The checkpoints may not have earned their weight.** They are the most-built feature in the app
-   and the least validated. Open questions: does a twelve-year-old understand what the board is
-   *for* on arrival? Is filling `design.md` felt as progress on their game, or as a form? Does the
-   board's promise ("cash in one line at each later checkpoint") actually land, or does the student
-   never connect the sticky they wrote in module 1 to the code they write in module 4? Is a
-   whiteboard even the right metaphor for someone who has never used one?
-3. **Two visual languages.** Lessons are a reading layout; zones are an infinite canvas. Nothing
-   currently teaches the transition.
+   footer + nav bar) puts a great many controls on screen at once for a ten-year-old. The Design tab
+   answers part of this by stripping itself to the board alone, which raises the obvious question
+   about the other three.
+2. **The Design tab is the newest thing here and the least validated.** The gate is gone, but the
+   open questions the checkpoints raised are not: does a twelve-year-old understand what the board
+   is *for* on arrival? Is filling it in felt as progress on their game, or as a form? Does anything
+   connect the sticky they wrote in week one to the code they write in week eight — now that nothing
+   forces the trip? Is a whiteboard the right metaphor for someone who has never used one?
+3. **Two visual languages.** Lessons are a reading layout; the board is an infinite canvas. Nothing
+   teaches the transition — and the board is now one tab away at all times rather than arriving six
+   times with an explanation attached.
 4. **The one-sheet's first draft is uninformed by design** — ideation is module 2, before Core
-   Mechanics teaches the vocabulary. The mitigation is that it is a living document revised at every
-   checkpoint. Whether a child experiences that as "revising" or as "being asked the same thing
-   again" is untested.
-5. **Assets and juice sit at lesson 19 of 31.** Every student's game looks identical for eighteen
-   lessons, and identity is a large part of what keeps a twelve-year-old going. The counter-argument
-   on record is that `ship-it` must be last because publishing is the payoff. The risk is students
-   not *reaching* it.
+   Mechanics teaches the vocabulary. The mitigation is that the board is always open and meant to be
+   revised. Nothing now *prompts* that revision, which is the trade the removal made: no gate, and
+   no reminder either.
+5. **Assets and juice sit late.** The lesson-2 Store purchase gives every student a character of
+   their own in the first forty minutes, but sprites, sound and juice are still module 6. The
+   counter-argument on record is that `ship-it` must be last because publishing is the payoff.
 6. **Two duplicated themes.** `physics-and-collision` (module 1) vs `input-movement-collision`
    (module 4) both teach overlap/collide; `from-project-to-playable` (module 1) vs `ship-it` (last)
    both teach delivery, bookending the course with two similar badges.
@@ -220,7 +221,7 @@ things a critic should be pointed at:
 8. **No student or instructor has ever used it.** Evidence to date is documented research plus two
    client conversations plus an approved prototype. Zero user interviews. Every claim in this
    document about what a child will feel is a hypothesis.
-9. **Course length.** ~31 lessons is roughly 15 hours against the ~10–12 in the spec.
+9. **Course length.** 24 lessons is roughly 12–15 hours against the ~10–12 in the spec.
 10. **Accessibility.** A WCAG audit is pending. The board in particular is pointer-driven — drag,
     pan, pinch-zoom — with no keyboard path.
 
@@ -229,14 +230,13 @@ things a critic should be pointed at:
 **As a design/interface critic (the "impeccable" pass).** The repo already carries `.impeccable/`
 config from previous critique passes on the leaderboards and the lesson reading layout, so this is
 an established practice here. The productive targets are the ones in §9.1–9.3: visual density,
-whether the two interface languages can be reconciled, whether the zone toolbar and goal strip and
-progress bar and chat are three too many progress indicators, and whether a first-time ten-year-old
-can tell what to press. The app's own aesthetic is a dark engine-studio look with League orange;
+whether the two interface languages can be reconciled, whether the board's toolbar and zoom are
+explained by anything, and whether a first-time ten-year-old can tell what to press. The app's own aesthetic is a dark engine-studio look with League orange;
 critique should sharpen that, not replace it.
 
 **As a 10–14 year old.** The questions worth answering in that voice: Would I keep going after
-lesson 3? Is the game mine yet, and when does it first feel that way? Do I understand what a
-"checkpoint" is when the board opens? Is talking to the AI fun, or is it a teacher with extra steps?
+lesson 3? Is the game mine yet, and when does it first feel that way? Do I understand what the
+Design tab is for the first time I press it? Is talking to the AI fun, or is it a teacher with extra steps?
 Would I show this to a friend? What is boring? What is confusing? What did I skip? The one thing
 this course cannot survive is being *worthy* — the client's whole brief is fun-first, and the
 failure mode the client has already lived through is a room of kids who freeze on a blank page or

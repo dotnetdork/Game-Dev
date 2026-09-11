@@ -1,9 +1,10 @@
 # Curriculum Outline — Game Development, Level 1 (SUPERSEDED)
 
 > **This is the v1 outline — 10 modules, 47 lessons — and it is not what the course is.**
-> The course shipped as 5 modules / 22 lessons (commit `0289fe1`) and is now 6 modules / 30
+> The course shipped as 5 modules / 22 lessons (commit `0289fe1`) and is now 6 modules / 24
 > lessons: Game Engines · **Concept Ideation** · Core Mechanics · Phaser Programming · Systems
-> Architecture · Asset Design, each ending in a checkpoint on the student's own game.
+> Architecture · Asset Design. The per-module checkpoints it describes were removed on 2026-09-09;
+> the student's own game now lives on the always-open **Design** tab instead.
 > **`app/content/course.yaml` is the truth**, and its header comment explains the ordering.
 > Kept because the research notes at the bottom are still the sourcing for that ordering, and
 > because the two cut modules (team roles, the engine/language tour) are the clearest record of

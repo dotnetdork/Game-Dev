@@ -106,24 +106,25 @@ and be playable on your very first day.
 
 ## It is a living document
 
-The word "document" makes this sound like something you hand in. It is not. You will open your
-one-sheet again at the end of every module in this course, and each time you will change it,
-because you will know more than you did.
+The word "document" makes this sound like something you hand in. It is not. It is behind the
+**Design** tab at the top of this page, it is open the whole course, and you should expect to change
+it — because every week from here you will know something you did not know when you wrote it.
 
 ```run
-// @goal: Every module from here ends on this page. Drag through them and see what each one wants.
-// @slider: module 2 6 1 2
-const stops = [
-  "you finish the page — every slot answered, including how you lose",
-  "you rewrite it using the words for a loop, feedback and difficulty",
-  "you build one line of it for real, in code, and it runs",
-  "you tidy your code so the next line of it would be easy to add",
-  "you make it look and sound like the page says, and you publish it"
+// @goal: The same page, read at different points in the course. Drag through and see what changes.
+// @slider: week 1 6 1 1
+const reads = [
+  "you can only say what the player DOES. That is enough — it is the hardest line on the page",
+  "you know what a core loop is, so 'you jump over things' becomes a loop that closes",
+  "you know about feedback and difficulty, so 'how you lose' stops being an afterthought",
+  "you have written code, so you can tell a line you could build from one you only like",
+  "your game has grown, and half the page is about a game you are no longer making",
+  "you are finishing, and the page is the list of what you promised yourself"
 ];
-console.log("End of module " + module + ":");
-console.log("   " + stops[module - 2]);
+console.log("Week " + week + ", reading your one-sheet:");
+console.log("   " + reads[week - 1]);
 console.log("");
-console.log("Five visits. The page you write today is the first draft of five.");
+console.log("Same six boxes. The page does not change on its own — you do, and then you change it.");
 ```
 
 So a plan that never changes was not a plan, it was a guess nobody checked.
@@ -144,22 +145,23 @@ feedback:
 explain: A one-sheet is a living document. You revise it every time building teaches you something the page got wrong — which it will.
 ```
 
-You already have one waiting in your project, half filled in from the last two lessons.
+You already have one waiting on your Design tab, half filled in from the last two lessons.
 
 ```yourturn
-title: Read your own one-sheet
-task: Open the notes file in your project and read it as a stranger would. You are not filling it in yet — that is next lesson. You are finding out which slots would make somebody guess.
+title: Read your own one-sheet back
+task: Read your board the way a stranger would, then fill in the worst gap it shows you.
 steps:
-  - Open the Code tab and open `design.md`.
-  - Read it top to bottom, out loud if you can. You should already have the verb and one twist.
-  - At the bottom, add a line starting `TODO:` listing which slots are still empty or vague.
-  - Press Save.
+  - Open the **Design** tab.
+  - Press **Read it back as a stranger would** in the toolbar down the left. It runs your stickies together into the one paragraph somebody else would read, and names the boxes that are still empty.
+  - Read that paragraph out loud if you can. The sentence you stumble over is the one to fix.
+  - Fill in at least one of the boxes it says are missing. Click the sticky and type.
+  - Add a note with **+** starting `TODO:` for whatever is still vague. It is your list for next week.
 reward: One-Sheet badge
 check:
   - contains:
       file: design.md
       text: 'TODO:'
-    hint: Add a line starting `TODO:` at the bottom of `design.md` saying which slots still need work.
+    hint: Add a note on the board starting `TODO:` saying which boxes still need work.
 example: 'TODO: how you lose is empty, and "what makes it mine" is still three things instead of one.'
 ```
 

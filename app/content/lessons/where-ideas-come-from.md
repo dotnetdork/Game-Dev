@@ -129,16 +129,16 @@ to change it at the end of this module.
 
 ```yourturn
 title: Name the one thing you do
-task: 'Open the notes file in your own project and fill in one line: the verb your game is about. Not the story, not the art — the thing the player actually does with their fingers.'
+task: 'Write one line on your own board: the verb your game is about. Not the story, not the art — the thing the player actually does with their fingers.'
 steps:
-  - Open the Code tab and click `design.md` at the top of the file list.
-  - Find the heading "The one thing you do" and write your verb under it, replacing the grey line in brackets.
-  - Write three twists under "What makes it mine" — one from each of the three places above. Bad ones are fine.
-  - Press Save.
+  - Open the **Design** tab. That is your board, and there is a sticky on it for every box of your one-sheet.
+  - Click the **The one thing you do** sticky and type your verb over the grey prompt.
+  - Now press **+** three times and write three twists — one from each of the three places above. Bad ones are fine; you only need one to survive.
+  - Leave them in **Ideas, unsorted** for now. Next lesson you cut two of them.
 reward: Idea Machine badge
 check:
   - changed_at_least: 2
-    hint: Nothing in your project has changed yet — open `design.md` and write your verb in it.
+    hint: Nothing has changed yet — open the Design tab and write your verb on the "one thing you do" sticky.
 example: The one thing you do is jump, but the platforms vanish a second after you land.
 ```
 

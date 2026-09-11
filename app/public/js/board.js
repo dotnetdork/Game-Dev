@@ -29,9 +29,10 @@
  */
 
 /* ---------- the one-sheet, as data ----------
-   design.md is markdown a student can open in the Code tab and read, and it is also the board's
-   backing store. Those two have to be the same file or they drift, so this parses and re-renders
-   it rather than keeping a copy.
+   design.md is a real markdown file in the student's project, and it is also the board's backing
+   store. The board is its only editor, but it stays a file rather than becoming board-shaped state
+   for two reasons: a lesson's `contains: {file: design.md}` check reads it, and anything kept in
+   progress state is destroyed by Reset my progress.
 
    Round-tripping rules, both learned from what the file actually looks like:
 
@@ -39,9 +40,8 @@
      under every heading to explain what goes there, and a student who has written nothing has an
      empty slot rather than a slot containing a sentence we wrote.
 
-     Headings this board does not declare are KEPT, in place. A later checkpoint adds `## My core
-     loop`, and a student adds whatever they like — dropping those on write would delete their
-     work to tidy a namespace. */
+     Headings the board does not lay out are KEPT, in place. A student can write whatever they like
+     in a note, and dropping unknown headings on write would delete their work to tidy a namespace. */
 const SHEET_FILE = 'design.md';
 
 function slotKey(h) { return String(h || '').toLowerCase().replace(/[^a-z0-9]+/g, ''); }
@@ -79,7 +79,8 @@ function parseSheet(md) {
 }
 
 /* Back to markdown. An answered slot loses its prompt, so the file reads as a design document
-   rather than as a form — and an unanswered one keeps it, so the Code tab still explains itself. */
+   rather than as a form — and an unanswered one keeps it, so a blank sticky still says what goes
+   in it. */
 function renderSheet(sheet) {
   const out = [sheet.head.join('\n').replace(/\s+$/, '')];
   sheet.slots.forEach(function (s) {
@@ -97,10 +98,6 @@ function sheetWrite(sheet) {
   project.files[SHEET_FILE] = renderSheet(sheet);
   if (project.order && project.order.indexOf(SHEET_FILE) < 0) project.order.unshift(SHEET_FILE);
   if (typeof saveProject === 'function') saveProject();
-  /* The Code tab may be showing this very file behind the overlay. Repaint it rather than leaving
-     a stale copy for the student to find and "fix" over the top of what they just wrote. */
-  if (typeof currentFile !== 'undefined' && currentFile === SHEET_FILE
-      && typeof loadCode === 'function' && $('view-code') && !$('view-code').hidden) loadCode();
 }
 /* Find a slot by heading, creating it if the file has never had one. Matched on the squashed key so
    "My game is" finds "## My game is..." — the starter's headings carry an ellipsis and an author
@@ -869,12 +866,9 @@ function showBoard() {
 if ($('boardZoomIn')) $('boardZoomIn').addEventListener('click', function () { boardZoom(0.1); });
 if ($('boardZoomOut')) $('boardZoomOut').addEventListener('click', function () { boardZoom(-0.1); });
 if ($('boardFit')) $('boardFit').addEventListener('click', function () { if (theBoard) boardFit(theBoard); });
-/* The wheel means zoom on the board and scroll in the conversation. Which one you get is decided by
-   what is under the pointer, not by a mode — that is how every canvas app behaves and it is the one
-   arrangement nobody has to be told about. The conversation's own scrolling is left alone entirely,
-   so a long thread reads normally. */
+/* The wheel zooms the board. A note being typed into scrolls itself — that is the one exception,
+   and it is decided by what is under the pointer rather than by a mode. */
 if ($('boardCanvasWrap')) $('boardCanvasWrap').addEventListener('wheel', function (e) {
-  if (e.target.closest('.board-chat-over')) return;     // the conversation scrolls itself
   if (e.target.closest('.board-note-edit')) return;     // so does a note being typed into
   e.preventDefault();
   const b = $('boardCanvasWrap').getBoundingClientRect();

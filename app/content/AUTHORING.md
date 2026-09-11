@@ -4,8 +4,8 @@ Everything here is editable without touching app code.
 
 ## course.yaml
 Modules in order; each lists lesson ids that map to lessons/<id>.md.
-`stars` is the module bonus, awarded when the whole module is completed. Lessons, practice steps,
-labs and checkpoints pay Stars of their own as they happen — the amounts live in `STARS` in
+`stars` is the module bonus, awarded when the whole module is completed. Lessons, practice steps and
+labs pay Stars of their own as they happen — the amounts live in `STARS` in
 `public/js/project.js`, not in content.
 
 **A lesson's id is a storage key.** `state.done`, its answers, its lab drafts and its practice
@@ -14,138 +14,79 @@ across the whole course, and have a matching `.md` on disk. `npm test` enforces 
 be the lesson's *position*, which is why reordering the course used to move every student's progress
 onto whatever landed in the vacated slot; that is fixed, and the id is why.
 
-## Checkpoints, and the building zones they open
-**Every module ends in a checkpoint** — marked `checkpoint: true` in its front-matter, about the
-student's *own* game rather than the course's. It is what makes the arc use → modify → **create**
-instead of stopping at modify.
+## The Design tab and `design.md`
 
-**A checkpoint is not a lesson.** Every other page in the course is something to read with things to
-do embedded in it. A checkpoint is the opposite shape: a **building zone**, a full-window workspace
-that opens over the app the way the lab bench does, with a board of the student's own answers on one
-side and a helper bot in the room on the other. So its file contains no prose — just a ```zone
-block declaring the workspace. The page behind is a door: title, one line, what the zone wants, and
-the button.
+There are no checkpoints. Every module used to end in one — a gated lesson that opened a full-window
+board instead of a page, held the module's stars behind it, and ran objectives and a Finish button
+inside. That is gone (2026-09-09). The board was the good half and the gate was the bad half: six
+walls, each arriving as a different kind of thing from every lesson around it, and none of them
+somewhere a student could go back to.
 
-The `checkpoint: true` flag changes three things:
+What replaced it is the **Design tab**, between Learn and Code. One board, always open, worked on
+across the whole course. There is nothing to author: the tab exists, the board is the same for every
+student, and its stickies come from the headings in their own `design.md`.
 
-- the outline draws that row with a chequered flag in the module's colour
-- the page header says "Checkpoint · your own game" instead of "Lesson 4 of 4", and says how many
-  stars the module is holding
-- **its work counts towards finishing it** — the zone as one activity, or (for a checkpoint with no
-  zone yet) its `yourturn` steps. In an ordinary lesson `yourturn` steps do not count, because a
-  practice step reads the student's real game and lessons unlock in a straight line: one child stuck
-  on their own game would wall off the course. A checkpoint is the one place that insists, which is
-  the right place.
+### What the board is
 
-The stars gate needs no extra machinery. A lesson completes only when its activities are done, a
-module's stars only land once every lesson in it is done, and the checkpoint is the last lesson.
+Every project ships with `design.md`: the student's **one-sheet**, six headings. The board is a
+canvas of sticky notes over that file — one fixed sticky per heading, plus as many loose notes as
+they like — laid out in three regions:
 
-Three rules `npm test` will fail you on, all because they fail silently otherwise: a checkpoint must
-be its **module's last lesson** (anywhere else and the stars stop waiting for it, so the gate is
-decoration), it must have a **```zone or a ```yourturn** (otherwise it insists on nothing), and
-**every module must have one**.
+| Region | What it means |
+|---|---|
+| My game | the fixed stickies, one per heading of the one-sheet |
+| Not building — next time | a loose note dropped in here joins `## What I am NOT building` |
+| Ideas, unsorted | somewhere to put a thought that has no home yet |
 
-### Two kinds of zone
+Dragging a sticky from one region to another rewrites the file. That is the point: cutting scope is
+a thing a student *does* rather than a thing a lesson describes.
 
-`kind:` picks the furniture, because the two halves of the course need different rooms.
+The layout is fixed in `public/js/board.js` (`BOARD_REGIONS`), not authored per lesson. Add a `##`
+heading to the starter's `design.md` and a sticky for it appears; nothing else has to know.
 
-**`kind: sheet`** (the default) is a **board** of the student's own answers — one card per slot of
-`design.md` — with tools above it and the helper beside it. It is for the modules where the work is
-deciding: Game Engines, Concept Ideation, Core Mechanics.
+### Asking a lesson to use it
 
-**`kind: build`** is **their real game running above their real code**, with the helper beside it.
-It is for the modules where the work is building: Phaser Programming, Systems Architecture, Asset
-Design. Its objectives run **in order** — one live at a time, the next unlocking when the last is
-checked — and the helper hands each one out as a card in the conversation and briefs it against
-their own file. The conversation is the quest log, which is why there is no fourth panel.
+Write an ordinary `yourturn` that sends them to the tab, and check it with the same rules as any
+other step — the board writes `design.md`, so `contains` and `matches` both see what they wrote:
 
-A build zone has no `slots:` and no `tools:` (`npm test` refuses both — they are the sign an author
-meant `kind: sheet`), and its goals use `check:` instead of `slot:`.
+```yaml
+check:
+  - contains:
+      file: design.md
+      text: 'TODO:'
+    hint: Add a note on your board starting `TODO:` saying which boxes still need work.
+```
 
-    ```zone
-    kind: build
-    title: Build Your First Mechanic
-    file: world.js            # which file the editor opens on
-    brief: >
-      What the module just taught, and where to push. This is the biggest lever you have on
-      whether the guide is any use.
-    goals:
-      - say: Write a function for your mechanic
-        brief: One sentence for the guide about what this objective is for.
-        check:
-          - function_added: true
-          - parses: true
+Anchor on something the student is told to type (`TODO:`, `Before it ships:`) or on a heading they
+are told to keep — never on words they are inventing. A loose note lands in the file as a list item
+under `## Board notes`, so `contains` finds it wherever they dropped it on the canvas.
 
-`check:` is the practice checker's own rule set, so everything documented under **Your turn** works
-here — plus three added for zones: `function_added: true` (any new top-level name, for when the
-student picks the name), `file_changed: <name>` (that one file differs from how it started, which
-`changed_at_least` cannot express), and `published: true`. The "before" snapshot is taken when the
-zone is first opened.
+`changed_at_least` works too, and counts board edits like any other, because the board saves through
+the same `saveProject`.
 
-### Writing a ```zone
+### Why a file and not a tab's own storage
 
-    ```zone
-    title: Your One-Sheet
-    intro: One line, shown on the door.
-    reward: Designer badge          # optional; awarded when the zone is finished
-    brief: >
-      What the helper is here to do, and what the student has just been taught. This goes into the
-      bot's prompt and is the single biggest lever on whether it is any use.
-    opener: >
-      The bot's first line, before it asks its first question.
-    slots:
-      - My game is
-      - How you lose
-    prompts:
-      My game is: One sentence somebody could repeat back to you.
-      How you lose: If you cannot lose, you cannot win. What goes wrong?
-    goals:
-      - say: Say how you lose
-        slot: How you lose
-      - say: Every box answered
-        slot: '*'
-    ```
+`design.md` is the only file in a project that is not code — the game runner, the linter,
+`loadCode`'s formatter and the `parses:` rule all skip it (`isCodeFile` in js/project.js), and the
+AI can only write `.js`, so the Build panel cannot rewrite it.
 
-- **`slots`** are the cards on the board, in order, and they are **headings in `design.md`** — the
-  student's own notes file. Matched on the squashed text, so `My game is` finds `## My game is...`.
-  A slot the file has never had is created on first write.
-- **`prompts`** is what an empty card says. Optional; without one the card falls back to the
-  parenthesised hint in the file.
-- **`goals`** are the rail along the top, and each one is a real check: `slot:` means that box has
-  an answer in it, and `'*'` means all of them do. They tick themselves as the student works, and
-  Finish stays disabled until they are all green. A goal naming a slot that is not in `slots` can
-  never tick, so `npm test` refuses it.
-- **`brief`** is worth more effort than anything else here. It is how the bot knows what the student
-  has just learned and what to push on. Say what to ask about first.
+A file rather than a key in progress state, and the reason is one button: **Reset my progress** sits
+under a heading called *Testing* and promises only to clear XP, Stars, assets and lessons. Notes kept
+there would be destroyed by it, silently, and the one-sheet is the only thing in a project a student
+cannot get back by reading the starter. As a file it survives that, survives Reset-the-game (which
+restores code only, deliberately), and stays visible to the tutor and the grader — `aiContext()`
+sends project files and nothing else.
 
-Finishing runs a second gate: the `zone-check` agent reads the boxes and decides whether the answers
-are *answers*. It passes unless a box is filler, the heading repeated back, or an answer to a
-different question — and an unreachable server or an unparseable reply resolves in the student's
-favour, exactly as the practice grader does.
+It is not in the Code tab's file tree. The board is its editor; a second row in that tree opening the
+same writing as raw markdown would be a second place to look for one thing.
 
-### `design.md` is the truth
-The board reads `design.md` when it opens and writes it on every edit. Nothing is stored twice, so a
-student can open the file in the Code tab and read the same thing. An answered slot loses its
-prompt, so the file becomes a design document as it fills in; headings the zone does not declare are
-kept in place, because a later checkpoint adds some and the student adds their own.
+### The coach
 
-Checkpoints later in the course consume it. `contains: {file: design.md, text: 'How you lose'}` in a
-`yourturn` works the same as anywhere else — anchor on a heading the student is told to keep, not on
-words they are inventing.
-
-## The student's design notes — `design.md`
-Every project ships with `design.md`: the student's **one-sheet**, six slots, filled in during the
-Concept Ideation module and revised by every checkpoint after it. It is the only file in a project that
-is not code — the game runner, the linter, `loadCode`'s formatter and the `parses:` rule all skip it
-(`isCodeFile` in js/project.js), and the AI can only write `.js`, so the Build panel cannot rewrite
-it. **Building zones are its editor** (see above); the Code tab is where a student reads it.
-
-A file rather than a Notes tab or a key in progress state, and the reason is one button: **Reset my
-progress** sits under a heading called *Testing* and promises only to clear XP, Stars, assets and
-lessons. Notes kept there would be destroyed by it, silently, and the one-sheet is the only thing in
-a project a student cannot get back by reading the starter. As a file it survives that, survives
-Reset-the-game (which restores code only, deliberately), and stays visible to the tutor and the
-grader — `aiContext()` sends project files and nothing else.
+On the Design tab the assistant panel's **Build** side is switched off — it edits game files and
+there are none on that tab — and its **Tutor** side answers as the `design-coach` agent
+(`ai/agents/design-coach.md`), which is given the board's boxes, its loose notes and the lesson the
+student is on. It asks and they write; it never fills a box in. Editing that prompt changes how it
+behaves, like every other agent.
 
 ## How the app reads all this
 At boot the app makes one request, `GET /api/lessons`, which returns the module structure plus
@@ -167,8 +108,7 @@ Each lessons/<id>.md starts with a YAML block:
     title: Sprites & Movement
     xp: 350
     ai: full          # full | guided | off  (controls the AI panel for this lesson)
-    checkpoint: true  # optional; the module's own-game checkpoint. See "Checkpoints" above
-    summary: One line shown under the title.
+        summary: One line shown under the title.
     ---
     # Markdown body
 
@@ -202,7 +142,8 @@ put in the lesson decides how it is completed**:
 
 - Every quiz, every challenge, and every run cell that declares `@expect` counts as one activity.
   When all of them are resolved, the lesson completes itself and awards its XP.
-- `yourturn` steps do **not** count — except in a checkpoint, where they do and are the point.
+- `yourturn` steps do **not** count. Insisting a student change their own game before the page
+  will let them move on would wall off the course for anyone stuck on it.
 - A run cell **without** `@expect` does not count — nothing can tell whether the student achieved
   anything, so it stays a tinkering toy.
 - A lesson with **no** activities at all completes on reading: the student has to reach the bottom

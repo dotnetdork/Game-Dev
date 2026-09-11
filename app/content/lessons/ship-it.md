@@ -229,13 +229,43 @@ This is the part that turns a project into a game other people have played. Ever
 
 ```yourturn
 title: Walk the checklist once
-task: Not publishing yet — that is the checkpoint after this. This is the read-through, so you know what you are dealing with before you start fixing anything.
+task: Not fixing yet. This is the read-through, so you know what you are dealing with before you start.
 steps:
-  - Open the Code tab and go through the last-mile checklist above, one line at a time.
-  - 'Write what you find in `design.md`, at the bottom, under a heading called `## Before it ships`.'
+  - Press **Play** and go through the last-mile checklist above, one line at a time.
+  - Open the **Design** tab and add a note with **+** for each thing you find, starting `Before it ships:`.
   - Be honest and be specific. "The jump is weird" is not a note; "the jump feels floaty at the top" is.
   - Do not fix anything yet. A list you wrote before you started fixing is the only one that is not a list of what you happened to notice while fixing.
 reward: Last Mile badge
+check:
+  - contains:
+      file: design.md
+      text: 'Before it ships:'
+    hint: Add at least one note on your Design board starting `Before it ships:` — what you found while walking the checklist.
+example: 'Before it ships: you cannot tell which key jumps until you press one.'
+```
+
+Now the hard part, and it is not a technical one. Your list is probably long, and every item on it
+is a real improvement — which is exactly the trap. A game gets finished when somebody decides it is
+finished, and if you fix everything you found you will find more, because you are the person who
+knows where to look.
+
+So: two. Fix the two that would most change somebody else's first minute, and ship it with the rest
+of the list still on the board. That list is not failure. It is the first page of version two.
+
+```yourturn
+title: Put it in the Gallery
+task: Fix the two worst things on your list, then publish. Your game does not have to be good — it has to be finished, and those are different jobs.
+steps:
+  - Pick the **two** items from your board that would most change somebody else's first minute. Not ten. Two.
+  - Fix them in the **Code** tab and press **Play** until you are happy.
+  - Open the **Gallery** from the top bar and press **Publish my game**.
+  - Give it a name you are happy to have next to your own. That is the whole ceremony — it is in the Gallery now, and other people can play it.
+reward: Published badge
+check:
+  - published: true
+    hint: Nothing is in the Gallery yet. Open Gallery from the top bar and press Publish my game.
+  - parses: true
+    hint: Something in your game no longer parses — check the console before you publish.
 ```
 
 ## Recap

@@ -180,21 +180,21 @@ Now do it to your own list, while it is still cheap.
 
 ```yourturn
 title: Cut your own wishlist
-task: You wrote three twists last lesson. Pick the one you are actually building and move the others into the "not building" box — in writing, where you can see it.
+task: You wrote three twists last lesson. Pick the one you are actually building and drag the others into the "not building" box, where you can still see them.
 steps:
-  - Open the Code tab and open `design.md`.
-  - Look at your three twists. Pick **one**. Ask which one, if you took it away, would stop this being your game.
-  - Leave that one under "What makes it mine" and delete the other two from there.
-  - Paste them under "What I am NOT building", along with anything else you have been quietly hoping to fit in.
-  - Press Save. That list is the reason you get to stop thinking about them.
+  - Open the **Design** tab and find the three twists you left in **Ideas, unsorted**.
+  - Pick **one**. Ask which one, if you took it away, would stop this being your game.
+  - Click the **What makes it mine** sticky and type that one in.
+  - Drag the other two into **Not building — next time**, along with anything else you have been quietly hoping to fit in.
+  - That box is the reason you get to stop thinking about them. They are written down; they are not gone.
 reward: Scope Sense badge
 check:
-  - contains:
+  - matches:
       file: design.md
-      text: 'NOT building'
-    hint: Keep the "What I am NOT building" heading in `design.md` — that box is the whole point of this step.
+      regex: '## What I am NOT building\s*\n\s*[^(\s]'
+    hint: Drag at least one idea into the "Not building — next time" box on your board — that box is the whole point of this step.
   - changed_at_least: 3
-    hint: Nothing has changed in `design.md` yet. Move your spare ideas down into the "not building" box.
+    hint: Nothing has changed on the board yet. Name your one twist, then move the spare ideas into "Not building".
 example: 'What I am NOT building: a boss fight, two-player mode, a shop. Next time.'
 ```
 
