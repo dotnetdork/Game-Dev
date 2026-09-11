@@ -25,10 +25,10 @@ Think of it as setting out a board game: pieces on the board, rules agreed, befo
 ```run
 // @goal: One label, made in the wrong place. Change how long the game has been open.
 // @slider: seconds 1 10 1 3
-const frames = seconds * 60;
-console.log(seconds + " second(s) of play is " + frames + " frames");
-console.log("made in create():  1 label");
-console.log("made in update():  " + frames + " labels, stacked exactly on top of each other");
+// @demo: compare
+// @feed: madeInUpdate, madeInCreate
+const madeInUpdate = seconds * 60;     // one per frame, stacked on top of each other
+const madeInCreate = 1;                // made once, then left alone
 ```
 
 ## update(): every frame, forever

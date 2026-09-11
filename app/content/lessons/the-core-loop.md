@@ -20,11 +20,11 @@ entire time you play. Everything else in a game is decoration hung on top of it.
 ```run
 // @goal: A three-second loop, over one sitting. Change how long somebody plays.
 // @slider: minutes 1 60 1 20
+// @demo: count
+// @feed: goes
 const secondsPerGo = 3;
 const goes = Math.round(minutes * 60 / secondsPerGo);
-console.log("playing for " + minutes + " minutes");
-console.log("you do the loop " + goes + " times");
-console.log("so it has to still be worth doing on go number " + goes + ".");
+// Every dot is one go round the loop. It has to still be worth doing on the last one.
 ```
 
 ## Why the loop is short on purpose
@@ -56,15 +56,14 @@ loved actually lives.
 ```run
 // @goal: One button, eight goes. Take the variation to zero and see what happens.
 // @slider: variation 0 40 5 20
-let previous = null;
+// @demo: curve
+// @feed: gaps
+const gaps = [];
 for (let go = 1; go <= 8; go++) {
-  const gap = 100 + Math.round((Math.random() - 0.5) * 2 * variation);
-  console.log("go " + go + ": jump a gap of " + gap + " pixels"
-    + (gap === previous ? "   (exactly the same as last time)" : ""));
-  previous = gap;
+  gaps.push(100 + Math.round((Math.random() - 0.5) * 2 * variation));
 }
 console.log(variation === 0
-  ? "Every go identical. Your brain stops paying attention somewhere around go three."
+  ? "Every go identical — a flat line. Your brain stops paying attention around go three."
   : "The same single button, never quite the same jump. That is what keeps it alive.");
 ```
 
@@ -119,13 +118,13 @@ afternoon. The long loop is the reason you come back tomorrow.
 ```run
 // @goal: Stack the three loops. Change how long somebody plays and count what they finish.
 // @slider: minutes 1 180 5 45
-const loops = [["swing at a tree, get a log", 3], ["fill the bag, run to the bank", 120], ["get the level you wanted", 7200]];
+// @demo: bars
+// @feed: chopWood, fillTheBag, getTheLevel
 const seconds = minutes * 60;
-loops.forEach(function (l) {
-  const times = Math.floor(seconds / l[1]);
-  console.log(l[0] + ": " + times + (times === 1 ? " time" : " times"));
-});
-console.log("the short one keeps your hands busy; the long one is why you come back tomorrow.");
+const chopWood = Math.floor(seconds / 3);        // swing at a tree, get a log
+const fillTheBag = Math.floor(seconds / 120);    // fill the bag, run to the bank
+const getTheLevel = Math.floor(seconds / 7200);  // the level you actually wanted
+// The short one keeps your hands busy; the long one is why you come back tomorrow.
 ```
 
 You do **not** need all three. Your first game only needs the short one — and that is the one this

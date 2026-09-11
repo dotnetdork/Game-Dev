@@ -13,11 +13,9 @@ what to do with them. Minecraft is a few hundred textures and a rulebook.
 ```run
 // @goal: Change how much art the game has, and watch what happens to the share that is code.
 // @slider: assetFiles 20 3000 20 1200
-const codeFiles = 40;
-const total = assetFiles + codeFiles;
-console.log("pictures, sounds and maps: " + assetFiles);
-console.log("files of code:             " + codeFiles);
-console.log("code is " + (codeFiles / total * 100).toFixed(1) + "% of this game");
+// @demo: compare
+// @feed: assetFiles, codeFiles
+const codeFiles = 40;                  // and this number barely moves, whatever the game
 ```
 
 ## Sprites and sprite sheets
@@ -117,6 +115,8 @@ logical extreme.
 ```run
 // @goal: A level is a list of numbers. Change how wide it is and read both the data and the picture.
 // @slider: width 4 16 1 10
+// @demo: curve
+// @feed: level
 const tiles = ["sky", "grass", "brick"];
 let level = [];
 for (let i = 0; i < width; i++) {

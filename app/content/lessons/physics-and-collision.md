@@ -126,13 +126,16 @@ never *inside* the wall, so nothing ever noticed a collision, and the bullet sai
 ```run
 // @goal: Make the bullet fast enough to skip the wall. The wall fills 100 to 120.
 // @slider: speed 5 60 5 40
+// @demo: curve
+// @feed: bulletX
 let x = 0, frame = 0, everInside = false;
+const bulletX = [0];                             // where it is on each frame, for the picture
 while (x < 140 && frame < 60) {                  // keep going until it is past the wall
   frame = frame + 1;
   x = x + speed;
+  bulletX.push(x);
   const inside = x > 100 && x < 120;
   if (inside) everInside = true;
-  if (x > 60) console.log("frame " + frame + ": bullet at " + x + (inside ? "   <- inside the wall" : ""));
 }
 console.log(everInside
   ? "It was inside the wall on a frame, so the collision check saw it. A hit."

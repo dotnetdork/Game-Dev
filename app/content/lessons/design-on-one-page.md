@@ -15,13 +15,11 @@ is called a **one-sheet**, and it is one page on purpose.
 ```run
 // @goal: Why one page? Drag the page count and watch who is still reading.
 // @slider: pages 1 40 1 1
-const readAll = Math.max(0, Math.round(100 * Math.pow(0.82, pages - 1)));
-console.log(pages + " page(s)");
-console.log("teammates who read the whole thing:  " + readAll + "%");
-console.log("");
-console.log(pages <= 2
-  ? "Everybody reads it. Everybody builds the same game."
-  : "The rest are building whatever they remember, which is not the same game.");
+// @demo: curve
+// @feed: readToTheEnd
+// Out of a hundred teammates, how many are still reading by each page.
+const readToTheEnd = [];
+for (let p = 1; p <= pages; p++) readToTheEnd.push(Math.round(100 * Math.pow(0.82, p - 1)));
 ```
 
 A document nobody reads is worse than no document, because everybody thinks the plan is written

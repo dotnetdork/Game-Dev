@@ -25,13 +25,13 @@ and pushing on is obviously correct. No uncertainty and it isn't a choice at all
 ```run
 // @goal: Take the uncertainty to 0%, then to 100%. Watch the decision stop being one.
 // @slider: chanceItGoesWrong 0 100 10 40
+// @demo: curve
+// @feed: averageOutcome
 const gain = 50, loss = 30;
-const average = (gain * (100 - chanceItGoesWrong) - loss * chanceItGoesWrong) / 100;
-console.log("push on: gain " + gain + ", or lose " + loss);
-console.log("chance it goes wrong: " + chanceItGoesWrong + "%");
-console.log(chanceItGoesWrong === 0 ? "Free. Everyone pushes on every time — that is not a decision."
-  : chanceItGoesWrong === 100 ? "Certain loss. Nobody pushes on — also not a decision."
-  : "On average you come out " + average.toFixed(0) + ". The closer that is to zero, the harder the choice.");
+// What pushing on is worth, at every chance from certain-win to certain-loss. Where the line
+// crosses zero is where the decision is hardest — and the flat ends are where it is not one.
+const averageOutcome = [];
+for (let c = 0; c <= 100; c += 5) averageOutcome.push((gain * (100 - c) - loss * c) / 100);
 ```
 
 > If the right answer is always "yes", it isn't a decision. It's a delay.

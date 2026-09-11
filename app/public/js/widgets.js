@@ -249,12 +249,21 @@ function renderRunCells(root) {
 function buildRunCell(code) {
   {
     const pre = code.parentNode; const raw = code.textContent;
-    let goal = '', expect = '', demoName = ''; const sliders = []; const bodyLines = [];
+    let goal = '', expect = '', demoName = ''; const sliders = [], feeds = []; const bodyLines = [];
     raw.split('\n').forEach(function (ln) {
       let m;
       if (m = ln.match(/^\s*\/\/\s*@goal:\s*(.+)$/)) goal = m[1].trim();
       else if (m = ln.match(/^\s*\/\/\s*@expect:\s*(.+)$/)) expect = m[1].trim();
       else if (m = ln.match(/^\s*\/\/\s*@demo:\s*([A-Za-z_$][\w$]*)\s*$/)) demoName = m[1];
+      /* @feed names variables the CODE works out, which the picture then draws. This is what makes
+         a generic demo possible: the logic lives in the editable block where a student can change
+         it, and the picture is downstream of their change rather than of a slider directly. */
+      else if (m = ln.match(/^\s*\/\/\s*@feed:\s*(.+)$/)) {
+        m[1].split(',').forEach(function (nm) {
+          const n = nm.trim();
+          if (/^[A-Za-z_$][\w$]*$/.test(n) && feeds.indexOf(n) < 0) feeds.push(n);
+        });
+      }
       else if (m = ln.match(/^\s*\/\/\s*@slider:\s*([A-Za-z_$][\w$]*)\s+(-?[\d.]+)\s+(-?[\d.]+)\s+(-?[\d.]+)\s+(-?[\d.]+)\s*$/)) sliders.push({ name: m[1], min: +m[2], max: +m[3], step: +m[4], value: +m[5] });
       else bodyLines.push(ln);
     });
@@ -314,9 +323,16 @@ function buildRunCell(code) {
     /* ---- the live picture, if this cell asked for one ---- */
     const demoDef = (demoName && typeof DEMOS === 'object') ? DEMOS[demoName] : null;
     let demoWrap = null, demoFrame = null, demoVeil = null, demoTimer = 0, demoOn = false;
+    /* The last thing the code worked out, in @feed order. Kept here rather than read off the
+       sandbox, because the sandbox is torn down and rebuilt on every keystroke of a slider. */
+    let fed = [];
     function demoVals() {
       const o = {};
       sliders.forEach(function (s) { o[s.name] = +sEls[s.name].value; });
+      /* Sliders by name, as they always were, plus `$fed` — an ORDERED list, because a generic
+         demo draws "the first quantity" and "the second" and cannot know what a lesson called
+         them. The seven hand-drawn demos read v.name and never look at this. */
+      o.$fed = fed;
       return o;
     }
     function demoSend(msg) {
@@ -331,9 +347,11 @@ function buildRunCell(code) {
       demoVeil.querySelector('.rd-lbl').textContent = demoOn ? 'Pause' : 'Drag a slider to start it';
     }
     function demoStop() { clearTimeout(demoTimer); demoOn = false; demoSend({ playing: false }); paintVeil(); }
-    /* Every interaction — a slider, a click on the picture — restarts the ten seconds. */
+    /* Every interaction — a slider, a click on the picture — restarts the ten seconds. A still
+       picture has nothing to start or stop: it just takes the new numbers and redraws. */
     function demoPoke() {
       if (!demoFrame) return;
+      if (demoDef && demoDef.still) { demoSend({ vals: demoVals() }); return; }
       demoOn = true;
       demoSend({ vals: demoVals(), playing: true });
       paintVeil();
@@ -342,29 +360,51 @@ function buildRunCell(code) {
     }
     if (demoDef) {
       demoWrap = document.createElement('div'); demoWrap.className = 'run-demo';
+      if (demoDef.still) demoWrap.classList.add('still');
       demoFrame = document.createElement('iframe');
       demoFrame.setAttribute('sandbox', 'allow-scripts');
-      demoFrame.setAttribute('title', 'A moving picture of what the sliders do');
+      demoFrame.setAttribute('title', demoDef.still
+        ? 'A picture of the numbers the code worked out'
+        : 'A moving picture of what the sliders do');
       /* The veil covers the whole picture and is the play/pause control. The demo is not
          interactive, so there is nothing underneath for it to be in the way of — and it means a
          student can stop a moving thing by clicking the moving thing, which is where they will
          click anyway. */
-      demoVeil = document.createElement('button');
-      demoVeil.type = 'button'; demoVeil.className = 'rd-veil';
-      const vi = document.createElement('span'); vi.className = 'mdi mdi-play';
-      const vl = document.createElement('span'); vl.className = 'rd-lbl';
-      demoVeil.appendChild(vi); demoVeil.appendChild(vl);
-      demoVeil.addEventListener('click', function () { if (demoOn) demoStop(); else demoPoke(); });
-      demoWrap.appendChild(demoFrame); demoWrap.appendChild(demoVeil);
+      if (!demoDef.still) {
+        demoVeil = document.createElement('button');
+        demoVeil.type = 'button'; demoVeil.className = 'rd-veil';
+        const vi = document.createElement('span'); vi.className = 'mdi mdi-play';
+        const vl = document.createElement('span'); vl.className = 'rd-lbl';
+        demoVeil.appendChild(vi); demoVeil.appendChild(vl);
+        demoVeil.addEventListener('click', function () { if (demoOn) demoStop(); else demoPoke(); });
+      }
+      demoWrap.appendChild(demoFrame);
+      if (demoVeil) demoWrap.appendChild(demoVeil);
       paintVeil();
     }
 
     function buildDoc(userCode) {
       const prefix = sliders.map(function (s) { return 'const ' + s.name + ' = ' + sEls[s.name].value + ';'; }).join('\n');
       const safe = (prefix + '\n' + userCode).replace(/<\/(script)/gi, '<\\/$1');
+      /* Reading the @feed names back out. This runs at the END OF THE STUDENT'S OWN TRY BLOCK, not
+         after it: the slider values arrive as `const` and their code declares with const and let,
+         and block-scoped names are simply not there one line outside the braces. `var F` is
+         function-scoped, so it survives out to the postMessage either way — and it is declared
+         before the try, so a cell whose code throws on line one still posts an empty list rather
+         than a ReferenceError on top of the error message the student actually needs to read.
+         Only finite numbers and arrays of them get through: a picture cannot draw a string, and
+         letting one past would paint NaN where an explanation should be. */
+      const readFeeds = feeds.length ? feeds.map(function (n) {
+        return 'F.push({n:' + JSON.stringify(n) + ',v:(typeof ' + n + '==="undefined"?null:' + n + ')});';
+      }).join('') + 'F=F.map(function(f){var x=f.v;if(typeof x==="number"&&isFinite(x))return f;'
+        + 'if(Array.isArray(x))return{n:f.n,v:x.filter(function(y){return typeof y==="number"&&isFinite(y);})};'
+        + 'return{n:f.n,v:null};});' : '';
       // The document reports its own height back so the output box can fit the output instead of
       // reserving a fixed 120px and leaving a hole under a single line of text.
-      return '<!doctype html><body><pre id="o"></pre><scr' + 'ipt>var o=document.getElementById("o");function w(){o.textContent+=[].slice.call(arguments).join(" ")+"\\n";}console.log=w;console.info=w;console.warn=w;console.error=function(){o.textContent+="\\u26a0 "+[].slice.call(arguments).join(" ")+"\\n";};try{\n' + safe + '\n}catch(e){o.textContent+="\\u26a0 "+e.message+"\\n";}try{parent.postMessage({__runcell:true,tok:"' + tok + '",text:o.textContent},"*");}catch(e){}</scr' + 'ipt></body>';
+      return '<!doctype html><body><pre id="o"></pre><scr' + 'ipt>var o=document.getElementById("o");function w(){o.textContent+=[].slice.call(arguments).join(" ")+"\\n";}console.log=w;console.info=w;console.warn=w;console.error=function(){o.textContent+="\\u26a0 "+[].slice.call(arguments).join(" ")+"\\n";};var F=[];try{\n'
+        + safe + '\n;' + readFeeds
+        + '\n}catch(e){o.textContent+="\\u26a0 "+e.message+"\\n";}'
+        + 'try{parent.postMessage({__runcell:true,tok:"' + tok + '",text:o.textContent,fed:F},"*");}catch(e){}</scr' + 'ipt></body>';
     }
     function run() { out.srcdoc = buildDoc(readCode()); }
 
@@ -377,6 +417,10 @@ function buildRunCell(code) {
       if (!d.__runcell) return;
       // textContent, never innerHTML: this string is whatever the student's code printed.
       outText.textContent = (d.text || '').replace(/\n+$/, '');
+      /* What the code just worked out, on its way to the picture. Sent even while the demo is
+         paused, so the frame it is showing updates to match the new numbers instead of going stale
+         until somebody drags something. */
+      if (d.fed && demoFrame) { fed = d.fed; demoSend({ vals: demoVals() }); }
       if (!expect) return;
       const met = (d.text || '').indexOf(expect) >= 0;
       status.className = 'run-status ' + (met ? 'ok' : 'no'); status.textContent = met ? 'Goal met!' : 'Not yet — check the output.';
@@ -410,6 +454,12 @@ function buildRunCell(code) {
       };
       let box = sizeOf();
       demoWrap.style.height = box.h + 'px';
+      /* The values are handed over again the moment the frame is actually listening. A sandboxed
+         srcdoc frame installs its message listener when its script runs, which is after this
+         function returns — so the first `fed` values, which arrive from a run that started before
+         the frame existed, were being posted into a frame with nobody home and the picture sat on
+         its "work out two numbers" placeholder until a slider was touched. */
+      demoFrame.addEventListener('load', function () { demoSend({ vals: demoVals() }); });
       demoFrame.srcdoc = demoDoc(tok, box.w, box.h, demoDef.draw.toString(), demoVals(), demoPalette());
       /* Resized rather than rebuilt: rebuilding would restart the animation every time the reading
          column changed width. Width only — reacting to our own height change would loop. */
@@ -426,9 +476,44 @@ function buildRunCell(code) {
       }
       /* Scrolled away is the same as finished with — handled by sweepLesson, which is already
          watching this scroller for the block builds and the reveals. */
-      liveDemos.push({ el: demoWrap, playing: function () { return demoOn; }, stop: demoStop });
+      /* Only the animated ones are worth sweeping up — a still picture costs nothing once drawn. */
+      if (!demoDef.still) liveDemos.push({ el: demoWrap, playing: function () { return demoOn; }, stop: demoStop });
+    }
+
+    /* Registered so leaving the lesson can put the sliders back. See resetRunCells. */
+    if (sliders.length) {
+      liveSliderCells.push({
+        el: cell,
+        reset: function () {
+          let moved = false;
+          sliders.forEach(function (s) {
+            const inp = sEls[s.name];
+            if (+inp.value === s.value) return;
+            inp.value = s.value;
+            inp.parentNode.querySelector('b').textContent = s.value;
+            moved = true;
+          });
+          if (!moved) return;
+          if (liveSliders) run();
+          if (demoFrame) { demoStop(); demoSend({ vals: demoVals() }); }
+        }
+      });
     }
   }
+}
+
+/* ---------- putting the sliders back ----------
+   A slider dragged to 4 fps is a sentence half-read: the cell around it says "sixty times a
+   second", and a student who comes back to the lesson tomorrow, or nips to the Code tab and
+   returns, should find the example the author wrote rather than wherever they happened to let go.
+   Their own code edits are NOT touched — only the numbers the cell supplies.
+
+   Lesson changes rebuild these blocks anyway; this is for the tab switches, which only toggle
+   `hidden` and leave the whole lesson standing. */
+let liveSliderCells = [];
+function resetRunCells() {
+  liveSliderCells = liveSliderCells.filter(function (c) { return c.el.isConnected; });
+  liveSliderCells.forEach(function (c) { try { c.reset(); } catch (e) {} });
 }
 function shuffleOrder(n) {
   let a = []; for (let i = 0; i < n; i++) a.push(i);

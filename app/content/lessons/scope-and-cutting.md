@@ -14,16 +14,11 @@ finished, and it is almost never a coding problem.
 ```run
 // @goal: Add features and watch the finish date run away from you. Drag it.
 // @slider: features 1 12 1 3
-const daysEach = 4;                       // being generous, for somebody learning
-const classesLeft = 10;                   // one class a week, ten weeks
-const daysAvailable = classesLeft * 1;    // one useful day of building per class
-const needed = features * daysEach;
-console.log(features + " features x " + daysEach + " days = " + needed + " days of work");
-console.log("You have about " + daysAvailable + ".");
-console.log("");
-console.log(needed <= daysAvailable
-  ? "That fits. You will actually finish this."
-  : "You are " + (needed - daysAvailable) + " days over. Something here is not getting built.");
+// @demo: compare
+// @feed: daysNeeded, daysYouHave
+const daysEach = 4;                    // being generous, for somebody learning
+const daysYouHave = 10;                // one class a week, one useful build day each
+const daysNeeded = features * daysEach;
 ```
 
 Nothing about that is pessimism. It is arithmetic, and it is the same arithmetic a studio does

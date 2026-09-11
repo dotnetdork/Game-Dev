@@ -15,10 +15,13 @@ Every single one is the same shape: **if this, then that.**
 ```run
 // @goal: Change the score and watch which message appears.
 // @slider: score 0 20 1 3
-if (score >= 10) {
+// @demo: compare
+// @feed: score, needed
+const needed = 10;
+if (score >= needed) {
   console.log("You win!");
 } else {
-  console.log("Keep going — you need " + (10 - score) + " more.");
+  console.log("Keep going — you need " + (needed - score) + " more.");
 }
 ```
 
@@ -60,10 +63,11 @@ When you want the same work done repeatedly, you don't write it out.
 ```run
 // @goal: Spawn some enemies. Change how many.
 // @slider: enemyCount 1 8 1 4
+// @demo: count
+// @feed: enemyCount
 for (let i = 0; i < enemyCount; i++) {
   console.log("enemy " + (i + 1) + " spawns at x = " + (40 + i * 50));
 }
-console.log("total enemies: " + enemyCount);
 ```
 
 The `for` line says three things: start counting at 0, keep going while `i` is below the limit, and
@@ -79,11 +83,15 @@ A **function** is a piece of work with a name, so you can ask for it later.
 ```run
 // @goal: Change the bonus and watch both calls change.
 // @slider: bonus 0 50 5 10
+// @demo: bars
+// @feed: smallPickup, bigPickup
 function scorePoints(base) {
   return base + bonus;
 }
-console.log("small pickup: " + scorePoints(5));
-console.log("big pickup: " + scorePoints(20));
+const smallPickup = scorePoints(5);
+const bigPickup = scorePoints(20);
+console.log("small pickup: " + smallPickup);
+console.log("big pickup: " + bigPickup);
 ```
 
 Two reasons this matters, and the second is the real one:

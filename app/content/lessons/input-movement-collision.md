@@ -68,16 +68,15 @@ the player jump sixty times a second.
 ```run
 // @goal: Hold the jump key down. Count the jumps each way and see why one of them launches you.
 // @slider: framesHeld 1 30 1 20
-let withIsDown = 0, withJustDown = 0, wasDown = false;
+// @demo: compare
+// @feed: isDown, justDown
+let isDown = 0, justDown = 0, wasDown = false;
 for (let f = 1; f <= 30; f++) {
   const down = f <= framesHeld;
-  if (down) withIsDown = withIsDown + 1;
-  if (down && !wasDown) withJustDown = withJustDown + 1;
+  if (down) isDown = isDown + 1;
+  if (down && !wasDown) justDown = justDown + 1;
   wasDown = down;
 }
-console.log("jump key held for " + framesHeld + " frames");
-console.log("isDown   -> " + withIsDown + " jumps");
-console.log("JustDown -> " + withJustDown + " jump");
 ```
 
 ## Moving with velocity

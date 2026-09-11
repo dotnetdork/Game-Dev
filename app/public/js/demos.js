@@ -356,5 +356,166 @@ const DEMOS = {
         : (delay > 150 ? 'too late to feel connected' : 'feels like you did it'),
         16, H - 8, 11, ch === 0 || delay > 150 ? P.gold : P.muted, 'left');
     }
+  },
+
+  /* ===========================================================================================
+     THE GENERIC FOUR
+     ===========================================================================================
+     The seven above are each drawn for one lesson: a ball with gravity, a box at four frames a
+     second. That does not scale — there are 48 slider cells in the course and hand-drawing 48
+     pictures is 48 things to keep working.
+
+     These four draw whatever the CODE works out. A cell names its variables with `@feed` and the
+     values arrive in `v.$fed` as an ordered list of `{n: name, v: number | number[]}`. So the
+     arithmetic stays in the editable block where a student can change it, and the picture is
+     downstream of their change — drag a slider, the code recomputes, the picture follows.
+
+     Every one of them is defensive about `$fed`: a cell can be edited until it computes nothing,
+     and an empty picture with a line of text beats a blank box or a crash.
+
+     All four are `still: true`. Nothing in them moves — they are a reading of the numbers as they
+     stand — so they get no play/pause veil and no idle timer. The seven above animate, and a
+     picture you have to press to start is right for those and wrong for these: a veil over a bar
+     chart dims the answer and asks you to drag something to see what is already drawn. */
+
+  /* One bar per quantity, scaled to the biggest. The answer to most "how many / how long / how
+     much" cells: three numbers side by side, where the interesting thing is which is bigger and
+     by how much. */
+  bars: {
+    still: true, aspect: 0.40,
+    draw: function (ctx, W, H, v, t, s, dt, P) {
+      var f = (v.$fed || []).filter(function (x) { return typeof x.v === 'number'; });
+      if (!f.length) { txt('change the code to work something out', W / 2, H / 2, 12, P.dim, 'center'); return; }
+      var pad = 20, top = 26, base = H - 30;
+      var max = 0;
+      f.forEach(function (x) { max = Math.max(max, Math.abs(x.v)); });
+      if (!max) max = 1;
+      var cols = [P.azure, P.teal, P.green, P.gold, P.brand];
+      var slot = (W - pad * 2) / f.length, bw = Math.min(84, slot * 0.62);
+      f.forEach(function (x, i) {
+        var cx = pad + slot * (i + 0.5);
+        var h = Math.max(2, (Math.abs(x.v) / max) * (base - top));
+        ctx.fillStyle = cols[i % cols.length];
+        rr(cx - bw / 2, base - h, bw, h, 4); ctx.fill();
+        /* The number above the bar, the name below it. A bar you have to hover to read is a bar
+           that has not said anything. */
+        txt(Math.round(x.v * 100) / 100 + '', cx, base - h - 7, 12, P.ink, 'center');
+        txt(x.n, cx, base + 15, 10, P.dim, 'center');
+      });
+      ctx.strokeStyle = P.line; ctx.lineWidth = 1;
+      ctx.beginPath(); ctx.moveTo(pad, base + 0.5); ctx.lineTo(W - pad, base + 0.5); ctx.stroke();
+    }
+  },
+
+  /* A line through a fed ARRAY. For anything that grows or eases off across a run of levels,
+     waves or weeks — a difficulty curve, a cost curve, a score ramp. The shape is the point, so
+     the first and last values are labelled and nothing else is. */
+  curve: {
+    still: true, aspect: 0.44,
+    draw: function (ctx, W, H, v, t, s, dt, P) {
+      var f = (v.$fed || []);
+      var arr = null, name = '';
+      for (var i = 0; i < f.length; i++) if (Array.isArray(f[i].v) && f[i].v.length > 1) { arr = f[i].v; name = f[i].n; break; }
+      if (!arr) { txt('build a list of numbers to see its shape', W / 2, H / 2, 12, P.dim, 'center'); return; }
+      var pad = 26, top = 22, base = H - 28, plotW = W - pad * 2;
+      var lo = Math.min.apply(null, arr), hi = Math.max.apply(null, arr);
+      if (hi === lo) { hi = lo + 1; }
+      var px = function (i) { return pad + (arr.length < 2 ? 0 : (i / (arr.length - 1)) * plotW); };
+      var py = function (n) { return base - ((n - lo) / (hi - lo)) * (base - top); };
+
+      // A floor line, so a curve that climbs off zero looks like it climbed off something.
+      ctx.strokeStyle = P.line; ctx.lineWidth = 1;
+      ctx.beginPath(); ctx.moveTo(pad, base + 0.5); ctx.lineTo(W - pad, base + 0.5); ctx.stroke();
+
+      // Filled under the line: it reads as an amount rather than as a graph in a maths lesson.
+      ctx.beginPath(); ctx.moveTo(px(0), base);
+      arr.forEach(function (n, i) { ctx.lineTo(px(i), py(n)); });
+      ctx.lineTo(px(arr.length - 1), base); ctx.closePath();
+      ctx.globalAlpha = 0.16; ctx.fillStyle = P.azure; ctx.fill(); ctx.globalAlpha = 1;
+
+      ctx.beginPath();
+      arr.forEach(function (n, i) { if (i) ctx.lineTo(px(i), py(n)); else ctx.moveTo(px(i), py(n)); });
+      ctx.strokeStyle = P.azure; ctx.lineWidth = 2.5; ctx.lineJoin = 'round'; ctx.stroke();
+
+      /* A dot per step while there are few enough to count. Past about twenty they merge into the
+         line and are just noise. */
+      if (arr.length <= 20) {
+        ctx.fillStyle = P.teal;
+        arr.forEach(function (n, i) { ctx.beginPath(); ctx.arc(px(i), py(n), 3, 0, 6.284); ctx.fill(); });
+      }
+      txt(name + ' — ' + arr.length + ' steps', pad, top - 8, 10, P.dim, 'left');
+      txt(Math.round(arr[0] * 100) / 100 + '', px(0), py(arr[0]) - 9, 11, P.muted, 'left');
+      txt(Math.round(arr[arr.length - 1] * 100) / 100 + '',
+        px(arr.length - 1), py(arr[arr.length - 1]) - 9, 11, P.gold, 'right');
+    }
+  },
+
+  /* That many things, drawn. The one picture that beats a number outright for a young reader:
+     "12" is a symbol and twelve blobs is a quantity, and the difference between 12 and 40 is
+     something you can see coming rather than read. */
+  count: {
+    /* Short, because the common case is one or two rows of dots. The big counts are handled by the
+       shrink-to-fit below rather than by reserving room for them all the time. */
+    still: true, aspect: 0.30,
+    draw: function (ctx, W, H, v, t, s, dt, P) {
+      var f = (v.$fed || []).filter(function (x) { return typeof x.v === 'number'; });
+      if (!f.length) { txt('work out a number to see it as a pile', W / 2, H / 2, 12, P.dim, 'center'); return; }
+      var n = Math.max(0, Math.round(f[0].v)), name = f[0].n;
+      var pad = 20, top = 34, CAP = 240;      // past this it is a wall of dots and the count is the point
+      var show = Math.min(n, CAP);
+      var cell = 16, cols = Math.max(1, Math.floor((W - pad * 2) / cell));
+      var rows = Math.ceil(show / cols) || 1;
+      /* Shrunk to fit rather than clipped: a picture that runs off the bottom has stopped being a
+         picture of how many. */
+      var fit = Math.min(1, (H - top - 22) / Math.max(1, rows * cell));
+      var d = cell * fit, r = Math.max(1.6, d * 0.32);
+
+      txt(name + ' = ' + n, pad, top - 14, 13, P.ink, 'left');
+      if (n > CAP) txt('showing ' + CAP, W - pad, top - 14, 10, P.gold, 'right');
+      ctx.fillStyle = P.teal;
+      for (var i = 0; i < show; i++) {
+        var cx = pad + (i % cols) * d + d / 2;
+        var cy = top + Math.floor(i / cols) * d + d / 2;
+        ctx.beginPath(); ctx.arc(cx, cy, r, 0, 6.284); ctx.fill();
+      }
+      if (!n) txt('nothing at all', pad, top + 14, 12, P.dim, 'left');
+    }
+  },
+
+  /* Two quantities, and the verdict. For every cell that is really a question — does this fit in
+     the budget, is this more than that, have we gone over. The sentence at the bottom is the whole
+     value of it: a child reading two bars still has to be told which one winning is the bad news. */
+  compare: {
+    /* Two bars and a line of text and nothing else, so it asks for the least height widgets.js
+       will give it. The taller box it had was two thirds empty canvas. */
+    still: true, aspect: 0.19,
+    draw: function (ctx, W, H, v, t, s, dt, P) {
+      var f = (v.$fed || []).filter(function (x) { return typeof x.v === 'number'; });
+      if (f.length < 2) { txt('work out two numbers to compare them', W / 2, H / 2, 12, P.dim, 'center'); return; }
+      var a = f[0], b = f[1];
+      var max = Math.max(Math.abs(a.v), Math.abs(b.v)) || 1;
+      /* Laid out from the top and measured, rather than pinned to H: the verdict sits under the
+         second bar wherever that lands, so there is no band of empty canvas between them. */
+      var pad = 22, lab = 96, barW = W - pad * 2 - lab - 54, y0 = 18, gap = 30;
+      var over = a.v > b.v;
+
+      [a, b].forEach(function (x, i) {
+        var y = y0 + i * gap;
+        txt(x.n, pad, y + 12, 11, P.muted, 'left');
+        ctx.fillStyle = P.panel;
+        rr(pad + lab, y, barW, 17, 4); ctx.fill();
+        ctx.fillStyle = i === 0 ? (over ? P.gold : P.azure) : P.green;
+        rr(pad + lab, y, Math.max(2, (Math.abs(x.v) / max) * barW), 17, 4); ctx.fill();
+        txt(Math.round(x.v * 100) / 100 + '', pad + lab + barW + 8, y + 13, 12, P.ink, 'left');
+      });
+
+      /* The second number read as a limit, which is how these cells are almost always written:
+         the first is what you asked for and the second is what you have got. */
+      var diff = Math.round((a.v - b.v) * 100) / 100;
+      txt(a.v === b.v ? 'exactly the same'
+        : over ? (a.n + ' is ' + Math.abs(diff) + ' over ' + b.n)
+          : (a.n + ' is ' + Math.abs(diff) + ' under ' + b.n),
+        pad, Math.min(H - 8, y0 + gap + 40), 11.5, over ? P.gold : P.green, 'left');
+    }
   }
 };

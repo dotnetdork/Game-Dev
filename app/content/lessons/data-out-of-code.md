@@ -27,12 +27,10 @@ long it lasts — buried in the middle of the machinery that makes it work.
 ```run
 // @goal: Change how the game plays. Count the places you have to visit each way.
 // @slider: thingsToChange 1 6 1 4
-console.log("you want to change " + thingsToChange + " thing(s) about how the game feels");
-console.log("magic numbers:  " + thingsToChange + " line(s) to hunt down, scattered across files");
-console.log("one CONFIG:     1 file, all of them visible at once");
-console.log(thingsToChange > 1
-  ? "The one you miss is the bug you ship."
-  : "Even at one, you had to already know which file it was in.");
+// @demo: compare
+// @feed: linesToHunt, filesToOpen
+const linesToHunt = thingsToChange;    // magic numbers: one scattered line for each change
+const filesToOpen = 1;                 // one CONFIG: all of them in one place
 ```
 
 Those are called **magic numbers**, and the problem isn't that they're wrong. It's that they're

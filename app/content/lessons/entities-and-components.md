@@ -115,11 +115,12 @@ it's broken for enemies only, it's in the enemy's extras. The bug has a smaller 
 ```run
 // @goal: Add kinds of thing to the game. Count the lines, and the places a bug can hide.
 // @slider: kinds 3 8 1 4
-const shared = 40;                  // the foundation every kind needs
-const extras = 8;                   // what makes one kind different
-console.log(kinds + " kinds of thing");
-console.log("copy the file each time: " + kinds * (shared + extras) + " lines, and " + kinds + " places to fix one bug");
-console.log("share the foundation:    " + (shared + kinds * extras) + " lines, and 1 place to fix one bug");
+// @demo: compare
+// @feed: copyTheFile, shareTheFoundation
+const shared = 40;                     // the foundation every kind needs
+const extras = 8;                      // what makes one kind different
+const copyTheFile = kinds * (shared + extras);
+const shareTheFoundation = shared + kinds * extras;
 ```
 
 ## Adding a new kind for free

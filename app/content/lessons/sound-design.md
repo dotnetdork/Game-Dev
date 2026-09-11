@@ -22,12 +22,9 @@ lands on the exact frame of a hit makes the hit feel solid in a way a visual eff
 ```run
 // @goal: Play the sound late. Find the point where the hit stops feeling solid.
 // @slider: soundDelayMs 0 200 10 0
-console.log("the hit lands on frame 0");
-console.log("the flash is drawn on that same frame");
-console.log("the sound plays " + soundDelayMs + " ms later");
-console.log(soundDelayMs === 0 ? "Together. The hit feels solid."
-  : soundDelayMs <= 40 ? "Close enough that nobody notices."
-  : "Far enough apart that the hit goes soft, and nobody will be able to say why.");
+// @demo: compare
+// @feed: soundDelayMs, noticeableAt
+const noticeableAt = 40;               // about where an ear starts hearing two events
 ```
 
 > Turn the sound off on a game you like and watch how quickly it stops feeling good.
@@ -99,11 +96,9 @@ Practical starting point: effects at full volume, music at about a third.
 ```run
 // @goal: Set the music under the effects. Find where the jump sound gets lost.
 // @slider: musicPercent 0 100 5 33
-console.log("jump effect: 100%");
-console.log("music:       " + musicPercent + "%");
-console.log(musicPercent > 60
-  ? "The music is competing. The jump gets lost — and it will feel like the EFFECT is too quiet."
-  : "The effects sit on top, which is where they belong.");
+// @demo: compare
+// @feed: musicPercent, jumpEffect
+const jumpEffect = 100;                // the effect is always full volume
 ```
 
 ## Why mute has to work

@@ -154,6 +154,10 @@ function switchView(view) {
     b.classList.toggle('on', on);
     b.setAttribute('aria-selected', on ? 'true' : 'false');   // the tablist's state, not just its paint
   });
+  /* Slider cells go back to the numbers the author wrote. A tab switch only toggles `hidden`, so
+     without this a lesson kept whatever a student had dragged it to — and they come back to a
+     paragraph that says one thing beside a slider that says another. */
+  if (typeof resetRunCells === 'function') resetRunCells();
   ['learn', 'design', 'code', 'play'].forEach(function (v) { $('view-' + v).hidden = (v !== view); });
   /* The board measures its own pane to centre itself, and a hidden pane measures zero — so this has
      to come after the line above, not before it. showBoard also re-reads design.md every time,
