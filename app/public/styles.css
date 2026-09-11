@@ -1112,10 +1112,15 @@ body.resizing-v #gameFrame{pointer-events:none;}
    a drawing was the one thing on the board that could not be turned. */
 .bi-ink .bi-grip,.bi-ink .bi-spin,.bi-ink .bi-rot{pointer-events:auto;}
 .bi-inkpath{position:absolute;inset:0;width:100%;height:100%;overflow:visible;}
-.bi-inkpath polyline{fill:none;stroke:rgb(var(--rgb));stroke-width:3;stroke-linecap:round;
-  stroke-linejoin:round;vector-effect:non-scaling-stroke;pointer-events:stroke;cursor:grab;}
-.ink-live polyline{fill:none;stroke:#cfdcea;stroke-width:3;stroke-linecap:round;
-  stroke-linejoin:round;vector-effect:non-scaling-stroke;}
+/* No stroke-width here: each stroke carries its own as an attribute, from the nib it was drawn
+   with, and a width in the stylesheet would beat it. No non-scaling-stroke either — a pen mark is
+   part of the drawing, so it thins out as you zoom out like everything else on the board. */
+.bi-inkpath polyline{fill:none;stroke:rgb(var(--rgb));stroke-linecap:round;stroke-linejoin:round;
+  pointer-events:stroke;cursor:grab;}
+.bi-ink.locked .bi-inkpath polyline{cursor:default;}
+/* The stroke being drawn right now, in the pen's own colour so what you get is what you saw. */
+.ink-live polyline{fill:none;stroke:rgb(var(--rgb));stroke-linecap:round;stroke-linejoin:round;}
+.ink-live{color:rgb(var(--rgb));}
 
 /* Plain text on the board: a label, a heading over a column of stickies. No card, no border — if it
    had one it would be a note, and there is already a note. */
@@ -1292,6 +1297,31 @@ body.resizing-v #gameFrame{pointer-events:none;}
 .board-tool.on{background:var(--brand);color:#241300;}
 .board-tool:focus-visible{outline:3px solid var(--focus);outline-offset:-2px;}
 .board-tool-gap{height:1px;background:var(--line);margin:3px 4px;}
+
+/* ---------- the armed tool's settings ----------
+   A strip beside the rail, level with the tool it belongs to. Canva and Miro both put a tool's
+   options next to the tool; a settings panel somewhere else is a thing a twelve-year-old never
+   finds, and a pen with one colour and one width is not a pen. */
+.board-toolopts{position:absolute;left:56px;z-index:60;display:flex;align-items:center;gap:5px;
+  background:var(--panel);border:1px solid #2c4f7d;border-radius:10px;padding:5px 7px;
+  box-shadow:0 8px 22px rgba(0,0,0,.45);}
+.board-nib{width:22px;height:22px;border:0;border-radius:6px;padding:0;background:none;
+  cursor:pointer;display:grid;place-items:center;}
+.board-nib > i{display:block;border-radius:50%;background:var(--muted);}
+.board-nib:hover{background:#16325a;}
+.board-nib:hover > i{background:var(--ink);}
+.board-nib.on{background:var(--brand);}
+.board-nib.on > i{background:#241300;}
+.board-nib:focus-visible{outline:2px solid var(--focus);outline-offset:-2px;}
+
+/* ---------- alignment guides ----------
+   Only while something is being dragged, and only where an edge or a centre actually lines up. */
+.bi-guides line{stroke:var(--brand);stroke-width:1;stroke-dasharray:4 4;
+  vector-effect:non-scaling-stroke;}
+
+/* Locked. Nothing to grab and a cursor that says so, which is the whole feature. */
+.bi.locked{cursor:default;}
+.bi.locked.sel{outline-color:var(--dim);outline-style:dashed;}
 
 /* ---------- zoom ----------
    Bottom LEFT, under the rail. The right-hand side belongs to the assistant, and a zoom control

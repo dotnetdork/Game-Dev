@@ -214,11 +214,19 @@ const TOOLS = [
   { id: 'draw', icon: 'mdi-draw', name: 'Pen — draw anything, freehand', key: 'P' },
   { id: 'erase', icon: 'mdi-eraser', name: 'Eraser — rub out pen marks', key: 'E' }
 ];
+/* What colour each tool will use next, remembered per tool. One shared "current colour" would mean
+   picking green for a sticky also turned the next rectangle green, and the sensible starting point
+   is different for each: paper is yellow, a drawn box is blue, a pen mark is white. */
+const TOOL_COLOUR = { note: 'y', text: '', frame: 'b', rect: 'b', ellipse: 'b', diamond: 'b', draw: '' };
+const INK_WIDTHS = [2, 4, 9];      // fine · normal · marker
+let inkWidth = 4;
+
 function setTool(t) {
   tool = t;
   const wrap = $('boardCanvasWrap');
   if (wrap) wrap.dataset.tool = t;
   paintTools();
+  paintToolOptions();
 }
 
 /* ---------- undo ----------
@@ -291,12 +299,16 @@ function deleteSelection() {
   sel = [];
   saveBoard(); paintBoard();
 }
-function duplicateSelection() {
+/* The offset is a parameter because Alt+drag duplicates IN PLACE and then drags the copies — a copy
+   that jumped 24px away before the drag even started would land 24px from where it was dropped. */
+function duplicateSelection(dx, dy) {
   if (!sel.length) return;
   mark();
+  const ox = dx === undefined ? 24 : dx, oy = dy === undefined ? 24 : dy;
   const made = [];
   selItems().forEach(function (i) {
-    const c = Object.assign({}, i, { id: uid(i.kind), x: i.x + 24, y: i.y + 24 });
+    const c = Object.assign({}, i, { id: uid(i.kind), x: i.x + ox, y: i.y + oy });
+    delete c.lock;                 // a copy of a locked thing is a thing you are about to move
     addItem(c); made.push(c.id);
   });
   if (made.length) { sel = made; saveBoard(); paintBoard(); } else unmark();
@@ -322,6 +334,32 @@ function restack(toFront) {
 }
 function raiseSelection() { restack(true); }
 function lowerSelection() { restack(false); }
+
+/* Locked means "stop knocking this out of place". Photoshop and Miro both have it and it is the same
+   thing in both: a background, or a frame you have finished arranging and keep grabbing by mistake.
+   It can still be selected, so it can still be unlocked. */
+function lockSelection(on) {
+  const items = selItems(); if (!items.length) return;
+  mark();
+  items.forEach(function (i) { if (on) i.lock = true; else delete i.lock; });
+  saveBoard(); paintBoard();
+}
+
+/* Line a selection up on one edge. Two of the six, not all six: left and top are the ones that get
+   used, and four more buttons for the others is a toolbar nobody reads. */
+function alignSelection(edge) {
+  const items = selItems().filter(function (i) { return !i.lock; });
+  if (items.length < 2) return;
+  mark();
+  if (edge === 'left') {
+    const x = Math.min.apply(null, items.map(function (i) { return i.x; }));
+    items.forEach(function (i) { i.x = snap(x); });
+  } else {
+    const y = Math.min.apply(null, items.map(function (i) { return i.y; }));
+    items.forEach(function (i) { i.y = snap(y); });
+  }
+  saveBoard(); paintBoard();
+}
 
 /* Arrow keys move the selection, which is the one way to line two things up exactly — a drag snaps
    to the grid but a nudge is how you say "one more". A held arrow is one undo step, not forty: the
@@ -369,11 +407,14 @@ function addItem(o) {
 const SHAPE_TOOLS = ['rect', 'ellipse', 'diamond'];
 function defaultsFor(what, pt) {
   const isShape = SHAPE_TOOLS.indexOf(what) >= 0;
-  const base = { kind: isShape ? 'shape' : what, x: snap(pt.x - 40), y: snap(pt.y - 20), colour: 'y' };
-  if (isShape) return Object.assign(base, { shape: what, text: '', w: 160, h: 100, colour: 'b' });
+  /* The colour comes from the tool's own setting in the options strip, so what a student picked is
+     what they get — not a constant buried in here. */
+  const c = Object.prototype.hasOwnProperty.call(TOOL_COLOUR, what) ? TOOL_COLOUR[what] : 'y';
+  const base = { kind: isShape ? 'shape' : what, x: snap(pt.x - 40), y: snap(pt.y - 20), colour: c };
+  if (isShape) return Object.assign(base, { shape: what, text: '', w: 160, h: 100 });
   if (what === 'note') return Object.assign(base, { title: '', text: '', w: NOTE_W, h: NOTE_H });
-  if (what === 'text') return Object.assign(base, { text: '', w: 220, h: 40, colour: '' });
-  if (what === 'frame') return Object.assign(base, { title: 'New frame', w: 360, h: 260, colour: 'b' });
+  if (what === 'text') return Object.assign(base, { text: '', w: 220, h: 40 });
+  if (what === 'frame') return Object.assign(base, { title: 'New frame', w: 360, h: 260 });
   return base;
 }
 /* Placed at the pointer, then immediately opened for typing. A new sticky you have to click again
@@ -421,8 +462,12 @@ function makeEl(i) {
   el.className = 'bi bi-' + i.kind + colourClass(i.colour) + (isSel(i.id) ? ' sel' : '')
     + (i.kind === 'shape' ? ' s-' + i.shape : '');
   el.dataset.id = i.id;
+  if (i.lock) el.classList.add('locked');
   el.style.left = i.x + 'px'; el.style.top = i.y + 'px';
   el.style.width = i.w + 'px'; el.style.height = i.h + 'px';
+  /* Plain text scales with its box, the way it does in Canva: dragging a corner is how you get a
+     heading rather than a label, and a separate font-size control would be a third thing to find. */
+  if (i.kind === 'text') el.style.fontSize = Math.max(11, Math.min(72, Math.round(i.h * 0.52))) + 'px';
 
   if (i.kind === 'frame') {
     const t = document.createElement('div'); t.className = 'bi-ftitle';
@@ -451,6 +496,7 @@ function makeEl(i) {
     svg.setAttribute('preserveAspectRatio', 'none');
     const line = document.createElementNS(NS, 'polyline');
     line.setAttribute('points', (i.pts || []).map(function (p) { return p[0] + ',' + p[1]; }).join(' '));
+    line.setAttribute('stroke-width', i.nib || 3);
     svg.appendChild(line);
     el.appendChild(svg);
   } else {
@@ -463,7 +509,9 @@ function makeEl(i) {
 
   /* Handles only on a selected thing, so a board at rest is notes rather than notes plus furniture.
      Four corners resize; the dots on each edge start an arrow. */
-  if (isSel(i.id) && i.kind !== 'text') {
+  /* A locked thing shows no handles — that IS the feedback. Nothing to grab, nothing to knock out
+     of place while reaching past it. */
+  if (isSel(i.id) && !i.lock) {
     ['nw', 'ne', 'se', 'sw'].forEach(function (c) {
       const h = document.createElement('i'); h.className = 'bi-grip g-' + c; h.dataset.grip = c;
       el.appendChild(h);
@@ -639,6 +687,53 @@ function paintTools() {
   btn('mdi-broom', 'Tidy the loose notes into a grid', false, function () { tidy(); });
 }
 
+/* The armed tool's settings, floated beside the rail and lined up with the tool they belong to.
+   Only the tools that have a setting get a strip, so pressing the pointer or the eraser closes it
+   rather than showing an empty box. */
+function paintToolOptions() {
+  const host = $('boardToolOpts'); if (!host) return;
+  host.innerHTML = '';
+  const has = Object.prototype.hasOwnProperty.call(TOOL_COLOUR, tool);
+  host.hidden = !has;
+  if (!has) return;
+
+  /* Level with its own tool: a strip that always sat at the top of the rail would not say which of
+     ten buttons it belongs to. */
+  const n = TOOLS.map(function (t) { return t.id; }).indexOf(tool);
+  const gapsAbove = (n > 0 ? 1 : 0) + (n > 2 ? 1 : 0) + (n > 7 ? 1 : 0);
+  host.style.top = (12 + 5 + n * 36 + gapsAbove * 7) + 'px';
+
+  COLOURS.forEach(function (c) {
+    const b = document.createElement('button');
+    b.type = 'button';
+    b.className = 'bi-swatch' + colourClass(c) + (TOOL_COLOUR[tool] === c ? ' on' : '');
+    b.title = c ? 'Use this colour' : 'No colour';
+    b.setAttribute('aria-label', c ? 'Use this colour' : 'No colour');
+    b.addEventListener('click', function () {
+      TOOL_COLOUR[tool] = c;
+      /* Recolours the selection too when there is one, so picking a colour with something selected
+         does the obvious thing instead of only affecting the next thing you make. */
+      if (sel.length) colourSelection(c);
+      paintToolOptions();
+    });
+    host.appendChild(b);
+  });
+
+  if (tool === 'draw') {
+    const gap = document.createElement('span'); gap.className = 'bi-bargap'; host.appendChild(gap);
+    INK_WIDTHS.forEach(function (w) {
+      const b = document.createElement('button');
+      b.type = 'button';
+      b.className = 'board-nib' + (inkWidth === w ? ' on' : '');
+      b.title = w === 2 ? 'Fine' : w === 4 ? 'Normal' : 'Marker';
+      b.setAttribute('aria-label', b.title);
+      b.innerHTML = '<i style="width:' + (w + 4) + 'px;height:' + (w + 4) + 'px"></i>';
+      b.addEventListener('click', function () { inkWidth = w; paintToolOptions(); });
+      host.appendChild(b);
+    });
+  }
+}
+
 /* The bar that appears over a selection: colour, duplicate, bring to front, delete. Over the
    selection rather than in the rail, because these act on a thing rather than arming a mode — and
    a student should not have to find the far side of the screen to change a note's colour. */
@@ -684,9 +779,12 @@ function paintSelectionBar() {
   if (items.length === 1 && items[0].kind !== 'text') {
     act('mdi-format-title', 'Rename — give it a title', function () { startEdit(items[0].id, 'title'); });
   }
-  act('mdi-content-copy', 'Duplicate', duplicateSelection);
+  act('mdi-content-copy', 'Duplicate  (Ctrl+D — or Alt-drag it)', function () { duplicateSelection(); });
   act('mdi-flip-to-front', 'Bring to front', raiseSelection);
-  act('mdi-trash-can-outline', 'Delete', deleteSelection);
+  const locked = items.some(function (i) { return !!i.lock; });
+  act(locked ? 'mdi-lock-open-variant-outline' : 'mdi-lock-outline',
+    locked ? 'Unlock' : 'Lock so it cannot be moved', function () { lockSelection(!locked); });
+  act('mdi-trash-can-outline', 'Delete  (Del)', deleteSelection);
   $('boardCanvas').appendChild(bar);
 }
 
@@ -743,11 +841,20 @@ function openMenu(e) {
         rows.push(['mdi-format-title', 'Edit heading', '', function () { startEdit(one.id, 'title'); }]);
       }
     }
-    rows.push(['mdi-content-copy', 'Duplicate', 'Ctrl+D', duplicateSelection]);
+    rows.push(['mdi-content-copy', 'Duplicate', 'Ctrl+D', function () { duplicateSelection(); }]);
     rows.push(['mdi-content-cut', 'Cut', 'Ctrl+X', function () { copySelection(); deleteSelection(); }]);
+    if (selItems().length > 1) {
+      rows.push(null);
+      rows.push(['mdi-align-horizontal-left', 'Line up down the left', '', function () { alignSelection('left'); }]);
+      rows.push(['mdi-align-vertical-top', 'Line up along the top', '', function () { alignSelection('top'); }]);
+      rows.push(['mdi-broom', 'Tidy these into a grid', '', tidy]);
+    }
     rows.push(null);
     rows.push(['mdi-flip-to-front', 'Bring to front', '', raiseSelection]);
     rows.push(['mdi-flip-to-back', 'Send to back', '', lowerSelection]);
+    const anyLocked = selItems().some(function (i) { return !!i.lock; });
+    rows.push([anyLocked ? 'mdi-lock-open-variant-outline' : 'mdi-lock-outline',
+      anyLocked ? 'Unlock' : 'Lock so it cannot move', '', function () { lockSelection(!anyLocked); }]);
     rows.push(null);
     rows.push(['mdi-trash-can-outline', 'Delete', 'Del', deleteSelection]);
   } else if (lk) {
@@ -875,6 +982,10 @@ function onPointerDown(e) {
   if (el) {
     const id = el.dataset.id;
     if (!isSel(id)) select([id], e.shiftKey || e.metaKey || e.ctrlKey);
+    /* Alt+drag leaves a copy behind — the gesture Miro, Figma, Canva and Illustrator all share, and
+       the fastest way to turn one sticky into a column of five. Duplicate first, then drag the
+       copies, so the originals stay where they were. */
+    if (e.altKey) { duplicateSelection(0, 0); skipDragMark = true; }
     beginDrag(e);
     return;
   }
@@ -884,25 +995,38 @@ function onPointerDown(e) {
   beginMarquee(e);
 }
 
+let skipDragMark = false;    // set by Alt+drag, which has already pushed its own undo step
 function beginDrag(e) {
   const wrap = $('boardCanvasWrap');
   const start = toBoard(e.clientX, e.clientY);
   /* A frame takes what is standing on it. Captured once, at the start, so a note that leaves the
-     frame mid-drag is not dropped halfway. */
+     frame mid-drag is not dropped halfway. Locked things stay put, including inside a frame that
+     is being moved — which is the point of locking one. */
   const moving = [];
   selItems().forEach(function (i) {
+    if (i.lock) return;
     moving.push(i);
-    if (i.kind === 'frame') itemsInFrame(i).forEach(function (c) { if (moving.indexOf(c) < 0) moving.push(c); });
+    if (i.kind === 'frame') itemsInFrame(i).forEach(function (c) {
+      if (!c.lock && moving.indexOf(c) < 0) moving.push(c);
+    });
   });
+  if (!moving.length) return;
   const from = moving.map(function (i) { return { i: i, x: i.x, y: i.y }; });
   wrap.setPointerCapture(e.pointerId);
-  let marked = false;
+  let marked = skipDragMark;
+  skipDragMark = false;
   const move = function (ev) {
     if (!marked) { mark(); marked = true; }     // a click that only selects is not a change
     const p = toBoard(ev.clientX, ev.clientY);
-    const dx = p.x - start.x, dy = p.y - start.y;
+    let dx = p.x - start.x, dy = p.y - start.y;
+    /* Snapped to whatever else is on the board before being snapped to the grid, because lining up
+       with the sticky beside it is what a student is actually trying to do — the grid is only there
+       so that near-misses do not happen at all. */
+    const g = guidesFor(from, dx, dy);
+    dx = g.dx; dy = g.dy;
     from.forEach(function (f) { f.i.x = snap(f.x + dx); f.i.y = snap(f.y + dy); });
     paintBoard();
+    drawGuides(g.lines);
     saveBoardSoon();
   };
   const up = function () {
@@ -912,8 +1036,72 @@ function beginDrag(e) {
   wrap.addEventListener('pointermove', move); wrap.addEventListener('pointerup', up);
 }
 
+/* ---------- alignment guides ----------
+   Edges and centres, against everything not being dragged. Miro, Canva, Figma and PowerPoint all do
+   this and all do it the same way, because it is the cheapest possible answer to "why does my board
+   look untidy when I was careful": things that were two pixels out now simply cannot be.
+
+   Vertical and horizontal are worked out independently, so a sticky can be pulled level with the
+   one above it while still moving freely sideways. */
+function guidesFor(from, dx, dy) {
+  const TOL = 7 / scale;           // in board units, so the pull feels the same at any zoom
+  const moving = from.map(function (f) { return f.i; });
+  const others = (board.items || []).filter(function (i) {
+    return moving.indexOf(i) < 0 && i.kind !== 'ink';
+  });
+  if (!others.length) return { dx: dx, dy: dy, lines: [] };
+
+  /* One box round everything being dragged — a group lines up as a group, not one member at a time. */
+  let x0 = Infinity, y0 = Infinity, x1 = -Infinity, y1 = -Infinity;
+  from.forEach(function (f) {
+    x0 = Math.min(x0, f.x + dx); y0 = Math.min(y0, f.y + dy);
+    x1 = Math.max(x1, f.x + dx + f.i.w); y1 = Math.max(y1, f.y + dy + f.i.h);
+  });
+
+  const best = function (mine, theirs) {
+    let win = null;
+    mine.forEach(function (m) {
+      theirs.forEach(function (t) {
+        const d = t.at - m.at;
+        if (Math.abs(d) <= TOL && (!win || Math.abs(d) < Math.abs(win.d))) win = { d: d, at: t.at, span: t.span };
+      });
+    });
+    return win;
+  };
+
+  const vMine = [{ at: x0 }, { at: (x0 + x1) / 2 }, { at: x1 }];
+  const hMine = [{ at: y0 }, { at: (y0 + y1) / 2 }, { at: y1 }];
+  const vTheirs = [], hTheirs = [];
+  others.forEach(function (i) {
+    const span = { a: Math.min(i.y, y0), b: Math.max(i.y + i.h, y1) };
+    const spanH = { a: Math.min(i.x, x0), b: Math.max(i.x + i.w, x1) };
+    vTheirs.push({ at: i.x, span: span }, { at: i.x + i.w / 2, span: span }, { at: i.x + i.w, span: span });
+    hTheirs.push({ at: i.y, span: spanH }, { at: i.y + i.h / 2, span: spanH }, { at: i.y + i.h, span: spanH });
+  });
+
+  const v = best(vMine, vTheirs), h = best(hMine, hTheirs);
+  const lines = [];
+  if (v) { dx += v.d; lines.push({ x: v.at, a: v.span.a - 24, b: v.span.b + 24 }); }
+  if (h) { dy += h.d; lines.push({ y: h.at, a: h.span.a - 24, b: h.span.b + 24 }); }
+  return { dx: dx, dy: dy, lines: lines };
+}
+/* Drawn straight into the SVG layer the arrows already use, so it pans and zooms with the board. */
+function drawGuides(lines) {
+  const canvas = $('boardCanvas');
+  const old = canvas.querySelector('.bi-guides'); if (old) old.remove();
+  if (!lines || !lines.length) return;
+  const svg = document.createElementNS(INK_NS, 'svg');
+  svg.setAttribute('class', 'bi-links bi-guides');
+  svg.innerHTML = lines.map(function (l) {
+    return l.x !== undefined
+      ? '<line x1="' + l.x + '" y1="' + l.a + '" x2="' + l.x + '" y2="' + l.b + '"/>'
+      : '<line x1="' + l.a + '" y1="' + l.y + '" x2="' + l.b + '" y2="' + l.y + '"/>';
+  }).join('');
+  canvas.appendChild(svg);
+}
+
 function beginResize(i, grip, e) {
-  if (!i) return;
+  if (!i || i.lock) return;
   const wrap = $('boardCanvasWrap');
   const start = toBoard(e.clientX, e.clientY);
   const o = { x: i.x, y: i.y, w: i.w, h: i.h };
@@ -946,7 +1134,7 @@ function beginResize(i, grip, e) {
    rather than swinging around the pointer — and it snaps to 15° unless a key is held, because a
    label at 43° is almost always a label somebody meant to put at 45°. */
 function beginSpin(i, e) {
-  if (!i) return;
+  if (!i || i.lock) return;
   const wrap = $('boardCanvasWrap');
   const c = centreOf(i);
   const angle = function (ev) {
@@ -1030,12 +1218,13 @@ function beginDraw(e) {
   };
   add(e);
   const live = document.createElementNS(INK_NS, 'svg');
-  live.setAttribute('class', 'bi-links ink-live');
+  live.setAttribute('class', 'bi-links ink-live' + colourClass(TOOL_COLOUR.draw));
   canvas.appendChild(live);
   wrap.setPointerCapture(e.pointerId);
   const move = function (ev) {
     add(ev);
-    live.innerHTML = '<polyline points="' + pts.map(function (p) { return p.join(','); }).join(' ') + '"/>';
+    live.innerHTML = '<polyline stroke-width="' + inkWidth + '" points="'
+      + pts.map(function (p) { return p.join(','); }).join(' ') + '"/>';
   };
   const up = function () {
     wrap.removeEventListener('pointermove', move); wrap.removeEventListener('pointerup', up);
@@ -1046,10 +1235,10 @@ function beginDraw(e) {
         x0 = Math.min(x0, p[0]); y0 = Math.min(y0, p[1]);
         x1 = Math.max(x1, p[0]); y1 = Math.max(y1, p[1]);
       });
-      const pad = 6;              // room for the stroke itself, so a line is not clipped by its box
+      const pad = inkWidth + 4;   // room for the stroke itself, so a line is not clipped by its box
       mark();
       const o = addItem({
-        kind: 'ink', colour: '', x: x0 - pad, y: y0 - pad,
+        kind: 'ink', colour: TOOL_COLOUR.draw, nib: inkWidth, x: x0 - pad, y: y0 - pad,
         w: Math.max(8, (x1 - x0) + pad * 2), h: Math.max(8, (y1 - y0) + pad * 2),
         pts: pts.map(function (p) { return [+(p[0] - x0 + pad).toFixed(1), +(p[1] - y0 + pad).toFixed(1)]; })
       });
