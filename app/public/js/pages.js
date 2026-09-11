@@ -502,15 +502,15 @@ function renderDocs() {
 function renderHelp() {
   return '<div class="phead"><div><h2><span class="mdi mdi-help-circle-outline"></span>Help — How this app works</h2><p class="sub">A quick guide to everything on screen.</p></div></div><div class="help-body">'
     + '<h3><span class="mdi mdi-navigation-variant"></span>The top bar</h3><p><b>Courses</b> is where you learn and build. <b>Store</b> sells art and sounds for ★ Stars. <b>Gallery</b> shows games students have published. <b>Leaderboards</b> ranks the class by XP and shows how far through the course you are. <b>Docs</b> is a quick ' + course.library + ' reference, and <b>Help</b> is this page.</p>'
-    + '<h3><span class="mdi mdi-school"></span>Learning (Courses)</h3><p>Work through lessons in order in the left outline. Finishing a lesson earns <b>XP</b> and <b>★ Stars</b>; so does every practice step, every lab you solve yourself, and every checkpoint — and finishing a whole module pays a bonus on top. Locked lessons unlock as you go, and your XP fills the bar in the footer toward the next level.</p>'
-    + '<h3><span class="mdi mdi-view-split-vertical"></span>The three tabs</h3><p><b>Learn</b> is the lesson. <b>Code</b> is your game\'s code — the <b>source</b> folder holds your scripts and the <b>assets</b> folder holds the art and sounds you own (click one to see how to use it). <b>Save</b> keeps your changes and <b>Run</b> plays them. <b>Play</b> runs your game, with the console and sound controls underneath.</p>'
+    + '<h3><span class="mdi mdi-school"></span>Learning (Courses)</h3><p>Work through lessons in order in the left outline. Finishing a lesson earns <b>XP</b> and <b>★ Stars</b>; so does every practice step, and every lab you solve yourself — and finishing a whole module pays a bonus on top. Locked lessons unlock as you go, and your XP fills the bar in the footer toward the next level.</p>'
+    + '<h3><span class="mdi mdi-view-split-vertical"></span>The four tabs</h3><p><b>Learn</b> is the lesson. <b>Design</b> is your own board — your game design document, your to-do list, and the place you put an idea before you know what it is. It is the same board on every lesson, and nothing on it is marked or graded. <b>Code</b> is your game\'s code — the <b>source</b> folder holds your scripts and the <b>assets</b> folder holds the art and sounds you own (click one to see how to use it). <b>Save</b> keeps your changes and <b>Run</b> plays them. <b>Play</b> runs your game, with the console and sound controls underneath.</p>'
     + '<h3><span class="mdi mdi-robot"></span>The AI Assistant</h3><p>The panel on the right has two modes — click the icon in its header to switch. <b>Tutor</b> explains things and never touches your code, so ask it "what does this line do?". <b>Build</b> edits your game when you tell it what to change. Some lessons turn Build off on purpose so you try it yourself.</p>'
     + '<p>One thing Build will not do is the <b>Practice</b> exercise at the end of a lesson — it will give you a hint and send you to Tutor instead. That exercise is the only way you find out whether you can do it, so having it done for you costs you the answer to the one question worth asking. Everything else in your game, Build will happily build.</p>'
-    + '<h3><span class="mdi mdi-star"></span>Stars & the Store</h3><p>Earn ★ Stars for every lesson, practice step, lab and checkpoint you finish, then spend them in the <b>Store</b> to unlock art and sounds. Anything you own loads into your game automatically — just use its <b>name</b> (the green key) in your code.</p>'
+    + '<h3><span class="mdi mdi-star"></span>Stars & the Store</h3><p>Earn ★ Stars for every lesson, practice step and lab you finish, then spend them in the <b>Store</b> to unlock art and sounds. Anything you own loads into your game automatically — just use its <b>name</b> (the green key) in your code.</p>'
     + '<h3><span class="mdi mdi-image-outline"></span>Picture credits</h3><p>Lessons show screenshots of real games and sprites drawn by other people. Hovering any picture in a lesson names who made it; this is the same list in one place.</p>'
     + '<div id="creditsList" class="credits-list"><p class="credits-loading">Loading…</p></div>'
-    + '<h3><span class="mdi mdi-restart"></span>Testing</h3><p>Reset all saved progress (XP, Stars, unlocked assets, completed lessons) to try the app from scratch.</p>'
-    + '<button class="gbtn" id="resetBtn"><span class="mdi mdi-delete-outline"></span>Reset my progress</button></div>';
+    + '<h3><span class="mdi mdi-restart"></span>Testing</h3><p>Put this browser back to a brand-new account — XP, Stars, unlocked assets, completed lessons, your game\'s code and your design board — to try the app from scratch.</p>'
+    + '<button class="gbtn" id="resetBtn"><span class="mdi mdi-delete-outline"></span>Reset everything</button></div>';
 }
 
 /* The same credits the pictures carry, gathered in one place. The hover line on a figure is the
@@ -607,9 +607,15 @@ function showBadgeCase() {
 }
 if ($('badgeBtn')) $('badgeBtn').addEventListener('click', showBadgeCase);
 
+/* A testing control, not a student feature: it puts the browser back to a first run, so it clears
+   every key the app owns rather than progress alone. Anything short of that leaves a half-reset —
+   a fresh ledger against a project and a design board from the last run. */
 function resetProgress() {
-  modal({ title: 'Reset progress?', message: 'This clears all XP, Stars, unlocked assets, and completed lessons on this browser. This cannot be undone.', okLabel: 'Reset everything',
-    onOk: function () { Storage.remove(SKEY); location.reload(); } });
+  modal({ title: 'Reset everything?', message: 'This puts this browser back to a brand-new account: XP, Stars, unlocked assets, completed lessons, your game\'s code, and your design board. This cannot be undone.', okLabel: 'Reset everything',
+    onOk: function () {
+      Storage.remove(SKEY); Storage.remove(PKEY); Storage.remove(BKEY);
+      location.reload();
+    } });
 }
 function wirePage(page) {
   document.querySelectorAll('#page [data-buy]').forEach(function (b) { b.addEventListener('click', function () { buyAsset(b.getAttribute('data-buy')); }); });

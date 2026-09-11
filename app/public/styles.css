@@ -1032,75 +1032,257 @@ body.resizing-v #gameFrame{pointer-events:none;}
    at three different heights crushed into 9px of padding; the count is a pill now and the bar is
    thick enough to read at a glance from across a classroom. */
 
-/* ---------- the door, on the page behind ----------
-   What this checkpoint wants, and the way in. No title — the page heading two inches above already
-   says it, and saying it twice is what made this read as a panel dropped onto a lesson. */
-/* The checklist is live — it reads design.md — so it is state, not instructions. No marker until a
-   goal is done, then a tick: two goes at a small circle both read as two sizes side by side. */
+/* ================= the design board =================
+   A Miro-shaped surface, at the size a school Chromebook and a twelve-year-old can work on. The dot
+   grid is not decoration: it is the cheapest possible way to say "this pans, and things go where you
+   put them" before a student has touched anything.
 
-/* The quest chain, on a build board's rail: ordered, so it says which one you are ON rather than
-   only which are done. The dim ones are still ahead, and that is deliberate — seeing what is coming
-   is part of it; being able to start any of them is not, because the order is the teaching. */
+   Everything on the board is one element, `.bi`, positioned in board coordinates inside a canvas the
+   view transform scales. Kind decides the look; a colour class decides the paint. */
 
-/* ---------- the board ----------
-   A surface you arrange things on. The dot grid is not decoration: it is the cheapest possible way
-   to say "this pans and things go where you put them" before a student has touched anything. */
-.board-canvas-wrap{flex:1;min-height:0;position:relative;overflow:hidden;cursor:grab;
-  background:radial-gradient(circle at 1px 1px,#1b3358 1.2px,transparent 0) 0 0/22px 22px, #081525;}
+/* ---------- the colours ----------
+   Paper colours, not panel colours, because the point of a sticky is that it is a thing lying on a
+   surface rather than a row in a list. Each is published as channels so the same value can be a
+   solid note, a 40% frame border and a 5% frame wash without three hand-mixed hex codes. */
+.c-y{--rgb:245,214,122;--pi:#2a2005;}
+.c-b{--rgb:143,196,245;--pi:#06203a;}
+.c-g{--rgb:143,227,180;--pi:#04240f;}
+.c-p{--rgb:201,174,245;--pi:#1d0d3a;}
+.c-o{--rgb:247,178,113;--pi:#2c1503;}
+.c-r{--rgb:242,160,160;--pi:#3a0a0a;}
+.c-plain{--rgb:207,220,234;--pi:#0d1c2e;}
+
+/* ---------- the surface ---------- */
+.board-canvas-wrap{flex:1;min-height:0;position:relative;overflow:hidden;touch-action:none;
+  background:radial-gradient(circle at 1px 1px,#1b3358 1.2px,transparent 0) 0 0/22px 22px,#081525;}
 .board-canvas-wrap.panning{cursor:grabbing;}
-.board-canvas{position:absolute;inset:0;transform-origin:0 0;}
+/* The cursor says which tool is armed. A crosshair for the ones that place a box, and for the
+   freehand pair the tool itself drawn under the hand — a student who picked up the eraser and sees
+   a crosshair has to remember what they pressed; one who sees an eraser does not. Inlined as SVG
+   because the artifact CSP allows no image host, and the hotspot is the nib. */
+.board-canvas-wrap[data-tool]{cursor:crosshair;}
+.board-canvas-wrap[data-tool="select"]{cursor:default;}
+.board-canvas-wrap[data-tool="draw"]{cursor:url("data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' width='26' height='26' viewBox='0 0 26 26'><path d='M3 23l1.4-5.1L16.9 5.4l3.7 3.7L8.1 21.6 3 23z' fill='%23f5d67a' stroke='%23101d2c' stroke-width='1.6' stroke-linejoin='round'/><path d='M18.1 4.2l1.7-1.7a1.9 1.9 0 012.7 0l1 1a1.9 1.9 0 010 2.7l-1.7 1.7-3.7-3.7z' fill='%23cfdcea' stroke='%23101d2c' stroke-width='1.6' stroke-linejoin='round'/><path d='M4.4 17.9l3.7 3.7' stroke='%23101d2c' stroke-width='1.4'/></svg>") 3 23,crosshair;}
+.board-canvas-wrap[data-tool="erase"]{cursor:url("data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' width='26' height='26' viewBox='0 0 26 26'><path d='M4 21h18' stroke='%23101d2c' stroke-width='1.8' stroke-linecap='round'/><path d='M6.4 17.6l-2-2a2 2 0 010-2.9l9-9a2 2 0 012.9 0l4.1 4.1a2 2 0 010 2.9l-7 7H7.8a2 2 0 01-1.4-.6z' fill='%23f2a0a0' stroke='%23101d2c' stroke-width='1.6' stroke-linejoin='round'/><path d='M9.6 7.2l6.9 6.9' stroke='%23101d2c' stroke-width='1.4'/></svg>") 7 18,cell;}
+.board-canvas{position:absolute;left:0;top:0;transform-origin:0 0;--inv:1;}
 
-/* A region. On an ideation board these are the data — dragging a sticky between them is how scope
-   gets cut — so they light up as a note comes over them. */
-.board-field{position:absolute;border:1.5px dashed #2b4a72;border-radius:16px;pointer-events:none;
-  transition:border-color .12s,background .12s;}
-.board-field-lab{position:absolute;top:-9px;left:16px;background:#081525;padding:0 8px;
-  font-size:10px;font-weight:700;letter-spacing:1.4px;text-transform:uppercase;color:#54749e;}
-.board-field.hot{border-color:#2f6b52;}
-.board-field.hot .board-field-lab{color:var(--green);}
-.board-field.over{border-color:var(--gold);background:rgba(245,176,46,.07);}
-.board-field.over .board-field-lab{color:var(--gold);}
+/* ---------- an item ----------
+   --spin is what the student turned it to; --rot is the sticky's own pinned tilt. They add, so a
+   rotated sticky still reads as paper rather than snapping square the moment it is turned. */
+.bi{position:absolute;box-sizing:border-box;user-select:none;touch-action:none;cursor:grab;
+  transform:rotate(calc(var(--rot,0deg) + var(--spin,0deg)));}
+.bi.sel{outline:2px solid var(--azure);outline-offset:2px;}
 
-/* A sticky. Paper colours rather than panel colours, because the whole point is that these are
-   things on a surface and not rows in a list. */
-.board-note{position:absolute;width:172px;min-height:104px;padding:10px 11px;border-radius:3px;
-  font-size:12.5px;line-height:1.45;cursor:grab;user-select:none;touch-action:none;
-  box-shadow:0 6px 14px rgba(0,0,0,.35);transform:rotate(-.6deg);
-  transition:box-shadow .12s,transform .12s;}
-.board-note:hover{box-shadow:0 10px 22px rgba(0,0,0,.45);}
-.board-note:focus-visible{outline:3px solid var(--focus);outline-offset:3px;}
-.board-note.dragging{cursor:grabbing;box-shadow:0 18px 34px rgba(0,0,0,.55);
-  transform:rotate(0) scale(1.03);z-index:50;}
-.board-note.editing{cursor:default;transform:rotate(0);z-index:40;}
-.board-note.fixed{cursor:default;}
-.board-note-lab{font-size:9px;font-weight:800;letter-spacing:1.1px;text-transform:uppercase;
-  opacity:.62;margin-bottom:5px;}
-.board-note-txt{white-space:pre-wrap;}
-.board-note-sub{margin-top:6px;font-size:11px;opacity:.7;}
-.board-note.blank .board-note-txt{opacity:.55;font-style:italic;}
-.board-note.y{background:#f5d67a;color:#2a2005;transform:rotate(.8deg);}
-.board-note.b{background:#8fc4f5;color:#06203a;}
-.board-note.g{background:#8fe3b4;color:#04240f;transform:rotate(-1.1deg);}
-.board-note.p{background:#c9aef5;color:#1d0d3a;transform:rotate(.5deg);}
-.board-note.o{background:#f7b271;color:#2c1503;transform:rotate(-.4deg);}
-/* Not handed out yet. Drawn as an outline so a student can see what is coming without it looking
-   like something they have already been given. */
-.board-note.ghost{background:transparent;border:1.5px dashed #38598a;color:#7093bb;
-  box-shadow:none;transform:none;}
-.board-note.done{opacity:.58;}
-.board-note.done .board-note-txt{text-decoration:line-through;}
-.board-note-tick{position:absolute;top:-8px;right:-8px;width:21px;height:21px;border-radius:50%;
-  background:var(--green);color:#04240f;display:grid;place-items:center;font-size:11px;
-  font-weight:800;box-shadow:0 2px 6px rgba(0,0,0,.4);}
-/* Typing happens on the sticky. A dialog over a board hides the thing that told you what to write. */
-.board-note-edit{width:100%;min-height:66px;resize:none;border:0;border-radius:2px;padding:0;
-  background:transparent;color:inherit;font-family:var(--font);font-size:12.5px;line-height:1.45;}
-.board-note-edit:focus{outline:none;}
-.board-note-edit::placeholder{color:currentColor;opacity:.5;font-style:italic;}
+/* A frame: a titled box that takes what is standing on it when it moves. Faint, because it is the
+   room and not the furniture — and it always paints under the notes, so the wash never dims them. */
+.bi-frame{border:1.5px solid rgba(var(--rgb),.42);border-radius:14px;
+  background:rgba(var(--rgb),.05);}
+.bi-ftitle{position:absolute;top:-10px;left:14px;max-width:calc(100% - 28px);padding:1px 9px;
+  border-radius:6px;background:#081525;color:rgb(var(--rgb));font-size:10.5px;font-weight:800;
+  letter-spacing:1.2px;text-transform:uppercase;white-space:nowrap;overflow:hidden;
+  text-overflow:ellipsis;}
 
-/* One column of tools down the left, grouped: making things, thinking tools, tidying up. Grouped
-   because eight identical buttons in a line is a thing you have to read every time, and three
-   groups of two or three is a thing you learn once. */
+/* A sticky. Square corners, paper that is lit from the top, a hard offset shadow and a turned
+   bottom corner — and a degree and a half of tilt pinned to its id, so a wall of them reads as
+   paper stuck to a wall rather than a table with the borders switched off. The tilt is on the
+   element, so the outline and the four grips tilt with it and stay square to the note. */
+.bi-note{background:rgb(var(--rgb));color:var(--pi);border-radius:3px;padding:9px 12px 10px;
+  overflow:hidden;display:flex;flex-direction:column;gap:3px;font-size:12.5px;line-height:1.45;
+  background-image:linear-gradient(160deg,rgba(255,255,255,.34),rgba(255,255,255,0) 42%);
+  box-shadow:1px 5px 10px rgba(0,0,0,.4),0 1px 0 rgba(255,255,255,.35) inset;}
+/* The peeled corner. Two layers: the paper curling up, and the deeper shadow it casts. */
+.bi-note::after{content:'';position:absolute;right:0;bottom:0;width:22px;height:22px;
+  pointer-events:none;
+  background:linear-gradient(315deg,rgba(0,0,0,.22),rgba(0,0,0,.05) 40%,rgba(0,0,0,0) 62%);}
+.bi-note.sel{box-shadow:1px 5px 10px rgba(0,0,0,.4);}
+
+/* The heading. Every sticky has one — bold, so it is the thing you read first when you are looking
+   across fifteen of them for the one about jumping. */
+.bi-title{font-size:11px;font-weight:800;letter-spacing:.3px;flex:none;
+  white-space:nowrap;overflow:hidden;text-overflow:ellipsis;}
+.bi-title.blank{opacity:.42;font-style:italic;font-weight:700;}
+.bi-body{white-space:pre-wrap;word-break:break-word;overflow:hidden;flex:1;min-height:0;}
+.bi-body.blank{opacity:.5;font-style:italic;}
+
+/* ---------- pen marks ----------
+   The box round a stroke is invisible and must not swallow clicks meant for what is behind it, so
+   only the ink itself is a target — and the handles have to opt back in. */
+.bi-ink{pointer-events:none;}
+/* Every handle has to opt back in, not just the resize ones — leaving the rotate handle out is why
+   a drawing was the one thing on the board that could not be turned. */
+.bi-ink .bi-grip,.bi-ink .bi-spin,.bi-ink .bi-rot{pointer-events:auto;}
+.bi-inkpath{position:absolute;inset:0;width:100%;height:100%;overflow:visible;}
+.bi-inkpath polyline{fill:none;stroke:rgb(var(--rgb));stroke-width:3;stroke-linecap:round;
+  stroke-linejoin:round;vector-effect:non-scaling-stroke;pointer-events:stroke;cursor:grab;}
+.ink-live polyline{fill:none;stroke:#cfdcea;stroke-width:3;stroke-linecap:round;
+  stroke-linejoin:round;vector-effect:non-scaling-stroke;}
+
+/* Plain text on the board: a label, a heading over a column of stickies. No card, no border — if it
+   had one it would be a note, and there is already a note. */
+.bi.bi-text{color:#dbe7f4;font-size:17px;font-weight:650;line-height:1.3;display:flex;
+  align-items:center;}
+
+/* Shapes, for the boards a student draws rather than the ones they fill: a kanban column, a class
+   box, a flowchart. Outlined rather than filled, so an arrow crossing one stays readable. */
+.bi-shape{border:2px solid rgb(var(--rgb));background:rgba(var(--rgb),.13);color:#e8f0f9;
+  display:flex;flex-direction:column;align-items:center;justify-content:center;gap:3px;
+  text-align:center;padding:10px 12px;font-size:12.5px;line-height:1.4;}
+.bi-shape .bi-title{color:rgb(var(--rgb));opacity:1;}
+.bi-shape.s-rect{border-radius:8px;}
+.bi-shape.s-ellipse{border-radius:50%;}
+/* Clipped rather than rotated 45°, which would tip the text with it. A clip eats the border, so the
+   fill carries the shape on its own and is stronger to compensate. */
+.bi-shape.s-diamond{border:0;background:rgba(var(--rgb),.26);
+  clip-path:polygon(50% 0,100% 50%,50% 100%,0 50%);padding:10px 26px;}
+
+/* ---------- handles ----------
+   Only on a selected thing, so a board at rest is notes rather than notes plus furniture. Counter-
+   scaled: a 10px grip at 30% zoom is a 3px target, which is not a target. */
+.bi-grip,.bi-port,.bi-spin,.bi-rot{transform:scale(var(--inv));}
+.bi-rot.r-nw{transform-origin:right bottom;} .bi-rot.r-ne{transform-origin:left bottom;}
+.bi-rot.r-se{transform-origin:left top;}     .bi-rot.r-sw{transform-origin:right top;}
+.bi-grip{position:absolute;width:10px;height:10px;border-radius:2px;background:var(--azure);
+  border:1.5px solid #06192e;box-sizing:border-box;}
+/* A 10px square is a 10px picture and a 22px target. Anything smaller than this is a handle a
+   twelve-year-old on a trackpad chases rather than grabs. */
+.bi-grip::after{content:'';position:absolute;inset:-6px;}
+.bi-grip.g-nw{left:-5px;top:-5px;cursor:nwse-resize;transform-origin:left top;}
+.bi-grip.g-ne{right:-5px;top:-5px;cursor:nesw-resize;transform-origin:right top;}
+.bi-grip.g-se{right:-5px;bottom:-5px;cursor:nwse-resize;transform-origin:right bottom;}
+.bi-grip.g-sw{left:-5px;bottom:-5px;cursor:nesw-resize;transform-origin:left bottom;}
+/* The four sides stretch one axis. Drawn as short bars rather than squares, so a glance says which
+   way each one goes without anybody having to try it. */
+.bi-grip.side{border-radius:3px;background:var(--azure);}
+.bi-grip.g-n{top:-4px;left:50%;width:22px;height:8px;margin-left:-11px;cursor:ns-resize;transform-origin:center top;}
+.bi-grip.g-s{bottom:-4px;left:50%;width:22px;height:8px;margin-left:-11px;cursor:ns-resize;transform-origin:center bottom;}
+.bi-grip.g-w{left:-4px;top:50%;width:8px;height:22px;margin-top:-11px;cursor:ew-resize;transform-origin:left center;}
+.bi-grip.g-e{right:-4px;top:50%;width:8px;height:22px;margin-top:-11px;cursor:ew-resize;transform-origin:right center;}
+/* Turn it. BELOW the shape on a short stalk — Canva's position, and the only one the selection bar
+   above the shape cannot sit on top of. The glyph is a curved arrow so the handle says what it does
+   without a tooltip. */
+.bi-spin{position:absolute;left:50%;bottom:-32px;width:19px;height:19px;margin-left:-9.5px;
+  border-radius:50%;background:var(--panel);border:1.5px solid var(--azure);box-sizing:border-box;
+  transform-origin:center top;
+  background-repeat:no-repeat;background-position:center;background-size:12px 12px;
+  background-image:url("data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24'><path d='M12 5V1L7 6l5 5V7a5 5 0 11-5 5H5a7 7 0 107-7z' fill='%234a96e6'/></svg>");
+  cursor:url("data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' width='24' height='24' viewBox='0 0 24 24'><path d='M12 4V1L7.5 5.5 12 10V7a5 5 0 11-5 5H4.5a7.5 7.5 0 107.5-8z' fill='%23ffffff' stroke='%23101d2c' stroke-width='1.2' stroke-linejoin='round'/></svg>") 12 12,grab;}
+.bi-spin::before{content:'';position:absolute;left:50%;bottom:100%;width:1.5px;height:15px;
+  margin-left:-.75px;background:var(--azure);}
+/* Photoshop's corners: nothing to see, but the cursor changes the moment you reach past one, so a
+   student who already knows the gesture finds it without being told it is there. */
+.bi-rot{position:absolute;width:18px;height:18px;
+  cursor:url("data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' width='24' height='24' viewBox='0 0 24 24'><path d='M12 4V1L7.5 5.5 12 10V7a5 5 0 11-5 5H4.5a7.5 7.5 0 107.5-8z' fill='%23ffffff' stroke='%23101d2c' stroke-width='1.2' stroke-linejoin='round'/></svg>") 12 12,grab;}
+.bi-rot.r-nw{left:-19px;top:-19px;}
+.bi-rot.r-ne{right:-19px;top:-19px;}
+.bi-rot.r-se{right:-19px;bottom:-19px;}
+.bi-rot.r-sw{left:-19px;bottom:-19px;}
+/* Four dots you drag an arrow out of — the gesture every board uses, and the reason the Arrow tool
+   is a shortcut rather than the only way. Hidden until the thing is pointed at. */
+.bi-port{position:absolute;width:11px;height:11px;border-radius:50%;background:#0d2036;
+  border:2px solid var(--azure);box-sizing:border-box;opacity:0;transition:opacity .12s;
+  cursor:crosshair;}
+.bi:hover .bi-port,.bi.sel .bi-port{opacity:1;}
+.bi-port.p-n{top:-6px;left:50%;margin-left:-5.5px;transform-origin:center top;}
+.bi-port.p-s{bottom:-6px;left:50%;margin-left:-5.5px;transform-origin:center bottom;}
+.bi-port.p-e{right:-6px;top:50%;margin-top:-5.5px;transform-origin:right center;}
+.bi-port.p-w{left:-6px;top:50%;margin-top:-5.5px;transform-origin:left center;}
+
+/* ---------- arrows ----------
+   One SVG behind every item, redrawn with the board. Stored as two ids, so a line follows whatever
+   it is tied to and there is no second copy of a position to keep in step. */
+.bi-links{position:absolute;left:0;top:0;width:100%;height:100%;overflow:visible;
+  pointer-events:none;color:#5b8dc4;}
+.bi-link path{fill:none;stroke:#5b8dc4;stroke-width:2.5;pointer-events:stroke;cursor:pointer;}
+.bi-link:hover path{stroke:var(--gold);}
+.bi-link.sel path{stroke:var(--gold);stroke-width:3.5;}
+.bi-link:hover{color:var(--gold);}
+.bi-link.sel{color:var(--gold);}
+/* The label sits on the line, so it is drawn with the board colour knocked out behind it rather
+   than a rectangle that would have to be kept the right size. */
+.bi-link text{fill:#a8c6e6;font-family:var(--font);font-size:11px;font-weight:600;
+  paint-order:stroke;stroke:#081525;stroke-width:3.5px;stroke-linejoin:round;}
+.bi-links.ghost path{fill:none;stroke:var(--gold);stroke-width:2.5;stroke-dasharray:5 5;}
+
+/* ---------- rubber band ---------- */
+.bi-marquee{position:absolute;border:1px solid var(--azure);background:rgba(74,150,230,.12);
+  border-radius:3px;pointer-events:none;}
+
+/* ---------- the bar over a selection ----------
+   Colour, rename, duplicate, front, delete — over the thing rather than in the rail, because which
+   of fifteen notes you are acting on has to be unambiguous. It lives in board coordinates so it
+   follows the selection, and un-scales so it is the same size on screen at any zoom. */
+.bi-bar{position:absolute;z-index:80;display:flex;align-items:center;gap:5px;
+  background:var(--panel);border:1px solid #2c4f7d;border-radius:11px;padding:5px 7px;
+  box-shadow:0 10px 24px rgba(0,0,0,.5);white-space:nowrap;
+  transform-origin:left top;transform:scale(var(--inv)) translateY(-126%);
+  animation:bi-bar-in .11s ease-out;}
+@keyframes bi-bar-in{from{opacity:0;}to{opacity:1;}}
+@media (prefers-reduced-motion:reduce){ .bi-bar{animation:none;} }
+/* Two groups: what it looks like, then what to do with it. Without the divider the rename button
+   reads as an eighth colour. */
+.bi-swatches{display:flex;align-items:center;gap:4px;}
+.bi-bargap{width:1px;align-self:stretch;background:var(--line);margin:1px 1px;}
+.bi-swatch{width:18px;height:18px;border-radius:50%;padding:0;cursor:pointer;
+  background:rgb(var(--rgb));border:1.5px solid rgba(0,0,0,.45);transition:transform .1s;}
+.bi-swatch.c-plain{background:transparent;border-color:#6d86a3;}
+.bi-swatch:hover{transform:scale(1.16);}
+/* The one it is already. A ring rather than a tick: a tick inside an 18px circle is a smudge. */
+.bi-swatch.on{box-shadow:0 0 0 2px var(--panel),0 0 0 3.5px var(--brand);}
+.bi-swatch:focus-visible{outline:2px solid var(--focus);outline-offset:3px;}
+.bi-act{width:26px;height:26px;border-radius:7px;border:0;padding:0;background:none;
+  color:var(--muted);cursor:pointer;display:grid;place-items:center;font-size:15px;}
+.bi-act:hover{background:#16325a;color:var(--ink);}
+.bi-act:focus-visible{outline:2px solid var(--focus);outline-offset:-2px;}
+
+/* ---------- typing, on the thing ----------
+   In place, never in a dialog: a box over a board hides the thing that told you what to write. */
+.bi-edit{position:absolute;left:0;top:0;width:100%;height:100%;box-sizing:border-box;z-index:30;
+  resize:none;border:0;border-radius:3px;padding:10px 12px;background:rgb(var(--rgb));
+  color:var(--pi);font-family:var(--font);font-size:12.5px;line-height:1.45;}
+.bi-edit:focus{outline:2px solid var(--focus);outline-offset:0;}
+/* The in-layout editor: it stands exactly where the line it replaced stood, and inherits every
+   type property from the item, so nothing shifts by a pixel when it opens. */
+.bi-edit.inflow{position:static;width:100%;height:auto;padding:0;border-radius:0;z-index:auto;
+  background:transparent;color:inherit;font:inherit;letter-spacing:inherit;
+  text-transform:inherit;text-align:inherit;overflow:hidden;}
+.bi-edit.inflow:focus{outline:0;}
+/* The item says it is being typed into, rather than each editor drawing its own box. */
+.bi.editing{outline:2px solid var(--focus);outline-offset:2px;}
+.bi.editing .bi-grip,.bi.editing .bi-port,.bi.editing .bi-spin,.bi.editing .bi-rot{display:none;}
+/* A title is one line at the top of whatever it is titling, and keeps that shape while it is typed
+   into — so renaming a frame does not black out the frame, and typing a sticky's heading leaves the
+   rest of the sticky visible underneath. */
+.bi-edit.t{height:auto;background:#0d2036;color:#dbe7f4;font-size:11px;font-weight:800;
+  letter-spacing:1.1px;text-transform:uppercase;padding:8px 12px;}
+.bi.bi-note .bi-edit{padding:9px 12px 10px;}
+.bi.bi-note .bi-edit.t{background:rgb(var(--rgb));color:var(--pi);font-size:11px;font-weight:800;
+  letter-spacing:.3px;text-transform:none;padding:9px 12px 2px;}
+.bi.bi-text .bi-edit{background:#0d2036;color:#dbe7f4;font-size:17px;font-weight:650;}
+.bi.bi-shape .bi-edit{background:#0d2036;color:#e8f0f9;text-align:center;}
+.bi.bi-frame .bi-edit{background:#0d2036;color:#dbe7f4;}
+
+/* ---------- the right-click menu ----------
+   In screen pixels, not board ones: a menu that scaled with the board would be unreadable at 20%
+   and enormous at 300%. Every row names its keyboard shortcut, so the menu teaches the keys to the
+   student who only ever right-clicks. */
+.bi-menu{position:absolute;z-index:90;min-width:186px;padding:5px;background:var(--panel);
+  border:1px solid #2c4f7d;border-radius:11px;box-shadow:0 14px 32px rgba(0,0,0,.55);
+  display:flex;flex-direction:column;gap:1px;}
+.bi-menu-row{display:flex;align-items:center;gap:9px;width:100%;padding:6px 9px;border:0;
+  border-radius:7px;background:none;color:var(--ink);font-family:var(--font);font-size:12.5px;
+  cursor:pointer;text-align:left;}
+.bi-menu-row .mdi{font-size:15px;color:var(--muted);flex:none;}
+.bi-menu-row:hover{background:#16325a;}
+.bi-menu-row:hover .mdi{color:var(--ink);}
+.bi-menu-row:focus-visible{outline:2px solid var(--focus);outline-offset:-2px;}
+.bi-menu-lab{flex:1;min-width:0;white-space:nowrap;}
+.bi-menu-key{color:var(--dim);font-size:11px;font-variant-numeric:tabular-nums;flex:none;}
+.bi-menu-gap{height:1px;background:var(--line);margin:4px 6px;}
+
+/* ---------- the tool rail ----------
+   One column down the left, grouped: pointer · things you write in · things you draw with. Grouped
+   because nine identical buttons in a line is a thing you read every time, and three groups is a
+   thing you learn once. */
 .board-palette{position:absolute;left:12px;top:12px;z-index:60;display:flex;flex-direction:column;
   gap:4px;background:var(--panel);border:1px solid var(--line);border-radius:11px;padding:5px;
   box-shadow:0 8px 22px rgba(0,0,0,.4);}
@@ -1111,90 +1293,42 @@ body.resizing-v #gameFrame{pointer-events:none;}
 .board-tool:focus-visible{outline:3px solid var(--focus);outline-offset:-2px;}
 .board-tool-gap{height:1px;background:var(--line);margin:3px 4px;}
 
-/* The lens picker. A list, not a shuffle — choosing which way to look at your own board is most of
-   the thinking, and a button that picks for you takes that away. */
+/* ---------- zoom ----------
+   Bottom LEFT, under the rail. The right-hand side belongs to the assistant, and a zoom control
+   tucked behind the chat box is one you cannot press. */
+.board-zoom{position:absolute;left:12px;bottom:12px;display:flex;gap:1px;align-items:center;
+  z-index:60;background:var(--panel);border:1px solid var(--line);border-radius:9px;padding:3px;}
+.board-zoom button{width:24px;height:24px;border-radius:6px;background:none;border:0;padding:0;
+  color:var(--muted);cursor:pointer;font-size:15px;font-family:var(--font);line-height:1;
+  display:grid;place-items:center;}
+/* Optically matched to the − and + beside it, not set to the rail's 17px: Overscan is a full-width
+   glyph and at 17px it fills its 24px button edge to edge, which reads as a second button drawn
+   inside the first. */
+.board-zoom .mdi{font-size:14px;line-height:1;}
+/* Fit is not a third step of the zoom stepper — it is the one control that ignores where you are. */
+.board-zoom-gap{width:1px;align-self:stretch;background:var(--line);margin:2px 3px;}
+.board-zoom button:hover{color:var(--ink);background:#16325a;}
+.board-zoom button:focus-visible{outline:2px solid var(--focus);outline-offset:-2px;}
+/* By id, not by tag: the divider beside it is a span too, and a 33px minimum turned a hairline into
+   a third of the bar. */
+#boardZoomAt{font-size:11px;color:var(--dim);min-width:33px;text-align:center;
+  font-variant-numeric:tabular-nums;}
 
-/* Linking is a mode, and a mode has to look like one or the next click is a surprise. */
-.board-canvas-wrap.linking{cursor:crosshair;}
-.board-canvas-wrap.linking .board-note{cursor:crosshair;}
-.board-note.linkfrom{outline:2px solid var(--gold);outline-offset:3px;}
-.board-links{position:absolute;left:0;top:0;overflow:visible;pointer-events:none;}
-.board-link{stroke:#4a79b0;stroke-width:2.5;stroke-dasharray:6 6;pointer-events:stroke;cursor:pointer;}
-.board-link:hover{stroke:var(--gold);}
-
-/* Starred. Dot voting, one note at a time — the starred ones stay bright and everything else steps
-   back, so "which of these nine" has an answer you can see from across the board. */
-/* The sticky the assistant just wrote into. It fills the board while the student is reading a
-   message on the other side of the screen, so without this the board changes behind their back. */
-.board-note.landed{animation:board-land 1.4s ease-out;}
+/* The sticky the assistant just wrote. It fills the board while the student is reading a message on
+   the other side of the screen, so without this the board changes behind their back. */
+.bi.landed{animation:board-land 1.4s ease-out;}
 @keyframes board-land{
-  0%{box-shadow:0 0 0 3px var(--gold),0 10px 26px rgba(0,0,0,.5);transform:scale(1.05) rotate(0);}
+  0%{box-shadow:0 0 0 3px var(--gold),0 10px 26px rgba(0,0,0,.5);}
   70%{box-shadow:0 0 0 3px var(--gold),0 10px 26px rgba(0,0,0,.5);}
-  100%{box-shadow:0 6px 14px rgba(0,0,0,.35);}
+  100%{box-shadow:0 6px 14px rgba(0,0,0,.38);}
 }
-@media (prefers-reduced-motion:reduce){ .board-note.landed{animation:none;box-shadow:0 0 0 3px var(--gold);} }
+@media (prefers-reduced-motion:reduce){ .bi.landed{animation:none;box-shadow:0 0 0 3px var(--gold);} }
 
-.board-note.star{box-shadow:0 0 0 2px var(--gold),0 8px 20px rgba(0,0,0,.45);}
-.board-canvas:has(.board-note.star) .board-note:not(.star):not(.fixed){opacity:.72;}
-
-/* Bottom LEFT, under the palette. The right-hand side belongs to the conversation, and a zoom
-   control tucked behind the chat box is one you cannot press. */
-.board-zoom{position:absolute;left:12px;bottom:12px;display:flex;gap:4px;align-items:center;z-index:60;
-  background:var(--panel);border:1px solid var(--line);border-radius:9px;padding:4px 6px;}
-.board-zoom button{min-width:24px;height:24px;border-radius:6px;background:none;border:0;
-  color:var(--muted);cursor:pointer;font-size:14px;font-family:var(--font);padding:0 5px;}
-.board-zoom button:hover{color:var(--ink);}
-.board-zoom span{font-size:11px;color:var(--dim);min-width:36px;text-align:center;}
-
-
-/* ---------- note controls ----------
-   On the note rather than in a toolbar somewhere, because which of fifteen notes you are acting on
-   has to be unambiguous. Hidden until hover or focus so a full board is notes rather than buttons —
-   focus is in there so this is not mouse-only. */
-.board-note-bar{position:absolute;top:4px;right:4px;display:flex;gap:2px;opacity:0;
-  transition:opacity .12s;}
-.board-note:hover .board-note-bar,
-.board-note:focus-within .board-note-bar,
-.board-note.pinned .board-note-bar{opacity:1;}
-.board-note-btn{width:20px;height:20px;border-radius:5px;border:0;cursor:pointer;padding:0;
-  background:rgba(0,0,0,.12);color:inherit;display:grid;place-items:center;font-size:13px;
-  line-height:1;opacity:.72;}
-.board-note-btn:hover{background:rgba(0,0,0,.24);opacity:1;}
-.board-note-btn:focus-visible{outline:2px solid var(--focus);outline-offset:1px;}
-/* A pinned note is not draggable, and says so by sitting straight while everything else is askew. */
-.board-note.pinned{cursor:default;transform:none;}
-.board-note.pinned .board-note-btn{opacity:.9;}
-.board-note-grip{position:absolute;right:0;bottom:0;width:16px;height:16px;cursor:nwse-resize;
-  opacity:0;transition:opacity .12s;
-  background:linear-gradient(135deg,transparent 46%,currentColor 46%,currentColor 54%,transparent 54%,
-    transparent 68%,currentColor 68%,currentColor 76%,transparent 76%);}
-.board-note:hover .board-note-grip,.board-note:focus-within .board-note-grip{opacity:.4;}
-.board-note.sizing{transform:none;}
-.board-note.sizing .board-note-txt{overflow:hidden;}
-
-/* ---------- the conversation, on the board ----------
-   Bubbles in board coordinates, in a lane down the right. They pan and zoom with the notes because
-   the assistant is part of the workspace rather than a drawer beside it — it puts notes on this
-   board, and what it says should live in the same space as what it makes. */
-/* The column has no surface of its own — the board runs underneath and behind it, and only the
-   bubbles and the input have a background. Pointer events pass through the gaps, so the board is
-   still draggable in the space between messages. */
-
-/* Text messages. Theirs on the right in the app's selection blue, the assistant's on the left in a
-   panel colour — the same shape everyone already knows from a phone. */
-
-
-/* The two structured cards float in the lane with the bubbles, full width, because both of them are
-   about the board rather than about the sentence before them. */
-
-/* The objective, handed out into the conversation. The chat IS the quest log — a student reads the
-   brief, does the thing in the Code tab, and COMPLETE lands in the same column they were reading. */
-
-/* The board itself does not reflow — it pans, so a narrow window is a smaller window onto the same
-   board rather than a different layout. Only the fixed chat box needs to give ground. The board
-   refuses to open below 700 at all, so there is no case where it has to fit a phone. */
+/* The board does not reflow — it pans, so a narrow window is a smaller window onto the same board
+   rather than a different layout. Only the furniture moves in. */
 @media (max-width:900px){
   .board-palette{top:8px;left:8px;}
+  .board-zoom{left:8px;bottom:8px;}
 }
 
 /* leaderboard */

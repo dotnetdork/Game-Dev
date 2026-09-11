@@ -1,892 +1,1421 @@
-/* board.js — the Design tab: the student's own design board, open at any point in the course.
+/* board.js — the Design tab: the student's own board.
  *
- * A canvas with sticky notes on it, between Learn and Code. What their game IS lives here — the one
- * sentence, the verb, how you win, how you lose, the twist, and the list of everything they decided
- * NOT to build — and they can get to it from any lesson rather than at six appointed moments.
+ * Their game design document, their task list, and the place they put an idea before they know what
+ * it is. It belongs to them, not to a lesson: one board, open on every page of the course, from the
+ * first lesson to the last.
  *
- * WHAT THIS USED TO BE, because the shape of the code still shows it. Every module ended in a
- * CHECKPOINT: a gated lesson that opened this board full-screen, with objectives, a progress rail,
- * a Finish button, a badge, and a coach conducting an interview inside it. The gate is gone
- * (2026-09-09). The board was the good half; the gate was the bad half — six walls, each arriving
- * as a different kind of thing from every lesson around it, and none of them somewhere a student
- * could simply go back to. What is left is the workspace with none of the ceremony.
+ * ---------------------------------------------------------------------------------------------
+ * WHAT IT STOPPED BEING, twice, because the shape of the code still shows both.
  *
- * Three things carry over from that design and are worth keeping stated:
+ * It was six CHECKPOINT boards, one gated behind each module, with objectives and a Finish button
+ * (removed 2026-09-09). Then it was one board that was a structured view of `design.md`, the
+ * six-slot one-sheet in the student's project (removed 2026-09-11). The one-sheet was a form with a
+ * canvas painted on it: six fixed stickies you could move but not rename, delete or add to.
  *
- *   The artifact is a FILE. The board is a structured view of `design.md` in the student's own
- *   project, and that file stays the single truth — read on show, written on every edit. Nothing is
- *   stored twice. This matters more than it looks: notes kept in progress state are destroyed by
- *   "Reset my progress", a button that lives under a heading called Testing and promises only to
- *   clear XP and lessons, and the one-sheet is the only thing a student cannot get back by reading
- *   the starter.
+ * Now the board is a real document with its own object model. A student can draw a frame, name it,
+ * fill it with sticky notes, connect two of them with a labelled arrow, put a rectangle round a
+ * group, and throw any of it away. Nothing on it is fixed. The eight frames it ships with are a
+ * starting layout, not a schema — they are ordinary frames that happen to be there on day one, and
+ * deleting one is allowed.
  *
- *   The REGIONS are the data, not decoration. Dragging a sticky out of My game and into Not building
- *   is how a student cuts scope — a design lesson made physical instead of described.
+ * ---------------------------------------------------------------------------------------------
+ * WHERE IT IS STORED, and why it is not in progress state.
  *
- *   There is no chat in here. The board had its own coach; now the Design tab uses the shell's AI
- *   panel like every other tab, with Build switched off and the Tutor answering as the design coach.
- *   One assistant, in one place, whichever tab you are on.
+ * Its own key, `leagueBoard`, beside the project and the progress rather than inside either.
+ *
+ * Not in the project, because the project is code: the game runner injects every file as a
+ * <script>, the coder agent rewrites files, and Reset-the-game restores them. A design document is
+ * none of those things.
+ *
+ * Not in progress state either, because progress is a ledger of what has been done and this is a
+ * document. They are cleared together — **Reset my progress** is a testing control that puts the
+ * whole app back to its first run, board included — but they are written at completely different
+ * rates, and one blob per thing is also what makes a future per-student server sync a PUT of this
+ * key rather than a merge inside somebody else's object.
+ *
+ * ---------------------------------------------------------------------------------------------
+ * THE MODEL
+ *
+ *   items   one flat array, back to front. Everything is an item and every item has x, y, w, h.
+ *           kinds: frame · note · text · shape · chip
+ *   links   arrows between two items, optionally with a word on them.
+ *
+ * Flat rather than a tree, and frames do not own their children. A frame asks "whose centre is
+ * inside me" when it is dragged, which means a note can be pulled out of a frame by dragging it
+ * out — no reparenting step, no way to get into a state where an item belongs to a frame it is not
+ * sitting on. Z-order is array order, so "bring to front" is a splice.
  */
 
-/* ---------- the one-sheet, as data ----------
-   design.md is a real markdown file in the student's project, and it is also the board's backing
-   store. The board is its only editor, but it stays a file rather than becoming board-shaped state
-   for two reasons: a lesson's `contains: {file: design.md}` check reads it, and anything kept in
-   progress state is destroyed by Reset my progress.
+/* ---------- storage ---------- */
+const BKEY = 'leagueBoard';
+const BOARD_SCHEMA = 1;
 
-   Round-tripping rules, both learned from what the file actually looks like:
+let board = null;              // the one board, loaded once
+let boardDirty = false;
 
-     A leading (parenthesised block) in a slot is a PROMPT, not an answer. The starter ships one
-     under every heading to explain what goes there, and a student who has written nothing has an
-     empty slot rather than a slot containing a sentence we wrote.
+function saveBoard() {
+  if (!board) return;
+  board.v = BOARD_SCHEMA;
+  Storage.writeJSON(BKEY, board);
+}
+/* Batched, because a drag fires on every pointermove and a board is a big object to stringify.
+   Anything that ends an interaction calls saveBoard directly; anything continuous calls this. */
+let saveTimer = 0;
+function saveBoardSoon() {
+  boardDirty = true;
+  clearTimeout(saveTimer);
+  saveTimer = setTimeout(function () { boardDirty = false; saveBoard(); }, 400);
+}
 
-     Headings the board does not lay out are KEPT, in place. A student can write whatever they like
-     in a note, and dropping unknown headings on write would delete their work to tidy a namespace. */
-const SHEET_FILE = 'design.md';
-
-function slotKey(h) { return String(h || '').toLowerCase().replace(/[^a-z0-9]+/g, ''); }
-
-/* Strip a balanced parenthesised block from the front. Balanced rather than greedy because the
-   prompts contain parentheses of their own — "(0 = none)" inside one would end it early. */
-function splitPrompt(body) {
-  const t = String(body == null ? '' : body).replace(/^\n+/, '');
-  if (t.charAt(0) !== '(') return { prompt: '', answer: t.trim() };
-  let depth = 0;
-  for (let i = 0; i < t.length; i++) {
-    if (t.charAt(i) === '(') depth++;
-    else if (t.charAt(i) === ')') {
-      depth--;
-      if (depth === 0) return { prompt: t.slice(0, i + 1), answer: t.slice(i + 1).trim() };
-    }
+function loadBoard() {
+  const raw = Storage.readJSON(BKEY, null);
+  if (raw && typeof raw === 'object' && Array.isArray(raw.items)) {
+    if (!Array.isArray(raw.links)) raw.links = [];
+    return raw;
   }
-  return { prompt: t.trim(), answer: '' };            // unbalanced: treat the lot as the prompt
+  return starterBoard();
 }
 
-function parseSheet(md) {
-  const lines = String(md == null ? '' : md).replace(/\r\n/g, '\n').split('\n');
-  const sheet = { head: [], slots: [] };
-  let cur = null;
-  lines.forEach(function (ln) {
-    const m = ln.match(/^##\s+(.+?)\s*$/);
-    if (m) { cur = { heading: m[1], key: slotKey(m[1]), raw: [] }; sheet.slots.push(cur); return; }
-    (cur ? cur.raw : sheet.head).push(ln);
+/* ---------- what a new board looks like ----------
+   Eight frames laid out as a game design document reads: what the game IS across the top, how it
+   WORKS in the middle, and the two frames that are about the work rather than the game — the task
+   list and the cut list — down the right.
+
+   The sections are the ones every GDD guide agrees on, trimmed to what a twelve-year-old with one
+   platformer can actually answer: pitch, core loop, mechanics, art and sound, levels. "Story" is
+   deliberately absent as a default — it is the section that eats a term, and a student who wants
+   one can make the frame themselves in two clicks.
+
+   These are ORDINARY FRAMES. Nothing in the code treats them specially; they are simply what is on
+   the board the first time it is opened. Rename them, move them, delete them. */
+function starterBoard() {
+  const F = function (id, title, x, y, w, h, colour) {
+    return { id: id, kind: 'frame', title: title, x: x, y: y, w: w, h: h, colour: colour };
+  };
+  const N = function (id, x, y, title, text, colour) {
+    return { id: id, kind: 'note', title: title, text: text, x: x, y: y, w: 168, h: 100, colour: colour };
+  };
+  return {
+    v: BOARD_SCHEMA,
+    items: [
+      F('f-pitch', 'The pitch', 40, 40, 420, 240, 'b'),
+      F('f-loop', 'Core loop', 500, 40, 420, 240, 'g'),
+      F('f-mech', 'Mechanics & controls', 40, 320, 420, 300, 'p'),
+      F('f-art', 'Art & sound', 500, 320, 420, 300, 'o'),
+      F('f-levels', 'Levels', 40, 660, 880, 240, 'y'),
+      F('f-todo', 'To do', 960, 40, 320, 400, 'g'),
+      F('f-cut', 'Not building — next time', 960, 480, 320, 300, 'r'),
+      F('f-scratch', 'Scratch', 960, 820, 320, 240, ''),
+      /* Two stickies, written the way a sticky should be written — a heading you could find across
+         a full board, then the thing itself. They are the only instructions the board gives. */
+      N('n-1', 64, 92, 'One sentence', 'My game is a ______ where you ______.', 'y'),
+      N('n-2', 524, 92, 'The loop', 'You do X, the game answers with Y, and Z sets up the next go.', 'y'),
+      N('n-3', 984, 92, 'First job', 'Play the starter game. Write down one thing you would change.', 'g')
+    ],
+    links: []
+  };
+}
+
+/* ---------- geometry ---------- */
+const NOTE_W = 168, NOTE_H = 100;
+const GRID = 8;                       // everything lands on this; a board of near-aligned things
+                                      // looks broken in a way nobody can point at
+const COLOURS = ['y', 'b', 'g', 'p', 'o', 'r', ''];
+function snap(n) { return Math.round(n / GRID) * GRID; }
+function uid(p) { return (p || 'i') + '-' + Math.random().toString(36).slice(2, 9); }
+
+function itemById(id) { return (board.items || []).filter(function (i) { return i.id === id; })[0] || null; }
+function rectOf(i) { return { x: i.x, y: i.y, w: i.w, h: i.h }; }
+function centreOf(i) { return { x: i.x + i.w / 2, y: i.y + i.h / 2 }; }
+function inside(outer, pt) {
+  return pt.x >= outer.x && pt.x <= outer.x + outer.w && pt.y >= outer.y && pt.y <= outer.y + outer.h;
+}
+/* The frame a point sits in, topmost first. Frames are items like anything else, so this is just a
+   filtered reverse scan of the same array. */
+function frameAt(pt, skipId) {
+  const fr = (board.items || []).filter(function (i) { return i.kind === 'frame' && i.id !== skipId; });
+  for (let k = fr.length - 1; k >= 0; k--) if (inside(rectOf(fr[k]), pt)) return fr[k];
+  return null;
+}
+/* Everything whose centre is inside this frame. Used when a frame is dragged: its contents come
+   with it. Asked fresh every time rather than stored, so dragging a note out of a frame is the
+   whole of "remove it from the frame". */
+function itemsInFrame(f) {
+  return (board.items || []).filter(function (i) {
+    return i !== f && i.kind !== 'frame' && inside(rectOf(f), centreOf(i));
   });
-  sheet.slots.forEach(function (s) {
-    const p = splitPrompt(s.raw.join('\n'));
-    s.prompt = p.prompt; s.answer = p.answer;
+}
+
+/* ---------- view ---------- */
+let scale = 1, panX = 0, panY = 0;
+const MIN_SCALE = 0.2, MAX_SCALE = 3;      // Miro's range, near enough. 0.4–1.6 was too tight to
+                                           // either see the whole document or read a small label
+function applyView() {
+  const c = $('boardCanvas'); if (!c) return;
+  c.style.transform = 'translate(' + panX + 'px,' + panY + 'px) scale(' + scale + ')';
+  /* Published for the two bits of furniture that live in board coordinates but must not shrink with
+     the board — the selection bar, and the resize grips. At 30% a 24px button is 7px of target. */
+  c.style.setProperty('--inv', (1 / scale).toFixed(4));
+  const at = $('boardZoomAt'); if (at) at.textContent = Math.round(scale * 100) + '%';
+}
+function setScale(next, at) {
+  const was = scale;
+  scale = Math.max(MIN_SCALE, Math.min(MAX_SCALE, next));
+  if (at && was) {
+    panX = at.x - (at.x - panX) * (scale / was);
+    panY = at.y - (at.y - panY) * (scale / was);
+  }
+  applyView();
+}
+/* Zoom steps are multiplicative, not additive. A fixed ±0.1 is a third of the way from 0.3 to 0.4
+   and a thirtieth of the way from 2.9 to 3.0 — the same button doing two different jobs depending
+   on where you already are. */
+function zoomBy(f, at) { setScale(scale * f, at); }
+function boardBounds() {
+  const items = board.items || [];
+  if (!items.length) return { x: 0, y: 0, w: 1000, h: 700 };
+  let x0 = Infinity, y0 = Infinity, x1 = -Infinity, y1 = -Infinity;
+  items.forEach(function (i) {
+    x0 = Math.min(x0, i.x); y0 = Math.min(y0, i.y);
+    x1 = Math.max(x1, i.x + i.w); y1 = Math.max(y1, i.y + i.h);
   });
-  return sheet;
+  return { x: x0, y: y0, w: x1 - x0, h: y1 - y0 };
+}
+function zoomToFit() {
+  const wrap = $('boardCanvasWrap'); if (!wrap) return;
+  const b = wrap.getBoundingClientRect(), r = boardBounds(), pad = 60;
+  scale = Math.max(MIN_SCALE, Math.min(MAX_SCALE, Math.min((b.width - pad) / r.w, (b.height - pad) / r.h)));
+  panX = (b.width - r.w * scale) / 2 - r.x * scale;
+  panY = (b.height - r.h * scale) / 2 - r.y * scale;
+  applyView();
+}
+/* Screen point -> board point. Every pointer handler needs this and getting it wrong is the classic
+   canvas bug where things land further from the cursor the more you have panned. */
+function toBoard(clientX, clientY) {
+  const b = $('boardCanvasWrap').getBoundingClientRect();
+  return { x: (clientX - b.left - panX) / scale, y: (clientY - b.top - panY) / scale };
 }
 
-/* Back to markdown. An answered slot loses its prompt, so the file reads as a design document
-   rather than as a form — and an unanswered one keeps it, so a blank sticky still says what goes
-   in it. */
-function renderSheet(sheet) {
-  const out = [sheet.head.join('\n').replace(/\s+$/, '')];
-  sheet.slots.forEach(function (s) {
-    out.push('\n\n## ' + s.heading + '\n\n' + (s.answer ? s.answer : s.prompt).replace(/\s+$/, ''));
-  });
-  return out.join('').replace(/\s+$/, '') + '\n';
-}
-
-function sheetRead() {
-  const md = (typeof project === 'object' && project && project.files) ? project.files[SHEET_FILE] : '';
-  return parseSheet(typeof md === 'string' ? md : '');
-}
-function sheetWrite(sheet) {
-  if (typeof project !== 'object' || !project || !project.files) return;
-  project.files[SHEET_FILE] = renderSheet(sheet);
-  if (project.order && project.order.indexOf(SHEET_FILE) < 0) project.order.unshift(SHEET_FILE);
-  if (typeof saveProject === 'function') saveProject();
-}
-/* Find a slot by heading, creating it if the file has never had one. Matched on the squashed key so
-   "My game is" finds "## My game is..." — the starter's headings carry an ellipsis and an author
-   writing a board should not have to reproduce it. */
-function sheetSlot(sheet, heading) {
-  const k = slotKey(heading);
-  let s = sheet.slots.filter(function (x) { return x.key === k; })[0];
-  if (!s) { s = { heading: heading, key: k, raw: [], prompt: '', answer: '' }; sheet.slots.push(s); }
-  return s;
-}
-
-/* ---------- the board ----------
-   The student's design board: one canvas with sticky notes on it, panned and dragged, living behind
-   the Design tab and open at any point in the course.
-
-   It used to be six of these, one behind each module's CHECKPOINT — a gated lesson that replaced the
-   page with a full-screen board and made the module's stars wait behind it. That shape is gone
-   (2026-09-09, see content/course.yaml). The board was the good half of it and the gate was the bad
-   half: six visits, each one a wall, each one arriving as a different kind of thing from every
-   lesson around it. Now there is ONE board, it belongs to the student rather than to a lesson, and
-   the whole course can point at it — which is what "work on your own game" was always supposed to
-   mean.
-
-   ONE board, not one per lesson. The key is fixed rather than the lesson id: a design board that
-   reset when you turned the page would be a worksheet again.
-
-   The regions are not decoration. They are the data: dragging a sticky out of My game and into Not
-   building is how a student cuts scope, and that is a design lesson made physical instead of
-   described. A board where dragging changed nothing would be a picture of a workspace.
-
-   What lives where, and why:
-
-     slot text      design.md. It is the one thing a student cannot get back, so it stays in a file
-                    that survives Reset my progress.
-     loose notes    also design.md, under `## Board notes`, one per line — same argument.
-     positions      state.boards[BOARD_KEY]. Pure layout, cheap to lose, and no migration needed
-                    because loadState merges DEFAULT_STATE first.
-
-   Two kinds of sticky. A SLOT note is one heading of the one-sheet: always present, never
-   deletable, its text is that slot's answer. A LOOSE note is anything else the student writes, and
-   the region it is sitting in decides what it means. */
-let theBoard = null;             // built once, on first paint; there is only ever one
-const BOARD_KEY = 'design';      // not a lesson id — see above
-const BOARD_MIN_WIDTH = 700;     // same threshold as the lab bench; see tooSmallToBuild
-
-const NOTE_W = 172;
-const NOTE_H = 104;
-const NOTE_COLOURS = ['y', 'b', 'g', 'p', 'o'];
-
-/* Where the notes are, how big, and whether they are pinned. Layout only — see the note above about
-   what is stored where. Stored as an object rather than an [x, y] pair because size and pinning
-   arrived later and a tuple that grows is a tuple somebody reads wrong. */
-function boardState(lessonId) {
-  if (!state.boards) state.boards = {};
-  if (!state.boards[lessonId]) state.boards[lessonId] = { pos: {} };
-  return state.boards[lessonId];
-}
-function noteGeo(board, id) {
-  const raw = (boardState(BOARD_KEY).pos || {})[id];
-  if (!raw) return null;
-  if (Array.isArray(raw)) return { x: raw[0], y: raw[1] };     // boards saved before size and pins
-  return raw;
-}
-function saveNoteGeo(board, id, patch) {
-  const b = boardState(BOARD_KEY);
-  if (!b.pos) b.pos = {};
-  const was = noteGeo(board, id) || {};
-  b.pos[id] = Object.assign({}, was, patch);
-  if (typeof saveState === 'function') saveState();
-}
-function notePinned(board, id) { return !!(noteGeo(board, id) || {}).pin; }
-
-/* ---------- loose notes, in the file ----------
-   `## Board notes` is a slot like any other, one note per line. Keeping them in design.md rather
-   than in progress state costs a little parsing and buys the thing that matters: a student's own
-   writing is never destroyed by a button labelled Testing. */
-const BOARD_SLOT = 'Board notes';
-/* Every line that is a list item, INCLUDING the empty ones. An empty sticky is a real thing on a
-   board — it is what Crazy 8s deals out eight of, and dropping them on read meant that tool
-   silently did nothing. Lines that are not list items are somebody's prose and are left alone. */
-function looseNotes(sheet) {
-  const raw = sheetSlot(sheet, BOARD_SLOT).answer || '';
-  if (!raw.trim()) return [];
-  return raw.split('\n')
-    .filter(function (l) { return /^\s*[-*]/.test(l); })
-    .map(function (l) { return l.replace(/^\s*[-*]\s?/, '').trim(); });
-}
-function saveLooseNotes(sheet, list) {
-  sheetSlot(sheet, BOARD_SLOT).answer = list.map(function (s) { return '- ' + (s || ''); }).join('\n');
-  sheetWrite(sheet);
-}
-
-/* ---------- regions ----------
-   The board's furniture. Three of them, and each has a job:
-
-     holds: slots            the fixed one-sheet stickies live in here
-     collects: <heading>     every loose note dropped in here composes that slot
-     (neither)               the scratch region — somewhere to put a thought that has no home yet
-
-   Fixed in code rather than authored per lesson, because there is one board now and it belongs to
-   the student rather than to whatever page they happen to be on. A region grows to fit what is
-   dropped into it, so the rectangles below are starting sizes and not limits. */
-const CUT_HEADING = 'What I am NOT building';
-const BOARD_REGIONS = [
-  { id: 'game', say: 'My game', at: [40, 40, 620, 300], holds: 'slots' },
-  { id: 'cut', say: 'Not building — next time', at: [700, 40, 300, 300], hot: true, collects: CUT_HEADING },
-  { id: 'loose', say: 'Ideas, unsorted', at: [40, 380, 960, 200] }
+/* ---------- tools ---------- */
+/* `select` is the home state and every other tool returns to it after one use, which is the rule
+   Miro and FigJam both follow: a tool that stays armed is a tool that puts six rectangles on the
+   board while you are trying to click things. Hold shift when you place one to stay in the tool. */
+let tool = 'select';
+let sticky = false;                       // shift-held: stay in the current tool
+const TOOLS = [
+  { id: 'select', icon: 'mdi-cursor-default-outline', name: 'Select', key: 'V' },
+  { id: 'note', icon: 'mdi-note-outline', name: 'Sticky note', key: 'N' },
+  { id: 'text', icon: 'mdi-format-text', name: 'Text', key: 'T' },
+  { id: 'frame', icon: 'mdi-image-frame', name: 'Frame — a titled box that moves what is inside it', key: 'F' },
+  { id: 'rect', icon: 'mdi-rectangle-outline', name: 'Rectangle', key: 'R' },
+  { id: 'ellipse', icon: 'mdi-ellipse-outline', name: 'Ellipse', key: 'O' },
+  { id: 'diamond', icon: 'mdi-rhombus-outline', name: 'Diamond — a decision, in a flowchart', key: 'D' },
+  { id: 'arrow', icon: 'mdi-arrow-top-right', name: 'Arrow — drag from one thing to another', key: 'A' },
+  { id: 'draw', icon: 'mdi-draw', name: 'Pen — draw anything, freehand', key: 'P' },
+  { id: 'erase', icon: 'mdi-eraser', name: 'Eraser — rub out pen marks', key: 'E' }
 ];
-function boardRegions() { return BOARD_REGIONS; }
-/* The one-sheet's headings, in the order design.md lists them, minus the two that are not stickies:
-   the cut list is a REGION that loose notes get dropped into, and Board notes is where those loose
-   notes are stored. Read from the file rather than declared, so adding a heading to design.md adds
-   a note to the board and nothing else has to know. */
-function boardSlots(board) {
-  return (board.sheet.slots || []).map(function (x) { return x.heading; })
-    .filter(function (h) { return h !== CUT_HEADING && h !== BOARD_SLOT; });
+function setTool(t) {
+  tool = t;
+  const wrap = $('boardCanvasWrap');
+  if (wrap) wrap.dataset.tool = t;
+  paintTools();
 }
-/* Which region a note at (x, y) is in. Tested against the region's DRAWN rectangle, not its
-   declared one — a region grows to fit what has been dropped in it, and a note sitting in the part
-   it grew is visibly inside a box that would otherwise say it was loose. */
-function regionAt(board, x, y) {
-  const cx = x + NOTE_W / 2, cy = y + NOTE_H / 2;
-  const hit = boardRegions(board).filter(function (r) { return inRect(regionRect(board, r), cx, cy); });
-  return hit[hit.length - 1] || null;      // the last declared wins, so a nested region can exist
+
+/* ---------- undo ----------
+   Whole-board snapshots, not a log of inverse operations. A board is a few dozen small objects, so
+   a snapshot is a few kilobytes of JSON and the stack is cheaper than the bookkeeping an operation
+   log needs — and it cannot drift, which an inverse-operation undo can and does.
+
+   mark() is called BEFORE a change, by the thing about to make it. Continuous gestures mark once,
+   lazily, on the first pointermove: otherwise a click that only selects would push a snapshot and
+   the student's first Ctrl+Z would appear to do nothing. */
+const UNDO_MAX = 60;
+let undoStack = [], redoStack = [];
+function snapshot() { return JSON.stringify({ items: board.items, links: board.links || [] }); }
+function mark() {
+  if (!board) return;
+  undoStack.push(snapshot());
+  if (undoStack.length > UNDO_MAX) undoStack.shift();
+  redoStack.length = 0;
+}
+function unmark() { undoStack.pop(); }        // for a change that turned out to be a no-op
+function restore(s) {
+  const o = JSON.parse(s);
+  board.items = o.items; board.links = o.links;
+  sel = sel.filter(function (id) { return !!itemById(id); });
+  commitEdit();
+  saveBoard(); paintBoard();
+}
+function undo() { if (undoStack.length) { redoStack.push(snapshot()); restore(undoStack.pop()); } }
+function redo() { if (redoStack.length) { undoStack.push(snapshot()); restore(redoStack.pop()); } }
+
+/* ---------- copy and paste ----------
+   Its own clipboard rather than the system one: the board is inside a page with a code editor and a
+   chat box in it, and hijacking the real clipboard would mean a student who copied a note could no
+   longer paste a line of code. Pasting offsets, so the copy is not hidden under the original. */
+let clip = null;
+function copySelection() {
+  const items = selItems();
+  if (items.length) clip = JSON.stringify(items);
+}
+function pasteClip() {
+  if (!clip) return;
+  mark();
+  const made = [];
+  JSON.parse(clip).forEach(function (i) {
+    const c = Object.assign({}, i, { id: uid(i.kind), x: i.x + 24, y: i.y + 24 });
+    addItem(c); made.push(c.id);
+  });
+  if (made.length) { sel = made; saveBoard(); paintBoard(); } else unmark();
+}
+
+/* ---------- selection ---------- */
+let sel = [];
+function isSel(id) { return sel.indexOf(id) >= 0; }
+function select(ids, add) {
+  sel = add ? sel.concat(ids.filter(function (i) { return !isSel(i); })) : ids.slice();
+  paintBoard();
+}
+function clearSel() { if (sel.length) { sel = []; paintBoard(); } }
+function selItems() { return sel.map(itemById).filter(Boolean); }
+
+/* Deletes items AND arrows. An arrow selects like anything else — click it, and it is in `sel` — so
+   it has to be looked for by its own id here as well as being swept up when one of its ends goes. */
+function deleteSelection() {
+  if (!sel.length) return;
+  mark();
+  board.items = board.items.filter(function (i) { return !isSel(i.id); });
+  board.links = (board.links || []).filter(function (l) {
+    return !isSel(l.id) && !isSel(l.from) && !isSel(l.to);
+  });
+  sel = [];
+  saveBoard(); paintBoard();
+}
+function duplicateSelection() {
+  if (!sel.length) return;
+  mark();
+  const made = [];
+  selItems().forEach(function (i) {
+    const c = Object.assign({}, i, { id: uid(i.kind), x: i.x + 24, y: i.y + 24 });
+    addItem(c); made.push(c.id);
+  });
+  if (made.length) { sel = made; saveBoard(); paintBoard(); } else unmark();
+}
+function colourSelection(c) {
+  const items = selItems();
+  if (!items.length || items.every(function (i) { return i.colour === c; })) return;
+  mark();
+  items.forEach(function (i) { i.colour = c; });
+  saveBoard(); paintBoard();
+}
+/* To the front or the back of its own layer. Raising a frame past the notes standing on it would
+   hide them, which is never what "bring to front" is being asked for — so frames are re-sorted
+   under everything afterwards either way. */
+function restack(toFront) {
+  if (!sel.length) return;
+  mark();
+  const picked = selItems(), rest = board.items.filter(function (i) { return !isSel(i.id); });
+  const all = toFront ? rest.concat(picked) : picked.concat(rest);
+  board.items = all.filter(function (i) { return i.kind === 'frame'; })
+    .concat(all.filter(function (i) { return i.kind !== 'frame'; }));
+  saveBoard(); paintBoard();
+}
+function raiseSelection() { restack(true); }
+function lowerSelection() { restack(false); }
+
+/* Arrow keys move the selection, which is the one way to line two things up exactly — a drag snaps
+   to the grid but a nudge is how you say "one more". A held arrow is one undo step, not forty: the
+   run ends when there is a pause. */
+let lastNudge = 0;
+function nudge(key, big) {
+  const items = selItems(); if (!items.length) return;
+  const d = big ? GRID * 4 : GRID;
+  const dx = key === 'ArrowLeft' ? -d : key === 'ArrowRight' ? d : 0;
+  const dy = key === 'ArrowUp' ? -d : key === 'ArrowDown' ? d : 0;
+  if (!dx && !dy) return;
+  const now = Date.now();
+  if (now - lastNudge > 600) mark();
+  lastNudge = now;
+  /* Gathered before anything moves, and deduped — otherwise a frame asked what is standing on it
+     after it has already moved answers about its new position, and anything selected alongside its
+     own frame travels twice as far as everything else. */
+  const moving = [];
+  items.forEach(function (i) {
+    if (moving.indexOf(i) < 0) moving.push(i);
+    if (i.kind === 'frame') itemsInFrame(i).forEach(function (c) { if (moving.indexOf(c) < 0) moving.push(c); });
+  });
+  moving.forEach(function (i) { i.x = snap(i.x + dx); i.y = snap(i.y + dy); });
+  saveBoardSoon(); paintBoard();
+}
+
+/* ---------- making things ---------- */
+/* Frames go UNDER everything, not on top, however late they are drawn. Array order is z-order, so a
+   frame drawn round three existing notes would otherwise cover them — and drawing a box round things
+   you already have is the main reason anyone reaches for a frame. */
+function addItem(o) {
+  o.id = o.id || uid(o.kind);
+  if (o.kind === 'frame') {
+    let n = 0;
+    while (n < board.items.length && board.items[n].kind === 'frame') n++;
+    board.items.splice(n, 0, o);
+  } else {
+    board.items.push(o);
+  }
+  saveBoard();
+  return o;
+}
+/* `what` is a TOOL id, not a kind: rect, ellipse and diamond are all the `shape` kind wearing
+   different clothes, and keeping that mapping in one place stops every caller having to know it. */
+const SHAPE_TOOLS = ['rect', 'ellipse', 'diamond'];
+function defaultsFor(what, pt) {
+  const isShape = SHAPE_TOOLS.indexOf(what) >= 0;
+  const base = { kind: isShape ? 'shape' : what, x: snap(pt.x - 40), y: snap(pt.y - 20), colour: 'y' };
+  if (isShape) return Object.assign(base, { shape: what, text: '', w: 160, h: 100, colour: 'b' });
+  if (what === 'note') return Object.assign(base, { title: '', text: '', w: NOTE_W, h: NOTE_H });
+  if (what === 'text') return Object.assign(base, { text: '', w: 220, h: 40, colour: '' });
+  if (what === 'frame') return Object.assign(base, { title: 'New frame', w: 360, h: 260, colour: 'b' });
+  return base;
+}
+/* Placed at the pointer, then immediately opened for typing. A new sticky you have to click again
+   to write in is a new sticky most students leave blank. */
+let justPlaced = null;         // see the text commit in startEdit
+function placeAt(what, pt) {
+  mark();
+  const o = addItem(defaultsFor(what, pt));
+  justPlaced = o.id;
+  paintBoard();
+  select([o.id]);
+  /* A sticky is typed heading-first, then Enter drops into the body — so the heading is the default
+     rather than the thing nobody remembers to go back and add. */
+  if (what === 'note') startEdit(o.id, 'title', 'text'); else startEdit(o.id);
+  if (!sticky) setTool('select');
+  return o;
 }
 
 /* ---------- painting ---------- */
-function paintBoard(board) {
-  const canvas = $('boardCanvas'); if (!canvas) return;
+function paintBoard() {
+  const canvas = $('boardCanvas'); if (!canvas || !board) return;
   canvas.innerHTML = '';
-  board.sheet = sheetRead();
-  geomCache = null;                       // one geometry pass per paint; see plannedGeoms
+  const b = boardBounds();
+  canvas.style.width = Math.max(2000, b.x + b.w + 600) + 'px';
+  canvas.style.height = Math.max(1400, b.y + b.h + 600) + 'px';
 
-  boardRegions(board).forEach(function (r) {
-    const a = regionRect(board, r);
-    const el = document.createElement('div');
-    el.className = 'board-field' + (r.hot ? ' hot' : '');
-    el.style.cssText = 'left:' + a[0] + 'px;top:' + a[1] + 'px;width:' + a[2] + 'px;height:' + a[3] + 'px';
-    el.dataset.region = r.id || '';
-    el.innerHTML = '<span class="board-field-lab">' + esc(r.say || r.id || '') + '</span>';
-    canvas.appendChild(el);
-  });
-
-  paintSlotNotes(board, canvas);
-  paintLooseNotes(board, canvas);
-  paintConnections(board, canvas);
+  paintLinks(canvas);
+  (board.items || []).forEach(function (i) { canvas.appendChild(makeEl(i)); });
+  paintSelectionBar();
 }
 
-/* ---------- how big a region actually is ----------
-   The declared rectangle is a MINIMUM. A region grows to hold whatever has been dragged into it, so
-   a student who fills the cut list with eleven notes gets a taller box rather than notes hanging
-   out of the bottom of a dashed line that has stopped meaning anything.
+function colourClass(c) { return c ? ' c-' + c : ' c-plain'; }
 
-   Grows only — never shrinks below what the author drew, so the board does not shuffle about
-   underneath somebody every time they move a note. */
-const REGION_PAD = 20;
-/* How far below a region's current bottom a note still counts as belonging to it. Must stay well
-   under the vertical gap the boards leave between regions, or one would grow into the next. */
-const REGION_GAP = 24;
-function regionRect(board, r) {
-  const a = (r.at || [0, 0, 240, 200]).slice();
-  const geoms = plannedGeoms(board);
-  let right = a[0] + a[2], bottom = a[1] + a[3];
-  /* Run to a fixed point rather than once. A note that has overflowed the bottom is, by definition,
-     outside the rectangle — so a single pass can never see the thing it is supposed to grow to fit,
-     and the box stays the size it was while notes hang out of it. Each pass takes in one more row
-     and the next pass can then see the row after that. Six is far past any real board; the cap is
-     only there so a bug cannot spin. */
-  for (let pass = 0; pass < 6; pass++) {
-    const was = right + bottom;
-    geoms.forEach(function (g) {
-      const cx = g.x + g.w / 2;
-      /* Horizontally by the note's centre, vertically by its TOP edge with a row's tolerance. A
-         centre test would need the box to already be tall enough to contain the note it is growing
-         for, which it never is — the padding is smaller than half a note. The tolerance is well
-         under the gap the layouts leave between regions, so one cannot claim another's notes. */
-      if (cx < a[0] || cx > right) return;
-      if (g.y < a[1] || g.y > bottom + REGION_GAP) return;
-      right = Math.max(right, g.x + g.w + REGION_PAD);
-      bottom = Math.max(bottom, g.y + g.h + REGION_PAD);
-    });
-    if (right + bottom === was) break;
-  }
-  return [a[0], a[1], right - a[0], bottom - a[1]];
-}
-function inRect(a, x, y) { return x >= a[0] && x <= a[0] + a[2] && y >= a[1] && y <= a[1] + a[3]; }
-
-/* Every note's box, worked out from the spec and saved state rather than read off the screen.
-   It has to be computable BEFORE anything is painted, because the regions are drawn first and their
-   size depends on what is sitting in them — asking the DOM here would measure the previous paint,
-   which is a frame behind and empty on the first one. Cached per paint, because regionRect calls it
-   once per region and this walks every note. */
-let geomCache = null;
-function plannedGeoms(board) {
-  if (geomCache) return geomCache;
-  const out = [];
-  const push = function (id, dx, dy) {
-    const g = noteGeo(board, id) || {};
-    out.push({ id: id, x: g.x === undefined ? dx : g.x, y: g.y === undefined ? dy : g.y,
-      w: g.w || NOTE_W, h: g.h || NOTE_H });
-  };
-    looseNotes(board.sheet).forEach(function (t, i) {
-    push('note:' + i, 60 + (i % 4) * 30, 470 + Math.floor(i / 4) * 24);
-  });
-  geomCache = out;
-  return out;
-}
-/* Where each objective sticky goes: its lane, then in order down it. Shared by the painter and the
-   geometry pass so the two cannot disagree about where an objective is. */
-function paintSlotNotes(board, canvas) {
-  const home = boardRegions(board).filter(function (r) { return r.holds === 'slots'; })[0];
-  boardSlots(board).forEach(function (h, i) {
-    const slot = sheetSlot(board.sheet, h);
-    const id = 'slot:' + slotKey(h);
-    const d = defaultSlotPos(home, i);
-    const g = noteGeo(board, id) || { x: d[0], y: d[1] };
-    const note = makeNote(board, {
-      id: id, x: g.x, y: g.y, w: g.w, h: g.h, pinned: !!g.pin, star: !!g.star,
-      colour: g.colour || NOTE_COLOURS[i % NOTE_COLOURS.length],
-      label: h.replace(/\.+$/, ''),
-      text: slot.answer,
-      hint: slot.prompt || '',
-      onText: function (v) { slot.answer = v; sheetWrite(board.sheet); }
-    });
-    canvas.appendChild(note);
-  });
-}
-function defaultSlotPos(home, i) {
-  const a = (home && home.at) || [40, 40, 420, 400];
-  const perRow = Math.max(1, Math.floor(a[2] / (NOTE_W + 22)));
-  return [a[0] + 22 + (i % perRow) * (NOTE_W + 22),
-    a[1] + 34 + Math.floor(i / perRow) * (NOTE_H + 26)];
+/* A hand-pinned angle, from the id, so a note keeps the same tilt for its whole life and no two
+   beside each other land at the same one. Small — 1.5° is enough to say "paper on a wall"; more and
+   a column of them looks broken rather than stuck. */
+function tiltOf(id) {
+  let n = 0;
+  for (let k = 0; k < id.length; k++) n = (n * 31 + id.charCodeAt(k)) % 1000;
+  return ((n / 1000) * 3 - 1.5).toFixed(2);
 }
 
-/* Loose notes. Where one sits decides what it means: a note in a `collects:` region is part of
-   that slot, and a note anywhere else is a thought the student has not filed yet. */
-function paintLooseNotes(board, canvas) {
-  looseNotes(board.sheet).forEach(function (text, i) {
-    const id = 'note:' + i;
-    const g = noteGeo(board, id) || { x: 60 + (i % 4) * 30, y: 470 + Math.floor(i / 4) * 24 };
-    canvas.appendChild(makeNote(board, {
-      id: id, x: g.x, y: g.y, w: g.w, h: g.h, pinned: !!g.pin, star: !!g.star,
-      colour: g.colour || 'o', loose: true, index: i,
-      label: regionLabelFor(board, g.x, g.y), text: text, hint: 'A loose thought.',
-      onText: function (v) {
-        const list = looseNotes(board.sheet);
-        if (v) list[i] = v; else list.splice(i, 1);
-        saveLooseNotes(board.sheet, list);
-        paintBoard(board);
-      },
-      /* Deleting is only offered on notes the student made. A slot note is one heading of their
-         one-sheet: it can be emptied, moved and pinned, but it cannot be got rid of, because the
-         question it is asking does not go away just because they have not answered it. */
-      onDelete: function () {
-        const list = looseNotes(board.sheet);
-        list.splice(i, 1);
-        saveLooseNotes(board.sheet, list);
-        /* Positions are keyed by index, so removing one shuffles every note after it onto the
-           previous note's spot. Shift them down to match rather than leaving the board scrambled. */
-        const b = boardState(BOARD_KEY);
-        const moved = {};
-        Object.keys(b.pos || {}).forEach(function (k) {
-          const m = k.match(/^note:(\d+)$/);
-          if (!m) { moved[k] = b.pos[k]; return; }
-          const n = Number(m[1]);
-          if (n < i) moved[k] = b.pos[k];
-          else if (n > i) moved['note:' + (n - 1)] = b.pos[k];
-        });
-        b.pos = moved;
-        if (typeof saveState === 'function') saveState();
-        paintBoard(board);
-      }
-    }));
-  });
-}
-function regionLabelFor(board, x, y) {
-  const r = regionAt(board, x, y);
-  return r ? (r.say || r.id) : 'Loose';
-}
-
-/* One sticky. `fixed` is a slot note — one of the one-sheet's headings, always present and never
-   deletable; anything else is a loose note the student made and can throw away. */
-function makeNote(board, o) {
+function makeEl(i) {
   const el = document.createElement('div');
-  el.className = 'board-note ' + (o.colour || 'y') + (o.text ? '' : ' blank')
-    + (o.done ? ' done' : '') + (o.fixed ? ' fixed' : '') + (o.pinned ? ' pinned' : '')
-    + (o.star ? ' star' : '');
-  el.style.left = o.x + 'px'; el.style.top = o.y + 'px';
-  if (o.w) el.style.width = o.w + 'px';
-  if (o.h) el.style.height = o.h + 'px';
-  el.dataset.id = o.id;
-  el.tabIndex = o.fixed ? -1 : 0;
-  const body = o.text || o.hint || '';
-  el.innerHTML = (o.done ? '<span class="board-note-tick" aria-hidden="true">&#10003;</span>' : '')
-    + '<div class="board-note-lab">' + esc(o.label || '') + '</div>'
-    + '<div class="board-note-txt">' + esc(body) + '</div>'
-    + (o.note ? '<div class="board-note-sub">' + esc(o.note) + '</div>' : '');
-  if (o.fixed) { el.setAttribute('aria-label', (o.label || '') + ': ' + (o.text || '')); return el; }
+  el.className = 'bi bi-' + i.kind + colourClass(i.colour) + (isSel(i.id) ? ' sel' : '')
+    + (i.kind === 'shape' ? ' s-' + i.shape : '');
+  el.dataset.id = i.id;
+  el.style.left = i.x + 'px'; el.style.top = i.y + 'px';
+  el.style.width = i.w + 'px'; el.style.height = i.h + 'px';
 
-  el.setAttribute('role', 'button');
-  el.setAttribute('aria-label', (o.label || '') + (o.text ? ': ' + o.text : ' — empty')
-    + (o.pinned ? ' — pinned' : '') + '. Click to write, drag to move.');
+  if (i.kind === 'frame') {
+    const t = document.createElement('div'); t.className = 'bi-ftitle';
+    t.textContent = i.title || 'Frame';
+    el.appendChild(t);
+  } else if (i.kind === 'note') {
+    el.style.setProperty('--rot', tiltOf(i.id) + 'deg');
+    /* Every sticky has a heading, whether or not one has been written yet. A note with a heading is
+       a thing about something; a note without one is a sentence floating on a board, and a wall of
+       those is exactly the mess this workspace exists to prevent. */
+    const h = document.createElement('div'); h.className = 'bi-title';
+    h.textContent = i.title || 'Heading';
+    if (!i.title) h.classList.add('blank');
+    el.appendChild(h);
+    const p = document.createElement('div'); p.className = 'bi-body';
+    p.textContent = i.text || '';
+    if (!i.text) { p.classList.add('blank'); p.textContent = 'Write something…'; }
+    el.appendChild(p);
+  } else if (i.kind === 'ink') {
+    /* Drawn into its own bounding box with a viewBox, so resizing the stroke scales it — a squiggle
+       behaves like everything else on the board instead of being the one thing you cannot adjust. */
+    const NS = 'http://www.w3.org/2000/svg';
+    const svg = document.createElementNS(NS, 'svg');
+    svg.setAttribute('class', 'bi-inkpath');
+    svg.setAttribute('viewBox', '0 0 ' + i.w + ' ' + i.h);
+    svg.setAttribute('preserveAspectRatio', 'none');
+    const line = document.createElementNS(NS, 'polyline');
+    line.setAttribute('points', (i.pts || []).map(function (p) { return p[0] + ',' + p[1]; }).join(' '));
+    svg.appendChild(line);
+    el.appendChild(svg);
+  } else {
+    if (i.title && i.kind === 'shape') { const h = document.createElement('div'); h.className = 'bi-title'; h.textContent = i.title; el.appendChild(h); }
+    const p = document.createElement('div'); p.className = 'bi-body';
+    p.textContent = i.text || '';
+    if (!i.text && i.kind === 'text') { p.classList.add('blank'); p.textContent = 'Text'; }
+    el.appendChild(p);
+  }
 
-  /* The controls sit on the note and appear on hover or focus. On it rather than in a toolbar
-     somewhere, because which note you are acting on has to be unambiguous on a board where there
-     are fifteen of them. Keyboard users get them via focus, so they are not mouse-only. */
-  const bar = document.createElement('div');
-  bar.className = 'board-note-bar';
-  const btn = function (icon, title, fn) {
-    const b = document.createElement('button');
-    b.type = 'button'; b.className = 'board-note-btn'; b.title = title;
-    b.setAttribute('aria-label', title);
-    b.innerHTML = '<span class="mdi ' + icon + '" aria-hidden="true"></span>';
-    b.addEventListener('pointerdown', function (e) { e.stopPropagation(); });
-    b.addEventListener('click', function (e) { e.stopPropagation(); fn(); });
-    bar.appendChild(b);
-    return b;
-  };
-  /* Dot voting, one note at a time. The canonical way a group picks between ideas, and it is just
-     as useful alone: a student with nine notes and no way to say "that one" ends up keeping all
-     nine. Starred notes stay bright while the rest fade back. */
-  btn(o.star ? 'mdi-star' : 'mdi-star-outline', o.star ? 'Not my favourite after all' : 'This is the one',
-    function () { saveNoteGeo(board, o.id, { star: !o.star, x: o.x, y: o.y }); paintBoard(board); });
-  btn('mdi-palette', 'Change its colour', function () {
-    const i = NOTE_COLOURS.indexOf(o.colour);
-    saveNoteGeo(board, o.id, { colour: NOTE_COLOURS[(i + 1) % NOTE_COLOURS.length], x: o.x, y: o.y });
-    paintBoard(board);
-  });
-  if (o.loose) {
-    btn('mdi-content-copy', 'Make another like this', function () {
-      addLooseNote(board, o.text || '', [o.x + 18, o.y + 18]);
+  /* Handles only on a selected thing, so a board at rest is notes rather than notes plus furniture.
+     Four corners resize; the dots on each edge start an arrow. */
+  if (isSel(i.id) && i.kind !== 'text') {
+    ['nw', 'ne', 'se', 'sw'].forEach(function (c) {
+      const h = document.createElement('i'); h.className = 'bi-grip g-' + c; h.dataset.grip = c;
+      el.appendChild(h);
+    });
+    ['n', 'e', 's', 'w'].forEach(function (c) {
+      const h = document.createElement('i'); h.className = 'bi-grip g-' + c + ' side'; h.dataset.grip = c;
+      el.appendChild(h);
+    });
+    /* Turning things is not a power feature here — it is how a drawn arrow gets pointed the right
+       way and how a label goes up the side of a level. A frame stays square: a tilted room with
+       square things in it is a bug that looks like a feature. */
+    if (i.kind !== 'frame') {
+      /* Two ways in, because two habits exist. The visible handle hangs BELOW the shape, which is
+         where Canva puts it and — more to the point — out from under the selection bar, which sits
+         above and used to cover a handle at the top. The four invisible corner patches are
+         Photoshop's and Figma's: reach just past a corner and the cursor becomes a turn arrow. */
+      const s = document.createElement('i'); s.className = 'bi-spin'; s.dataset.spin = '1';
+      el.appendChild(s);
+      ['nw', 'ne', 'se', 'sw'].forEach(function (c) {
+        const z = document.createElement('i'); z.className = 'bi-rot r-' + c; z.dataset.spin = '1';
+        el.appendChild(z);
+      });
+    }
+  }
+  if (i.rot) el.style.setProperty('--spin', i.rot + 'deg');
+  if (i.kind !== 'frame' && i.kind !== 'ink') {
+    ['n', 'e', 's', 'w'].forEach(function (d) {
+      const h = document.createElement('i'); h.className = 'bi-port p-' + d; h.dataset.port = d;
+      el.appendChild(h);
     });
   }
-  /* Pinning saves WHERE IT IS, not just that it is pinned. A note that has never been dragged has
-     no saved position, so without writing x and y here it would jump back to its default spot at
-     the very moment the student said "stay there" — which is the opposite of what pinning means. */
-  btn(o.pinned ? 'mdi-pin' : 'mdi-pin-outline', o.pinned ? 'Unpin — let it move again' : 'Pin it where it is',
-    function () {
-      saveNoteGeo(board, o.id, { pin: !o.pinned, x: o.x, y: o.y });
-      paintBoard(board);
-    });
-  // No confirm. It is a sticky note on their own board, and the friction is worse than the mistake.
-  if (o.onDelete) btn('mdi-close', 'Delete this note', o.onDelete);
-  el.appendChild(bar);
-
-  /* Resize from the corner. Only the corner, and only bigger than a stub: a note you can shrink to
-     nothing is a note you can lose on a board this size. */
-  const grip = document.createElement('div');
-  grip.className = 'board-note-grip';
-  grip.setAttribute('aria-hidden', 'true');
-  resizeNote(board, el, o, grip);
-  el.appendChild(grip);
-
-  if (!o.pinned) dragNote(board, el, o);
-  const edit = function () { editNote(board, el, o); };
-  el.addEventListener('keydown', function (e) {
-    if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); edit(); }
-  });
-  if (o.pinned) el.addEventListener('click', function (e) { if (!e.target.closest('.board-note-btn')) edit(); });
-  el.__edit = edit;
   return el;
 }
 
-function resizeNote(board, el, o, grip) {
-  grip.addEventListener('pointerdown', function (e) {
-    e.stopPropagation(); e.preventDefault();
-    const r = el.getBoundingClientRect();
-    const w0 = r.width / boardScale, h0 = r.height / boardScale;
-    const sx = e.clientX, sy = e.clientY;
-    grip.setPointerCapture(e.pointerId);
-    el.classList.add('sizing');
-    const move = function (ev) {
-      const w = Math.max(120, w0 + (ev.clientX - sx) / boardScale);
-      const h = Math.max(80, h0 + (ev.clientY - sy) / boardScale);
-      el.style.width = w + 'px'; el.style.height = h + 'px';
-    };
-    const up = function () {
-      grip.removeEventListener('pointermove', move); grip.removeEventListener('pointerup', up);
-      el.classList.remove('sizing');
-      saveNoteGeo(board, o.id, { w: Math.round(parseFloat(el.style.width)), h: Math.round(parseFloat(el.style.height)) });
-    };
-    grip.addEventListener('pointermove', move); grip.addEventListener('pointerup', up);
-  });
-}
-
-/* Drag. A click that never moved opens the note for editing instead — a sticky you cannot type into
-   by clicking would be a very strange sticky. */
-function dragNote(board, el, o) {
-  el.addEventListener('pointerdown', function (e) {
-    if (el.classList.contains('editing')) return;
-    if (linking) { e.stopPropagation(); linkClick(board, o.id); return; }
-    e.stopPropagation();
-    const canvas = $('boardCanvas');
-    const startX = e.clientX, startY = e.clientY;
-    const ox = parseFloat(el.style.left) || 0, oy = parseFloat(el.style.top) || 0;
-    let moved = false;
-    el.setPointerCapture(e.pointerId);
-    const move = function (ev) {
-      const dx = (ev.clientX - startX) / boardScale, dy = (ev.clientY - startY) / boardScale;
-      if (!moved && Math.abs(dx) + Math.abs(dy) < 4) return;
-      if (!moved) { moved = true; board.arranging = true; el.classList.add('dragging'); canvas.classList.add('arranging'); }
-      el.style.left = (ox + dx) + 'px'; el.style.top = (oy + dy) + 'px';
-      highlightDrop(board, ox + dx, oy + dy);
-    };
-    const up = function () {
-      el.removeEventListener('pointermove', move); el.removeEventListener('pointerup', up);
-      el.classList.remove('dragging'); canvas.classList.remove('arranging'); board.arranging = false;
-      clearDrop();
-      if (!moved) { el.__edit(); return; }
-      const x = parseFloat(el.style.left), y = parseFloat(el.style.top);
-      saveNoteGeo(board, o.id, { x: Math.round(x), y: Math.round(y) });
-      dropNote(board, o, x, y);
-    };
-    el.addEventListener('pointermove', move); el.addEventListener('pointerup', up);
-  });
-}
-function highlightDrop(board, x, y) {
-  const r = regionAt(board, x, y);
-  $('boardCanvas').querySelectorAll('.board-field').forEach(function (f) {
-    f.classList.toggle('over', !!r && f.dataset.region === (r.id || ''));
-  });
-}
-function clearDrop() {
-  $('boardCanvas').querySelectorAll('.board-field').forEach(function (f) { f.classList.remove('over'); });
-}
-
-/* Where a note lands is what it MEANS. This is the function that makes the board data rather than
-   layout: drop a loose note into a `collects:` region and it becomes part of that slot; drag it out
-   and it stops being. Cutting scope is a gesture here, which is the whole reason for a canvas. */
-function dropNote(board, o, x, y) {
-  const r = regionAt(board, x, y);
-  if (!o.loose) return;                            // a slot note means the same wherever it sits
-  const collecting = boardRegions(board).filter(function (g) { return g.collects; });
-  if (!collecting.length) return;
-
-  const text = looseNotes(board.sheet)[o.index];
-  if (!text) return;
-  /* Rebuild every collecting slot from what is now sitting in it. Rebuilding rather than patching,
-     because a note can leave one region and enter another in a single drag and the two halves of
-     that must not be able to disagree. */
-  const list = looseNotes(board.sheet);
-  collecting.forEach(function (g) {
-    const inside = [];
-    list.forEach(function (t, i) {
-      const p = (i === o.index) ? [x, y] : (notePos(board, 'note:' + i) || [0, 0]);
-      const at = regionAt(board, p[0], p[1]);
-      if (at && at.id === g.id) inside.push(t);
-    });
-    sheetSlot(board.sheet, g.collects).answer = inside.join(', ') + (inside.length ? '.' : '');
-  });
-  sheetWrite(board.sheet);
-  paintBoard(board);
-  if (r && r.budget) paintBoard(board);
-}
-
-/* Type into a sticky, in place. */
-let noteEditing = null;
-function commitNoteEdit() { if (noteEditing) noteEditing(true); }
-function editNote(board, el, o) {
-  if (el.classList.contains('editing')) return;
-  commitNoteEdit();
-  el.classList.add('editing');
-  const txt = el.querySelector('.board-note-txt');
-  const box = document.createElement('textarea');
-  box.className = 'board-note-edit';
-  box.value = o.text || '';
-  box.placeholder = o.hint || 'Write it here.';
-  txt.replaceWith(box);
-  box.focus(); box.select();
-
-  let closed = false;
-  const finish = function (save) {
-    if (closed) return; closed = true;
-    if (noteEditing === finish) noteEditing = null;
-    if (save && box.value.trim() !== (o.text || '')) {
-      board.touched = true;
-      o.onText(box.value.trim());
-    }
-    paintBoard(board);
-  };
-  noteEditing = finish;
-  box.addEventListener('blur', function () { finish(true); });
-  box.addEventListener('pointerdown', function (e) { e.stopPropagation(); });
-  box.addEventListener('keydown', function (e) {
-    if (e.key === 'Escape') { e.stopPropagation(); finish(false); }
-    else if (e.key === 'Enter' && (e.metaKey || e.ctrlKey)) { e.preventDefault(); finish(true); }
-  });
-}
-
-/* A region that costs something. The scope lesson, as a meter you cannot argue with: the weeks are
-   fixed, the sizes are fixed, and the only thing that can move is which notes are sitting in here. */
-/* ---------- connections ----------
-   An arrow from one note to another: "this leads to that", "this is a version of that". Ideas do
-   not come in a list, and a board that can only stack notes is a list with extra steps.
-   Stored as pairs of note ids in board state, drawn as one SVG layer under the notes. */
-function boardLinks(board) {
-  const b = boardState(BOARD_KEY);
-  if (!Array.isArray(b.links)) b.links = [];
-  return b.links;
-}
-function paintConnections(board, canvas) {
-  const links = boardLinks(board);
+/* ---------- links ----------
+   One SVG behind everything, redrawn with the board. An arrow is stored as two ids, so it follows
+   whatever it is tied to and there is no second copy of a position to keep in step. */
+function paintLinks(canvas) {
+  const links = board.links || [];
   if (!links.length) return;
-  const by = {};
-  plannedGeoms(board).forEach(function (g) { by[g.id] = g; });
-  const svg = document.createElementNS('http://www.w3.org/2000/svg', 'svg');
-  svg.setAttribute('class', 'board-links');
-  let maxX = 0, maxY = 0;
-  const keep = [];
+  const NS = 'http://www.w3.org/2000/svg';
+  const svg = document.createElementNS(NS, 'svg');
+  svg.setAttribute('class', 'bi-links');
+  const defs = document.createElementNS(NS, 'defs');
+  defs.innerHTML = '<marker id="bArrow" markerWidth="9" markerHeight="9" refX="8" refY="4.5" orient="auto">'
+    + '<path d="M0,0 L9,4.5 L0,9 z" fill="currentColor"/></marker>';
+  svg.appendChild(defs);
   links.forEach(function (l) {
-    const a = by[l[0]], b2 = by[l[1]];
-    if (!a || !b2) return;                       // an end has been deleted; drop the line with it
-    keep.push(l);
-    const x1 = a.x + a.w / 2, y1 = a.y + a.h / 2, x2 = b2.x + b2.w / 2, y2 = b2.y + b2.h / 2;
-    maxX = Math.max(maxX, x1, x2); maxY = Math.max(maxY, y1, y2);
-    const line = document.createElementNS('http://www.w3.org/2000/svg', 'line');
-    line.setAttribute('x1', x1); line.setAttribute('y1', y1);
-    line.setAttribute('x2', x2); line.setAttribute('y2', y2);
-    line.setAttribute('class', 'board-link');
-    line.addEventListener('click', function () {
-      const at = boardLinks(board).findIndex(function (k) { return k[0] === l[0] && k[1] === l[1]; });
-      if (at >= 0) { boardLinks(board).splice(at, 1); if (typeof saveState === 'function') saveState(); paintBoard(board); }
-    });
-    svg.appendChild(line);
+    const a = itemById(l.from), b2 = itemById(l.to);
+    if (!a || !b2) return;
+    const p = edgePoints(a, b2);
+    const g = document.createElementNS(NS, 'g');
+    g.setAttribute('class', 'bi-link' + (isSel(l.id) ? ' sel' : ''));
+    g.dataset.link = l.id;
+    const path = document.createElementNS(NS, 'path');
+    const mx = (p.a.x + p.b.x) / 2;
+    path.setAttribute('d', 'M' + p.a.x + ',' + p.a.y + ' C' + mx + ',' + p.a.y + ' ' + mx + ',' + p.b.y + ' ' + p.b.x + ',' + p.b.y);
+    path.setAttribute('marker-end', 'url(#bArrow)');
+    g.appendChild(path);
+    if (l.label) {
+      const t = document.createElementNS(NS, 'text');
+      t.setAttribute('x', mx); t.setAttribute('y', (p.a.y + p.b.y) / 2 - 6);
+      t.setAttribute('text-anchor', 'middle');
+      t.textContent = l.label;
+      g.appendChild(t);
+    }
+    svg.appendChild(g);
   });
-  if (keep.length !== links.length) { boardState(BOARD_KEY).links = keep; if (typeof saveState === 'function') saveState(); }
-  svg.setAttribute('width', maxX + 80); svg.setAttribute('height', maxY + 80);
   canvas.appendChild(svg);
 }
-/* Linking is a mode, because it needs two clicks and a board where every click might start a line
-   would be a board you cannot use. Escape or a second press of the tool leaves it. */
-let linking = null;
-function startLinking(board) {
-  linking = linking ? null : { from: null };
-  $('boardCanvasWrap').classList.toggle('linking', !!linking);
-  paintPalette(board);
-  if (linking) toast('Click one note, then another, to link them. Click a line to remove it.');
+/* Where a line between two boxes should actually touch them: the point on each edge facing the
+   other one, so an arrow never starts inside the note it comes from. */
+function edgePoints(a, b2) {
+  const ca = centreOf(a), cb = centreOf(b2);
+  return { a: edgePoint(a, ca, cb), b: edgePoint(b2, cb, ca) };
 }
-function linkClick(board, id) {
-  if (!linking) return false;
-  if (!linking.from) { linking.from = id; $('boardCanvas').querySelector('[data-id="' + id + '"]').classList.add('linkfrom'); return true; }
-  if (linking.from !== id) {
-    boardLinks(board).push([linking.from, id]);
-    if (typeof saveState === 'function') saveState();
-  }
-  linking = null;
-  $('boardCanvasWrap').classList.remove('linking');
-  paintBoard(board); paintPalette(board);
-  return true;
+function edgePoint(i, from, to) {
+  const dx = to.x - from.x, dy = to.y - from.y;
+  if (!dx && !dy) return from;
+  const hw = i.w / 2, hh = i.h / 2;
+  const t = Math.min(Math.abs(dx) > 0.001 ? hw / Math.abs(dx) : Infinity,
+    Math.abs(dy) > 0.001 ? hh / Math.abs(dy) : Infinity);
+  return { x: from.x + dx * t, y: from.y + dy * t };
 }
 
-/* ---------- pan and zoom ---------- */
-let boardScale = 1, boardPanX = 0, boardPanY = 0;
-function applyBoardView() {
-  const c = $('boardCanvas'); if (!c) return;
-  c.style.transform = 'translate(' + boardPanX + 'px,' + boardPanY + 'px) scale(' + boardScale + ')';
-  const at = $('boardZoomAt'); if (at) at.textContent = Math.round(boardScale * 100) + '%';
-}
-function boardZoom(by, at) {
-  const was = boardScale;
-  boardScale = Math.max(0.4, Math.min(1.6, +(boardScale + by).toFixed(2)));
-  /* Zoom towards the pointer rather than the origin, so the thing under the cursor stays under the
-     cursor. Without this, zooming in on a note in the corner sends it off the screen — which reads
-     as the board running away from you. */
-  if (at && was) {
-    boardPanX = at.x - (at.x - boardPanX) * (boardScale / was);
-    boardPanY = at.y - (at.y - boardPanY) * (boardScale / was);
-  }
-  applyBoardView();
-}
-function boardSize(board) {
-  let w = 820, h = 520;
-  boardRegions(board).forEach(function (r) {
-    const a = r.at || [0, 0, 0, 0];
-    w = Math.max(w, a[0] + a[2] + 40); h = Math.max(h, a[1] + a[3] + 40);
+/* ---------- editing text in place ---------- */
+let editing = null;
+/* `then` is the field to open next, so a new sticky can be typed straight through: heading, Enter,
+   body, Ctrl+Enter, done — without a click in between. */
+function startEdit(id, which, then) {
+  const i = itemById(id); if (!i) return;
+  commitEdit();
+  const el = $('boardCanvas').querySelector('[data-id="' + id + '"]'); if (!el) return;
+  /* A frame has no body — its title is the only text on it, so that is what a double-click opens. */
+  const field = which || (i.kind === 'frame' ? 'title' : 'text');
+  const ta = document.createElement('textarea');
+  ta.className = 'bi-edit' + (field === 'title' ? ' t' : '');
+  ta.value = (field === 'title' ? (i.title || '') : (i.text || ''));
+  /* IN the layout, not over it. The editor used to be a box stretched across the whole thing, so
+     writing a sticky's body hid the heading you were writing it under, and on a frame it blacked
+     out the frame. Swapping the one line or paragraph you are editing for a textarea that inherits
+     the same font, padding and box means the note does not move or change shape as you type in it —
+     which is the difference between editing a note and filling in a field that appeared on top of
+     one. Nothing to edit in the layout (a frame's title sits outside the box) falls back to the
+     overlay, which is right for those. */
+  const slot = el.querySelector(field === 'title' ? '.bi-title' : '.bi-body');
+  if (slot) { ta.classList.add('inflow'); slot.replaceWith(ta); } else el.appendChild(ta);
+  el.classList.add('editing');
+  ta.focus(); ta.select();
+  /* A body grows to fit what is in it rather than hiding the end of a sentence behind a scrollbar,
+     and the sticky grows with it — up to a point, after which it scrolls like a page. */
+  const fit = function () {
+    if (field === 'title' || !slot) return;
+    ta.style.height = 'auto';
+    ta.style.height = Math.min(ta.scrollHeight, 600) + 'px';
+    const want = el.scrollHeight;
+    if (want > i.h) { i.h = snap(want + 4); el.style.height = i.h + 'px'; }
+  };
+  fit();
+  ta.addEventListener('input', fit);
+  const h0 = i.h;
+  editing = function (keep) {
+    editing = null;
+    if (!keep) i.h = h0;            // undo the growing the textarea did while it was open
+    const was = field === 'title' ? (i.title || '') : (i.text || '');
+    const now = field === 'title' ? ta.value.trim() : ta.value.replace(/\s+$/, '');
+    /* One undo step per edit, and only if the text actually changed — opening a note to read it and
+       clicking away must not fill the stack with snapshots of nothing. The first words typed into a
+       brand-new thing are part of making it, so they fold into the step that made it: one Ctrl+Z
+       takes the whole sticky away, which is what a student who just made one by accident wants. */
+    if (keep && now !== was) {
+      if (i.id === justPlaced) { if (!then) justPlaced = null; } else mark();
+      if (field === 'title') i.title = now; else i.text = now;
+      saveBoard();
+    }
+    paintBoard();
+    if (keep && then) startEdit(id, then);
+  };
+  ta.addEventListener('blur', function () { if (editing) editing(true); });
+  ta.addEventListener('keydown', function (e) {
+    if (e.key === 'Escape') { e.preventDefault(); if (editing) editing(false); }
+    /* Enter commits on a title and a one-line text; a sticky is a paragraph, so there Enter is a
+       newline and Ctrl/Cmd+Enter is the way out. Tab always moves on, which is the habit anyone who
+       has filled in a form already has. */
+    if (e.key === 'Tab' || (e.key === 'Enter' && (field === 'title' || i.kind === 'text' || e.ctrlKey || e.metaKey))) {
+      e.preventDefault(); if (editing) editing(true);
+    }
+    e.stopPropagation();
   });
-  return [w, h];
 }
-/* Shrink the whole board onto the screen. Offered as a button rather than used as the default: a
-   board that opens at 55% is a board whose handwriting you cannot read, and arriving zoomed out is
-   the wrong first impression of a place you are meant to write in. */
-function boardFit(board) {
-  const wrap = $('boardCanvasWrap'); if (!wrap) return;
-  const s = boardSize(board), b = wrap.getBoundingClientRect();
-  boardScale = Math.max(0.4, Math.min(1, Math.min((b.width - 24) / s[0], (b.height - 24) / s[1])));
-  boardPanX = Math.max(12, (b.width - s[0] * boardScale) / 2);
-  boardPanY = 12;
-  applyBoardView();
-}
-/* How a board opens: full size, centred. Full size because these are things with handwriting on
-   them and 100% is the size they were written at; centred because a board that opens against one
-   edge looks like it has already been dragged somewhere.
-   Centred on the WORKING width — the conversation is laid over the right-hand side, so centring on
-   the whole pane would put the middle of the board underneath it. */
-const CHAT_W = 360;
-function boardHome(board) {
-  const wrap = $('boardCanvasWrap'); if (!wrap) return;
-  boardScale = 1;
-  const b = wrap.getBoundingClientRect(), s = boardSize(board);
-  const usable = Math.max(320, b.width - Math.min(CHAT_W, b.width * 0.38));
-  boardPanX = Math.round(Math.max(12, (usable - s[0]) / 2));
-  boardPanY = Math.round(Math.max(12, (b.height - s[1]) / 2));
-  applyBoardView();
-}
+function commitEdit() { if (editing) editing(true); }
 
-/* ---------- the palette ----------
-   The tools, as things that put notes ON the board rather than panels beside it. A student presses
-   the dice and three ideas land on the canvas to be dragged or thrown away, which is what a
-   whiteboard is for. */
-function paintPalette(board) {
+/* ---------- the tool rail ---------- */
+function paintTools() {
   const host = $('boardPalette'); if (!host) return;
   host.innerHTML = '';
-  const add = function (icon, title, fn, on) {
+  const btn = function (icon, name, on, fn, cls) {
     const b = document.createElement('button');
-    b.type = 'button'; b.className = 'board-tool' + (on ? ' on' : ''); b.title = title;
-    b.setAttribute('aria-label', title);
+    b.type = 'button';
+    b.className = 'board-tool' + (on ? ' on' : '') + (cls ? ' ' + cls : '');
+    b.title = name; b.setAttribute('aria-label', name);
     b.innerHTML = '<span class="mdi ' + icon + '" aria-hidden="true"></span>';
     b.addEventListener('click', fn);
     host.appendChild(b);
     return b;
   };
-  const gap = function () { const s = document.createElement('span'); s.className = 'board-tool-gap'; host.appendChild(s); };
-
-  add('mdi-plus', 'Add a note', function () { addLooseNote(board, ''); });
-  add('mdi-vector-line', linking ? 'Stop linking' : 'Link two notes', function () { startLinking(board); }, !!linking);
-  gap();
-  /* The thinking tools. Every one of these is a technique that exists because a blank page beats
-     most people, and each of them puts something ON the board rather than telling them about it. */
-  Object.keys(PALETTE).forEach(function (kind) {
-    const t = { kind: kind };
-    const tool = PALETTE[t.kind];
-    if (!tool) { console.warn('[league] board tool "' + t.kind + '" does not exist — see PALETTE in js/board.js'); return; }
-    add(tool.icon, t.title || tool.title, function () { tool.run(board, t); });
+  /* Grouped: the pointer · things you write in · things you draw with · the freehand pair. */
+  TOOLS.forEach(function (t, n) {
+    btn(t.icon, t.name + '  (' + t.key + ')', tool === t.id, function () { setTool(t.id); });
+    if (n === 0 || n === 2 || n === 7) { const s = document.createElement('span'); s.className = 'board-tool-gap'; host.appendChild(s); }
   });
-  gap();
-  add('mdi-broom', 'Tidy the loose notes into a grid', function () { tidyBoard(board); });
-  add('mdi-fit-to-screen', 'Fit the whole board on screen', function () { boardFit(board); });
+  const s = document.createElement('span'); s.className = 'board-tool-gap'; host.appendChild(s);
+  btn('mdi-broom', 'Tidy the loose notes into a grid', false, function () { tidy(); });
 }
 
-/* The scratch region — the one with no job. Every tool that deals notes out puts them here rather
-   than wherever the board happens to be scrolled to: dropping eight blank stickies on top of the
-   one-sheet buries the thing the student is supposed to be filling in, and they arrive already
-   filed into a region they have nothing to do with. */
-function freeRegion(board) {
-  const rs = boardRegions(board);
-  return rs.filter(function (r) { return !r.holds && !r.collects && !r.objectives; })[0] || rs[rs.length - 1];
-}
-/* Lay the loose notes out in rows, leaving pinned ones and anything already inside a region alone.
-   A tidy button that moved everything would undo the arranging, which is the work. */
-function tidyBoard(board) {
-  const home = freeRegion(board);
-  const a = (home && home.at) || [40, 460, 900, 200];
-  const perRow = Math.max(1, Math.floor(a[2] / (NOTE_W + 18)));
-  let n = 0;
-  looseNotes(board.sheet).forEach(function (t, i) {
-    const id = 'note:' + i;
-    const g = noteGeo(board, id) || {};
-    if (g.pin) return;                                   // pinned means pinned
-    if (g.x !== undefined && regionAt(board, g.x, g.y)) return;   // already filed somewhere
-    saveNoteGeo(board, id, {
-      x: a[0] + 18 + (n % perRow) * (NOTE_W + 18),
-      y: a[1] + 34 + Math.floor(n / perRow) * (NOTE_H + 18)
-    });
-    n++;
+/* The bar that appears over a selection: colour, duplicate, bring to front, delete. Over the
+   selection rather than in the rail, because these act on a thing rather than arming a mode — and
+   a student should not have to find the far side of the screen to change a note's colour. */
+function paintSelectionBar() {
+  const old = document.querySelector('.bi-bar'); if (old) old.remove();
+  if (!sel.length) return;
+  const items = selItems();
+  /* An arrow is selectable too, and it used to get nothing — you clicked it, the bar did not
+     appear, and there was no way to label or remove it except the keyboard. It gets the two things
+     an arrow can be asked for. */
+  if (!items.length) { paintLinkBar(); return; }
+  let x0 = Infinity, y0 = Infinity;
+  items.forEach(function (i) { x0 = Math.min(x0, i.x); y0 = Math.min(y0, i.y); });
+  const bar = document.createElement('div');
+  bar.className = 'bi-bar';
+  /* Anchored to the top-left of the selection; the CSS lifts it clear and un-scales it, so the bar
+     is the same size on screen at 30% as at 300%. */
+  bar.style.left = x0 + 'px'; bar.style.top = y0 + 'px';
+  /* The colour they are all on already, if they agree — shown as a ring, so the bar says what the
+     selection IS as well as what it could become. */
+  const shared = items.every(function (i) { return (i.colour || '') === (items[0].colour || ''); })
+    ? (items[0].colour || '') : null;
+  const swatches = document.createElement('span');
+  swatches.className = 'bi-swatches';
+  COLOURS.forEach(function (c) {
+    const s = document.createElement('button');
+    s.type = 'button';
+    s.className = 'bi-swatch' + colourClass(c) + (shared === c ? ' on' : '');
+    s.title = c ? 'Colour' : 'No colour';
+    s.setAttribute('aria-label', c ? 'Colour' : 'No colour');
+    s.addEventListener('click', function (e) { e.stopPropagation(); colourSelection(c); });
+    swatches.appendChild(s);
   });
-  paintBoard(board);
-}
-
-function addLooseNote(board, text, at, quiet) {
-  const list = looseNotes(board.sheet);
-  const i = list.length;
-  list.push(text || '');                   // empty, not "New note" — a blank sticky is an invitation
-  saveLooseNotes(board.sheet, list);
-  const wrap = $('boardCanvasWrap').getBoundingClientRect();
-  const p = at || [(-boardPanX + wrap.width / 2) / boardScale - NOTE_W / 2,
-    (-boardPanY + wrap.height / 2) / boardScale - NOTE_H / 2];
-  saveNoteGeo(board, 'note:' + i, { x: Math.round(p[0]), y: Math.round(p[1]) });
-  /* `quiet` is for the tools that drop several at once: painting and focusing per note would fight
-     itself eight times over, so the caller paints once at the end. */
-  if (quiet) return i;
-  paintBoard(board);
-  const el = $('boardCanvas').querySelector('[data-id="note:' + i + '"]');
-  if (el && el.__edit) el.__edit();
-  return i;
-}
-
-/* The board's own tools, over and above the fixed add/link/tidy/fit in the rail.
-   The bar for being in here is high, and two entries have already failed it. A "Crazy 8s" button
-   dealt eight blank stickies and started a clock; a "look at it another way" button opened seven
-   SCAMPER lenses. Both are real techniques and both were dead weight on this board, for the same
-   reason: they asked the student a NEW question when the board in front of them was already full of
-   unanswered ones. A tool earns its place by doing something to what is ALREADY on the board. */
-const PALETTE = {
-  /* The test the one-sheet lesson names, made pressable: stop reading it as the person who wrote it. */
-  readback: {
-    icon: 'mdi-text-box-outline', title: 'Read it back as a stranger would',
-    run: function (board) {
-      const said = boardSlots(board).map(function (h) { return sheetSlot(board.sheet, h).answer; }).filter(Boolean);
-      if (!said.length) { toast('Nothing on the board yet — write a note first.'); return; }
-      const para = said.map(function (s) { return s.replace(/\s+$/, '').replace(/\.?$/, '.'); }).join(' ');
-      const miss = boardSlots(board).filter(function (h) { return !sheetSlot(board.sheet, h).answer; });
-      readBackModal(para, miss);
-    }
+  bar.appendChild(swatches);
+  const gap = document.createElement('span'); gap.className = 'bi-bargap'; bar.appendChild(gap);
+  const act = function (icon, name, fn) {
+    const b = document.createElement('button');
+    b.type = 'button'; b.className = 'bi-act'; b.title = name; b.setAttribute('aria-label', name);
+    b.innerHTML = '<span class="mdi ' + icon + '"></span>';
+    b.addEventListener('click', function (e) { e.stopPropagation(); fn(); });
+    bar.appendChild(b);
+  };
+  if (items.length === 1 && items[0].kind !== 'text') {
+    act('mdi-format-title', 'Rename — give it a title', function () { startEdit(items[0].id, 'title'); });
   }
-};
-/* The board's stickies, run together into the paragraph somebody else would read. It used to arrive
-   as a chat message from the coach; with no chat on the board it gets the shared dialog instead,
-   which is the right shape for it anyway — it is one thing to read once, not a turn in a
-   conversation. */
-function readBackModal(para, miss) {
-  if (typeof modal !== 'function') { toast(para); return; }
-  const gaps = miss.length
-    ? '<p class="bp-hint">They would still have to ask about: '
-      + miss.map(function (h) { return '<b>' + esc(h.replace(/\.+$/, '')) + '</b>'; }).join(', ') + '.</p>'
-    : '<p class="bp-hint">Read it out loud. The sentence you stumble on is the one to fix.</p>';
-  modal({
-    title: 'Your game, as a stranger reads it',
-    html: '<p class="bp-use">' + esc(para) + '</p>' + gaps,
-    okLabel: 'Back to the board', hideCancel: true
+  act('mdi-content-copy', 'Duplicate', duplicateSelection);
+  act('mdi-flip-to-front', 'Bring to front', raiseSelection);
+  act('mdi-trash-can-outline', 'Delete', deleteSelection);
+  $('boardCanvas').appendChild(bar);
+}
+
+/* The same bar, for a selected arrow: put it at the midpoint of the line it belongs to. */
+function paintLinkBar() {
+  const l = (board.links || []).filter(function (x) { return isSel(x.id); })[0];
+  if (!l) return;
+  const a = itemById(l.from), b2 = itemById(l.to);
+  if (!a || !b2) return;
+  const p = edgePoints(a, b2);
+  const bar = document.createElement('div');
+  bar.className = 'bi-bar';
+  bar.style.left = ((p.a.x + p.b.x) / 2) + 'px';
+  bar.style.top = ((p.a.y + p.b.y) / 2) + 'px';
+  const act = function (icon, name, fn) {
+    const b = document.createElement('button');
+    b.type = 'button'; b.className = 'bi-act'; b.title = name; b.setAttribute('aria-label', name);
+    b.innerHTML = '<span class="mdi ' + icon + '"></span>';
+    b.addEventListener('click', function (e) { e.stopPropagation(); fn(); });
+    bar.appendChild(b);
+  };
+  act('mdi-label-outline', l.label ? 'Change what this arrow says' : 'Say what this arrow means',
+    function () { labelLink(l.id); });
+  act('mdi-trash-can-outline', 'Delete this arrow', deleteSelection);
+  $('boardCanvas').appendChild(bar);
+}
+
+/* ---------- the right-click menu ----------
+   Every one of these has another way in — a button on the selection bar, a key, the rail — and that
+   is the point: the menu is where a student who does not yet know any of those finds out that they
+   exist, with the key written next to the name. It is positioned in screen pixels rather than board
+   ones, so it is never half a millimetre tall at 20% zoom. */
+let menuEl = null;
+function closeMenu() { if (menuEl) { menuEl.remove(); menuEl = null; } }
+function openMenu(e) {
+  closeMenu();
+  commitEdit();
+  const pt = toBoard(e.clientX, e.clientY);
+  const el = e.target.closest('.bi');
+  const lk = e.target.closest('.bi-link');
+
+  /* Right-clicking something that is not in the selection selects it first — otherwise Delete in
+     the menu would act on whatever happened to be selected across the board. */
+  if (el && !isSel(el.dataset.id)) select([el.dataset.id]);
+  else if (lk && !isSel(lk.dataset.link)) select([lk.dataset.link]);
+  else if (!el && !lk) clearSel();
+
+  const rows = [];
+  const one = selItems().length === 1 ? selItems()[0] : null;
+  if (el) {
+    if (one && one.kind !== 'ink') {
+      rows.push(['mdi-pencil-outline', 'Edit text', '', function () { startEdit(one.id, one.kind === 'frame' ? 'title' : 'text'); }]);
+      if (one.kind === 'note' || one.kind === 'shape') {
+        rows.push(['mdi-format-title', 'Edit heading', '', function () { startEdit(one.id, 'title'); }]);
+      }
+    }
+    rows.push(['mdi-content-copy', 'Duplicate', 'Ctrl+D', duplicateSelection]);
+    rows.push(['mdi-content-cut', 'Cut', 'Ctrl+X', function () { copySelection(); deleteSelection(); }]);
+    rows.push(null);
+    rows.push(['mdi-flip-to-front', 'Bring to front', '', raiseSelection]);
+    rows.push(['mdi-flip-to-back', 'Send to back', '', lowerSelection]);
+    rows.push(null);
+    rows.push(['mdi-trash-can-outline', 'Delete', 'Del', deleteSelection]);
+  } else if (lk) {
+    rows.push(['mdi-label-outline', 'Label this arrow', '', function () { labelLink(lk.dataset.link); }]);
+    rows.push(null);
+    rows.push(['mdi-trash-can-outline', 'Delete', 'Del', deleteSelection]);
+  } else {
+    rows.push(['mdi-note-outline', 'New sticky note here', 'N', function () { placeAt('note', pt); }]);
+    rows.push(['mdi-image-frame', 'New frame here', 'F', function () { placeAt('frame', pt); }]);
+    if (clip) rows.push(['mdi-content-paste', 'Paste', 'Ctrl+V', pasteClip]);
+    rows.push(null);
+    rows.push(['mdi-broom', 'Tidy the loose notes', '', tidy]);
+    rows.push(['mdi-select-all', 'Select everything', 'Ctrl+A', function () {
+      select((board.items || []).map(function (i) { return i.id; }));
+    }]);
+    rows.push(['mdi-overscan', 'Fit the board on screen', '0', zoomToFit]);
+  }
+
+  const m = document.createElement('div');
+  m.className = 'bi-menu';
+  rows.forEach(function (r) {
+    if (!r) { const s = document.createElement('span'); s.className = 'bi-menu-gap'; m.appendChild(s); return; }
+    const b = document.createElement('button');
+    b.type = 'button'; b.className = 'bi-menu-row';
+    b.innerHTML = '<span class="mdi ' + r[0] + '"></span><span class="bi-menu-lab"></span>'
+      + '<span class="bi-menu-key"></span>';
+    b.querySelector('.bi-menu-lab').textContent = r[1];
+    b.querySelector('.bi-menu-key').textContent = r[2];
+    b.addEventListener('click', function () { closeMenu(); r[3](); });
+    m.appendChild(b);
   });
+
+  const wrap = $('boardCanvasWrap'), wb = wrap.getBoundingClientRect();
+  wrap.appendChild(m);
+  /* Flipped rather than clipped when it would run off the pane — a menu you have to scroll the page
+     to read is a menu nobody presses the last item on. */
+  const mb = m.getBoundingClientRect();
+  let x = e.clientX - wb.left, y = e.clientY - wb.top;
+  if (x + mb.width > wb.width - 6) x = Math.max(6, x - mb.width);
+  if (y + mb.height > wb.height - 6) y = Math.max(6, y - mb.height);
+  m.style.left = x + 'px'; m.style.top = y + 'px';
+  menuEl = m;
+}
+document.addEventListener('pointerdown', function (e) {
+  if (menuEl && !e.target.closest('.bi-menu')) closeMenu();
+}, true);
+
+/* ---------- tidy ----------
+   Straightens things WHERE THEY ARE. The first version swept every loose note into a grid below the
+   whole board, which is not tidying — it is taking your things away: a student pressed it to line up
+   four stickies and had to hunt for them off the bottom of a board they could no longer see.
+
+   So: tidy works on the selection if there is one, otherwise on everything loose; it lays them out
+   in reading order starting from the cluster's own top-left corner, in as many columns as the
+   cluster was already wide; and it leaves anything inside a frame alone, because that arrangement
+   is the work. */
+function tidy() {
+  const chosen = selItems().filter(function (i) { return i.kind !== 'frame'; });
+  const group = chosen.length > 1 ? chosen : (board.items || []).filter(function (i) {
+    return i.kind !== 'frame' && i.kind !== 'ink' && !frameAt(centreOf(i), i.id);
+  });
+  if (group.length < 2) return;
+
+  let x0 = Infinity, y0 = Infinity, x1 = -Infinity;
+  group.forEach(function (i) {
+    x0 = Math.min(x0, i.x); y0 = Math.min(y0, i.y); x1 = Math.max(x1, i.x + i.w);
+  });
+  const colW = Math.max.apply(null, group.map(function (i) { return i.w; })) + 20;
+  const rowH = Math.max.apply(null, group.map(function (i) { return i.h; })) + 20;
+  const cols = Math.max(1, Math.min(group.length, Math.round((x1 - x0) / colW) || 1));
+
+  /* Reading order, by where each thing already is — so a tidy rearranges as little as it can and
+     nothing swaps places with something across the board. */
+  const rowOf = function (i) { return Math.round(i.y / rowH); };
+  const order = group.slice().sort(function (a, b) { return rowOf(a) - rowOf(b) || a.x - b.x; });
+
+  mark();
+  order.forEach(function (i, n) {
+    i.x = snap(x0 + (n % cols) * colW);
+    i.y = snap(y0 + Math.floor(n / cols) * rowH);
+  });
+  saveBoard(); paintBoard();
 }
 
-/* notePos and flashNote survive the coach that used to call them: the board still moves notes
-   about by itself when one is dropped into a region. */
-function notePos(board, id) { const g = noteGeo(board, id) || {}; return [g.x || 0, g.y || 0]; }
+/* ---------- pointer ----------
+   One handler for the whole canvas. Which gesture you get is decided by what is under the pointer
+   and which tool is armed, in that order — the same rule every canvas app uses, and the one nobody
+   has to be told about. */
+function onPointerDown(e) {
+  if (e.button !== 0) return;
+  /* The furniture is INSIDE the canvas wrap — the tool rail, the zoom bar, and the bar that appears
+     over a selection — so its clicks arrive here first. Left to run, this handler cleared the
+     selection and repainted, which destroyed the very button the student was pressing before its
+     click event could fire: the colour swatches and the rename button did nothing at all, and a
+     tool click landed a stray sticky under the rail. The furniture keeps its own clicks. */
+  if (e.target.closest('.board-palette,.board-zoom,.bi-bar')) return;
 
-/* A moment of gold on the sticky that just changed. Something appearing silently on a board while
-   the student is reading a message on the other side of the screen is something they do not see. */
-function flashNote(id) {
-  const el = $('boardCanvas').querySelector('[data-id="' + id + '"]');
-  if (!el) return;
-  el.classList.add('landed');
-  setTimeout(function () { el.classList.remove('landed'); }, 1400);
+  const wrap = $('boardCanvasWrap');
+  const pt = toBoard(e.clientX, e.clientY);
+  sticky = e.shiftKey;
+
+  const linkEl = e.target.closest('.bi-link');
+  const el = e.target.closest('.bi');
+  const grip = e.target.closest('.bi-grip');
+  const port = e.target.closest('.bi-port');
+  const spin = e.target.closest('[data-spin]');
+
+  commitEdit();
+
+  if (spin && el) { beginSpin(itemById(el.dataset.id), e); return; }
+
+  // the freehand pair are gestures, not objects placed by a click
+  if (tool === 'draw' && !grip) { beginDraw(e); return; }
+  if (tool === 'erase') { beginErase(e); return; }
+
+  // a placing tool: one click, one object
+  if (tool !== 'select' && tool !== 'arrow' && !grip && !port) { placeAt(tool, pt); return; }
+
+  if (tool === 'arrow' && el) { beginLink(el.dataset.id, e); return; }
+  if (port && el) { beginLink(el.dataset.id, e); return; }
+  if (grip && el) { beginResize(itemById(el.dataset.id), grip.dataset.grip, e); return; }
+
+  if (linkEl) { select([linkEl.dataset.link]); return; }
+
+  if (el) {
+    const id = el.dataset.id;
+    if (!isSel(id)) select([id], e.shiftKey || e.metaKey || e.ctrlKey);
+    beginDrag(e);
+    return;
+  }
+
+  // empty canvas: clear, then rubber-band
+  if (!e.shiftKey) clearSel();
+  beginMarquee(e);
 }
 
+function beginDrag(e) {
+  const wrap = $('boardCanvasWrap');
+  const start = toBoard(e.clientX, e.clientY);
+  /* A frame takes what is standing on it. Captured once, at the start, so a note that leaves the
+     frame mid-drag is not dropped halfway. */
+  const moving = [];
+  selItems().forEach(function (i) {
+    moving.push(i);
+    if (i.kind === 'frame') itemsInFrame(i).forEach(function (c) { if (moving.indexOf(c) < 0) moving.push(c); });
+  });
+  const from = moving.map(function (i) { return { i: i, x: i.x, y: i.y }; });
+  wrap.setPointerCapture(e.pointerId);
+  let marked = false;
+  const move = function (ev) {
+    if (!marked) { mark(); marked = true; }     // a click that only selects is not a change
+    const p = toBoard(ev.clientX, ev.clientY);
+    const dx = p.x - start.x, dy = p.y - start.y;
+    from.forEach(function (f) { f.i.x = snap(f.x + dx); f.i.y = snap(f.y + dy); });
+    paintBoard();
+    saveBoardSoon();
+  };
+  const up = function () {
+    wrap.removeEventListener('pointermove', move); wrap.removeEventListener('pointerup', up);
+    saveBoard(); paintBoard();
+  };
+  wrap.addEventListener('pointermove', move); wrap.addEventListener('pointerup', up);
+}
+
+function beginResize(i, grip, e) {
+  if (!i) return;
+  const wrap = $('boardCanvasWrap');
+  const start = toBoard(e.clientX, e.clientY);
+  const o = { x: i.x, y: i.y, w: i.w, h: i.h };
+  wrap.setPointerCapture(e.pointerId);
+  let marked = false;
+  const move = function (ev) {
+    if (!marked) { mark(); marked = true; }
+    const p = toBoard(ev.clientX, ev.clientY);
+    const dx = p.x - start.x, dy = p.y - start.y;
+    /* Grips are named by compass point, so the letters ARE the answer: a corner carries two and a
+       side carries one, and the same three lines handle all eight. */
+    const west = grip.indexOf('w') >= 0, east = grip.indexOf('e') >= 0;
+    const north = grip.indexOf('n') >= 0, south = grip.indexOf('s') >= 0;
+    let w = east ? o.w + dx : west ? o.w - dx : o.w;
+    let h = south ? o.h + dy : north ? o.h - dy : o.h;
+    w = Math.max(40, snap(w)); h = Math.max(32, snap(h));
+    i.w = w; i.h = h;
+    i.x = snap(west ? o.x + (o.w - w) : o.x);
+    i.y = snap(north ? o.y + (o.h - h) : o.y);
+    paintBoard(); saveBoardSoon();
+  };
+  const up = function () {
+    wrap.removeEventListener('pointermove', move); wrap.removeEventListener('pointerup', up);
+    saveBoard(); paintBoard();
+  };
+  wrap.addEventListener('pointermove', move); wrap.addEventListener('pointerup', up);
+}
+
+/* Turning. The angle is measured from the item's own centre, so the thing spins where it stands
+   rather than swinging around the pointer — and it snaps to 15° unless a key is held, because a
+   label at 43° is almost always a label somebody meant to put at 45°. */
+function beginSpin(i, e) {
+  if (!i) return;
+  const wrap = $('boardCanvasWrap');
+  const c = centreOf(i);
+  const angle = function (ev) {
+    const p = toBoard(ev.clientX, ev.clientY);
+    return Math.atan2(p.y - c.y, p.x - c.x) * 180 / Math.PI + 90;
+  };
+  const from = angle(e), was = i.rot || 0;
+  wrap.setPointerCapture(e.pointerId);
+  let marked = false;
+  const move = function (ev) {
+    if (!marked) { mark(); marked = true; }
+    let a = was + (angle(ev) - from);
+    if (!ev.altKey) a = Math.round(a / 15) * 15;
+    i.rot = Math.round(((a % 360) + 360) % 360);
+    if (i.rot === 0) delete i.rot;
+    paintBoard(); saveBoardSoon();
+  };
+  const up = function () {
+    wrap.removeEventListener('pointermove', move); wrap.removeEventListener('pointerup', up);
+    saveBoard(); paintBoard();
+  };
+  wrap.addEventListener('pointermove', move); wrap.addEventListener('pointerup', up);
+}
+
+/* An arrow is drawn by dragging from one thing to another, which is how every board does it. The
+   line follows the pointer while you drag so it is obvious what is being connected. */
+let ghost = null;
+function beginLink(fromId, e) {
+  const wrap = $('boardCanvasWrap');
+  wrap.setPointerCapture(e.pointerId);
+  const move = function (ev) {
+    const p = toBoard(ev.clientX, ev.clientY);
+    drawGhost(itemById(fromId), p);
+  };
+  const up = function (ev) {
+    wrap.removeEventListener('pointermove', move); wrap.removeEventListener('pointerup', up);
+    if (ghost) { ghost.remove(); ghost = null; }
+    const over = document.elementFromPoint(ev.clientX, ev.clientY);
+    const target = over && over.closest ? over.closest('.bi') : null;
+    const toId = target ? target.dataset.id : null;
+    if (toId && toId !== fromId) {
+      mark();
+      board.links.push({ id: uid('l'), from: fromId, to: toId, label: '' });
+      saveBoard();
+    }
+    if (!sticky) setTool('select');
+    paintBoard();
+  };
+  wrap.addEventListener('pointermove', move); wrap.addEventListener('pointerup', up);
+}
+function drawGhost(from, pt) {
+  if (!from) return;
+  const canvas = $('boardCanvas');
+  if (!ghost) {
+    ghost = document.createElementNS('http://www.w3.org/2000/svg', 'svg');
+    ghost.setAttribute('class', 'bi-links ghost');
+    canvas.appendChild(ghost);
+  }
+  const a = edgePoint(from, centreOf(from), pt);
+  ghost.innerHTML = '<path d="M' + a.x + ',' + a.y + ' L' + pt.x + ',' + pt.y + '"/>';
+}
+
+/* ---------- the pen, and the eraser ----------
+   A board you can only put boxes on is a form. Half of what a twelve-year-old wants to say about a
+   game is a shape of a level, an arrow through a jump, a face — and none of that is a sticky note.
+
+   A stroke becomes an ordinary item the moment the pointer lifts: it selects, moves, recolours,
+   resizes and deletes like everything else, and the points are stored relative to its own box so
+   all of that works without any special cases anywhere else in the file. */
+const INK_NS = 'http://www.w3.org/2000/svg';
+function beginDraw(e) {
+  const wrap = $('boardCanvasWrap'), canvas = $('boardCanvas');
+  const pts = [];
+  const add = function (ev) {
+    const p = toBoard(ev.clientX, ev.clientY);
+    const last = pts[pts.length - 1];
+    /* Dropped points that are within a pixel of the last one: a slow hand otherwise produces a
+       thousand-point path for a two-inch line, and that is what gets saved. */
+    if (last && Math.abs(last[0] - p.x) < 1.5 && Math.abs(last[1] - p.y) < 1.5) return;
+    pts.push([Math.round(p.x * 10) / 10, Math.round(p.y * 10) / 10]);
+  };
+  add(e);
+  const live = document.createElementNS(INK_NS, 'svg');
+  live.setAttribute('class', 'bi-links ink-live');
+  canvas.appendChild(live);
+  wrap.setPointerCapture(e.pointerId);
+  const move = function (ev) {
+    add(ev);
+    live.innerHTML = '<polyline points="' + pts.map(function (p) { return p.join(','); }).join(' ') + '"/>';
+  };
+  const up = function () {
+    wrap.removeEventListener('pointermove', move); wrap.removeEventListener('pointerup', up);
+    live.remove();
+    if (pts.length >= 2) {
+      let x0 = Infinity, y0 = Infinity, x1 = -Infinity, y1 = -Infinity;
+      pts.forEach(function (p) {
+        x0 = Math.min(x0, p[0]); y0 = Math.min(y0, p[1]);
+        x1 = Math.max(x1, p[0]); y1 = Math.max(y1, p[1]);
+      });
+      const pad = 6;              // room for the stroke itself, so a line is not clipped by its box
+      mark();
+      const o = addItem({
+        kind: 'ink', colour: '', x: x0 - pad, y: y0 - pad,
+        w: Math.max(8, (x1 - x0) + pad * 2), h: Math.max(8, (y1 - y0) + pad * 2),
+        pts: pts.map(function (p) { return [+(p[0] - x0 + pad).toFixed(1), +(p[1] - y0 + pad).toFixed(1)]; })
+      });
+      saveBoard();
+      paintBoard();
+      if (!sticky) { setTool('select'); select([o.id]); }
+      return;
+    }
+    if (!sticky) setTool('select');
+    paintBoard();
+  };
+  wrap.addEventListener('pointermove', move); wrap.addEventListener('pointerup', up);
+}
+
+/* Rubs out pen marks and nothing else. An eraser that also took away notes would be the second
+   delete, and a student who picked it up to fix a line would lose a paragraph. */
+function beginErase(e) {
+  const wrap = $('boardCanvasWrap');
+  wrap.setPointerCapture(e.pointerId);
+  let marked = false;
+  const rub = function (ev) {
+    const p = toBoard(ev.clientX, ev.clientY);
+    const r = 12 / scale;         // a constant size under the pointer, whatever the zoom
+    const gone = (board.items || []).filter(function (i) {
+      return i.kind === 'ink' && inside({ x: i.x - r, y: i.y - r, w: i.w + r * 2, h: i.h + r * 2 }, p)
+        && (i.pts || []).some(function (q) {
+          const dx = i.x + q[0] - p.x, dy = i.y + q[1] - p.y;
+          return dx * dx + dy * dy < r * r;
+        });
+    });
+    if (!gone.length) return;
+    if (!marked) { mark(); marked = true; }
+    board.items = board.items.filter(function (i) { return gone.indexOf(i) < 0; });
+    saveBoardSoon(); paintBoard();
+  };
+  rub(e);                         // a single click rubs out what is under it
+  const up = function () {
+    wrap.removeEventListener('pointermove', rub); wrap.removeEventListener('pointerup', up);
+    if (marked) saveBoard();
+    if (!sticky) setTool('select');
+  };
+  wrap.addEventListener('pointermove', rub); wrap.addEventListener('pointerup', up);
+}
+
+function beginMarquee(e) {
+  const wrap = $('boardCanvasWrap'), canvas = $('boardCanvas');
+  const start = toBoard(e.clientX, e.clientY);
+  const box = document.createElement('div'); box.className = 'bi-marquee';
+  canvas.appendChild(box);
+  wrap.setPointerCapture(e.pointerId);
+  const move = function (ev) {
+    const p = toBoard(ev.clientX, ev.clientY);
+    const r = { x: Math.min(start.x, p.x), y: Math.min(start.y, p.y), w: Math.abs(p.x - start.x), h: Math.abs(p.y - start.y) };
+    box.style.left = r.x + 'px'; box.style.top = r.y + 'px';
+    box.style.width = r.w + 'px'; box.style.height = r.h + 'px';
+    box.__r = r;
+  };
+  const up = function () {
+    wrap.removeEventListener('pointermove', move); wrap.removeEventListener('pointerup', up);
+    const r = box.__r; box.remove();
+    if (r && r.w > 6 && r.h > 6) {
+      select((board.items || []).filter(function (i) { return inside(r, centreOf(i)); })
+        .map(function (i) { return i.id; }));
+    }
+  };
+  wrap.addEventListener('pointermove', move); wrap.addEventListener('pointerup', up);
+}
+
+/* Panning is the middle button, space-drag, or a two-finger scroll — never a plain left-drag, which
+   belongs to the marquee. */
+function beginPan(e) {
+  const wrap = $('boardCanvasWrap');
+  wrap.classList.add('panning');
+  wrap.setPointerCapture(e.pointerId);
+  const sx = e.clientX - panX, sy = e.clientY - panY;
+  const move = function (ev) { panX = ev.clientX - sx; panY = ev.clientY - sy; applyView(); };
+  const up = function () {
+    wrap.classList.remove('panning');
+    wrap.removeEventListener('pointermove', move); wrap.removeEventListener('pointerup', up);
+  };
+  wrap.addEventListener('pointermove', move); wrap.addEventListener('pointerup', up);
+}
+
+/* ---------- what a lesson can check ----------
+   The board is no longer a file, so `contains: {file: design.md}` cannot see it. This is what a
+   `yourturn` asks instead — see board_contains in js/project.js. */
+function boardText() {
+  if (!board) board = loadBoard();
+  const bits = [];
+  (board.items || []).forEach(function (i) {
+    if (i.title) bits.push(i.title);
+    if (i.text) bits.push(i.text);
+  });
+  (board.links || []).forEach(function (l) { if (l.label) bits.push(l.label); });
+  return bits.join('\n');
+}
+function boardItemCount(kind) {
+  if (!board) board = loadBoard();
+  return (board.items || []).filter(function (i) {
+    return !kind || i.kind === kind;
+  }).length;
+}
+
+/* ---------- what the coach is told, and what it may do ---------- */
+function boardPayload() {
+  if (!board) board = loadBoard();
+  const f = (typeof flat !== 'undefined' && typeof curIdx === 'number' && flat[curIdx]) ? flat[curIdx] : null;
+  const frames = (board.items || []).filter(function (i) { return i.kind === 'frame'; });
+  return {
+    title: 'Design board',
+    lesson: f ? (f.l.t || f.id) : '',
+    /* Every note goes out WITH ITS ID. Without ids the coach could only ever add — it could see a
+       note that was wrong and not fix it, which is most of what "help me with this" turns out to
+       mean once a board has anything on it. */
+    frames: frames.map(function (fr) {
+      return {
+        title: fr.title || 'Frame',
+        notes: itemsInFrame(fr).filter(function (i) { return i.title || i.text; })
+          .slice(0, 24).map(function (i) {
+            return { id: i.id, title: (i.title || '').slice(0, 80), text: (i.text || '').slice(0, 300) };
+          })
+      };
+    }),
+    loose: (board.items || []).filter(function (i) {
+      return i.kind !== 'frame' && (i.title || i.text) && !frameAt(centreOf(i), i.id);
+    }).slice(0, 24).map(function (i) {
+      return { id: i.id, title: (i.title || '').slice(0, 80), text: (i.text || '').slice(0, 300) };
+    })
+  };
+}
+
+/* ---------- the coach's hands ----------
+   It proposes actions, the browser applies them — the same shape as the coder agent's `ops`, and
+   for the same reason: a model that returns an instruction the client validates can be wrong
+   without being dangerous. Five ops, which between them are everything a person could do to a
+   board of stickies: add one, change one, move one, throw one away, and add a section.
+
+   Every batch is ONE undo step, so a student who did not want what just landed presses Ctrl+Z once.
+   That is what makes it safe to let the coach do real work rather than ask permission first. */
+const APPLY_MAX = 28;            // a reply cannot rewrite the whole board in one go by accident
+
+function frameByTitle(t) {
+  const want = String(t || '').trim().toLowerCase();
+  if (!want) return null;
+  const frames = (board.items || []).filter(function (i) { return i.kind === 'frame'; });
+  return frames.filter(function (i) { return String(i.title || '').trim().toLowerCase() === want; })[0]
+    /* A near miss is a typo, not a refusal: "To-do" and "todo" both mean To do, and a student
+       watching nothing happen cannot tell the difference between that and a broken feature. */
+    || frames.filter(function (i) {
+      const a = String(i.title || '').toLowerCase().replace(/[^a-z0-9]/g, '');
+      return a && a === want.replace(/[^a-z0-9]/g, '');
+    })[0] || null;
+}
+/* Only notes the coach may touch: its own kind of object, never a frame, a drawing or a shape the
+   student built by hand. */
+function coachNote(id) {
+  const i = itemById(String(id || ''));
+  return (i && i.kind === 'note') ? i : null;
+}
+
+function boardApply(ops) {
+  if (!board || !ops || !ops.length) return 0;
+  mark();
+  let n = 0, made = [];
+  /* Where unframed notes land, worked out ONCE — the board's bounds grow with every note added, so
+     asking again each time walks the next one further down the page. */
+  const b0 = boardBounds();
+  const loose = { x: snap(b0.x), y: snap(b0.y + b0.h + 48), n: 0 };
+  const freeSpotLoose = function () {
+    const k = loose.n++;
+    return { x: loose.x + (k % 5) * (NOTE_W + 16), y: loose.y + Math.floor(k / 5) * (NOTE_H + 16) };
+  };
+  ops.slice(0, APPLY_MAX).forEach(function (op) {
+    if (!op || typeof op !== 'object') return;
+
+    if (op.putNote) {
+      const fr = frameByTitle(op.putNote.frame);
+      /* No frame named, or a name that matches nothing: it goes loose in clear space rather than
+         being dropped. A note in the wrong place can be dragged; a note that never arrived cannot. */
+      const spot = fr ? freeSpotIn(fr) : freeSpotLoose();
+      made.push(addItem(Object.assign(defaultsFor('note', spot), {
+        title: String(op.putNote.title || '').slice(0, 60),
+        text: String(op.putNote.text || '').slice(0, 400),
+        colour: COLOURS.indexOf(op.putNote.colour) >= 0 ? op.putNote.colour : 'y'
+      })).id);
+      n++;
+      return;
+    }
+
+    if (op.editNote) {
+      const i = coachNote(op.editNote.id);
+      if (!i) return;
+      if (typeof op.editNote.title === 'string') i.title = op.editNote.title.slice(0, 60);
+      if (typeof op.editNote.text === 'string') i.text = op.editNote.text.slice(0, 400);
+      if (COLOURS.indexOf(op.editNote.colour) >= 0) i.colour = op.editNote.colour;
+      made.push(i.id); n++;
+      return;
+    }
+
+    /* Moving one note into another frame is how cutting actually happens: "that is a great idea for
+       later" is a drag from Mechanics into Not building — next time, and asking a twelve-year-old to
+       do the drag themselves is asking them to agree with you twice. */
+    if (op.moveNote) {
+      const i = coachNote(op.moveNote.id);
+      const fr = frameByTitle(op.moveNote.frame);
+      if (!i || !fr) return;
+      const spot = freeSpotIn(fr);
+      i.x = snap(spot.x); i.y = snap(spot.y);
+      made.push(i.id); n++;
+      return;
+    }
+
+    if (op.deleteNote) {
+      const i = coachNote(op.deleteNote.id);
+      if (!i) return;
+      board.items = board.items.filter(function (x) { return x !== i; });
+      board.links = (board.links || []).filter(function (l) { return l.from !== i.id && l.to !== i.id; });
+      n++;
+      return;
+    }
+
+    if (op.addFrame) {
+      const b = boardBounds();
+      made.push(addItem(Object.assign(defaultsFor('frame', { x: b.x + b.w + 60, y: b.y }), {
+        title: String(op.addFrame.title || 'New frame').slice(0, 60),
+        w: 420, h: 300,
+        colour: COLOURS.indexOf(op.addFrame.colour) >= 0 ? op.addFrame.colour : 'b'
+      })).id);
+      n++;
+    }
+  });
+
+  if (!n) { unmark(); return 0; }
+  saveBoard();
+  paintBoard();
+  /* Flashed, not silently inserted. The student is reading a message on the other side of the
+     screen while this happens, and a board that changed behind their back is a board they stop
+     trusting. `landed` fades after a second and a half. */
+  made.forEach(function (id) {
+    const el = $('boardCanvas').querySelector('[data-id="' + id + '"]');
+    if (el) el.classList.add('landed');
+  });
+  return n;
+}
+/* Somewhere inside a frame nothing is already sitting. Rows first, then a new row. */
+function freeSpotIn(f) {
+  const taken = itemsInFrame(f);
+  const perRow = Math.max(1, Math.floor((f.w - 24) / (NOTE_W + 16)));
+  const k = taken.length;
+  return {
+    x: f.x + 16 + (k % perRow) * (NOTE_W + 16),
+    y: f.y + 36 + Math.floor(k / perRow) * (NOTE_H + 16)
+  };
+}
 
 /* ---------- showing it ----------
-   A tab, not a dialog: there is no open and no close, only "you are looking at it now". switchView
-   calls this every time the Design tab is shown, and it does two different jobs on purpose.
-
-   Built ONCE. The conversation is the part that must survive a trip to the Code tab and back — a
-   coach that forgot the question it had just asked, every time the student went to look something
-   up, would be worse than no coach.
-
-   Re-read EVERY time. design.md is not only edited here: a lesson's your-turn writes to it, the
-   coach writes to it, and the student can open it themselves. Re-reading on show is what stops the
-   board being a stale picture of a file that has moved on.
-
-   Painted after the view is visible, because boardHome measures the pane and a hidden pane
-   measures zero. */
+   A tab, not a dialog: switchView calls this every time the Design tab is shown. Loaded once and
+   kept, so panning and selection survive a trip to the Code tab. */
+let fitAt = '';                // pane size the last fit was computed for; not saved, so every fresh
+                               // page load fits once
 function showBoard() {
-  if (!theBoard) theBoard = { sheet: null };
-  theBoard.sheet = sheetRead();
-  paintPalette(theBoard);
-  paintBoard(theBoard);
-  /* Re-centre when the pane is a different size from the last time we did, and not otherwise.
-     Not once-only: this tab hides the course outline, so the very first show happens as the pane
-     grows by the width of a dock, and a board centred against the old width sits 130px off. Not
-     every time either — that would drag the board back to the middle every time the student came
-     back from the Code tab, throwing away wherever they had panned to. */
-  const w = Math.round($('boardCanvasWrap').getBoundingClientRect().width);
-  if (theBoard.homedAt !== w) { boardHome(theBoard); theBoard.homedAt = w; }
+  if (!board) board = loadBoard();
+  paintTools();
+  paintBoard();
+  /* Fit once, and again if the pane is a different size than when we last did. Not every time: that
+     would throw away wherever the student had panned to.
+
+     On the NEXT frame, because switchView hides the console dock on the way in and the pane is
+     still the old height when this runs — fitting against it makes the board arrive smaller than
+     it needs to be, and short by exactly the height of a dock nobody can see. */
+  requestAnimationFrame(function () {
+    const r = $('boardCanvasWrap').getBoundingClientRect();
+    const w = Math.round(r.width) + 'x' + Math.round(r.height);
+    if (fitAt !== w) { zoomToFit(); fitAt = w; }
+  });
 }
 
 /* ---------- wiring, once, at load ---------- */
-if ($('boardZoomIn')) $('boardZoomIn').addEventListener('click', function () { boardZoom(0.1); });
-if ($('boardZoomOut')) $('boardZoomOut').addEventListener('click', function () { boardZoom(-0.1); });
-if ($('boardFit')) $('boardFit').addEventListener('click', function () { if (theBoard) boardFit(theBoard); });
-/* The wheel zooms the board. A note being typed into scrolls itself — that is the one exception,
-   and it is decided by what is under the pointer rather than by a mode. */
-if ($('boardCanvasWrap')) $('boardCanvasWrap').addEventListener('wheel', function (e) {
-  if (e.target.closest('.board-note-edit')) return;     // so does a note being typed into
-  e.preventDefault();
-  const b = $('boardCanvasWrap').getBoundingClientRect();
-  boardZoom(e.deltaY > 0 ? -0.08 : 0.08, { x: e.clientX - b.left, y: e.clientY - b.top });
-}, { passive: false });
-/* Pan by dragging the board itself. Notes stop this from reaching here (they capture the pointer),
-   so grabbing a sticky moves the sticky and grabbing the space between them moves the board. */
-if ($('boardCanvasWrap')) $('boardCanvasWrap').addEventListener('pointerdown', function (e) {
-  const w = $('boardCanvasWrap');
-  if (e.target.closest('.board-note') || e.target.closest('.board-palette') || e.target.closest('.board-zoom')) return;
-  commitNoteEdit();
-  w.classList.add('panning'); w.setPointerCapture(e.pointerId);
-  const sx = e.clientX - boardPanX, sy = e.clientY - boardPanY;
-  const move = function (ev) { boardPanX = ev.clientX - sx; boardPanY = ev.clientY - sy; applyBoardView(); };
-  const up = function () {
-    w.classList.remove('panning');
-    w.removeEventListener('pointermove', move); w.removeEventListener('pointerup', up);
-  };
-  w.addEventListener('pointermove', move); w.addEventListener('pointerup', up);
-});
+if ($('boardCanvasWrap')) {
+  const wrap = $('boardCanvasWrap');
+  /* Pan is the middle button or space-drag. The right button is a menu, not a hand: it briefly did
+     the panning too, and that cost the one gesture everybody already knows for "what can I do with
+     this thing". */
+  wrap.addEventListener('pointerdown', function (e) {
+    if (e.button === 1 || spaceDown) { beginPan(e); e.preventDefault(); return; }
+    if (e.button === 2) return;                  // handled by contextmenu, below
+    onPointerDown(e);
+  });
+  wrap.addEventListener('contextmenu', function (e) {
+    if (e.target.closest('.board-palette,.board-zoom')) return;   // let the browser's menu alone
+    e.preventDefault();
+    openMenu(e);
+  });
+  wrap.addEventListener('dblclick', function (e) {
+    if (e.target.closest('.board-palette,.board-zoom,.bi-bar')) return;
+    const el = e.target.closest('.bi');
+    /* Whichever half was double-clicked is the half that opens. Double-clicking a sticky's heading
+       and getting the body instead is the sort of thing that teaches a student the board is not
+       listening to them. */
+    if (el) { startEdit(el.dataset.id, e.target.closest('.bi-title') ? 'title' : null); return; }
+    const lk = e.target.closest('.bi-link');
+    if (lk) { labelLink(lk.dataset.link); return; }
+    /* Double-clicking nothing makes a sticky there, which is the one shortcut every board has. */
+    placeAt('note', toBoard(e.clientX, e.clientY));
+  });
+  /* A plain scroll pans, which is what a trackpad user expects and what every board does. Zoom is
+     ctrl/⌘+wheel — a trackpad pinch arrives as exactly that, so pinching works for free. */
+  wrap.addEventListener('wheel', function (e) {
+    if (e.target.closest('.bi-edit')) return;
+    e.preventDefault();
+    if (e.ctrlKey || e.metaKey) {
+      const b = wrap.getBoundingClientRect();
+      zoomBy(e.deltaY > 0 ? 0.9 : 1.1, { x: e.clientX - b.left, y: e.clientY - b.top });
+      return;
+    }
+    panX -= e.deltaX; panY -= e.deltaY; applyView();
+  }, { passive: false });
+}
+if ($('boardZoomIn')) $('boardZoomIn').addEventListener('click', function () { zoomBy(1.2); });
+if ($('boardZoomOut')) $('boardZoomOut').addEventListener('click', function () { zoomBy(1 / 1.2); });
+if ($('boardFit')) $('boardFit').addEventListener('click', zoomToFit);
 
+function labelLink(id) {
+  const l = (board.links || []).filter(function (x) { return x.id === id; })[0];
+  if (!l || typeof modal !== 'function') return;
+  modal({
+    title: 'What does this arrow mean?',
+    message: 'A word or two — "makes it harder", "happens after", "needs".',
+    input: true, placeholder: l.label || 'makes it harder', okLabel: 'Save',
+    onOk: function (v) { mark(); l.label = String(v || '').slice(0, 40); saveBoard(); paintBoard(); }
+  });
+}
+
+/* Keyboard. Only while the Design tab is showing and nothing is being typed into, so a shortcut
+   can never fire from the Code editor or a lesson's answer box. */
+let spaceDown = false;
+document.addEventListener('keydown', function (e) {
+  const v = $('view-design');
+  if (!v || v.hidden) return;
+  const t = e.target;
+  if (t && (t.tagName === 'TEXTAREA' || t.tagName === 'INPUT' || t.isContentEditable)) return;
+  if (e.key === ' ') { spaceDown = true; return; }
+  if (e.key === 'Delete' || e.key === 'Backspace') { e.preventDefault(); deleteSelection(); return; }
+  if (e.key === 'Escape') { setTool('select'); clearSel(); return; }
+  /* The keys everybody already knows. A student who has used anything else on a computer will try
+     Ctrl+Z here before they try any button in the rail, and a board that does not answer it is a
+     board they will be careful on instead of playing with. */
+  if (e.ctrlKey || e.metaKey) {
+    const k = e.key.toLowerCase();
+    if (k === 'z' && !e.shiftKey) { e.preventDefault(); undo(); return; }
+    if ((k === 'z' && e.shiftKey) || k === 'y') { e.preventDefault(); redo(); return; }
+    if (k === 'c') { e.preventDefault(); copySelection(); return; }
+    if (k === 'x') { e.preventDefault(); copySelection(); deleteSelection(); return; }
+    if (k === 'v') { e.preventDefault(); pasteClip(); return; }
+    if (k === 'd') { e.preventDefault(); duplicateSelection(); return; }
+    if (k === 'a') {
+      e.preventDefault(); select((board.items || []).map(function (i) { return i.id; })); return;
+    }
+    return;
+  }
+  if (e.altKey) return;
+  if (e.key.indexOf('Arrow') === 0) { e.preventDefault(); nudge(e.key, e.shiftKey); return; }
+  const hit = TOOLS.filter(function (x) { return x.key.toLowerCase() === e.key.toLowerCase(); })[0];
+  if (hit) { setTool(hit.id); return; }
+  if (e.key === '+' || e.key === '=') zoomBy(1.2);
+  if (e.key === '-') zoomBy(1 / 1.2);
+  if (e.key === '0') zoomToFit();
+});
+document.addEventListener('keyup', function (e) { if (e.key === ' ') spaceDown = false; });

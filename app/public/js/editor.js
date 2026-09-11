@@ -207,6 +207,17 @@ function switchView(view) {
     if (typeof paintOutlineBtn === 'function') paintOutlineBtn();
   }
   if (view === 'learn') $('crumb').textContent = $('crumb').dataset.lesson || 'Lesson';
+  /* The board is not about the lesson behind it — it belongs to the student and is the same board
+     on every page — so the breadcrumb names the place rather than repeating where they came from. */
+  if (view === 'design') $('crumb').textContent = 'Game Design Workspace';
+  /* The assistant is the same panel and the same thread on this tab, but a different voice behind
+     it — a different prompt, a different way of saying hello, different chips and a different
+     invitation in the box. All four of those are decided by which view is showing, so they are
+     re-asked on every switch in and out. */
+  if (typeof setAIMode === 'function' && aiMode === 'tutor') {
+    const inp = $('aiText'); if (inp && typeof tutorPrompt === 'function') inp.placeholder = tutorPrompt();
+  }
+  if (typeof refreshStarters === 'function') refreshStarters();
   if (view === 'code') { upgradeEditor(); $('crumb').textContent = currentFile; refreshFiles(); loadCode(); setTimeout(function () { codeEditor.refresh(); }, 0); }
   /* Arriving here no longer starts the game and leaving no longer stops it — that is the transport's
      job now (Play/Stop, centred in the view bar). This tab shows the stage; it does not own what is on it.

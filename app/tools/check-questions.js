@@ -122,6 +122,40 @@ const shared = tutorLines.filter(function (s) { return coderSet.has(s); });
   fail('this opener is in both the tutor and the coder tree: "' + s + '"');
 });
 
+/* ---- the design tree ----
+   One tier, `any`, and that is deliberate: the board is the same board on every lesson and belongs
+   to the student rather than to the page they came from, so a per-lesson pool would be answering a
+   question nobody asked. pickQuestions reads `design.any` and nothing else, so a modules/ or
+   lessons/ block here would be content that can never be drawn.
+
+   Its lines may be questions OR asks — this is the one agent that both asks and writes — so the
+   coder tree's no-question-marks rule does not apply. What does apply is that they are its own:
+   a line shared with the Tutor is a chip that means something different depending on which tab a
+   student happens to be standing on. */
+if (!q.design) {
+  fail('there is no design tree in questions.yaml — the Design tab has no starter chips.');
+} else {
+  const dAny = q.design.any;
+  if (!Array.isArray(dAny) || dAny.length < MIN.any) {
+    fail('design.any has ' + ((dAny || []).length) + ' openers; ' + MIN.any + ' is the minimum — it is the only tier the design coach has.');
+  }
+  ['modules', 'lessons', 'labs'].forEach(function (k) {
+    if (q.design[k]) fail('design.' + k + ' exists, but the design coach only ever draws from design.any — that content can never be shown.');
+  });
+  const otherSet = new Set(tutorLines.concat(coderLines));
+  [...new Set((dAny || []).filter(function (s) { return otherSet.has(s); }))].forEach(function (s) {
+    fail('this opener is in the design tree and in another tree: "' + s + '"');
+  });
+}
+/* Every voice the panel can greet in needs a pool, or a student meets the one hard-coded fallback
+   line every single time they open that tab. */
+['tutor', 'coder', 'design'].forEach(function (voice) {
+  const pool = (q.greetings || {})[voice];
+  if (!Array.isArray(pool) || pool.length < MIN.greetings) {
+    fail('greetings.' + voice + ' has ' + ((pool || []).length) + '; ' + MIN.greetings + ' is the minimum.');
+  }
+});
+
 /* Within one pool a repeat is just a wasted slot — the draw dedupes, so a student sees two chips
    where there should be three. */
 function dupesIn(tree, side) {

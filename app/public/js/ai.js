@@ -31,12 +31,22 @@ let liveThreads = [];             // [{id, mode, title, lesson, msgs, at}] — m
    before questions.yaml has loaded, or a broken file. Never leaves a chat with no opening line. */
 const CHAT_GREETING_FALLBACK = {
   tutor: "Hi! I'm your **Tutor**. Ask me anything about the lesson or the code and I'll explain it — I won't change your game.",
-  coder: "Hi! I'm your **Build** helper. Tell me what to change or add to your game — like \"make the player move faster\" — and I'll edit the code."
+  coder: "Hi! I'm your **Build** helper. Tell me what to change or add to your game — like \"make the player move faster\" — and I'll edit the code.",
+  design: "Hi! This board is yours. Tell me about your game, ask me what is missing, or ask me to write some stickies to get you started."
 };
 function chatGreeting(mode) {
   const pool = ((QUESTIONS || {}).greetings || {})[mode];
   if (Array.isArray(pool) && pool.length) return pool[Math.floor(Math.random() * pool.length)];
   return CHAT_GREETING_FALLBACK[mode] || CHAT_GREETING_FALLBACK.tutor;
+}
+/* The Design tab shares the Tutor's panel and the Tutor's thread — it is the same assistant, asked
+   about a different thing — but it must not open with the Tutor's line. A student who presses
+   Design and is greeted with "ask me what a semicolon does" has been told, wrongly, what this tab
+   is for. The prompt behind it already changes (aiAgentFor); so does the way it says hello and the
+   questions it offers. */
+function chatVoice(mode) {
+  const onDesign = $('view-design') && !$('view-design').hidden;
+  return (mode === 'tutor' && onDesign) ? 'design' : mode;
 }
 function newThreadId() { return 't' + Date.now().toString(36) + Math.random().toString(36).slice(2, 6); }
 function threadsFor(mode) {
@@ -45,7 +55,7 @@ function threadsFor(mode) {
 function makeThread(mode) {
   const f = (typeof flat !== 'undefined' && typeof curIdx === 'number') ? flat[curIdx] : null;
   const t = { id: newThreadId(), mode: mode, title: '', lesson: f ? f.l.t : '',
-    msgs: [{ who: 'bot', text: chatGreeting(mode) }], at: Date.now() };
+    msgs: [{ who: 'bot', text: chatGreeting(chatVoice(mode)) }], at: Date.now() };
   liveThreads.push(t);
   /* Oldest first out, and only within this mode, so a busy Build history cannot evict the Tutor
      conversation a student is halfway through. */
@@ -252,6 +262,10 @@ function shuffled(a) {
    no lab tier because Build is off inside a lab bench. */
 function pickQuestions(scope, n, agent) {
   const q = QUESTIONS || {};
+  /* The design tree has one tier and no lesson tiers on purpose: the board is the same board on
+     every lesson and belongs to the student rather than to the page they came from, so a chip keyed
+     to where they happen to be standing would be answering a question nobody asked. */
+  if (agent === 'design') return shuffled(((q.design || {}).any) || []).slice(0, n);
   /* Falls back to the whole file if the agent trees are missing, so an older or half-edited
      questions.yaml still produces chips instead of nothing. */
   const t = q[agent === 'coder' ? 'coder' : 'tutor'] || q;
@@ -280,8 +294,11 @@ function renderStarters(scope, host, send, agent) {
   const wrap = document.createElement('div');
   wrap.className = 'starters';
   const lead = document.createElement('p'); lead.className = 'st-lead';
-  /* Build's chips are instructions, so "what to ask" would be the wrong word for them. */
-  lead.textContent = agent === 'coder' ? 'Not sure what to build?' : 'Not sure what to ask?';
+  /* Build's chips are instructions, so "what to ask" would be the wrong word for them. The board's
+     are half questions and half asks, and "where do I start" is what a blank board actually feels
+     like. */
+  lead.textContent = agent === 'coder' ? 'Not sure what to build?'
+    : agent === 'design' ? 'Not sure where to start?' : 'Not sure what to ask?';
   wrap.appendChild(lead);
   picks.forEach(function (text) {
     const b = document.createElement('button');
@@ -305,7 +322,7 @@ function refreshStarters() {
     renderStarters('lesson', aiMsgs, function (text) {
       const box = $('aiText'); if (box) { box.value = text; growTextarea(box); }
       sendAI();
-    }, aiMode);
+    }, chatVoice(aiMode));
   });
 }
 
@@ -681,18 +698,45 @@ function askTutor(question, context) {
   const c = aiContext();
   const agent = aiAgentFor();
   /* The board travels with a design question and not with any other, because it is only meaningful
-     to the coach — and boardPayload is the same shape the checkpoint coach was given, minus the
-     goals it no longer has. */
+     to the coach — and it is the whole board, frame by frame, so the coach can answer "what is
+     missing" without asking the student to read it out. */
   const body = { studentId: studentId, agent: agent, message: question, context: context || '',
     code: project.files['game.js'] || '', history: history, lessonTitle: c.lessonTitle,
     where: c.where, files: c.files, gameLog: c.gameLog, gameRan: c.gameRan };
-  if (agent === 'design-coach' && typeof boardPayload === 'function' && typeof theBoard !== 'undefined' && theBoard) {
-    body.board = boardPayload(theBoard);
-  }
+  if (agent === 'design-coach' && typeof boardPayload === 'function') body.board = boardPayload();
   fetch('/api/ai', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(body) })
-    .then(function (r) { return r.json(); }).then(function (d) { setMsg(pending, 'bot', d.reply || '—'); })
+    .then(function (r) { return r.json(); })
+    .then(function (d) {
+      const text = d.reply || '—';
+      setMsg(pending, 'bot', agent === 'design-coach' ? applyBoardOps(text) : text);
+    })
     .catch(function () { setMsg(pending, 'bot', 'Could not reach the tutor.'); })
     .finally(function () { setChatBusy($('aiText'), false); persistChats(); renderChatBar(); });
+}
+
+/* The design coach's hands. It ends a reply with `BOARD: {…}` lines; we lift them out, hand them to
+   the board to apply, and return the prose with those lines gone — the student sees the stickies
+   appear, never the instruction that made them.
+
+   Same shape as the coder agent's `ops`, and for the same reason: a model that returns an
+   instruction the client validates can be wrong without being able to do damage. board.js checks
+   every field and ignores anything it does not recognise, so a malformed line costs a sticky, not
+   the board. The whole reply is scanned rather than just the tail, because a model told to put
+   something last will sometimes put it in the middle, and a leaked `BOARD:` line in the chat is
+   worse than a missed sticky. */
+function applyBoardOps(reply) {
+  if (typeof boardApply !== 'function') return reply;
+  const ops = [], kept = [];
+  String(reply).split('\n').forEach(function (line) {
+    const m = /^\s*(?:```)?\s*BOARD:\s*(\{.*\})\s*(?:```)?\s*$/.exec(line);
+    if (!m) { kept.push(line); return; }
+    try { ops.push(JSON.parse(m[1])); } catch (e) { /* a broken line is dropped, not shown */ }
+  });
+  if (!ops.length) return reply;
+  boardApply(ops);
+  /* Fences the ops were sitting inside, now empty, and the blank run they leave behind. */
+  return kept.join('\n').replace(/```[a-z]*\s*```/g, '').replace(/\n{3,}/g, '\n\n').trim()
+    || 'Done — have a look at your board.';
 }
 /* Clicking a line number in the Code tab asks the tutor about that line. The answer lands in
    the normal chat, so the student can follow up on it like any other question. */

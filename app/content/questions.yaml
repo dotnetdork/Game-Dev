@@ -46,6 +46,19 @@
 #
 # Written to a ten-year-old: short sentences, no jargon, and never smug about what it will not do.
 greetings:
+  design:
+    - "Hi — this board is yours. It is your game design document, your job list, and the place you put an idea before you know what it is. Tell me what your game is about, or ask me to get you started."
+    - "Hi, I'm your **design coach**. Nothing on this board is marked and nothing on it is wrong — it is a place to think out loud. If you want a hand filling it in, say so and I'll write some stickies you can change."
+    - "Hi. I can see your board, so you never have to read it out to me. Ask me what is missing, or tell me an idea and I'll put it somewhere sensible."
+    - "Hi, I'm your **design coach**. \"I don't know what to make\" is the most normal sentence in game design and I have a way through it. Say it and we'll start from what you like playing."
+    - "Hi. My job here is your game, not your code — what the player does, what gets in the way, and why they want another go. Ask me about any of that."
+    - "Hi, I'm your **design coach**. The best first move is usually one sentence: my game is a ____ where you ____. Have a go and I'll tell you what is still missing from it."
+    - "Hi. If your idea feels too big, that is not a mistake — every first idea is. Tell me the whole thing and we'll work out which one part is actually the game."
+    - "Hi, I'm your **design coach**. I can put stickies on this board for you when you ask, but I will not invent your game for you — the good bit has to be yours or none of it works."
+    - "Hi. Ask me how any of this works — the frames, the arrows, the pen — or just start telling me about your game and I'll keep up."
+    - "Hi, I'm your **design coach**. A board with four honest stickies on it beats one with forty. Tell me the one thing you are most sure about and we'll build out from there."
+    - "Hi. Everything on this board moves, renames and deletes, so there is nothing here you can get wrong. What are we making?"
+    - "Hi, I'm your **design coach**. If you are stuck, the question that unsticks people most often is: how do you LOSE? Games you cannot lose are games you cannot win."
   tutor:
     - "Hi, I'm your **Tutor** — the explaining one. I don't touch your game at all, which means there is genuinely nothing you can ask me here that breaks anything. Ask me what a line does, why something isn't working, or what on earth this lesson is actually on about."
     - "Hi, I'm your **Tutor**. I can see your code and whatever your game printed the last time you ran it, so \"why is it doing *that*?\" is a question I can usually answer properly instead of guessing. I'll explain what's going on — the typing stays yours."
@@ -980,3 +993,30 @@ coder:
       - Make the game restart cleanly from the game over screen.
       - Add a loading message.
       - Give my game a final polish pass.
+
+
+# ---------------------------------------------------------------------------------------------
+# The design coach, on the Design tab. One tier only: the board is the same board on every lesson
+# and belongs to the student rather than to the page they came from, so a per-lesson pool would be
+# answering a question nobody asked. Half of these are asks rather than questions, because this is
+# the one agent that both asks and writes.
+design:
+  any:
+    - "How do I use this board?"
+    - "I don't know what to make."
+    - "What is missing from my board?"
+    - "Give me three ideas for my to-do list."
+    - "My idea is too big — help me cut it down."
+    - "What should go in the pitch frame?"
+    - "What is a core loop, and what is mine?"
+    - "How does the player lose my game?"
+    - "Turn what I just said into a sticky note."
+    - "Write me a sticky about the main character."
+    - "What should I work on next?"
+    - "What is one thing that would make my game more fun?"
+    - "Help me think of a name for my game."
+    - "How do I join two notes together with an arrow?"
+    - "Is my game too big to build in ten weeks?"
+    - "Fill in my empty frames to get me started."
+    - "Move the stuff I can't build into Not building."
+    - "Rewrite my pitch note so it says it better."

@@ -370,6 +370,12 @@ function applyAIMode(mode) {
   else if (currentAIMode === 'guided') { inp.disabled = false; btn.disabled = false; inp.placeholder = 'Guided: tell the AI exactly what to change'; }
   else { inp.disabled = false; btn.disabled = false; inp.placeholder = 'Ask the AI to change your game...'; }
 }
+/* What the box asks for depends on which tab is open. "Ask the tutor about this lesson" on a design
+   board is an invitation to the wrong conversation — there is no lesson in front of them. */
+function tutorPrompt() {
+  const onDesign = $('view-design') && !$('view-design').hidden;
+  return onDesign ? 'Ask about your game, or your board...' : 'Ask the tutor about this lesson...';
+}
 function setAIMode(mode) {
   aiMode = (mode === 'tutor') ? 'tutor' : 'coder';
   const tog = $('modeToggle');
@@ -380,7 +386,7 @@ function setAIMode(mode) {
     tog.classList.toggle('tutor', aiMode === 'tutor'); tog.classList.toggle('coder', aiMode === 'coder');
   }
   const tag = $('aiModelTag'); if (tag) { const spec = aiModels[aiMode] || ''; tag.textContent = spec.replace(/^[^:]+:/, '') || '…'; tag.title = spec; }
-  if (aiMode === 'tutor') { const inp = $('aiText'), btn = $('aiSend'); if (inp) { inp.disabled = false; inp.placeholder = 'Ask the tutor about this lesson...'; } if (btn) btn.disabled = false; }
+  if (aiMode === 'tutor') { const inp = $('aiText'), btn = $('aiSend'); if (inp) { inp.disabled = false; inp.placeholder = tutorPrompt(); } if (btn) btn.disabled = false; }
   else { applyAIMode(currentAIMode); }
   /* Each mode has its own current conversation, so switching modes swaps which thread is on
      screen rather than showing one mode's messages under the other's name. */

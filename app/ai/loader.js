@@ -181,31 +181,43 @@ function buildPrompt(agent, ctx) {
     taskTitle: c.taskTitle || '(no task given)',
     taskSteps: renderSteps(c.taskSteps),
     changedCode: c.changedCode || '(nothing appears to have changed)',
-    /* The design board. `boardBoxes` is the one-sheet as it stands, and it has to carry the headings
-       VERBATIM — the coach's whole job is asking about a named box that is still empty. */
+    /* The design board. Frame titles have to survive VERBATIM: the coach asks about a named frame
+       that is still empty, and it addresses a new sticky to a frame BY ITS TITLE, so a title that
+       has been reworded on the way through the prompt is a sticky that lands nowhere. */
     boardTitle: (c.board && c.board.title) || 'Design board',
     boardLesson: (c.board && c.board.lesson) || '(not on a lesson)',
-    boardBoxes: renderBoardBoxes(c.board),
-    boardNotes: renderBoardNotes(c.board)
+    boardFrames: renderBoardFrames(c.board),
+    boardLoose: renderBoardLoose(c.board)
   });
 }
 
-/* The board, one box per line, empty ones said to be empty rather than left off. Saying so is the
-   point: the coach's whole job is asking about the box that has nothing in it, and a box that is
-   simply absent from the prompt is one it cannot ask about. */
-function renderBoardBoxes(board) {
-  const boxes = (board && board.boxes) || [];
-  if (!boxes.length) return '(their board is empty)';
-  return boxes.map(function (b) {
-    return '- ' + b.heading + ': ' + (b.text ? b.text : '(EMPTY)');
-  }).join('\n');
+/* The board, one frame per block with its stickies under it, and an empty frame SAID to be empty
+   rather than left off. Saying so is the point: the coach's most useful move is asking about the
+   frame with nothing in it, and a frame that is simply absent from the prompt is one it cannot ask
+   about — or address a new sticky to. */
+/* Each note is listed with its id, because the coach can edit, move and remove notes as well as
+   write them and the id is how it says which one. `[n-4f2a1c]` in front of a line is cheap and the
+   alternative is a coach that can only ever add to a board it can already see is wrong. */
+function renderBoardNote(t) {
+  const head = t.title ? '**' + t.title + '**' : '(no heading)';
+  return '- `' + t.id + '` ' + head + (t.text ? ' — ' + t.text : '');
 }
-/* The loose stickies — everything on the board that is not one of the fixed boxes. Half-formed
-   thoughts, mostly, which is exactly what the coach should be picking up on. */
-function renderBoardNotes(board) {
-  const notes = (board && board.notes) || [];
-  if (!notes.length) return '(no loose notes on it yet)';
-  return notes.map(function (t) { return '- ' + t; }).join('\n');
+function renderBoardFrames(board) {
+  const frames = (board && board.frames) || [];
+  if (!frames.length) return '(there are no frames on their board)';
+  return frames.map(function (f) {
+    const notes = f.notes || [];
+    if (!notes.length) return '### ' + f.title + '\n(EMPTY)';
+    return '### ' + f.title + '\n' + notes.map(renderBoardNote).join('\n');
+  }).join('\n\n');
+}
+/* Everything sitting on the bare board rather than inside a frame. Half-formed thoughts, mostly,
+   which is exactly what the coach should be picking up on — and often the answer to "where should
+   this go", which is a question worth asking back. */
+function renderBoardLoose(board) {
+  const loose = (board && board.loose) || [];
+  if (!loose.length) return '(nothing loose — everything is inside a frame)';
+  return loose.map(renderBoardNote).join('\n');
 }
 
 /* Optional `model:` in an agent's front-matter. Lower priority than .env. */

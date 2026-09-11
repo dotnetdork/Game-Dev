@@ -823,12 +823,20 @@ app.post('/api/ai', async (req, res) => {
     board: (b.board && typeof b.board === 'object') ? {
       title: String(b.board.title || '').slice(0, 120),
       lesson: String(b.board.lesson || '').slice(0, 120),
-      boxes: Array.isArray(b.board.boxes) ? b.board.boxes.slice(0, 16).map(function (x) {
-        return { heading: String((x && x.heading) || '').slice(0, 80),
-          text: String((x && x.text) || '').slice(0, 600) };
-      }).filter(function (x) { return x.heading; }) : [],
-      notes: Array.isArray(b.board.notes) ? b.board.notes.slice(0, 40)
-        .map(function (x) { return String(x || '').slice(0, 200); }) : []
+      /* Frame titles are capped but never rewritten, because the coach addresses a new sticky to a
+         frame BY ITS TITLE — a title that came back different from the one it was shown is a
+         sticky that lands nowhere. 24 frames and 12 stickies each is well past what a term's board
+         holds; the caps are here so a pasted novel cannot become the prompt. */
+      frames: Array.isArray(b.board.frames) ? b.board.frames.slice(0, 24).map(function (f) {
+        return {
+          title: String((f && f.title) || '').slice(0, 80),
+          notes: Array.isArray(f && f.notes) ? f.notes.slice(0, 12)
+            .map(function (x) { return String(x || '').slice(0, 300); })
+            .filter(Boolean) : []
+        };
+      }).filter(function (f) { return f.title; }) : [],
+      loose: Array.isArray(b.board.loose) ? b.board.loose.slice(0, 40)
+        .map(function (x) { return String(x || '').slice(0, 300); }).filter(Boolean) : []
     } : null,
     /* Which screen the student is actually looking at. "Why isn't it working?" is three different
        questions on the Learn, Code and Game tabs, and both agents were answering it blind. */
