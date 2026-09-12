@@ -36,7 +36,18 @@ const PKEY = 'leagueProject';
        replaced, so nothing is ever silently destroyed
    `keepBroken` is the important one. Losing a save to a parse error is recoverable; losing it
    because we cheerfully wrote a fresh default over the top of it is not. */
-const SCHEMA = { project: 3, progress: 2 };
+const SCHEMA = { project: 4, progress: 2 };
+
+/* Did the student actually write in the old `design.md`, or is this the file as it shipped?
+   Asked of the CONTENT rather than compared against a remembered copy of the starter, because the
+   starter text would then have to be kept forever just to be diffed against. Every line of it was
+   either a `#` heading or a `(prompt in brackets)`; anything else on a line of its own is theirs. */
+function designMdWasWrittenIn(text) {
+  return String(text || '').split('\n').some(function (l) {
+    const s = l.trim();
+    return !!s && s.charAt(0) !== '#' && s.charAt(0) !== '(';
+  });
+}
 
 function keepBroken(key, raw, why) {
   try {
@@ -111,15 +122,26 @@ const MIGRATIONS = {
        ensureProjectAssets() on first use. Null means "everything owned", which is exactly the old
        behaviour — an existing student's game cannot break by opening it. */
     1: function (p) { p.assets = null; return p; },
-    /* v2 -> v3: a project gained a place to write in.
-       design.md is the student's one-sheet — the game they are going to make, next to the code of
-       the game they were given. Added rather than replaced: if a project somehow already has the
-       file, whatever is in it is the student's writing and this must not touch it.
-       It goes to the FRONT of `order` because that is where they will look for it, and order is
-       only the file tree — load order skips it entirely (see isCodeFile). */
-    2: function (p) {
-      if (typeof p.files['design.md'] !== 'string') p.files['design.md'] = STARTER['design.md'];
-      if (p.order.indexOf('design.md') < 0) p.order.unshift('design.md');
+    /* v2 -> v3: a project gained `design.md`, the student's one-sheet, sitting next to the code.
+       Kept as a no-op rather than deleted: migrate() treats a MISSING step as "the shape did not
+       change" and stamps the blob straight to the target version, so removing this would carry a
+       v2 save past v4 below without the file ever being cleaned out of it. */
+    2: function (p) { return p; },
+    /* v3 -> v4: and it goes again. The one-sheet became the Design tab — a real board with its own
+       object model, in its own storage key, outside the project entirely. A markdown file in the
+       file tree was the last trace of the version before that, and it was a confusing one: two
+       places to write about your game, one of which nothing pointed at any more.
+       The student's own words are NOT thrown away. If they wrote anything in it beyond the starter
+       text it stays in the project as `design-notes.md`, because deleting somebody's writing to
+       tidy up a file tree is not a trade this app gets to make on their behalf. */
+    3: function (p) {
+      const was = p.files['design.md'];
+      delete p.files['design.md'];
+      p.order = (p.order || []).filter(function (f) { return f !== 'design.md'; });
+      if (designMdWasWrittenIn(was)) {
+        p.files['design-notes.md'] = was;
+        p.order.unshift('design-notes.md');
+      }
       return p;
     }
   },
@@ -201,8 +223,8 @@ function fileNames() { const out = project.order.filter(function (n) { return pr
 /* ---------- which files are code, and which are just writing ----------
    Every project file used to be JavaScript, and everything that walks the project assumed it: the
    game runner wraps each one in a <script>, the practice checker parses each one, the editor lints
-   each one. `design.md` is prose — the student's one-sheet, sitting next to the code the way a
-   design doc does in a real project — so each of those places asks this first.
+   each one. A project can hold prose as well — the notes rescued from the old `design.md`, or an
+   `.md` file a student adds themselves — so each of those places asks this first.
    Kept here rather than in each caller because "is this file code?" must have one answer. A file
    the runner skips but the linter checks would report syntax errors in a child's game idea. */
 function isCodeFile(name) { return /\.js$/i.test(String(name || '')); }
@@ -572,6 +594,29 @@ function practiceRuleResult(rule, snap) {
     const hay = f ? readFile(f) : allFiles();
     return { ok: hay.indexOf(t) >= 0, why: 'nothing in ' + (f || 'your game') + ' contains "' + t + '" yet' };
   }
+  /* ---- the Design tab's answer to `contains` ----
+     A your-turn step that asks the student to write something on their BOARD, rather than in a
+     file. The board used to be a structured view of `design.md` in the project, so `contains:` with
+     a filename could see it; it has its own object model now and lives outside the project
+     entirely, so this asks board.js instead.
+
+     `text` is a substring, matched case-insensitively across every heading, note and arrow label —
+     a child writing on a sticky is not going to match capitals. `notes` is a count instead, for the
+     steps that just want "put three things in this frame". */
+  if (rule.board_contains) {
+    if (typeof boardText !== 'function') return null;          // board not loaded: cannot check
+    const want = String(rule.board_contains.text || rule.board_contains || '').toLowerCase();
+    const min = Number(rule.board_contains.notes || 0);
+    if (min) {
+      const n = typeof boardItemCount === 'function' ? boardItemCount('note') : 0;
+      return { ok: n >= min, why: 'your board has ' + n + ' sticky note' + (n === 1 ? '' : 's') + ' — this one wants ' + min };
+    }
+    if (!want) return { ok: false, bad: 'the `board_contains:` rule has nothing to look for' };
+    return {
+      ok: boardText().toLowerCase().indexOf(want) >= 0,
+      why: 'nothing on your board says "' + want + '" yet — write it on a sticky in the Design tab'
+    };
+  }
   if (rule.matches) {
     const f = rule.matches.file, src = String(rule.matches.regex || '');
     let re; try { re = new RegExp(src, 'm'); } catch (e) { return { ok: false, bad: 'the `matches:` pattern is not a valid regular expression: ' + src }; }
@@ -649,8 +694,8 @@ function practiceRuleResult(rule, snap) {
       why: 'only ' + n + ' line(s) of your game have changed so far' };
   }
   if (rule.parses) {
-    // Code files only. design.md is prose and never parses as JavaScript, so without this every
-    // `parses: true` rule in the course would fail for every student, permanently.
+    // Code files only. A markdown file in the project never parses as JavaScript, so without this
+    // every `parses: true` rule in the course would fail for every student, permanently.
     const broken = codeFileNames().filter(function (n) { return !validJS(readFile(n)); });
     return { ok: broken.length === 0, why: broken.length ? broken[0] + ' has a syntax error in it' : '' };
   }

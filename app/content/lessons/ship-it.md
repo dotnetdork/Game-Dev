@@ -228,15 +228,14 @@ title: Walk the checklist once
 task: Not fixing yet. This is the read-through, so you know what you are dealing with before you start.
 steps:
   - Press **Play** and go through the last-mile checklist above, one line at a time.
-  - Open the **Design** tab and add a note with **+** for each thing you find, starting `Before it ships:`.
+  - Open the **Design** tab and add a sticky to **To do** for each thing you find, headed `Before it ships:`.
   - Be honest and be specific. "The jump is weird" is not a note; "the jump feels floaty at the top" is.
   - Do not fix anything yet. A list you wrote before you started fixing is the only one that is not a list of what you happened to notice while fixing.
 reward: Last Mile badge
 check:
-  - contains:
-      file: design.md
+  - board_contains:
       text: 'Before it ships:'
-    hint: Add at least one note on your Design board starting `Before it ships:` — what you found while walking the checklist.
+    hint: Put at least one sticky on your Design board headed `Before it ships:` — what you found while walking the checklist.
 example: 'Before it ships: you cannot tell which key jumps until you press one.'
 ```
 

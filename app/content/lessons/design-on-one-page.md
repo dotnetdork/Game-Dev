@@ -149,17 +149,15 @@ You already have one waiting on your Design tab, half filled in from the last tw
 title: Read your own one-sheet back
 task: Read your board the way a stranger would, then fill in the worst gap it shows you.
 steps:
-  - Open the **Design** tab.
-  - Press **Read it back as a stranger would** in the toolbar down the left. It runs your stickies together into the one paragraph somebody else would read, and names the boxes that are still empty.
-  - Read that paragraph out loud if you can. The sentence you stumble over is the one to fix.
-  - Fill in at least one of the boxes it says are missing. Click the sticky and type.
-  - Add a note with **+** starting `TODO:` for whatever is still vague. It is your list for next week.
+  - Open the **Design** tab. The frames across the top are your one-sheet — **The pitch**, **Core loop**, **Mechanics & controls**.
+  - Read your stickies in order, out loud if you can. That is the version somebody else gets.
+  - Find the frame with the least in it. Write one sticky there — press **N**, or double-click the board.
+  - Then put a sticky in **To do** with the heading `TODO:` and, underneath, whatever is still vague.
 reward: One-Sheet badge
 check:
-  - contains:
-      file: design.md
+  - board_contains:
       text: 'TODO:'
-    hint: Add a note on the board starting `TODO:` saying which boxes still need work.
+    hint: Put a sticky in your **To do** frame headed `TODO:`, saying what still needs work.
 example: 'TODO: how you lose is empty, and "what makes it mine" is still three things instead of one.'
 ```
 

@@ -96,18 +96,14 @@ function resetFile(name) {
 function resetGame() {
   modal({ title: 'Reset the game?', message: 'This restores all of the original game files, replacing your changes to them. Your notes and any other files you added are kept.', okLabel: 'Reset it', onOk: function () {
     /* Code files only. This is the button a student presses after breaking their game, and it must
-       not take their design notes with it — design.md is the one thing in the project that cannot
-       be got back by reading the starter. resetFile() still restores it on its own, because there
-       the student named the file they meant. */
+       not take anything else in the project with it — a note they wrote, a file they added. Those
+       are the things that cannot be got back by reading the starter.
+       The design board is not in the project at all any more, so it was never at risk here: it is
+       its own storage key, untouched by this and by resetFile(). */
     STARTER_ORDER.filter(isCodeFile).forEach(function (n) {
       project.files[n] = STARTER[n];
       if (project.order.indexOf(n) < 0) project.order.push(n);
     });
-    // A project that predates design.md still gains it, without touching one that has it.
-    if (typeof project.files['design.md'] !== 'string') {
-      project.files['design.md'] = STARTER['design.md'];
-      if (project.order.indexOf('design.md') < 0) project.order.unshift('design.md');
-    }
     saveProject(); toast('Game restored.'); refreshFiles();
     if (typeof isGameRunning === 'function' && isGameRunning()) startGame(); if (!$('view-code').hidden) loadCode(); loadSettings();
   } });

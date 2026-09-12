@@ -3,58 +3,9 @@
    Loaded into the project on first run or on Reset. Each file is its own tab in the Code view. */
 
 const STARTER = {};
-/* design.md sits first because it is the only file here that is about the game the student is going
-   to make rather than the one they have been given, and the Code tab is where they will look for
-   it. It is not code: the game runner, the linter and the practice checker all skip it — see
-   isCodeFile in project.js. */
-const STARTER_ORDER = ['design.md', 'config.js', 'world.js', 'player.js', 'coins.js', 'game.js', 'main.js'];
-
-/* ------------------------------------------------------------------ design.md */
-/* The one-sheet. Five slots, deliberately — a design doc a twelve-year-old will actually fill in is
-   a pitch card, not a specification. Its job is not to describe a game, it is to make them CUT: the
-   last slot is the one no template has and the one that does the work.
-   It ships empty and stays empty until the Concept Ideation module, which is why the top of it says so
-   rather than looking like homework nobody set. */
-STARTER['design.md'] = `# My game
-
-Nothing here yet — and that is fine. You fill this in during **Concept Ideation**.
-
-Right now the game in the other files is the one you were handed. This page is where it turns
-into yours. Real studios write one of these before they build anything, and it fits on one page
-on purpose: if your idea does not fit on one page, it will not fit in one term either.
-
-
-## My game is...
-
-(One sentence. Not a paragraph. "A platformer where you are a ghost who can only move
-when nobody is looking.")
-
-
-## The one thing you do
-
-(Every game is one verb done well. Mario's is jump. Minecraft's is dig. What is yours?)
-
-
-## How you win
-
-(What has to happen for someone to say "I did it"?)
-
-
-## How you lose
-
-(If you cannot lose, you cannot win. What goes wrong?)
-
-
-## What makes it mine
-
-(The twist. The bit that is not in anybody else's version.)
-
-
-## What I am NOT building
-
-(The most important box on this page. Write down the ideas you love and are cutting anyway,
-so you stop thinking about them. You can always build them next time.)
-`;
+/* The order they appear in the file tree. `config.js` first because it is the one file a student
+   is sent to in the first ten minutes, and the numbers in it are the whole of lesson one. */
+const STARTER_ORDER = ['config.js', 'world.js', 'player.js', 'coins.js', 'game.js', 'main.js'];
 
 /* ------------------------------------------------------------------ config.js */
 STARTER['config.js'] = `// ============================================================

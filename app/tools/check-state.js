@@ -151,22 +151,33 @@ console.log('\n--- the re-key is idempotent ---');
 
 console.log('\n--- a project from before it had somewhere to write ---');
 {
-  /* design.md is the student's one-sheet. An existing project has to GAIN it, and a project that
-     already has one must keep whatever the student wrote — a migration that overwrote it would
-     destroy the only file in the project you cannot get back by reading the starter. */
+  /* design.md was the student's one-sheet, in the project, from v3. The Design tab replaced it with
+     a real board in its own storage key, so v4 takes the file back out again.
+
+     The one thing that migration is not allowed to do is throw away writing. A file the student
+     never opened goes; one they wrote in is kept, renamed, because deleting somebody's words to
+     tidy a file tree is not a trade this app gets to make for them. */
   const v2 = JSON.stringify({ v: 2, files: { 'game.js': '// mine', 'config.js': '// cfg' }, order: ['game.js', 'config.js'], assets: [] });
   const { project, schema } = load({ leagueProject: v2 });
-  checkTrue('an older project gains design.md', typeof project.files['design.md'] === 'string');
-  check('...at the front of the file tree, where they will look for it', project.order[0], 'design.md');
+  checkTrue('an older project does not gain design.md', typeof project.files['design.md'] === 'undefined');
   check('...and its own code is untouched', project.files['game.js'], '// mine');
   check('...and it is stamped to the current version', project.v, schema.project);
 
-  const mine = JSON.stringify({ v: 2, files: { 'game.js': '// g', 'design.md': '# my idea\n\nA ghost game.' }, order: ['game.js', 'design.md'], assets: [] });
+  /* An untouched one: every line is a heading or a bracketed prompt, exactly as it shipped. */
+  const untouched = JSON.stringify({ v: 3, files: { 'game.js': '// g', 'design.md': '# My game\n\n## My game is...\n\n(One sentence.)\n' }, order: ['design.md', 'game.js'], assets: [] });
+  const blank = load({ leagueProject: untouched });
+  checkTrue('a design doc nobody wrote in is dropped', typeof blank.project.files['design.md'] === 'undefined');
+  checkTrue('...and leaves no notes file behind', typeof blank.project.files['design-notes.md'] === 'undefined');
+  check('...and is gone from the file tree', blank.project.order.indexOf('design.md'), -1);
+
+  const mine = JSON.stringify({ v: 3, files: { 'game.js': '// g', 'design.md': '# my idea\n\nA ghost game.' }, order: ['game.js', 'design.md'], assets: [] });
   const second = load({ leagueProject: mine });
-  check('a design doc that already exists is never overwritten',
-    second.project.files['design.md'], '# my idea\n\nA ghost game.');
-  check('...and is not listed twice',
-    second.project.order.filter(function (n) { return n === 'design.md'; }).length, 1);
+  check('a design doc the student wrote in is kept, renamed',
+    second.project.files['design-notes.md'], '# my idea\n\nA ghost game.');
+  checkTrue('...and the old name is gone', typeof second.project.files['design.md'] === 'undefined');
+  check('...and the notes are listed once',
+    second.project.order.filter(function (n) { return n === 'design-notes.md'; }).length, 1);
+  check('...and design.md is off the file tree', second.project.order.indexOf('design.md'), -1);
 }
 
 console.log('\n--- notes are not code ---');
@@ -192,9 +203,12 @@ console.log('\n--- notes are not code ---');
   };
   check('.js is code', ctxCheck("[isCodeFile('game.js'), isCodeFile('enemy.js')]"), [true, true]);
   check('.md is not', ctxCheck("[isCodeFile('design.md'), isCodeFile('notes.md')]"), [false, false]);
-  check('a new project ships the design doc', ctxCheck("typeof project.files['design.md']"), 'string');
-  check('...and the runner is never handed it',
-    ctxCheck("codeFileNames().indexOf('design.md')"), -1);
+  /* A new project is code and nothing else — the writing lives on the Design tab now. The prose
+     handling below still matters, because a student can add an `.md` file themselves and a
+     migrated project may carry `design-notes.md`. */
+  check('a new project ships no prose file', ctxCheck("typeof project.files['design.md']"), 'undefined');
+  check('...and the runner is never handed a markdown file',
+    ctxCheck("(function(){project.files['notes.md']='# hi';return codeFileNames().indexOf('notes.md');})()"), -1);
   check('...while every starter script still is',
     ctxCheck("codeFileNames().sort()"),
     ['coins.js', 'config.js', 'game.js', 'main.js', 'player.js', 'world.js']);

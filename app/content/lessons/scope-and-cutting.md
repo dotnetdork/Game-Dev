@@ -177,17 +177,16 @@ Now do it to your own list, while it is still cheap.
 title: Cut your own wishlist
 task: You wrote three twists last lesson. Pick the one you are actually building and drag the others into the "not building" box, where you can still see them.
 steps:
-  - Open the **Design** tab and find the three twists you left in **Ideas, unsorted**.
-  - Pick **one**. Ask which one, if you took it away, would stop this being your game.
-  - Click the **What makes it mine** sticky and type that one in.
-  - Drag the other two into **Not building — next time**, along with anything else you have been quietly hoping to fit in.
-  - That box is the reason you get to stop thinking about them. They are written down; they are not gone.
+  - Open the **Design** tab and look at everything you have written down so far.
+  - Pick **one** thing. Ask which one, if you took it away, would stop this being your game.
+  - Put a sticky in **The pitch** headed `What makes it mine`, and write that one thing under it.
+  - Drag everything else you have been quietly hoping to fit in into **Not building — next time**.
+  - That frame is the reason you get to stop thinking about them. They are written down; they are not gone.
 reward: Scope Sense badge
 check:
-  - matches:
-      file: design.md
-      regex: '## What I am NOT building\s*\n\s*[^(\s]'
-    hint: Drag at least one idea into the "Not building — next time" box on your board — that box is the whole point of this step.
+  - board_contains:
+      text: 'What makes it mine'
+    hint: Put a sticky headed `What makes it mine` in **The pitch** — the one thing the game would stop being yours without.
   - changed_at_least: 3
     hint: Nothing has changed on the board yet. Name your one twist, then move the spare ideas into "Not building".
 example: 'What I am NOT building: a boss fight, two-player mode, a shop. Next time.'
