@@ -124,4 +124,41 @@ async function clear(identity) {
   return true;
 }
 
-module.exports = { enabled, mode, problem, read, write, clear, MAX_BYTES };
+/* ---------- counters that expire ----------
+   The primitive behind every rate limit in the app. It exists here rather than in server.js for one
+   reason: on Vercel a counter in a module-level Map counts only the requests that happened to land
+   on the same short-lived instance as the last one, which on a cold path is none of them. A limit
+   that resets whenever the platform feels like it is not a limit, and the only thing standing
+   between the public URL and a paid API key should not be decorative.
+
+   With a KV store it is a real shared counter. Without one — a laptop — the in-memory Map is
+   correct, because there is exactly one process.
+
+   IT FAILS OPEN. If the store is unreachable this returns 0, which reads as "not over the limit",
+   and the caller lets the request through. A child mid-sentence must not be told to slow down
+   because Redis hiccuped; the in-memory tier still catches a runaway loop in the meantime. */
+const memHits = new Map();
+function memBump(key, windowSec) {
+  const now = Date.now(), ms = windowSec * 1000;
+  if (memHits.size > 500) memHits.forEach(function (v, k) { if (now - v.start > ms) memHits.delete(k); });
+  const e = memHits.get(key);
+  if (!e || now - e.start > ms) { memHits.set(key, { start: now, n: 1 }); return 1; }
+  e.n++;
+  return e.n;
+}
+async function bump(key, windowSec) {
+  const local = memBump(key, windowSec);          // always counted, so a laptop and a cold instance both work
+  if (MODE !== 'redis') return local;
+  const k = 'gd:v1:rl:' + String(key).replace(/[^a-z0-9@._:-]/gi, '_');
+  try {
+    const n = Number(await redis(['incr', k]));
+    /* Only the first writer sets the expiry, so a steady stream of requests cannot keep pushing the
+       window out in front of itself and make the limit unreachable. */
+    if (n === 1) await redis(['expire', k, String(windowSec)]);
+    return Math.max(n, local);
+  } catch (e) {
+    return local;                                  // see "fails open" above
+  }
+}
+
+module.exports = { enabled, mode, problem, read, write, clear, bump, MAX_BYTES };

@@ -422,7 +422,11 @@ function origin(req) {
 const callbackUrl = (req, key) => origin(req) + '/auth/' + key + '/callback';
 const safeNext = (v) => (typeof v === 'string' && v.charAt(0) === '/' && v.charAt(1) !== '/') ? v : '/';
 
-function mount(app) {
+/* An expiring counter, handed in by server.js so this file does not have to know where the store
+   is — `mount(app, { limit: store.bump })`. Optional: with nothing passed, nothing is rationed. */
+let LIMIT = null;
+function mount(app, opts) {
+  LIMIT = (opts && typeof opts.limit === 'function') ? opts.limit : null;
   Object.keys(PROVIDERS).forEach(function (key) {
     const P = PROVIDERS[key];
 
@@ -514,7 +518,7 @@ function mount(app) {
      There is no account to look up. The name IS the identity: it goes through testerSlug and
      becomes `<slug>@tester`, which is what the per-student store is keyed on. Two children who
      both type "Jonathan" get the same save, so the names are handed out on the call. */
-  app.post('/auth/testers', function (req, res) {
+  app.post('/auth/testers', async function (req, res) {
     if (!testersReady()) return res.redirect('/login.html?e=off');
     const body = req.body || {};
     const slug = testerSlug(body.username);
@@ -522,6 +526,23 @@ function mount(app) {
     const next = safeNext(body.next);
 
     if (!slug) return res.redirect('/login.html?e=noname&next=' + encodeURIComponent(next));
+
+    /* ONE SHARED PASSWORD ON A PUBLIC URL is a thing worth guessing at, so guessing is rationed.
+       Counted per IP rather than per name, because the name is free text and an attacker would
+       simply vary it.
+
+       DELIBERATELY LOOSE — 100 tries per address per ten minutes. The password carries about
+       seventy bits, so a real attack needs billions of guesses and dies at any limit at all; the
+       only thing a tight number would achieve is locking out a room of eleven-year-olds sharing one
+       school Wi-Fi while they mistype it, halfway through a call Jed set up. Set to stop a bot, not
+       to punish fumbling.
+
+       It fails open if the counter is unreachable. The password is the control; this only makes
+       attacking it expensive. */
+    if (LIMIT) {
+      const tries = await LIMIT('login:' + (req.ip || 'anon'), 600);
+      if (tries > 100) return res.redirect('/login.html?e=slowdown&next=' + encodeURIComponent(next));
+    }
 
     /* Hashed before comparing so timingSafeEqual gets two equal-length buffers whatever was typed;
        comparing the raw strings would throw on a length mismatch and leak the length by doing so. */

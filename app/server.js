@@ -22,7 +22,12 @@ const auth = require('./auth');      // Google sign-in, restricted to the school
 const store = require('./store');    // per-student saves, so work survives a different machine
 
 const app = express();
-app.use(express.json({ limit: '256kb' }));
+/* 1mb rather than 256kb because /api/state carries a whole project, a progress ledger and a design
+   board in one body, and store.js will accept up to 512KB of it. With the parser set lower, an
+   oversized save was refused by Express with its own error before the handler could say anything
+   useful about it. Every field of every other endpoint is sliced to a fixed length server-side, so
+   the larger ceiling costs nothing. */
+app.use(express.json({ limit: '1mb' }));
 /* One form in the whole app — the temporary tester sign-in. A form POST rather than a fetch so it
    works with JavaScript off and the browser offers to remember the password; that needs the
    urlencoded parser, which is built into Express and costs nothing. */
@@ -30,6 +35,14 @@ app.use(express.urlencoded({ extended: false, limit: '4kb' }));
 
 const PORT = process.env.PORT || 3000;
 const ROOT = __dirname;
+
+/* Behind Vercel's proxy, `req.ip` is the platform's own address unless Express is told there is a
+   hop in front of it — the same address for every student in the world. The login throttle keys on
+   it, so without this one attacker's guessing would lock out every tester at once, which is worse
+   than having no limit at all.
+   `1`, not `true`: trust exactly the one proxy that is really there and take the address IT added.
+   `true` would trust the whole X-Forwarded-For chain including whatever a client wrote into it. */
+app.set('trust proxy', 1);
 
 // ---- AI providers (keys stay server-side, never sent to the browser) ----
 // Multiple agents (coder / tutor / quiz / grader) each get their own model, set in .env.
@@ -99,15 +112,22 @@ function resolveModel(agent) {
   return { provider: DEFAULT_PROVIDER, model: spec, agent: agent };
 }
 
-// ---- simple per-student rate limit ----
-const RATE = { windowMs: 10 * 60 * 1000, max: 40 };
-const hits = new Map();
-function rateLimited(id) {
-  const now = Date.now();
-  if (hits.size > 500) hits.forEach(function (v, k) { if (now - v.start > RATE.windowMs) hits.delete(k); }); // drop stale entries
-  const e = hits.get(id);
-  if (!e || now - e.start > RATE.windowMs) { hits.set(id, { start: now, count: 1 }); return false; }
-  e.count++; return e.count > RATE.max;
+/* ---- per-student rate limit, on the paid relay ----
+   Two things were wrong with this and both mattered on a public URL.
+
+   It was keyed on `req.body.studentId` — a value the CALLER sends. Anyone past the sign-in could
+   put a fresh random id on every request and never be counted at all, which made the limit a
+   suggestion. It is keyed on the session now, which the server issued and signs, so a student gets
+   one bucket whatever their browser claims to be.
+
+   And it was a Map in this module, which on Vercel counts only the requests that happened to reach
+   the same instance. store.bump() puts the counter in the KV store when there is one — see the note
+   there, including why it fails open. */
+const RATE = { windowSec: 10 * 60, max: 40 };
+async function rateLimited(req) {
+  const me = auth.currentUser(req);
+  const id = (me && me.email) || req.ip || 'anon';
+  return (await store.bump('ai:' + id, RATE.windowSec)) > RATE.max;
 }
 
 /* ---- security headers ----
@@ -145,7 +165,13 @@ function cspFor(req) {
     "worker-src 'self' blob:",
     "object-src 'none'",
     "base-uri 'self'",
-    "form-action 'none'",
+    /* 'self', not 'none'. It was 'none' when the app had no forms at all, and that was the right
+       answer then — nothing could be made to POST anywhere. The temporary tester sign-in is a real
+       form POST (chosen so it works with JavaScript off and the browser offers to remember the
+       password), and 'none' blocks a form from submitting ANYWHERE, its own origin included: the
+       button silently did nothing. 'self' keeps the protection that matters — a script cannot make
+       the page post credentials to somebody else's server — while letting our one form work. */
+    "form-action 'self'",
     "frame-ancestors 'none'"
   ].join('; ');
 }
@@ -173,7 +199,7 @@ app.use((req, res, next) => {
 
    Mounted BEFORE the static middleware on purpose: express.static answers and returns, so a gate
    installed after it would guard the API and hand out the whole course to anyone. */
-auth.mount(app);
+auth.mount(app, { limit: store.bump });
 app.use(auth.requireAuth);
 
 const corsOpen = (res) => { res.setHeader('Access-Control-Allow-Origin', '*'); res.setHeader('Cross-Origin-Resource-Policy', 'cross-origin'); };
@@ -846,8 +872,7 @@ async function callAI(spec, system, user, wantJSON, history, toolCtx) {
 //      The student's code lives in the browser and is sent with the request. The server
 //      never stores or runs student code — it just talks to the model and returns "ops".
 app.post('/api/ai', async (req, res) => {
-  const id = (req.body && req.body.studentId) || req.ip || 'anon';
-  if (rateLimited(id)) return res.status(429).json({ reply: 'Slow down a moment - you have hit the request limit. Try again shortly.' });
+  if (await rateLimited(req)) return res.status(429).json({ reply: 'Slow down a moment - you have hit the request limit. Try again shortly.' });
   const message = ((req.body && req.body.message) || '').toString().slice(0, 2000);
   if (!message) return res.status(400).json({ reply: 'Please type a message.' });
   const gameCode = ((req.body && req.body.code) || '').toString().slice(0, 100000);
