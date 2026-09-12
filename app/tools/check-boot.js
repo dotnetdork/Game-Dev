@@ -16,6 +16,13 @@ const path = require('path');
 const { spawn } = require('child_process');
 const { JSDOM, VirtualConsole } = require('jsdom');
 
+/* The same .env the server reads, and for the same reason it reads it: this check has to sign in,
+   and when the testing door is configured the password it needs is in there. Without this the
+   server would have a password and the test would present an empty one. */
+try {
+  require('dotenv').config({ path: path.join(__dirname, '..', '.env') });
+} catch (e) { /* dotenv is optional, exactly as in server.js */ }
+
 const PORT = process.env.BOOT_TEST_PORT || 3996;
 const ROOT = path.join(__dirname, '..');
 
@@ -55,15 +62,41 @@ function withAuth(init) {
   i.headers = Object.assign({}, i.headers || {}, COOKIE ? { Cookie: COOKIE } : {});
   return i;
 }
+/* Whichever door this machine actually has. BYPASS — nothing configured — is the usual one, but a
+   developer previewing what the testers will see has TESTER_PASSWORD set in their .env, and that
+   turns BYPASS off. The check has to boot the app either way: a local sign-in setting should not
+   decide whether the test suite passes.
+
+   `/auth/me` says which doors exist, so it is asked rather than guessed at. */
+function readSession(r) {
+  const raw = r.headers.getSetCookie ? r.headers.getSetCookie() : [r.headers.get('set-cookie')];
+  return (raw || []).filter(Boolean).map(function (c) { return String(c).split(';')[0]; })
+    .filter(function (c) { return c.indexOf('league_session=') === 0; })[0] || '';
+}
 function signIn() {
-  return fetch('http://localhost:' + PORT + '/auth/codeserver', { redirect: 'manual' })
-    .then(function (r) {
-      const raw = r.headers.getSetCookie ? r.headers.getSetCookie() : [r.headers.get('set-cookie')];
-      const hit = (raw || []).filter(Boolean).map(function (c) { return String(c).split(';')[0]; })
-        .filter(function (c) { return c.indexOf('league_session=') === 0; })[0];
-      COOKIE = hit || '';
-      check('signed in through the local door', !!COOKIE, COOKIE ? 'session cookie set' : 'no cookie — is BYPASS off?');
+  const base = 'http://localhost:' + PORT;
+  return fetch(base + '/auth/me').then(function (r) { return r.json(); }).then(function (me) {
+    if (me && me.testers) {
+      return fetch(base + '/auth/testers', {
+        method: 'POST', redirect: 'manual',
+        headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
+        body: new URLSearchParams({
+          username: 'checkboot',
+          password: process.env.TESTER_PASSWORD || '',
+          next: '/'
+        }).toString()
+      }).then(function (r2) {
+        COOKIE = readSession(r2);
+        check('signed in through the testing door', !!COOKIE,
+          COOKIE ? 'session cookie set' : 'no cookie — does TESTER_PASSWORD match the running server?');
+      });
+    }
+    return fetch(base + '/auth/codeserver', { redirect: 'manual' }).then(function (r2) {
+      COOKIE = readSession(r2);
+      check('signed in through the local door', !!COOKIE,
+        COOKIE ? 'session cookie set' : 'no cookie — is BYPASS off?');
     });
+  });
 }
 
 waitForServer('http://localhost:' + PORT + '/api/lessons', 40).then(signIn).then(function () {
