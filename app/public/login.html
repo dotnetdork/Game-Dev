@@ -95,7 +95,6 @@
   .card.testers{display:flex;flex-direction:column;text-align:left;margin-bottom:14px;
     border-style:dashed;border-color:#3a6da3;background:#0f2137;}
   .card.testers[hidden]{display:none;}
-  .card.testers .hint{margin:-6px 0 16px;color:var(--muted);font-size:13px;}
   .card.testers label{font-size:11px;font-weight:700;letter-spacing:1.2px;text-transform:uppercase;
     color:var(--dim);margin-bottom:6px;}
   .card.testers input{width:100%;box-sizing:border-box;margin-bottom:14px;padding:12px 13px;
@@ -130,15 +129,13 @@
        the moment that variable comes off the deployment. -->
   <form class="card testers" id="testers" method="post" action="/auth/testers" hidden>
     <h2>Testing sign-in</h2>
-    <p class="hint">Type the name you were given on the call, and the password. This is temporary —
-      it is how your game finds you again next time.</p>
-    <label for="tname">Your name</label>
+    <label for="tname">Username</label>
     <input id="tname" name="username" type="text" autocomplete="username" autocapitalize="off"
-           autocorrect="off" spellcheck="false" required maxlength="40" placeholder="e.g. jonathan">
+           autocorrect="off" spellcheck="false" required maxlength="40">
     <label for="tpass">Password</label>
     <input id="tpass" name="password" type="password" autocomplete="current-password" required>
     <input type="hidden" name="next" id="tnext" value="/">
-    <button type="submit" class="btn primary go">Start</button>
+    <button type="submit" class="btn primary go">Log in</button>
   </form>
 
   <div class="card" id="oauthCard">
