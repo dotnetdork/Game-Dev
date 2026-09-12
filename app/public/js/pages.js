@@ -614,7 +614,11 @@ function resetProgress() {
   modal({ title: 'Reset everything?', message: 'This puts this browser back to a brand-new account: XP, Stars, unlocked assets, completed lessons, your game\'s code, and your design board. This cannot be undone.', okLabel: 'Reset everything',
     onOk: function () {
       Storage.remove(SKEY); Storage.remove(PKEY); Storage.remove(BKEY);
-      location.reload();
+      /* And the server's copy, before reloading — otherwise the reload adopts it straight back and
+         the button appears to do nothing at all. See sync.js. */
+      const done = function () { location.reload(); };
+      if (typeof clearServerState === 'function') clearServerState().then(done, done);
+      else done();
     } });
 }
 function wirePage(page) {

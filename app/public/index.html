@@ -412,6 +412,11 @@
 <script src="js/lazy.js"></script>
 <script src="js/events.js"></script>
 <script src="js/storage.js"></script>
+<!-- Straight after storage, because it hooks storage's write callback and has to be in place before
+     project.js starts saving. It never blocks the page: the app loads on the local copy, and on the
+     one occasion the server turns out to hold newer work it adopts that and reloads once. See the
+     note at the top of sync.js for why it cannot simply be awaited. -->
+<script src="js/sync.js"></script>
 <script src="js/dev.js"></script>
 <script src="js/starter-code.js"></script>
 <script src="js/highlight.js"></script>

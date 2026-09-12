@@ -19,6 +19,7 @@ const ai = require('./ai/loader');   // agent + skill prompts, authored as Markd
 const usage = require('./ai/usage'); // token + cost meter for paid providers
 const tools = require('./ai/tools'); // read-only lookups an agent can call (Stage 4 Tier 2)
 const auth = require('./auth');      // Google sign-in, restricted to the school domain (off locally)
+const store = require('./store');    // per-student saves, so work survives a different machine
 
 const app = express();
 app.use(express.json({ limit: '256kb' }));
@@ -351,6 +352,66 @@ app.get('/api/info', (req, res) => {
   const agents = {};
   ['coder', 'tutor', 'lab-tutor', 'quiz', 'grader', 'design-coach'].forEach(function (a) { const m = resolveModel(a); agents[a] = m.provider + ':' + m.model; });
   res.json({ agents: agents, provider: DEFAULT_PROVIDER, model: resolveModel('coder').model });
+});
+
+/* ---- the student's work, on the server ----
+   Behind requireAuth, and the identity comes from the SESSION rather than from the request, so one
+   student cannot read or overwrite another's save by asking for it. See store.js for why this
+   exists at all: localStorage is per-browser, and the testers get more than one session.
+
+   The blob is opaque to the server on purpose. The browser owns the shape; this is a copy of it. */
+app.get('/api/state', async (req, res) => {
+  if (!store.enabled()) return res.json({ store: false });
+  const me = auth.currentUser(req);
+  if (!me) return res.status(401).json({ error: 'Not signed in.' });
+  try {
+    const rec = await store.read(me.email);
+    /* `me` goes back so the browser can tell whether the work sitting in its localStorage belongs
+       to whoever is signed in now. Two testers sharing a borrowed laptop is a real case — see the
+       owner check in sync.js. */
+    res.json({ store: true, me: me.email, at: (rec && rec.at) || 0, data: (rec && rec.data) || null });
+  } catch (e) {
+    /* A store that is down must not break the app — the browser carries on with localStorage and
+       tries again next time. Reported as reachable-but-failed so the client can tell the two apart.
+       `me` still goes back: it comes from the session cookie, not the store, and it is what lets the
+       browser notice that the work sitting in it belongs to a different student. */
+    res.json({ store: true, me: me.email, error: 'unreachable', at: 0, data: null });
+  }
+});
+app.put('/api/state', async (req, res) => {
+  if (!store.enabled()) return res.json({ store: false });
+  const me = auth.currentUser(req);
+  if (!me) return res.status(401).json({ error: 'Not signed in.' });
+  const data = req.body && req.body.data;
+  if (!data || typeof data !== 'object') return res.status(400).json({ error: 'No data.' });
+  /* WHOSE WORK THE BROWSER THINKS THIS IS, checked against whose session is actually presenting it.
+     The browser keeps one student's work at a time and stamps it; if the two disagree, this upload
+     is one child's game arriving under another child's name and it is refused rather than stored.
+
+     It is a real race, not a hypothetical: a tab that has been signed out and back in as somebody
+     else fires its unload-time save with the NEW cookie and the OLD student's data. The browser
+     tries not to do that; this makes it impossible. */
+  const claims = String((req.body && req.body.who) || '');
+  if (claims && claims !== me.email) {
+    return res.status(409).json({ error: 'That save belongs to a different sign-in.', me: me.email });
+  }
+  const at = Date.now();
+  try {
+    await store.write(me.email, { at: at, who: me.email, name: me.name || '', data: data });
+    res.json({ ok: true, at: at });
+  } catch (e) {
+    if (e && e.tooBig) return res.status(413).json({ error: 'That save is too large to keep.' });
+    res.status(502).json({ error: 'Could not save just now.' });
+  }
+});
+/* Paired with "Reset everything" in the Help page. Without it, a reset would clear the browser and
+   then the next load would adopt the server copy straight back. */
+app.delete('/api/state', async (req, res) => {
+  if (!store.enabled()) return res.json({ store: false });
+  const me = auth.currentUser(req);
+  if (!me) return res.status(401).json({ error: 'Not signed in.' });
+  try { await store.clear(me.email); res.json({ ok: true }); }
+  catch (e) { res.status(502).json({ error: 'Could not clear just now.' }); }
 });
 
 /* ---- what this session has spent ----
@@ -1063,11 +1124,21 @@ if (authProblem) {
 /* Vercel imports this file and calls the exported handler per request; there is no port to listen
    on and calling listen() there would hold the function open. Locally there is no VERCEL variable
    and it starts a server exactly as it always has. */
+/* Saving is a WARNING, not a refusal. A laptop with no store configured is the ordinary case and
+   the app works perfectly without one — but a hosted deployment without one silently loses every
+   student's work the moment they open it somewhere else, which is the exact thing the testers were
+   promised would not happen. So it is said out loud on every boot. */
+const storeProblem = store.problem();
+if (storeProblem && (process.env.VERCEL || process.env.NODE_ENV === 'production')) {
+  console.error('[league] WARNING: ' + storeProblem);
+}
+
 if (!process.env.VERCEL) {
   app.listen(PORT, () => {
     const c = resolveModel('coder'), t = resolveModel('tutor');
     console.log('Course agent on http://localhost:' + PORT + '  (coder: ' + c.provider + ':' + c.model + ' · tutor: ' + t.provider + ':' + t.model + ')'
-      + (auth.enabled() ? '  · sign-in ON' : ''));
+      + (auth.enabled() ? '  · sign-in ON' : '')
+      + '  · saves: ' + store.mode());
   });
 }
 

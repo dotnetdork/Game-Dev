@@ -24,6 +24,11 @@ npm-debug.log*
 **/.impeccable/*
 !**/.impeccable/config.json
 
+# per-student saves, when the file backend is in use (`npm start` on a laptop). Hosted, these live
+# in a KV store instead — see app/store.js. This is somebody's actual work, not build output, so it
+# is ignored rather than cleaned.
+app/.data/
+
 # OS junk
 .DS_Store
 Thumbs.db

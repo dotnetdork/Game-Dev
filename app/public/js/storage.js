@@ -37,6 +37,12 @@ const _memory = {};   // the fallback store: real for this tab, gone when it clo
 let _onWriteFailure = null;
 function onStorageFailure(fn) { _onWriteFailure = fn; }
 
+/* Called after every successful write, with the key. sync.js hangs the server copy off this — one
+   place, so nothing that saves has to remember to also sync, and a new saved key is covered the
+   moment it is added to SYNC_KEYS rather than needing a call site changed. */
+let _onWrite = null;
+function onStorageWrite(fn) { _onWrite = fn; }
+
 const Storage = {
   /* True when saves will actually survive a reload. The UI can use this to say so honestly
      rather than promising a student their work is safe when it is not. */
@@ -61,6 +67,7 @@ const Storage = {
     try {
       localStorage.setItem(key, v);
       delete _memory[key];                  // it is safely on disk; stop shadowing it
+      if (_onWrite) { try { _onWrite(key); } catch (e2) {} }
       return true;
     }
     catch (e) {

@@ -73,6 +73,16 @@ const SESSION_DAYS = Number(process.env.SESSION_DAYS || 14);
 const IS_HOSTED = !!(process.env.VERCEL || process.env.NODE_ENV === 'production');
 const COOKIE = 'league_session';
 const STATE_COOKIE = 'league_oauth_state';
+/* A companion to the session cookie holding nothing but the identity, and deliberately NOT
+   HttpOnly so the page can read it before it has asked the server anything.
+
+   It is not a credential and grants nothing — the session cookie is still the only thing that
+   authenticates, and it stays HttpOnly. This exists because sync.js has to answer "does the work in
+   this browser belong to whoever is signed in now?" SYNCHRONOUSLY, at script-load time, before
+   project.js reads localStorage. Finding out by fetch is too late: the app has already been built
+   from the previous student's data by the time the answer arrives, and anything that saves in the
+   meantime writes it straight back. See the takeover check in sync.js. */
+const WHO_COOKIE = 'league_who';
 
 const list = (s) => String(s || '').split(',').map((x) => x.trim().toLowerCase()).filter(Boolean);
 
@@ -366,12 +376,26 @@ function readCookie(req, name) {
   }
   return null;
 }
-function setCookie(res, name, value, maxAgeSec) {
+/* Both cookies, always together, so the readable one can never name a different person from the one
+   the session actually authenticates. Every place that signs somebody in goes through here. */
+function setSession(res, payload) {
+  setCookie(res, COOKIE, sign(payload), SESSION_DAYS * 86400);
+  setCookie(res, WHO_COOKIE, payload.email, SESSION_DAYS * 86400, true);
+}
+function clearSession(res) {
+  setCookie(res, COOKIE, '', 0);
+  setCookie(res, WHO_COOKIE, '', 0, true);
+}
+
+function setCookie(res, name, value, maxAgeSec, readable) {
   /* HttpOnly: script cannot read it, so an XSS in a lesson widget cannot steal a session.
      SameSite=Lax: survives the redirect back from the provider, not sent on cross-site POSTs.
      Secure: dropped only on plain-HTTP localhost, where there is no TLS to require. */
   const secure = (process.env.NODE_ENV === 'production' || process.env.VERCEL) ? '; Secure' : '';
-  const bits = [name + '=' + encodeURIComponent(value), 'Path=/', 'HttpOnly', 'SameSite=Lax' + secure];
+  const bits = [name + '=' + encodeURIComponent(value), 'Path=/', 'SameSite=Lax' + secure];
+  /* `readable` is the one exception, and it carries a name rather than a credential — see
+     WHO_COOKIE. Everything else stays HttpOnly. */
+  if (!readable) bits.splice(2, 0, 'HttpOnly');
   if (maxAgeSec === 0) bits.push('Max-Age=0');
   else if (maxAgeSec) bits.push('Max-Age=' + maxAgeSec);
   const prev = res.getHeader('Set-Cookie');
@@ -411,12 +435,12 @@ function mount(app) {
          without needing three OAuth apps registered to get past it. Cannot happen on a host: see
          BYPASS and configProblem. */
       if (BYPASS) {
-        setCookie(res, COOKIE, sign({
+        setSession(res, {
           email: 'developer@localhost',
           name: 'Local developer',
           via: key,
           exp: Date.now() + SESSION_DAYS * 86400000
-        }), SESSION_DAYS * 86400);
+        });
         return res.redirect(safeNext(req.query.next));
       }
       /* `state` is the CSRF protection for the callback: minted here, signed into a short-lived
@@ -469,12 +493,12 @@ function mount(app) {
         if (!person || !person.email) return fail(key);
         if (!P.permit(person)) return fail(P.denied);
 
-        setCookie(res, COOKIE, sign({
+        setSession(res, {
           email: person.email,
           name: person.name || '',
           via: key,
           exp: Date.now() + SESSION_DAYS * 86400000
-        }), SESSION_DAYS * 86400);
+        });
         res.redirect(safeNext(st.next));
       } catch (e) {
         fail(key);
@@ -506,18 +530,18 @@ function mount(app) {
       return res.redirect('/login.html?e=badpass&next=' + encodeURIComponent(next));
     }
 
-    setCookie(res, COOKIE, sign({
+    setSession(res, {
       email: slug + '@tester',
       /* As typed, for the greeting — "Hi, Jonathan" rather than "Hi, jonathan". */
       name: String(body.username || '').trim().slice(0, 40),
       via: 'testers',
       exp: Date.now() + SESSION_DAYS * 86400000
-    }), SESSION_DAYS * 86400);
+    });
     res.redirect(next);
   });
 
   app.get('/auth/logout', function (req, res) {
-    setCookie(res, COOKIE, '', 0);
+    clearSession(res);
     res.redirect('/login.html?e=out');
   });
 
