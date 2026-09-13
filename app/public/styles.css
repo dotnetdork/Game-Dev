@@ -1063,6 +1063,7 @@ body.resizing-v #gameFrame{pointer-events:none;}
 .board-canvas-wrap[data-tool]{cursor:crosshair;}
 .board-canvas-wrap[data-tool="select"]{cursor:default;}
 .board-canvas-wrap[data-tool="draw"]{cursor:url("data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' width='26' height='26' viewBox='0 0 26 26'><path d='M3 23l1.4-5.1L16.9 5.4l3.7 3.7L8.1 21.6 3 23z' fill='%23f5d67a' stroke='%23101d2c' stroke-width='1.6' stroke-linejoin='round'/><path d='M18.1 4.2l1.7-1.7a1.9 1.9 0 012.7 0l1 1a1.9 1.9 0 010 2.7l-1.7 1.7-3.7-3.7z' fill='%23cfdcea' stroke='%23101d2c' stroke-width='1.6' stroke-linejoin='round'/><path d='M4.4 17.9l3.7 3.7' stroke='%23101d2c' stroke-width='1.4'/></svg>") 3 23,crosshair;}
+.board-canvas-wrap[data-tool="marker"]{cursor:url("data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' width='26' height='26' viewBox='0 0 26 26'><path d='M4 22h7l1.5-3.5h-6L4 22z' fill='%23f5d67a' stroke='%23101d2c' stroke-width='1.4' stroke-linejoin='round'/><path d='M7.2 17.5L16.6 6.1a2.4 2.4 0 013.4-.3l1.8 1.5a2.4 2.4 0 01.3 3.4l-9.4 11.4-5.5-4.6z' fill='%23cfdcea' stroke='%23101d2c' stroke-width='1.5' stroke-linejoin='round'/></svg>") 4 22,crosshair;}
 .board-canvas-wrap[data-tool="erase"]{cursor:url("data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' width='26' height='26' viewBox='0 0 26 26'><path d='M4 21h18' stroke='%23101d2c' stroke-width='1.8' stroke-linecap='round'/><path d='M6.4 17.6l-2-2a2 2 0 010-2.9l9-9a2 2 0 012.9 0l4.1 4.1a2 2 0 010 2.9l-7 7H7.8a2 2 0 01-1.4-.6z' fill='%23f2a0a0' stroke='%23101d2c' stroke-width='1.6' stroke-linejoin='round'/><path d='M9.6 7.2l6.9 6.9' stroke='%23101d2c' stroke-width='1.4'/></svg>") 7 18,cell;}
 .board-canvas{position:absolute;left:0;top:0;transform-origin:0 0;--inv:1;}
 
@@ -1086,21 +1087,29 @@ body.resizing-v #gameFrame{pointer-events:none;}
    bottom corner — and a degree and a half of tilt pinned to its id, so a wall of them reads as
    paper stuck to a wall rather than a table with the borders switched off. The tilt is on the
    element, so the outline and the four grips tilt with it and stay square to the note. */
-.bi-note{background:rgb(var(--rgb));color:var(--pi);border-radius:3px;padding:9px 12px 10px;
-  overflow:hidden;display:flex;flex-direction:column;gap:3px;font-size:12.5px;line-height:1.45;
-  background-image:linear-gradient(160deg,rgba(255,255,255,.34),rgba(255,255,255,0) 42%);
-  box-shadow:1px 5px 10px rgba(0,0,0,.4),0 1px 0 rgba(255,255,255,.35) inset;}
-/* The peeled corner. Two layers: the paper curling up, and the deeper shadow it casts. */
-.bi-note::after{content:'';position:absolute;right:0;bottom:0;width:22px;height:22px;
-  pointer-events:none;
-  background:linear-gradient(315deg,rgba(0,0,0,.22),rgba(0,0,0,.05) 40%,rgba(0,0,0,0) 62%);}
-.bi-note.sel{box-shadow:1px 5px 10px rgba(0,0,0,.4);}
+/* Flat paper, and deliberately so. It used to carry a diagonal white sheen across the top and a
+   painted-on "peeled corner" in the bottom right — and at the size a sticky actually gets used, 168
+   by 100 and often smaller, the sheen washed the top line out and the peel read as a thumbprint of
+   dirt over the last word. Neither Miro nor FigJam draws either, and this is why: the decoration is
+   at its loudest exactly where the text is.
+
+   What is left is what makes paper read as paper — one flat colour, a shadow close enough to sit on
+   the surface rather than float above it, a darker lip along the bottom edge where a real sheet
+   thickens, and the degree and a half of tilt. */
+.bi-note{background:rgb(var(--rgb));color:var(--pi);border-radius:2px;padding:10px 13px 12px;
+  overflow:hidden;display:flex;flex-direction:column;gap:5px;font-size:12.5px;line-height:1.5;
+  box-shadow:0 1px 1px rgba(0,0,0,.22),0 6px 14px rgba(0,0,0,.34),
+    inset 0 -2px 0 rgba(0,0,0,.09);}
+.bi-note.sel{box-shadow:0 1px 1px rgba(0,0,0,.22),0 6px 14px rgba(0,0,0,.34);}
 
 /* The heading. Every sticky has one — bold, so it is the thing you read first when you are looking
-   across fifteen of them for the one about jumping. */
-.bi-title{font-size:11px;font-weight:800;letter-spacing:.3px;flex:none;
+   across fifteen of them for the one about jumping. Separated from the body by a hairline rather
+   than by a gap alone: at a glance that is what tells a full note apart from a paragraph that simply
+   starts with a short line. */
+.bi-title{font-size:11.5px;font-weight:800;letter-spacing:.2px;flex:none;
+  padding-bottom:5px;border-bottom:1px solid rgba(0,0,0,.13);
   white-space:nowrap;overflow:hidden;text-overflow:ellipsis;}
-.bi-title.blank{opacity:.42;font-style:italic;font-weight:700;}
+.bi-title.blank{opacity:.38;font-style:italic;font-weight:700;border-bottom-style:dashed;}
 .bi-body{white-space:pre-wrap;word-break:break-word;overflow:hidden;flex:1;min-height:0;}
 /* On a sticky the body takes its NATURAL height instead of being squeezed into whatever is left.
    That is what makes the note measurable: a flex child with `flex:1; overflow:hidden` absorbs its
@@ -1114,9 +1123,6 @@ body.resizing-v #gameFrame{pointer-events:none;}
    The box round a stroke is invisible and must not swallow clicks meant for what is behind it, so
    only the ink itself is a target — and the handles have to opt back in. */
 .bi-ink{pointer-events:none;}
-/* Every handle has to opt back in, not just the resize ones — leaving the rotate handle out is why
-   a drawing was the one thing on the board that could not be turned. */
-.bi-ink .bi-grip,.bi-ink .bi-rot{pointer-events:auto;}
 .bi-inkpath{position:absolute;inset:0;width:100%;height:100%;overflow:visible;}
 /* No stroke-width here: each stroke carries its own as an attribute, from the nib it was drawn
    with, and a width in the stylesheet would beat it. No non-scaling-stroke either — a pen mark is
@@ -1127,6 +1133,11 @@ body.resizing-v #gameFrame{pointer-events:none;}
 /* The stroke being drawn right now, in the pen's own colour so what you get is what you saw. */
 .ink-live polyline{fill:none;stroke:rgb(var(--rgb));stroke-linecap:round;stroke-linejoin:round;}
 .ink-live{color:rgb(var(--rgb));}
+/* The highlighter. Square ends and see-through, which is the whole difference between it and the
+   pen: a marker stroke is something laid OVER the words rather than instead of them, and a round
+   cap on an 18px nib puts a blob past the end of every line it underlines. */
+.bi-ink.marker .bi-inkpath polyline,.ink-live.marker polyline{opacity:.42;stroke-linecap:butt;
+  stroke-linejoin:round;}
 
 /* Plain text on the board: a label, a heading over a column of stickies. No card, no border — if it
    had one it would be a note, and there is already a note. */
@@ -1145,6 +1156,10 @@ body.resizing-v #gameFrame{pointer-events:none;}
    fill carries the shape on its own and is stronger to compensate. */
 .bi-shape.s-diamond{border:0;background:rgba(var(--rgb),.26);
   clip-path:polygon(50% 0,100% 50%,50% 100%,0 50%);padding:10px 26px;}
+/* Same bargain as the diamond: a clip eats the border, so the fill carries the shape. The text sits
+   in the lower half, which is the only part of a triangle wide enough to hold any. */
+.bi-shape.s-triangle{border:0;background:rgba(var(--rgb),.26);
+  clip-path:polygon(50% 0,100% 100%,0 100%);padding:10px 18px 8px;justify-content:flex-end;}
 
 /* ---------- handles ----------
    Only on a selected thing, so a board at rest is notes rather than notes plus furniture.
@@ -1158,10 +1173,19 @@ body.resizing-v #gameFrame{pointer-events:none;}
 
    Multiplying the offsets by --inv as well pins each handle to its edge in screen pixels, which is
    what it always looked like it was doing. */
+/* ---------- the chrome layer ----------
+   The handles are NOT inside the items any more. A sticky clips its own children so a long heading
+   cannot spill off the paper, and that same clip silently ate three of the four resize corners and
+   all four connector dots — a clipped element is untouchable, not merely invisible. So they live on
+   one layer over the board, and each group is positioned and turned to match its item.
+
+   The layer itself catches nothing; only the handles do. That is what keeps the marquee, the item
+   under the pointer and the pan gesture all reachable through it. */
+.bi-chrome{position:absolute;left:0;top:0;width:100%;height:100%;pointer-events:none;z-index:70;}
+.bi-cw{position:absolute;pointer-events:none;
+  transform:rotate(var(--spin,0deg));}
+.bi-cw > i{pointer-events:auto;}
 .bi-grip,.bi-port,.bi-rot{transform:scale(var(--inv));}
-/* Too small on screen to hold them — see markTiny. The item stays draggable; it just cannot be
-   resized or turned until it is zoomed in enough to aim at. */
-.bi.tiny .bi-grip,.bi.tiny .bi-port,.bi.tiny .bi-rot{display:none;}
 .bi-rot.r-nw{transform-origin:right bottom;} .bi-rot.r-ne{transform-origin:left bottom;}
 .bi-rot.r-se{transform-origin:left top;}     .bi-rot.r-sw{transform-origin:right top;}
 /* FOUR CORNERS DRAWN, EVERYTHING ELSE A CURSOR.
@@ -1206,10 +1230,13 @@ body.resizing-v #gameFrame{pointer-events:none;}
    INVISIBLE MEANS INTANGIBLE. Without the pointer-events rule these four dots sat, fully
    transparent, on the edge midpoints of every item on the board — selected or not — and quietly
    ate the drag whenever a student grabbed a note anywhere near its middle edge. */
+/* Drawn only for the item that is selected or pointed at — which is now a question the chrome layer
+   answers when it decides what to build, rather than a `:hover` rule reaching inside an item. So
+   these are simply visible: if one is on the board, it is meant to be pressed. */
 .bi-port{position:absolute;width:11px;height:11px;border-radius:50%;background:#0d2036;
-  border:2px solid var(--azure);box-sizing:border-box;opacity:0;transition:opacity .12s;
-  cursor:crosshair;pointer-events:none;}
-.bi:hover .bi-port,.bi.sel .bi-port{opacity:1;pointer-events:auto;}
+  border:2px solid var(--azure);box-sizing:border-box;cursor:crosshair;}
+.bi-port::after{content:'';position:absolute;inset:-5px;}
+.bi-port:hover{background:var(--azure);}
 .bi-port.p-n{top:calc(-6px * var(--inv));left:50%;margin-left:calc(-5.5px * var(--inv));transform-origin:center top;}
 .bi-port.p-s{bottom:calc(-6px * var(--inv));left:50%;margin-left:calc(-5.5px * var(--inv));transform-origin:center bottom;}
 .bi-port.p-e{right:calc(-6px * var(--inv));top:50%;margin-top:calc(-5.5px * var(--inv));transform-origin:right center;}
@@ -1245,7 +1272,7 @@ body.resizing-v #gameFrame{pointer-events:none;}
 .bi-bar{position:absolute;z-index:80;display:flex;align-items:center;gap:5px;
   background:var(--panel);border:1px solid #2c4f7d;border-radius:11px;padding:5px 7px;
   box-shadow:0 10px 24px rgba(0,0,0,.5);white-space:nowrap;
-  transform-origin:left top;transform:scale(var(--inv)) translateY(-126%);
+  transform-origin:left top;transform:scale(var(--inv)) translateY(calc(-100% - 26px));
   animation:bi-bar-in .11s ease-out;}
 @keyframes bi-bar-in{from{opacity:0;}to{opacity:1;}}
 @media (prefers-reduced-motion:reduce){ .bi-bar{animation:none;} }
@@ -1279,7 +1306,6 @@ body.resizing-v #gameFrame{pointer-events:none;}
 .bi-edit.inflow:focus{outline:0;}
 /* The item says it is being typed into, rather than each editor drawing its own box. */
 .bi.editing{outline:2px solid var(--focus);outline-offset:2px;}
-.bi.editing .bi-grip,.bi.editing .bi-port,.bi.editing .bi-rot{display:none;}
 /* A title is one line at the top of whatever it is titling, and keeps that shape while it is typed
    into — so renaming a frame does not black out the frame, and typing a sticky's heading leaves the
    rest of the sticky visible underneath. */
@@ -1292,9 +1318,9 @@ body.resizing-v #gameFrame{pointer-events:none;}
   min-width:110px;max-width:calc(100% - 28px);padding:1px 9px;border-radius:6px;
   background:#081525;color:rgb(var(--rgb));font-size:10.5px;font-weight:800;letter-spacing:1.2px;
   text-transform:uppercase;white-space:nowrap;}
-.bi.bi-note .bi-edit{padding:9px 12px 10px;}
-.bi.bi-note .bi-edit.t{background:rgb(var(--rgb));color:var(--pi);font-size:11px;font-weight:800;
-  letter-spacing:.3px;text-transform:none;padding:9px 12px 2px;}
+.bi.bi-note .bi-edit{padding:10px 13px 12px;}
+.bi.bi-note .bi-edit.t{background:rgb(var(--rgb));color:var(--pi);font-size:11.5px;font-weight:800;
+  letter-spacing:.2px;text-transform:none;padding:10px 13px 2px;}
 .bi.bi-text .bi-edit{background:#0d2036;color:#dbe7f4;font-size:17px;font-weight:650;}
 .bi.bi-shape .bi-edit{background:#0d2036;color:#e8f0f9;text-align:center;}
 .bi.bi-frame .bi-edit{background:#0d2036;color:#dbe7f4;}
@@ -1330,6 +1356,23 @@ body.resizing-v #gameFrame{pointer-events:none;}
 .board-tool.on{background:var(--brand);color:#241300;}
 .board-tool:focus-visible{outline:3px solid var(--focus);outline-offset:-2px;}
 .board-tool-gap{height:1px;background:var(--line);margin:3px 4px;}
+/* A corner mark on the buttons that hold a set, so "there is more behind this one" is something the
+   board says rather than something a student has to discover by pressing twice. Miro and Figma both
+   draw the same little wedge. */
+.board-tool.has-more{position:relative;}
+.board-tool.has-more::after{content:'';position:absolute;right:3px;bottom:3px;width:0;height:0;
+  border-left:4px solid transparent;border-bottom:4px solid currentColor;opacity:.55;}
+.board-tool.on.has-more::after{opacity:.75;}
+
+/* ---------- a way back ----------
+   Under the rail, which is where Miro puts them. Separated from the tools because they are not a
+   mode — they do something the moment they are pressed — and greyed at the ends of the stack so the
+   board also answers "is there anything to undo". */
+.board-undo{position:absolute;left:12px;z-index:60;display:flex;flex-direction:column;gap:4px;
+  background:var(--panel);border:1px solid var(--line);border-radius:11px;padding:5px;
+  box-shadow:0 8px 22px rgba(0,0,0,.4);}
+.board-undo button:disabled{opacity:.3;cursor:default;}
+.board-undo button:disabled:hover{background:none;color:var(--muted);}
 
 /* ---------- the armed tool's settings ----------
    A strip beside the rail, level with the tool it belongs to. Canva and Miro both put a tool's

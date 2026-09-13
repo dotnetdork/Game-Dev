@@ -163,9 +163,16 @@ function frameAt(pt, skipId) {
 /* Everything whose centre is inside this frame. Used when a frame is dragged: its contents come
    with it. Asked fresh every time rather than stored, so dragging a note out of a frame is the
    whole of "remove it from the frame". */
-function itemsInFrame(f) {
+/* `withFrames` is for the callers that MOVE a frame's contents. It used to skip frames always, so a
+   frame drawn inside another one was the one thing that did not come with it: drag the outer box and
+   the inner box stayed behind, stranded, while every sticky standing in it travelled — because each
+   of those is inside the outer frame's rectangle too and was picked up directly.
+
+   The callers that DESCRIBE a frame's contents — what the coach is shown, where the next note goes —
+   still want notes only, so this stays off by default. */
+function itemsInFrame(f, withFrames) {
   return (board.items || []).filter(function (i) {
-    return i !== f && i.kind !== 'frame' && inside(rectOf(f), centreOf(i));
+    return i !== f && (withFrames || i.kind !== 'frame') && inside(rectOf(f), centreOf(i));
   });
 }
 
@@ -181,10 +188,15 @@ function applyView() {
   c.style.setProperty('--inv', (1 / scale).toFixed(4));
   /* Zooming changes how big everything RENDERS without changing the board, so the too-small-for-
      handles test has to be redone here. Only the things that carry handles are worth walking. */
-  if (board) c.querySelectorAll('.bi').forEach(function (el) {
-    const i = itemById(el.dataset.id);
-    if (i) markTiny(el, i);
-  });
+  if (board) {
+    c.querySelectorAll('.bi').forEach(function (el) {
+      const i = itemById(el.dataset.id);
+      if (i) markTiny(el, i);
+    });
+    /* Same question for the handles, which are no longer inside the item and so are not covered by
+       the walk above: whether there is room for them is a fact about the zoom. */
+    if (!liveGesture) paintChrome();
+  }
   const at = $('boardZoomAt'); if (at) at.textContent = Math.round(scale * 100) + '%';
 }
 function setScale(next, at) {
@@ -247,19 +259,62 @@ const TOOLS = [
   { id: 'rect', icon: 'mdi-rectangle-outline', name: 'Rectangle', key: 'R' },
   { id: 'ellipse', icon: 'mdi-ellipse-outline', name: 'Ellipse', key: 'O' },
   { id: 'diamond', icon: 'mdi-rhombus-outline', name: 'Diamond — a decision, in a flowchart', key: 'D' },
+  { id: 'triangle', icon: 'mdi-triangle-outline', name: 'Triangle', key: '' },
   { id: 'arrow', icon: 'mdi-arrow-top-right', name: 'Arrow — drag from one thing to another', key: 'A' },
   { id: 'draw', icon: 'mdi-draw', name: 'Pen — draw anything, freehand', key: 'P' },
+  { id: 'marker', icon: 'mdi-marker', name: 'Highlighter — a wide, see-through stroke', key: '' },
   { id: 'erase', icon: 'mdi-eraser', name: 'Eraser — rub out pen marks', key: 'E' }
 ];
+function toolDef(id) { return TOOLS.filter(function (t) { return t.id === id; })[0] || TOOLS[0]; }
+
+/* ---------- the rail is GROUPS, not a list ----------
+   Ten buttons in a column is a thing a student reads every time they need one. Miro's rail is seven,
+   and the reason it can be is that a rail button opens a set: one Shapes button holds the rectangle,
+   the oval, the diamond and the triangle; one Pen button holds the pen, the highlighter and the
+   eraser. Miro's own help calls this out — "Shapes and Lines have been combined into a unified tool"
+   — and Lucid, Figma and Canva all group the same way.
+
+   Each group remembers which member was last used and wears its icon, so a student who draws
+   diamonds gets a diamond on the rail rather than having to go back through a menu every time. */
+const GROUPS = [
+  { id: 'g-select', members: ['select'] },
+  { id: 'g-note', members: ['note'] },
+  { id: 'g-text', members: ['text'] },
+  { id: 'g-frame', members: ['frame'] },
+  { id: 'g-shape', members: ['rect', 'ellipse', 'diamond', 'triangle', 'arrow'], name: 'Shapes and arrows' },
+  { id: 'g-pen', members: ['draw', 'marker', 'erase'], name: 'Pen, highlighter and eraser' }
+];
+/* Last member used, per group. Seeded with the first of each. */
+const GROUP_AT = {};
+GROUPS.forEach(function (g) { GROUP_AT[g.id] = g.members[0]; });
+function groupOf(id) {
+  return GROUPS.filter(function (g) { return g.members.indexOf(id) >= 0; })[0] || GROUPS[0];
+}
+/* Open flyout, if any. A group with one member has nothing to show. */
+let openGroup = '';
 /* What colour each tool will use next, remembered per tool. One shared "current colour" would mean
    picking green for a sticky also turned the next rectangle green, and the sensible starting point
    is different for each: paper is yellow, a drawn box is blue, a pen mark is white. */
-const TOOL_COLOUR = { note: 'y', text: '', frame: 'b', rect: 'b', ellipse: 'b', diamond: 'b', draw: '' };
-const INK_WIDTHS = [2, 4, 9];      // fine · normal · marker
+const TOOL_COLOUR = {
+  note: 'y', text: '', frame: 'b',
+  rect: 'b', ellipse: 'b', diamond: 'b', triangle: 'b',
+  draw: '', marker: 'y'            // a highlighter is yellow until told otherwise
+};
+const INK_WIDTHS = [2, 4, 9];      // fine · normal · broad
 let inkWidth = 4;
+/* The highlighter is the pen with two things changed, which is all it is anywhere: a wide nib and
+   enough transparency that whatever it is drawn over still reads through it. Miro's is a separate
+   tool with its own presets and non-adjustable transparency; this is the same bargain. */
+const MARKER_WIDTH = 18;
+function isPen(t) { return t === 'draw' || t === 'marker'; }
 
-function setTool(t) {
+function setTool(t, keepOpen) {
   tool = t;
+  const g = groupOf(t);
+  GROUP_AT[g.id] = t;
+  /* The flyout closes when the tool changes, unless the change WAS a press inside the flyout. A menu
+     that stays open over the board after you have chosen from it is a menu in the way. */
+  openGroup = keepOpen ? g.id : '';
   const wrap = $('boardCanvasWrap');
   if (wrap) wrap.dataset.tool = t;
   paintTools();
@@ -447,7 +502,7 @@ function nudge(key, big) {
   const moving = [];
   items.forEach(function (i) {
     if (moving.indexOf(i) < 0) moving.push(i);
-    if (i.kind === 'frame') itemsInFrame(i).forEach(function (c) { if (moving.indexOf(c) < 0) moving.push(c); });
+    if (i.kind === 'frame') itemsInFrame(i, true).forEach(function (c) { if (moving.indexOf(c) < 0) moving.push(c); });
   });
   moving.forEach(function (i) { i.x = snap(i.x + dx); i.y = snap(i.y + dy); });
   saveBoardSoon(); paintBoard();
@@ -471,7 +526,7 @@ function addItem(o) {
 }
 /* `what` is a TOOL id, not a kind: rect, ellipse and diamond are all the `shape` kind wearing
    different clothes, and keeping that mapping in one place stops every caller having to know it. */
-const SHAPE_TOOLS = ['rect', 'ellipse', 'diamond'];
+const SHAPE_TOOLS = ['rect', 'ellipse', 'diamond', 'triangle'];
 function defaultsFor(what, pt) {
   const isShape = SHAPE_TOOLS.indexOf(what) >= 0;
   /* The colour comes from the tool's own setting in the options strip, so what a student picked is
@@ -552,7 +607,14 @@ function paintBoard() {
   paintLinks(canvas);
   (board.items || []).forEach(function (i) { canvas.appendChild(makeEl(i)); });
   growNotes(canvas);
+  /* Chrome AFTER the notes have settled on their final heights — a grip drawn against the height a
+     note had before its text was measured sits halfway up the paper. */
+  paintChrome();
   paintSelectionBar();
+  /* The rail carries the undo and redo buttons, and whether either is available is a fact about the
+     board — so it is repainted with the board rather than left to say "you can undo" after the last
+     step has been undone. */
+  paintTools();
 }
 
 /* ---------- a sticky is as tall as what is written on it ----------
@@ -568,10 +630,9 @@ function growNotes(canvas) {
   canvas.querySelectorAll('.bi-note').forEach(function (el) {
     const i = itemById(el.dataset.id);
     if (!i || el.classList.contains('editing')) return;
-    /* Measured from the TEXT, not from the element. `scrollHeight` drops the bottom padding once
-       the content overflows, and counts the decorative peeled corner in the corner — so it answered
-       a slightly different question each way and the last line still sat on the edge of the paper.
-       Where the body actually ends, plus the padding that should follow it, is the real answer. */
+    /* Measured from the TEXT, not from the element. `scrollHeight` drops the bottom padding once the
+       content overflows, so the last line ended up sitting on the very edge of the paper. Where the
+       body actually ends, plus the padding that should follow it, is the real answer. */
     const body = el.querySelector('.bi-body');
     if (!body) return;
     const padB = parseFloat(getComputedStyle(el).paddingBottom) || 0;
@@ -613,6 +674,7 @@ function placeEl(el, i) {
   if (i.rot) el.style.setProperty('--spin', i.rot + 'deg');
   else el.style.removeProperty('--spin');
   markTiny(el, i);
+  placeChrome(i);              // the handles travel with it, live, without a repaint
 }
 function elFor(id) {
   const c = $('boardCanvas');
@@ -658,6 +720,7 @@ function makeEl(i) {
     if (!i.text) { p.classList.add('blank'); p.textContent = 'Write something…'; }
     el.appendChild(p);
   } else if (i.kind === 'ink') {
+    if (i.marker) el.classList.add('marker');
     /* Drawn into its own bounding box with a viewBox, so resizing the stroke scales it — a squiggle
        behaves like everything else on the board instead of being the one thing you cannot adjust. */
     const NS = 'http://www.w3.org/2000/svg';
@@ -678,41 +741,112 @@ function makeEl(i) {
     el.appendChild(p);
   }
 
-  /* Handles only on a selected thing, so a board at rest is notes rather than notes plus furniture.
-     Four corners resize; the dots on each edge start an arrow. */
-  /* A locked thing shows no handles — that IS the feedback. Nothing to grab, nothing to knock out
-     of place while reaching past it. */
-  if (isSel(i.id) && !i.lock) {
-    ['nw', 'ne', 'se', 'sw'].forEach(function (c) {
-      const h = document.createElement('i'); h.className = 'bi-grip g-' + c; h.dataset.grip = c;
-      el.appendChild(h);
-    });
-    ['n', 'e', 's', 'w'].forEach(function (c) {
-      const h = document.createElement('i'); h.className = 'bi-grip g-' + c + ' side'; h.dataset.grip = c;
-      el.appendChild(h);
-    });
-    /* Turning things is not a power feature here — it is how a drawn arrow gets pointed the right
-       way and how a label goes up the side of a level. A frame stays square: a tilted room with
-       square things in it is a bug that looks like a feature.
+  /* NO HANDLES IN HERE. They live on the chrome layer — see paintChrome, and the long note above it
+     for why putting them inside the thing they belong to could not be made to work. */
+  return el;
+}
 
-       NO VISIBLE CONTROL. It used to hang a circle on a stalk below every selected thing, which on
-       a pen drawing was a piece of furniture bigger than the drawing. Reach just past a corner and
-       the cursor becomes a turn arrow — Photoshop's and Figma's answer, and the one that costs the
-       board nothing to look at. */
-    if (i.kind !== 'frame') {
-      ['nw', 'ne', 'se', 'sw'].forEach(function (c) {
-        const z = document.createElement('i'); z.className = 'bi-rot r-' + c; z.dataset.spin = '1';
-        el.appendChild(z);
-      });
+/* ---------- the chrome layer ----------
+   Resize grips, the edge and corner cursor zones, and the four connector dots. One layer, drawn over
+   the items, holding the furniture for whatever is selected or pointed at.
+
+   THEY USED TO BE CHILDREN OF THE ITEM, and every one of the following was that one decision:
+
+   - A sticky clips its own children (`overflow:hidden` is what stops a long heading spilling out of
+     the paper). The grips sit half a handle OUTSIDE the box by design, so the sticky cut them off —
+     and a clipped element is not just invisible, it is untouchable. Three of the four corners could
+     not be hit at all: the pointer went straight past them to the frame behind. **A sticky note
+     could not be resized.** The north-west corner worked, which is worse than none of them working,
+     because it reads as a board that is merely unreliable.
+   - Same clip, same result, for the four connector dots — so dragging an arrow out of a note's edge
+     did nothing, and the Arrow tool was the only way to join two things up.
+   - The selection bar hangs above the selection and covers the top-right corner, so the rotate zone
+     that lives there was under a toolbar. Reaching for it pressed Duplicate.
+   - The edge-stretch zones and the connector dots both sit at the middle of each edge, stacked. The
+     dots are drawn later, so they won. The edges could not be stretched either.
+
+   On its own layer none of that can happen: nothing clips it, the bar is beneath it in the stacking
+   order, and each group is positioned and turned to match its item rather than inheriting it. */
+const ROT_KINDS = { frame: 0 };          // a tilted room full of square things reads as a bug
+function chromeLayer() {
+  const canvas = $('boardCanvas'); if (!canvas) return null;
+  let layer = canvas.querySelector('.bi-chrome');
+  if (!layer) {
+    layer = document.createElement('div');
+    layer.className = 'bi-chrome';
+    canvas.appendChild(layer);
+  } else if (layer !== canvas.lastElementChild) {
+    canvas.appendChild(layer);             // always last, so it is over every item
+  }
+  return layer;
+}
+/* What the item is turned to, all in: the student's own rotation plus, on a sticky, the degree and a
+   half of tilt pinned to its id. The chrome has to match both or it sits beside the note. */
+function spinOf(i) {
+  return (i.rot || 0) + (i.kind === 'note' ? parseFloat(tiltOf(i.id)) : 0);
+}
+function chromeFor(i, opts) {
+  const g = document.createElement('div');
+  g.className = 'bi-cw' + (opts.grips ? '' : ' ports-only');
+  g.dataset.id = i.id;
+  g.style.left = i.x + 'px'; g.style.top = i.y + 'px';
+  g.style.width = i.w + 'px'; g.style.height = i.h + 'px';
+  const s = spinOf(i);
+  if (s) g.style.setProperty('--spin', s + 'deg');
+  const add = function (cls, data, val) {
+    const h = document.createElement('i');
+    h.className = cls; h.dataset.id = i.id; h.dataset[data] = val;
+    g.appendChild(h);
+  };
+  if (opts.grips) {
+    ['nw', 'ne', 'se', 'sw'].forEach(function (c) { add('bi-grip g-' + c, 'grip', c); });
+    ['n', 'e', 's', 'w'].forEach(function (c) { add('bi-grip side g-' + c, 'grip', c); });
+    if (!(i.kind in ROT_KINDS)) {
+      ['nw', 'ne', 'se', 'sw'].forEach(function (c) { add('bi-rot r-' + c, 'spin', '1'); });
     }
   }
-  if (i.kind !== 'frame' && i.kind !== 'ink') {
-    ['n', 'e', 's', 'w'].forEach(function (d) {
-      const h = document.createElement('i'); h.className = 'bi-port p-' + d; h.dataset.port = d;
-      el.appendChild(h);
-    });
+  if (opts.ports) ['n', 'e', 's', 'w'].forEach(function (d) { add('bi-port p-' + d, 'port', d); });
+  return g;
+}
+/* Which item the pointer is over, so its connector dots can be offered without the student having to
+   select it first. Tracked rather than done in CSS, because the dots are no longer inside the thing
+   they belong to and `:hover` cannot reach across. */
+let hoverId = null;
+function paintChrome() {
+  const layer = chromeLayer(); if (!layer || !board) return;
+  layer.innerHTML = '';
+  /* Nothing round a thing being typed into. The handles would sit on top of the words at exactly the
+     moment the student is trying to click into them. */
+  if (editing) return;
+  const done = {};
+  selItems().forEach(function (i) {
+    if (i.lock) return;                    // nothing to grab IS the feedback for a locked thing
+    if (minDim(i) * scale < TINY_PX) return;
+    done[i.id] = 1;
+    layer.appendChild(chromeFor(i, { grips: true, ports: canLink(i) }));
+  });
+  const h = hoverId && !done[hoverId] ? itemById(hoverId) : null;
+  if (h && !h.lock && canLink(h) && minDim(h) * scale >= TINY_PX) {
+    layer.appendChild(chromeFor(h, { grips: false, ports: true }));
   }
-  return el;
+}
+function minDim(i) { return Math.min(i.w, i.h); }
+/* A frame is the room, not a thing you join to something else; a pen stroke has no edge to aim at. */
+function canLink(i) { return i.kind !== 'frame' && i.kind !== 'ink'; }
+function setHover(id) {
+  if (hoverId === id) return;
+  hoverId = id;
+  paintChrome();
+}
+/* Live, during a gesture: the chrome follows what is being dragged without a repaint. */
+function placeChrome(i) {
+  const layer = chromeLayer(); if (!layer) return;
+  layer.querySelectorAll('[data-id="' + CSS.escape(String(i.id)) + '"].bi-cw').forEach(function (g) {
+    g.style.left = i.x + 'px'; g.style.top = i.y + 'px';
+    g.style.width = i.w + 'px'; g.style.height = i.h + 'px';
+    const s = spinOf(i);
+    if (s) g.style.setProperty('--spin', s + 'deg'); else g.style.removeProperty('--spin');
+  });
 }
 
 /* ---------- links ----------
@@ -858,26 +992,64 @@ function startEdit(id, which, then) {
 function commitEdit() { if (editing) editing(true); }
 
 /* ---------- the tool rail ---------- */
+function railButton(host, icon, name, on, fn, cls) {
+  const b = document.createElement('button');
+  b.type = 'button';
+  b.className = 'board-tool' + (on ? ' on' : '') + (cls ? ' ' + cls : '');
+  b.title = name; b.setAttribute('aria-label', name);
+  b.innerHTML = '<span class="mdi ' + icon + '" aria-hidden="true"></span>';
+  b.addEventListener('click', fn);
+  host.appendChild(b);
+  return b;
+}
 function paintTools() {
   const host = $('boardPalette'); if (!host) return;
   host.innerHTML = '';
-  const btn = function (icon, name, on, fn, cls) {
-    const b = document.createElement('button');
-    b.type = 'button';
-    b.className = 'board-tool' + (on ? ' on' : '') + (cls ? ' ' + cls : '');
-    b.title = name; b.setAttribute('aria-label', name);
-    b.innerHTML = '<span class="mdi ' + icon + '" aria-hidden="true"></span>';
-    b.addEventListener('click', fn);
-    host.appendChild(b);
-    return b;
-  };
-  /* Grouped: the pointer · things you write in · things you draw with · the freehand pair. */
-  TOOLS.forEach(function (t, n) {
-    btn(t.icon, t.name + '  (' + t.key + ')', tool === t.id, function () { setTool(t.id); });
-    if (n === 0 || n === 2 || n === 7) { const s = document.createElement('span'); s.className = 'board-tool-gap'; host.appendChild(s); }
+  GROUPS.forEach(function (g, n) {
+    const at = toolDef(GROUP_AT[g.id]);
+    const many = g.members.length > 1;
+    const label = (many ? (g.name || at.name) + ' — ' + at.name : at.name)
+      + (at.key ? '  (' + at.key + ')' : '');
+    const b = railButton(host, at.icon, label, groupOf(tool).id === g.id, function () {
+      /* Pressing the group you are already in opens its set — the second press is how a student
+         finds out there is more behind the button. Pressing a different group just arms it. */
+      if (many && groupOf(tool).id === g.id) openGroup = openGroup === g.id ? '' : g.id;
+      else openGroup = '';
+      setTool(GROUP_AT[g.id], openGroup === g.id);
+    }, many ? 'has-more' : '');
+    b.dataset.group = g.id;
+    if (n === 0 || n === 3) { const s = document.createElement('span'); s.className = 'board-tool-gap'; host.appendChild(s); }
   });
   const s = document.createElement('span'); s.className = 'board-tool-gap'; host.appendChild(s);
-  btn('mdi-broom', 'Tidy the loose notes into a grid', false, function () { tidy(); });
+  railButton(host, 'mdi-broom', 'Tidy the loose notes into a grid', false, function () { tidy(); });
+
+  /* ---------- a way back, that is a button ----------
+     Undo was Ctrl+Z and nothing else. A ten-year-old who has never been told that shortcut has no
+     way back at all, which makes a board a thing to be careful on rather than to play with — and
+     being careful is the opposite of what this tab is for. Miro puts these under the rail; so do we.
+     Greyed at the ends of the stack, so the board also says whether there IS anything to undo. */
+  const foot = document.createElement('div');
+  foot.className = 'board-undo';
+  const step = function (icon, name, on, fn) {
+    const b = document.createElement('button');
+    b.type = 'button';
+    b.className = 'board-tool';
+    b.title = name; b.setAttribute('aria-label', name);
+    b.disabled = !on;
+    b.innerHTML = '<span class="mdi ' + icon + '" aria-hidden="true"></span>';
+    b.addEventListener('click', fn);
+    foot.appendChild(b);
+  };
+  step('mdi-undo-variant', 'Undo  (Ctrl+Z)', undoStack.length > 0, function () { undo(); });
+  step('mdi-redo-variant', 'Redo  (Ctrl+Shift+Z)', redoStack.length > 0, function () { redo(); });
+  const pal = $('boardPalette');
+  const old = pal.parentNode.querySelector('.board-undo'); if (old) old.remove();
+  pal.parentNode.insertBefore(foot, pal.nextSibling);
+  /* Measured off the rail rather than given a constant: the rail's height is however many groups
+     there are, and a hand-typed offset is a thing that goes wrong the next time one is added. */
+  const wb = $('boardCanvasWrap').getBoundingClientRect();
+  const pb = pal.getBoundingClientRect();
+  foot.style.top = Math.round(pb.bottom - wb.top + 8) + 'px';
 }
 
 /* The armed tool's settings, floated beside the rail and lined up with the tool they belong to.
@@ -886,15 +1058,38 @@ function paintTools() {
 function paintToolOptions() {
   const host = $('boardToolOpts'); if (!host) return;
   host.innerHTML = '';
+  const g = groupOf(tool);
+  const showMembers = openGroup === g.id && g.members.length > 1;
   const has = Object.prototype.hasOwnProperty.call(TOOL_COLOUR, tool);
-  host.hidden = !has;
-  if (!has) return;
+  host.hidden = !has && !showMembers;
+  if (host.hidden) return;
 
-  /* Level with its own tool: a strip that always sat at the top of the rail would not say which of
-     ten buttons it belongs to. */
-  const n = TOOLS.map(function (t) { return t.id; }).indexOf(tool);
-  const gapsAbove = (n > 0 ? 1 : 0) + (n > 2 ? 1 : 0) + (n > 7 ? 1 : 0);
-  host.style.top = (12 + 5 + n * 36 + gapsAbove * 7) + 'px';
+  /* Level with its own rail button, measured rather than counted. The old version added up button
+     heights and divider margins by hand, so every time the rail changed the strip drifted away from
+     the tool it belonged to and pointed at the wrong one. */
+  const btn = $('boardPalette').querySelector('[data-group="' + g.id + '"]');
+  if (btn) {
+    const wb = $('boardCanvasWrap').getBoundingClientRect();
+    const bb = btn.getBoundingClientRect();
+    host.style.top = Math.round(bb.top - wb.top) + 'px';
+  }
+
+  /* The set behind this rail button. Shown on the second press — see paintTools. */
+  if (showMembers) {
+    g.members.forEach(function (id) {
+      const t = toolDef(id);
+      const b = document.createElement('button');
+      b.type = 'button';
+      b.className = 'board-tool' + (tool === id ? ' on' : '');
+      b.title = t.name + (t.key ? '  (' + t.key + ')' : '');
+      b.setAttribute('aria-label', t.name);
+      b.innerHTML = '<span class="mdi ' + t.icon + '" aria-hidden="true"></span>';
+      b.addEventListener('click', function () { setTool(id, true); });
+      host.appendChild(b);
+    });
+    if (has) { const gap = document.createElement('span'); gap.className = 'bi-bargap'; host.appendChild(gap); }
+  }
+  if (!has) return;
 
   COLOURS.forEach(function (c) {
     const b = document.createElement('button');
@@ -912,7 +1107,7 @@ function paintToolOptions() {
     host.appendChild(b);
   });
 
-  if (tool === 'draw') {
+  if (tool === 'draw' || tool === 'marker') {
     const gap = document.createElement('span'); gap.className = 'bi-bargap'; host.appendChild(gap);
     INK_WIDTHS.forEach(function (w) {
       const b = document.createElement('button');
@@ -1144,21 +1339,26 @@ function onPointerDown(e) {
   const pt = toBoard(e.clientX, e.clientY);
 
   const linkEl = e.target.closest('.bi-link');
-  const el = e.target.closest('.bi');
   const grip = e.target.closest('.bi-grip');
   const port = e.target.closest('.bi-port');
-  const spin = e.target.closest('[data-spin]');
+  const spin = e.target.closest('.bi-rot');
+  /* A handle is no longer inside the item it belongs to — it is on the chrome layer, and carries the
+     id of its item. So "what was pressed" is the handle's own id when a handle was pressed, and the
+     item under the pointer otherwise. */
+  const chrome = grip || port || spin;
+  const el = e.target.closest('.bi');
+  const onId = chrome ? chrome.dataset.id : (el ? el.dataset.id : null);
 
   commitEdit();
 
-  if (spin && el) { beginSpin(itemById(el.dataset.id), e); return; }
+  if (spin) { beginSpin(itemById(onId), e); return; }
 
   // the freehand pair are gestures, not objects placed by a click
-  if (tool === 'draw' && !grip) { beginDraw(e); return; }
+  if (isPen(tool) && !chrome) { beginDraw(e); return; }
   if (tool === 'erase') { beginErase(e); return; }
 
   // a placing tool: click for a sensible size, or drag out the box you want
-  if (tool !== 'select' && tool !== 'arrow' && !grip && !port) {
+  if (tool !== 'select' && tool !== 'arrow' && !chrome) {
     /* Without this the new sticky appears and the cursor is NOT in it. placeAt focuses a textarea
        synchronously, and then mousedown's own default action runs afterwards and moves focus to the
        nearest focusable ancestor of what was clicked — the canvas, which is not focusable, so the
@@ -1170,14 +1370,14 @@ function onPointerDown(e) {
     return;
   }
 
-  if (tool === 'arrow' && el) { beginLink(el.dataset.id, e); return; }
-  if (port && el) { beginLink(el.dataset.id, e); return; }
-  if (grip && el) { beginResize(itemById(el.dataset.id), grip.dataset.grip, e); return; }
+  if (port) { beginLink(onId, e); return; }
+  if (grip) { beginResize(itemById(onId), grip.dataset.grip, e); return; }
+  if (tool === 'arrow' && el) { beginLink(onId, e); return; }
 
   if (linkEl) { select([linkEl.dataset.link]); return; }
 
   if (el) {
-    const id = el.dataset.id;
+    const id = onId;
     if (!isSel(id)) select([id], e.shiftKey || e.metaKey || e.ctrlKey);
     /* Alt+drag leaves a copy behind — the gesture Miro, Figma, Canva and Illustrator all share, and
        the fastest way to turn one sticky into a column of five. Duplicate first, then drag the
@@ -1243,7 +1443,7 @@ function beginDrag(e) {
   selItems().forEach(function (i) {
     if (i.lock) return;
     moving.push(i);
-    if (i.kind === 'frame') itemsInFrame(i).forEach(function (c) {
+    if (i.kind === 'frame') itemsInFrame(i, true).forEach(function (c) {
       if (!c.lock && moving.indexOf(c) < 0) moving.push(c);
     });
   });
@@ -1357,22 +1557,52 @@ function beginResize(i, grip, e) {
   const el = elFor(i.id);
   const bar = document.querySelector('.bi-bar');
   if (bar) bar.remove();
+  /* Grips are named by compass point, so the letters ARE the answer: a corner carries two and a side
+     carries one, and the same few lines handle all eight. */
+  const west = grip.indexOf('w') >= 0, east = grip.indexOf('e') >= 0;
+  const north = grip.indexOf('n') >= 0, south = grip.indexOf('s') >= 0;
+  /* THE CORNER THAT MUST NOT MOVE, as a fraction of the box: drag the south-east and the north-west
+     stays put. Written as a ratio rather than four cases so the side grips fall out of the same
+     line — pulling the east edge pins the west one and leaves the vertical centre alone. */
+  const ax = east ? 0 : west ? 1 : 0.5;
+  const ay = south ? 0 : north ? 1 : 0.5;
+  const th = ((i.rot || 0) * Math.PI) / 180;
+  const cos = Math.cos(th), sin = Math.sin(th);
   let marked = false;
   const move = function (ev) {
     if (!marked) { mark(); marked = true; }
     const p = toBoard(ev.clientX, ev.clientY);
     const dx = p.x - start.x, dy = p.y - start.y;
-    /* Grips are named by compass point, so the letters ARE the answer: a corner carries two and a
-       side carries one, and the same three lines handle all eight. */
-    const west = grip.indexOf('w') >= 0, east = grip.indexOf('e') >= 0;
-    const north = grip.indexOf('n') >= 0, south = grip.indexOf('s') >= 0;
-    let w = east ? o.w + dx : west ? o.w - dx : o.w;
-    let h = south ? o.h + dy : north ? o.h - dy : o.h;
+    /* THE POINTER, TURNED INTO THE SHAPE'S OWN FRAME. w and h describe the box before it was
+       rotated, so a raw screen delta is the wrong units the moment anything is turned: dragging the
+       corner of a shape at 45° used to make it wider AND taller when the student was plainly pulling
+       it along its own diagonal, and the shape crept away from the hand doing the pulling.
+
+       Every one of the tools this board copies solves it the same way — rotate the POINT by minus
+       the angle rather than trying to rotate the shape. It is the same distance either way. */
+    const ldx = dx * cos + dy * sin;
+    const ldy = -dx * sin + dy * cos;
+    let w = east ? o.w + ldx : west ? o.w - ldx : o.w;
+    let h = south ? o.h + ldy : north ? o.h - ldy : o.h;
+    /* Shift keeps the shape's proportions, which is the gesture from every other canvas tool and the
+       only way to scale a drawing or a photo-shaped frame without squashing it. */
+    if (ev.shiftKey && o.w > 0 && o.h > 0) {
+      if (east || west) { if (north || south) h = w * (o.h / o.w); }
+      if ((north || south) && !east && !west) w = h * (o.w / o.h);
+    }
     // Whole pixels, no grid — see the note in beginDrag.
-    w = Math.max(40, Math.round(w)); h = Math.max(32, Math.round(h));
+    w = Math.max(24, Math.round(w)); h = Math.max(20, Math.round(h));
+    /* Put it back where the anchor corner still lands on the same spot. The centre has to shift by
+       half the size change, turned into world space — because x and y describe the UNROTATED box
+       while the corner the student is holding still is a rotated one. Skipping this is why a turned
+       shape used to walk across the board as it was resized. */
+    const c0x = o.x + o.w / 2, c0y = o.y + o.h / 2;
+    const lx = (ax - 0.5) * (o.w - w), ly = (ay - 0.5) * (o.h - h);
+    const cx = c0x + lx * cos - ly * sin;
+    const cy = c0y + lx * sin + ly * cos;
     i.w = w; i.h = h;
-    i.x = Math.round(west ? o.x + (o.w - w) : o.x);
-    i.y = Math.round(north ? o.y + (o.h - h) : o.y);
+    i.x = Math.round(cx - w / 2);
+    i.y = Math.round(cy - h / 2);
     if (el) placeEl(el, i);
     refreshLinks();
     saveBoardSoon();
@@ -1427,18 +1657,74 @@ function beginLink(fromId, e) {
     if (ghost) { ghost.remove(); ghost = null; }
     /* A cancelled gesture has no meaningful drop point — it was interrupted, not finished — so the
        arrow is abandoned rather than attached to whatever happened to be under the cursor. */
-    const over = (ev && ev.type !== 'pointercancel')
-      ? document.elementFromPoint(ev.clientX, ev.clientY) : null;
+    if (!ev || ev.type === 'pointercancel') { paintBoard(); return; }
+    const over = document.elementFromPoint(ev.clientX, ev.clientY);
     const target = over && over.closest ? over.closest('.bi') : null;
-    const toId = target ? target.dataset.id : null;
+    const hit = target ? itemById(target.dataset.id) : null;
+    /* A frame is the room, not a thing to point an arrow at — so landing on one counts as landing on
+       the board inside it, and you get a new shape sitting in that frame. */
+    const toId = hit && canLink(hit) ? hit.id : null;
     if (toId && toId !== fromId) {
       mark();
       board.links.push({ id: uid('l'), from: fromId, to: toId, label: '' });
       saveBoard();
+      paintBoard();
+      return;
     }
-    paintBoard();
+    growChain(fromId, toBoard(ev.clientX, ev.clientY));
   };
   gesture(wrap, e, move, up);
+}
+
+/* ---------- drop an arrow on empty board and get the next box ----------
+   Lucidchart's best gesture, and the one thing it does far better than Miro: drag a connector off a
+   shape, let go on blank canvas, and the next shape is already there and already joined on. Lucid
+   calls the thing that appears the "shape auto-prompt". drawio has the same idea on its connection
+   arrows, where clicking one clones the shape and draws the connector in one go.
+
+   It matters here more than it would anywhere else. A flowchart — "how you lose", "what happens when
+   you hit an enemy" — is the one drawing a game design document actually needs, and building one the
+   long way is four gestures per box: make a shape, drag it into place, drag an arrow out of the last
+   one, aim it at the new one. Four becomes one, and the chain is the thing being thought about
+   rather than the assembly.
+
+   The new box is a COPY OF THE ONE IT CAME FROM — same kind, same shape, same colour, same size —
+   because a chain of boxes that are all different is a chain nobody drew on purpose. That is also
+   what Lucid does. Until this, letting go on empty board threw the arrow away and the student got
+   nothing for the gesture at all. */
+const CHAIN_MIN = 40;              // a twitch off the dot is a miss, not a request for a new shape
+function growChain(fromId, pt) {
+  const from = itemById(fromId);
+  if (!from) { paintBoard(); return; }
+  /* Measured from the source's own EDGE, not its centre — the gesture starts on a dot that is
+     already half a box away from the middle, so measuring from the centre counted the width of the
+     note itself as travel and a one-pixel twitch off the dot dropped a whole new sticky. */
+  const c = centreOf(from);
+  const outX = Math.max(from.x - pt.x, 0, pt.x - (from.x + from.w));
+  const outY = Math.max(from.y - pt.y, 0, pt.y - (from.y + from.h));
+  if (outX < CHAIN_MIN && outY < CHAIN_MIN) { paintBoard(); return; }
+  mark();
+  /* Centred on where the pointer was let go, so the new box lands under the hand rather than beside
+     it — and snapped level with the one it came from when the drag was roughly straight, which is
+     what makes a row of them come out in a row without anybody lining them up afterwards. */
+  const straight = Math.abs(pt.y - c.y) < from.h;
+  const flat = Math.abs(pt.x - c.x) < from.w;
+  const o = Object.assign({}, from, {
+    id: uid(from.kind),
+    x: Math.round((flat ? c.x : pt.x) - from.w / 2),
+    y: Math.round((straight ? c.y : pt.y) - from.h / 2)
+  });
+  delete o.lock; delete o.rot;
+  o.title = ''; o.text = '';
+  addItem(o);
+  board.links.push({ id: uid('l'), from: fromId, to: o.id, label: '' });
+  justPlaced = o.id;
+  saveBoard();
+  paintBoard();
+  select([o.id]);
+  /* Straight into typing, like a sticky placed by hand: the whole point of the gesture is that the
+     next thought goes in without another click. */
+  if (o.kind === 'note') startEdit(o.id, 'title', 'text'); else startEdit(o.id);
 }
 function drawGhost(from, pt) {
   if (!from) return;
@@ -1472,12 +1758,17 @@ function beginDraw(e) {
     pts.push([Math.round(p.x * 10) / 10, Math.round(p.y * 10) / 10]);
   };
   add(e);
+  /* Whichever of the pair is armed decides the nib and the colour — the highlighter keeps its own,
+     so reaching for it does not turn the pen yellow too. */
+  const marker = tool === 'marker';
+  const nib = marker ? MARKER_WIDTH : inkWidth;
+  const colour = marker ? TOOL_COLOUR.marker : TOOL_COLOUR.draw;
   const live = document.createElementNS(INK_NS, 'svg');
-  live.setAttribute('class', 'bi-links ink-live' + colourClass(TOOL_COLOUR.draw));
+  live.setAttribute('class', 'bi-links ink-live' + colourClass(colour) + (marker ? ' marker' : ''));
   canvas.appendChild(live);
   const move = function (ev) {
     add(ev);
-    live.innerHTML = '<polyline stroke-width="' + inkWidth + '" points="'
+    live.innerHTML = '<polyline stroke-width="' + nib + '" points="'
       + pts.map(function (p) { return p.join(','); }).join(' ') + '"/>';
   };
   const up = function () {
@@ -1488,11 +1779,11 @@ function beginDraw(e) {
         x0 = Math.min(x0, p[0]); y0 = Math.min(y0, p[1]);
         x1 = Math.max(x1, p[0]); y1 = Math.max(y1, p[1]);
       });
-      const pad = inkWidth + 4;   // room for the stroke itself, so a line is not clipped by its box
+      const pad = nib + 4;        // room for the stroke itself, so a line is not clipped by its box
       const w0 = Math.max(8, (x1 - x0) + pad * 2), h0 = Math.max(8, (y1 - y0) + pad * 2);
       mark();
       const o = addItem({
-        kind: 'ink', colour: TOOL_COLOUR.draw, nib: inkWidth, x: x0 - pad, y: y0 - pad,
+        kind: 'ink', colour: colour, nib: nib, marker: marker || undefined, x: x0 - pad, y: y0 - pad,
         w: w0, h: h0,
         /* The box AS DRAWN, kept alongside the live one. The points are stored against it, and the
            SVG viewBox scales them to whatever the box becomes — so the eraser needs this to know
@@ -1580,11 +1871,14 @@ function beginMarquee(e) {
     box.style.width = r.w + 'px'; box.style.height = r.h + 'px';
     box.__r = r;
   };
+  /* Held at the START of the sweep, not read at the end: a student who lets go of Shift before the
+     mouse button — which is most of them — still meant to add to the selection. */
+  const add = e.shiftKey;
   const up = function () {
     const r = box.__r; box.remove();
     if (r && r.w > 6 && r.h > 6) {
       select((board.items || []).filter(function (i) { return inside(r, centreOf(i)); })
-        .map(function (i) { return i.id; }));
+        .map(function (i) { return i.id; }), add);
     }
   };
   gesture(wrap, e, move, up);
@@ -1808,6 +2102,17 @@ if ($('boardCanvasWrap')) {
     if (e.button === 2) return;                  // handled by contextmenu, below
     onPointerDown(e);
   });
+  /* Which item the pointer is over, for its connector dots. The dots used to be children of the item
+     and appeared on `:hover`; on their own layer they need telling. Skipped mid-gesture — offering a
+     new item's dots while a note is being dragged over it is noise — and skipped while a placing
+     tool is armed, when the next click is going to make something rather than join anything up. */
+  wrap.addEventListener('pointermove', function (e) {
+    if (liveGesture || (tool !== 'select' && tool !== 'arrow')) return;
+    if (e.target.closest(FURNITURE) || e.target.closest('.bi-chrome')) return;
+    const el = e.target.closest('.bi');
+    setHover(el ? el.dataset.id : null);
+  });
+  wrap.addEventListener('pointerleave', function () { setHover(null); });
   wrap.addEventListener('contextmenu', function (e) {
     if (e.target.closest(FURNITURE)) return;     // let the browser's own menu have those
     e.preventDefault();
@@ -1863,7 +2168,13 @@ document.addEventListener('keydown', function (e) {
   if (t && (t.tagName === 'TEXTAREA' || t.tagName === 'INPUT' || t.isContentEditable)) return;
   if (e.key === ' ') { spaceDown = true; return; }
   if (e.key === 'Delete' || e.key === 'Backspace') { e.preventDefault(); deleteSelection(); return; }
-  if (e.key === 'Escape') { setTool('select'); clearSel(); return; }
+  /* Escape backs out of one thing at a time, innermost first — the menu, then the tool, then the
+     selection. One key that undoes everything at once is a key nobody presses twice. */
+  if (e.key === 'Escape') {
+    if (menuEl) { closeMenu(); return; }
+    if (tool !== 'select') { setTool('select'); return; }
+    clearSel(); return;
+  }
   /* The keys everybody already knows. A student who has used anything else on a computer will try
      Ctrl+Z here before they try any button in the rail, and a board that does not answer it is a
      board they will be careful on instead of playing with. */
@@ -1889,3 +2200,8 @@ document.addEventListener('keydown', function (e) {
   if (e.key === '0') zoomToFit();
 });
 document.addEventListener('keyup', function (e) { if (e.key === ' ') spaceDown = false; });
+/* A keyup that lands somewhere else never arrives here. Alt+Tab away mid-space-drag and the board
+   believed Space was still held for the rest of the session: every click panned instead of selecting
+   and nothing in the app could clear it. */
+window.addEventListener('blur', function () { spaceDown = false; });
+document.addEventListener('visibilitychange', function () { if (document.hidden) spaceDown = false; });
