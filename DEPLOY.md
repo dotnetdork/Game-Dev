@@ -29,7 +29,31 @@ it just needs to be reachable.
 2. **Root Directory: `app`.** This matters. The repo root has no `package.json`.
 3. Framework preset: **Other**. There is no build step; `app/vercel.json` routes every request to
    the Express app.
-4. Do not deploy yet — add the variables below first, or the first deploy will boot without a gate.
+4. Do not deploy yet — add the storage and the variables below first, or the first deploy will boot
+   without a gate and without anywhere to save anyone's work.
+
+## 1b. Attach a KV store
+
+Vercel → **Storage → Create Database → Redis**, attached to this project. Vercel folded its own
+"Vercel KV" into the Marketplace, where the provider is Upstash, so the button may read **Upstash
+for Redis** instead. Either is fine, and so is a database created directly at upstash.com with its
+two REST variables pasted in by hand: `app/store.js` reads both `KV_REST_API_*` and
+`UPSTASH_REDIS_REST_*` and uses whichever is present.
+
+Nothing to configure — attaching it injects the variables itself.
+
+**Two things stop working without it**, and neither fails loudly in the browser:
+
+- **Saved work.** Progress, the project and the design board are mirrored per student to this store.
+  With no store they live in `localStorage` only, which is per browser per machine — a tester who
+  comes back on a different laptop gets an empty course. This is the thing Jed asked for.
+- **The rate limit on the paid relay.** It counts in this store. Without one it falls back to an
+  in-memory counter, which on serverless counts only the requests that happen to land on the same
+  short-lived instance.
+
+The boot log says which you have: `saves: redis` or `saves: none`.
+
+Free tier is far more than a class needs — a few kilobytes per student.
 
 ## 2. Environment variables
 
@@ -67,11 +91,40 @@ which is also how you sign everybody out on purpose.
 
 ### Sign-in
 
-Three providers, all optional, all off until configured. **Configure at least one** — with none of
-them set the site is open to the internet and so is the relay.
+Four doors, all optional, all off until configured. **Configure at least one** — with none of them
+set the app refuses to boot rather than serving the course and the relay to the internet.
 
-The rule is in `app/auth.js`: any provider being configured turns the gate on for the whole app.
-A *partly* configured provider is a boot failure rather than a silent hole.
+The rule is in `app/auth.js`: any door being configured turns the gate on for the whole app. A
+*partly* configured provider is a boot failure rather than a silent hole.
+
+#### The beta testers — a name and one shared password
+
+| Variable | Value |
+|---|---|
+| `TESTER_PASSWORD` | a long passphrase, generated below |
+
+```bash
+node -e "console.log(require('crypto').randomBytes(9).toString('base64url'))"
+```
+
+This is the **temporary** door, and for the September 2026 beta it is the only one that works: the
+CodeServer's OAuth is not finished. Any name, one password shared by everybody — which is what Eric
+asked for, and it is deliberately not a security control. Its real job is to give each child a
+**stable identity**, so the store knows whose game is whose and their work is still there the second
+week.
+
+It draws a box **above** the OAuth buttons on the sign-in page, and the box disappears the moment
+this variable does. **Delete it the day a real provider works.**
+
+Two things to know before the call:
+
+- **Hand the names out and write them down.** The name *is* the identity, so two children given the
+  same name share one save. Matching is forgiving — `Jonathan`, `jonathan` and `Jonathan!` all reach
+  the same account, which helps a child who types it differently the second week and is exactly why
+  two of them must not be given similar names.
+- The server refuses to start if the password is under 12 characters. It is shared, it sits on a
+  public URL, and it is the only thing between a crawler and the paid key. Guessing is rationed to
+  100 tries per address per ten minutes.
 
 #### Students — League CodeServer
 
@@ -147,6 +200,26 @@ students this course is written for are younger than that.
 | `SESSION_DAYS` | how long a sign-in lasts, default `14` |
 | `PUBLIC_ORIGIN` | pins the callback origin if the auto-detected one is ever wrong |
 
+## Signing in on your own laptop
+
+With **nothing** configured, `npm start` is in bypass: the sign-in page still appears — so it
+cannot rot unseen — but every button is a door and one click is through. That is the default on a
+fresh clone and needs no setup.
+
+Setting `TESTER_PASSWORD` in `app/.env` **turns bypass off**, because something is now configured.
+That is deliberate: it lets you see exactly what the testers will see. The trade is that the OAuth
+buttons go dead locally and you sign in through the box instead — any name, plus that password.
+
+So, locally, pick one:
+
+| You want | `app/.env` |
+|---|---|
+| One click through any button | no `TESTER_PASSWORD`, no `SESSION_SECRET` |
+| What the testers will see | both set (the secret is required alongside it) |
+
+Bypass can never happen on a host: it is nailed to "not hosted", and an unconfigured deployment is
+a refusal to boot rather than an open door.
+
 ## Showing the page to someone first
 
 ```bash
@@ -166,23 +239,30 @@ safe way round for a flag whose job is to fake a login screen.
 Push to `main`, or `vercel --prod` if you install the CLI. Then check, in this order:
 
 1. `https://YOUR-DOMAIN/` redirects to `/login.html`
-2. The logo, the Cinzel title and only the buttons you configured are on the page
-3. Signing in with a school account lands you back on the app
-4. Signing in with a personal account is refused with a readable message
-5. The AI panel answers — this proves `ANTHROPIC_API_KEY` and `AI_PROVIDER` are right
-6. Sign out, then `curl -i https://YOUR-DOMAIN/api/ai -X POST -d '{}' -H 'content-type: application/json'`
+2. The logo, the Cinzel title, and only the doors you configured are on the page
+3. Signing in lands you back on the app
+4. The AI panel answers — this proves `ANTHROPIC_API_KEY` and `AI_PROVIDER` are right
+5. **Change something — edit `game.js`, earn some XP — wait five seconds. Then open the same URL in
+   a private window and sign in with the same name. Your change should be there.**
+6. Sign in with a *different* name in the same browser: you should get a clean, empty course, not
+   the first name's game
+7. Sign out, then `curl -i https://YOUR-DOMAIN/api/ai -X POST -d '{}' -H 'content-type: application/json'`
    returns **401**, not a reply
 
-Step 6 is the one that actually matters. Do it after every change to the auth configuration.
+**Step 5 is the one the beta depends on** — it is the whole of "their work is still there next
+time", and it fails silently if the KV store is not attached. **Step 7 is the one that protects the
+key**; do it after every change to the sign-in configuration.
 
 ---
 
 ## Things that will bite
 
-**The rate limiter does not work on Vercel.** `server.js` keeps request counts in a `Map` in memory.
-Serverless instances are short-lived and parallel, so the 40-per-10-minutes limit stops holding.
-Sign-in is what is protecting the relay, not that. If you later want a real limit, it needs a
-durable store (Vercel KV or Upstash).
+**The rate limit needs the KV store to be real.** 40 AI requests per student per 10 minutes, keyed
+on the signed-in session and counted in the store. Attach the store and it holds across instances;
+without one it falls back to an in-memory counter that a serverless platform resets whenever it
+feels like it. It also **fails open** by design — if the store is unreachable the request goes
+through, because a child mid-sentence should not be told to slow down by a storage hiccup. Sign-in
+and the spend cap are still what actually bound the damage.
 
 **Function timeout.** `app/vercel.json` asks for 60s, which is the Hobby ceiling. Tool-enabled
 requests take about 25s by the notes in `.env.example`, and the coder does a corrective retry when
@@ -198,6 +278,13 @@ and vendored libraries with nothing to protect — and leave the rest on the fun
 registered. Either register the preview URLs too, set `PUBLIC_ORIGIN`, or accept that sign-in only
 works on production.
 
-**Student work lives in the browser.** `localStorage`, per device, as it does today. Deploying does
-not give anyone a way to pick up their game on a different machine, and clearing site data still
-loses it. That is worth saying out loud to a class before they rely on it.
+**Student work is mirrored, not merged.** With the KV store attached, the project, the progress and
+the design board follow whoever is signed in, so a tester can come back on a different machine and
+find their game. What it does not do is merge: the same child signed in on two machines at once
+will have one overwrite the other, newest write wins. Fine for a beta; say it out loud before a
+class relies on it.
+
+A browser only ever holds one student's work, and it knows whose. Sign in as somebody else on a
+borrowed laptop and the previous child's work is dropped before the app reads it — and the server
+refuses any upload whose stamp disagrees with the session sending it. Sharing a laptop is safe.
+Sharing a *name* is not.
