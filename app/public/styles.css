@@ -1102,6 +1102,12 @@ body.resizing-v #gameFrame{pointer-events:none;}
   white-space:nowrap;overflow:hidden;text-overflow:ellipsis;}
 .bi-title.blank{opacity:.42;font-style:italic;font-weight:700;}
 .bi-body{white-space:pre-wrap;word-break:break-word;overflow:hidden;flex:1;min-height:0;}
+/* On a sticky the body takes its NATURAL height instead of being squeezed into whatever is left.
+   That is what makes the note measurable: a flex child with `flex:1; overflow:hidden` absorbs its
+   own overflow, so the note's scrollHeight reported the box it already was and growNotes had
+   nothing to work from. Now the text pushes past the bottom, the note's own overflow:hidden clips
+   it for the instant before growNotes reads it, and the note ends up the height of its contents. */
+.bi-note .bi-body{flex:0 0 auto;min-height:0;overflow:visible;}
 .bi-body.blank{opacity:.5;font-style:italic;}
 
 /* ---------- pen marks ----------
@@ -1110,7 +1116,7 @@ body.resizing-v #gameFrame{pointer-events:none;}
 .bi-ink{pointer-events:none;}
 /* Every handle has to opt back in, not just the resize ones — leaving the rotate handle out is why
    a drawing was the one thing on the board that could not be turned. */
-.bi-ink .bi-grip,.bi-ink .bi-spin,.bi-ink .bi-rot{pointer-events:auto;}
+.bi-ink .bi-grip,.bi-ink .bi-rot{pointer-events:auto;}
 .bi-inkpath{position:absolute;inset:0;width:100%;height:100%;overflow:visible;}
 /* No stroke-width here: each stroke carries its own as an attribute, from the nib it was drawn
    with, and a width in the stylesheet would beat it. No non-scaling-stroke either — a pen mark is
@@ -1152,40 +1158,41 @@ body.resizing-v #gameFrame{pointer-events:none;}
 
    Multiplying the offsets by --inv as well pins each handle to its edge in screen pixels, which is
    what it always looked like it was doing. */
-.bi-grip,.bi-port,.bi-spin,.bi-rot{transform:scale(var(--inv));}
+.bi-grip,.bi-port,.bi-rot{transform:scale(var(--inv));}
 /* Too small on screen to hold them — see markTiny. The item stays draggable; it just cannot be
    resized or turned until it is zoomed in enough to aim at. */
-.bi.tiny .bi-grip,.bi.tiny .bi-port,.bi.tiny .bi-spin,.bi.tiny .bi-rot{display:none;}
+.bi.tiny .bi-grip,.bi.tiny .bi-port,.bi.tiny .bi-rot{display:none;}
 .bi-rot.r-nw{transform-origin:right bottom;} .bi-rot.r-ne{transform-origin:left bottom;}
 .bi-rot.r-se{transform-origin:left top;}     .bi-rot.r-sw{transform-origin:right top;}
-.bi-grip{position:absolute;width:10px;height:10px;border-radius:2px;background:var(--azure);
-  border:1.5px solid #06192e;box-sizing:border-box;}
-/* A 10px square is a 10px picture and a 22px target. Anything smaller than this is a handle a
-   twelve-year-old on a trackpad chases rather than grabs. Inside the scaled grip, so it follows. */
+/* FOUR CORNERS DRAWN, EVERYTHING ELSE A CURSOR.
+
+   It used to draw seventeen things on a selected note — eight grips, four rotate patches, four
+   connector dots and a circle on a stalk — and on anything small, a label or a pen stroke, the
+   furniture was bigger and louder than the thing it belonged to.
+
+   Miro draws four white corner nodes and one rotate icon; Lucid draws four blue corner handles and
+   one rotate handle. Neither hides everything, because a child who never thinks to hover near an
+   edge never finds out a thing can be resized at all. So: the four corners are visible and are the
+   discoverable gesture; stretching one edge and turning the whole thing are cursor changes for the
+   student who goes looking. Four drawn, not seventeen. */
+.bi-grip{position:absolute;width:10px;height:10px;box-sizing:border-box;}
+.bi-grip.g-nw,.bi-grip.g-ne,.bi-grip.g-se,.bi-grip.g-sw{
+  background:#fff;border:1.5px solid var(--azure);border-radius:50%;
+  box-shadow:0 1px 3px rgba(0,0,0,.45);}
+/* A 10px zone is a 22px target once this is counted. Anything smaller is a handle a twelve-year-old
+   on a trackpad chases rather than grabs. Inside the scaled grip, so it follows. */
 .bi-grip::after{content:'';position:absolute;inset:-6px;}
 .bi-grip.g-nw{left:calc(-5px * var(--inv));top:calc(-5px * var(--inv));cursor:nwse-resize;transform-origin:left top;}
 .bi-grip.g-ne{right:calc(-5px * var(--inv));top:calc(-5px * var(--inv));cursor:nesw-resize;transform-origin:right top;}
 .bi-grip.g-se{right:calc(-5px * var(--inv));bottom:calc(-5px * var(--inv));cursor:nwse-resize;transform-origin:right bottom;}
 .bi-grip.g-sw{left:calc(-5px * var(--inv));bottom:calc(-5px * var(--inv));cursor:nesw-resize;transform-origin:left bottom;}
-/* The four sides stretch one axis. Drawn as short bars rather than squares, so a glance says which
-   way each one goes without anybody having to try it. */
-.bi-grip.side{border-radius:3px;background:var(--azure);}
+/* The four sides stretch one axis. Longer zones than the corners, because an edge is a long thing
+   and the cursor should change anywhere along the middle of it. */
+.bi-grip.side{background:none;}
 .bi-grip.g-n{top:calc(-4px * var(--inv));left:50%;width:22px;height:8px;margin-left:calc(-11px * var(--inv));cursor:ns-resize;transform-origin:center top;}
 .bi-grip.g-s{bottom:calc(-4px * var(--inv));left:50%;width:22px;height:8px;margin-left:calc(-11px * var(--inv));cursor:ns-resize;transform-origin:center bottom;}
 .bi-grip.g-w{left:calc(-4px * var(--inv));top:50%;width:8px;height:22px;margin-top:calc(-11px * var(--inv));cursor:ew-resize;transform-origin:left center;}
 .bi-grip.g-e{right:calc(-4px * var(--inv));top:50%;width:8px;height:22px;margin-top:calc(-11px * var(--inv));cursor:ew-resize;transform-origin:right center;}
-/* Turn it. BELOW the shape on a short stalk — Canva's position, and the only one the selection bar
-   above the shape cannot sit on top of. The glyph is a curved arrow so the handle says what it does
-   without a tooltip. */
-.bi-spin{position:absolute;left:50%;bottom:calc(-32px * var(--inv));width:19px;height:19px;
-  margin-left:calc(-9.5px * var(--inv));
-  border-radius:50%;background:var(--panel);border:1.5px solid var(--azure);box-sizing:border-box;
-  transform-origin:center top;
-  background-repeat:no-repeat;background-position:center;background-size:12px 12px;
-  background-image:url("data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24'><path d='M12 5V1L7 6l5 5V7a5 5 0 11-5 5H5a7 7 0 107-7z' fill='%234a96e6'/></svg>");
-  cursor:url("data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' width='24' height='24' viewBox='0 0 24 24'><path d='M12 4V1L7.5 5.5 12 10V7a5 5 0 11-5 5H4.5a7.5 7.5 0 107.5-8z' fill='%23ffffff' stroke='%23101d2c' stroke-width='1.2' stroke-linejoin='round'/></svg>") 12 12,grab;}
-.bi-spin::before{content:'';position:absolute;left:50%;bottom:100%;width:1.5px;height:15px;
-  margin-left:-.75px;background:var(--azure);}
 /* Photoshop's corners: nothing to see, but the cursor changes the moment you reach past one, so a
    student who already knows the gesture finds it without being told it is there. */
 .bi-rot{position:absolute;width:18px;height:18px;
@@ -1227,6 +1234,9 @@ body.resizing-v #gameFrame{pointer-events:none;}
 /* ---------- rubber band ---------- */
 .bi-marquee{position:absolute;border:1px solid var(--azure);background:rgba(74,150,230,.12);
   border-radius:3px;pointer-events:none;}
+/* The same box, drawn while a shape is being dragged out rather than while things are being picked
+   up — dashed and in the brand colour so it reads as "this is what you are about to make". */
+.bi-marquee.place{border:1.5px dashed var(--brand);background:rgba(245,176,46,.10);}
 
 /* ---------- the bar over a selection ----------
    Colour, rename, duplicate, front, delete — over the thing rather than in the rail, because which
@@ -1269,12 +1279,19 @@ body.resizing-v #gameFrame{pointer-events:none;}
 .bi-edit.inflow:focus{outline:0;}
 /* The item says it is being typed into, rather than each editor drawing its own box. */
 .bi.editing{outline:2px solid var(--focus);outline-offset:2px;}
-.bi.editing .bi-grip,.bi.editing .bi-port,.bi.editing .bi-spin,.bi.editing .bi-rot{display:none;}
+.bi.editing .bi-grip,.bi.editing .bi-port,.bi.editing .bi-rot{display:none;}
 /* A title is one line at the top of whatever it is titling, and keeps that shape while it is typed
    into — so renaming a frame does not black out the frame, and typing a sticky's heading leaves the
    rest of the sticky visible underneath. */
 .bi-edit.t{height:auto;background:#0d2036;color:#dbe7f4;font-size:11px;font-weight:800;
   letter-spacing:1.1px;text-transform:uppercase;padding:8px 12px;}
+/* Renaming a frame happens ON the little label, in the same pill, at the same size — not in a box
+   thrown across the top of the frame. The editor takes the label's exact geometry so nothing moves
+   when it opens; a student sees a caret appear in the words they double-clicked. */
+.bi.bi-frame .bi-edit.inflow{position:absolute;top:-10px;left:14px;height:auto;width:auto;
+  min-width:110px;max-width:calc(100% - 28px);padding:1px 9px;border-radius:6px;
+  background:#081525;color:rgb(var(--rgb));font-size:10.5px;font-weight:800;letter-spacing:1.2px;
+  text-transform:uppercase;white-space:nowrap;}
 .bi.bi-note .bi-edit{padding:9px 12px 10px;}
 .bi.bi-note .bi-edit.t{background:rgb(var(--rgb));color:var(--pi);font-size:11px;font-weight:800;
   letter-spacing:.3px;text-transform:none;padding:9px 12px 2px;}

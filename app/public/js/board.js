@@ -225,12 +225,20 @@ function toBoard(clientX, clientY) {
   return { x: (clientX - b.left - panX) / scale, y: (clientY - b.top - panY) / scale };
 }
 
-/* ---------- tools ---------- */
-/* `select` is the home state and every other tool returns to it after one use, which is the rule
-   Miro and FigJam both follow: a tool that stays armed is a tool that puts six rectangles on the
-   board while you are trying to click things. Hold shift when you place one to stay in the tool. */
+/* ---------- tools ----------
+   TWO KINDS OF TOOL, and they behave differently on purpose.
+
+   A PLACING tool — sticky, text, frame, the shapes — makes one thing and hands the board back.
+   Click it, click the board, there is your note, and you are holding the pointer again. Left armed
+   it is a note spawner: every click anywhere drops another sticky, including the click you meant as
+   "now let me move that one".
+
+   A DRAWING tool — the pen, the eraser — stays armed until something else is chosen. One stroke per
+   press of the pen button is not a pen, it is a stamp, and rubbing out a line takes more than one
+   swipe. This is the half that used to revert and should not have.
+
+   Escape, or pressing Select, is the way back from either. */
 let tool = 'select';
-let sticky = false;                       // shift-held: stay in the current tool
 const TOOLS = [
   { id: 'select', icon: 'mdi-cursor-default-outline', name: 'Select', key: 'V' },
   { id: 'note', icon: 'mdi-note-outline', name: 'Sticky note', key: 'N' },
@@ -479,17 +487,58 @@ function defaultsFor(what, pt) {
 /* Placed at the pointer, then immediately opened for typing. A new sticky you have to click again
    to write in is a new sticky most students leave blank. */
 let justPlaced = null;         // see the text commit in startEdit
-function placeAt(what, pt) {
+function placeAt(what, pt, box) {
   mark();
-  const o = addItem(defaultsFor(what, pt));
+  const o = addItem(Object.assign(defaultsFor(what, pt), box || {}));
   justPlaced = o.id;
+  /* One thing made, pointer back. See the note above TOOLS: an armed placing tool turns every
+     subsequent click into another sticky, including the one meant to pick the first one up. */
+  setTool('select');
   paintBoard();
   select([o.id]);
   /* A sticky is typed heading-first, then Enter drops into the body — so the heading is the default
      rather than the thing nobody remembers to go back and add. */
   if (what === 'note') startEdit(o.id, 'title', 'text'); else startEdit(o.id);
-  if (!sticky) setTool('select');
   return o;
+}
+
+/* ---------- draw it at the size you want ----------
+   Click to drop one at a sensible size, or DRAG OUT THE BOX and get exactly that. Every canvas tool
+   works this way — Miro, Lucidchart, Figma, PowerPoint — and this one only did the first half: a
+   rectangle was always 160×100 and the student's next move was always to resize it.
+
+   The threshold is what separates the two. Below it the gesture was a click, whatever the mouse did
+   on the way, so a slightly shaky press still gets a normal-sized sticky rather than a sliver. */
+const DRAG_PLACE_MIN = 12;
+function beginPlace(what, e) {
+  const wrap = $('boardCanvasWrap'), canvas = $('boardCanvas');
+  const start = toBoard(e.clientX, e.clientY);
+  const ghost = document.createElement('div');
+  ghost.className = 'bi-marquee place';
+  canvas.appendChild(ghost);
+  let box = null;
+  const move = function (ev) {
+    const p = toBoard(ev.clientX, ev.clientY);
+    const r = {
+      x: Math.min(start.x, p.x), y: Math.min(start.y, p.y),
+      w: Math.abs(p.x - start.x), h: Math.abs(p.y - start.y)
+    };
+    box = (r.w >= DRAG_PLACE_MIN && r.h >= DRAG_PLACE_MIN) ? r : null;
+    ghost.style.left = r.x + 'px'; ghost.style.top = r.y + 'px';
+    ghost.style.width = r.w + 'px'; ghost.style.height = r.h + 'px';
+  };
+  const up = function () {
+    ghost.remove();
+    if (box) {
+      placeAt(what, start, {
+        x: Math.round(box.x), y: Math.round(box.y),
+        w: Math.max(40, Math.round(box.w)), h: Math.max(32, Math.round(box.h))
+      });
+    } else {
+      placeAt(what, start);
+    }
+  };
+  gesture(wrap, e, move, up);
 }
 
 /* ---------- painting ---------- */
@@ -502,7 +551,36 @@ function paintBoard() {
 
   paintLinks(canvas);
   (board.items || []).forEach(function (i) { canvas.appendChild(makeEl(i)); });
+  growNotes(canvas);
   paintSelectionBar();
+}
+
+/* ---------- a sticky is as tall as what is written on it ----------
+   Miro and Lucid both do the opposite — they hold the note still and shrink the text until it fits,
+   which on a long note ends up at an unreadable four points. For a child writing a paragraph about
+   their game, the paragraph is the point and the box should get out of its way.
+
+   Only ever taller, never shorter, and only from what the content actually measures. Done after the
+   whole board is in the document, because height is a question only the browser can answer and
+   asking it per note as each is appended would force a layout each time. */
+function growNotes(canvas) {
+  let moved = false;
+  canvas.querySelectorAll('.bi-note').forEach(function (el) {
+    const i = itemById(el.dataset.id);
+    if (!i || el.classList.contains('editing')) return;
+    /* Measured from the TEXT, not from the element. `scrollHeight` drops the bottom padding once
+       the content overflows, and counts the decorative peeled corner in the corner — so it answered
+       a slightly different question each way and the last line still sat on the edge of the paper.
+       Where the body actually ends, plus the padding that should follow it, is the real answer. */
+    const body = el.querySelector('.bi-body');
+    if (!body) return;
+    const padB = parseFloat(getComputedStyle(el).paddingBottom) || 0;
+    const want = body.offsetTop + body.offsetHeight + padB;
+    if (want > i.h + 1) { i.h = Math.round(want); el.style.height = i.h + 'px'; moved = true; }
+  });
+  /* The heights are real board state, so they are worth keeping — but this runs inside a paint, and
+     a paint must not be the thing that writes to storage. The debounced save picks it up. */
+  if (moved) saveBoardSoon();
 }
 
 function colourClass(c) { return c ? ' c-' + c : ' c-plain'; }
@@ -615,14 +693,13 @@ function makeEl(i) {
     });
     /* Turning things is not a power feature here — it is how a drawn arrow gets pointed the right
        way and how a label goes up the side of a level. A frame stays square: a tilted room with
-       square things in it is a bug that looks like a feature. */
+       square things in it is a bug that looks like a feature.
+
+       NO VISIBLE CONTROL. It used to hang a circle on a stalk below every selected thing, which on
+       a pen drawing was a piece of furniture bigger than the drawing. Reach just past a corner and
+       the cursor becomes a turn arrow — Photoshop's and Figma's answer, and the one that costs the
+       board nothing to look at. */
     if (i.kind !== 'frame') {
-      /* Two ways in, because two habits exist. The visible handle hangs BELOW the shape, which is
-         where Canva puts it and — more to the point — out from under the selection bar, which sits
-         above and used to cover a handle at the top. The four invisible corner patches are
-         Photoshop's and Figma's: reach just past a corner and the cursor becomes a turn arrow. */
-      const s = document.createElement('i'); s.className = 'bi-spin'; s.dataset.spin = '1';
-      el.appendChild(s);
       ['nw', 'ne', 'se', 'sw'].forEach(function (c) {
         const z = document.createElement('i'); z.className = 'bi-rot r-' + c; z.dataset.spin = '1';
         el.appendChild(z);
@@ -718,7 +795,13 @@ function startEdit(id, which, then) {
      which is the difference between editing a note and filling in a field that appeared on top of
      one. Nothing to edit in the layout (a frame's title sits outside the box) falls back to the
      overlay, which is right for those. */
-  const slot = el.querySelector(field === 'title' ? '.bi-title' : '.bi-body');
+  /* A frame's title is `.bi-ftitle` — the little label sitting on its top edge — not `.bi-title`,
+     which is a sticky's heading. Looking only for the latter meant a frame never found its slot and
+     always fell back to the overlay below: double-clicking a frame threw a full-width box across
+     the top of it instead of letting you edit the six words that are actually there. */
+  const slot = el.querySelector(field === 'title'
+    ? (i.kind === 'frame' ? '.bi-ftitle' : '.bi-title')
+    : '.bi-body');
   if (slot) { ta.classList.add('inflow'); slot.replaceWith(ta); } else el.appendChild(ta);
   el.classList.add('editing');
   ta.focus(); ta.select();
@@ -1059,7 +1142,6 @@ function onPointerDown(e) {
 
   const wrap = $('boardCanvasWrap');
   const pt = toBoard(e.clientX, e.clientY);
-  sticky = e.shiftKey;
 
   const linkEl = e.target.closest('.bi-link');
   const el = e.target.closest('.bi');
@@ -1075,7 +1157,7 @@ function onPointerDown(e) {
   if (tool === 'draw' && !grip) { beginDraw(e); return; }
   if (tool === 'erase') { beginErase(e); return; }
 
-  // a placing tool: one click, one object
+  // a placing tool: click for a sensible size, or drag out the box you want
   if (tool !== 'select' && tool !== 'arrow' && !grip && !port) {
     /* Without this the new sticky appears and the cursor is NOT in it. placeAt focuses a textarea
        synchronously, and then mousedown's own default action runs afterwards and moves focus to the
@@ -1084,7 +1166,7 @@ function onPointerDown(e) {
        Double-clicking empty board worked, because dblclick fires after mouseup; clicking with the
        sticky tool armed did not, which is exactly the kind of inconsistency that reads as broken. */
     e.preventDefault();
-    placeAt(tool, pt);
+    beginPlace(tool, e);
     return;
   }
 
@@ -1354,7 +1436,6 @@ function beginLink(fromId, e) {
       board.links.push({ id: uid('l'), from: fromId, to: toId, label: '' });
       saveBoard();
     }
-    if (!sticky) setTool('select');
     paintBoard();
   };
   gesture(wrap, e, move, up);
@@ -1422,10 +1503,9 @@ function beginDraw(e) {
       });
       saveBoard();
       paintBoard();
-      if (!sticky) { setTool('select'); select([o.id]); }
+      select([o.id]);
       return;
     }
-    if (!sticky) setTool('select');
     paintBoard();
   };
   gesture(wrap, e, move, up);
@@ -1484,7 +1564,6 @@ function beginErase(e) {
   rub(e);                         // a single click rubs out what is under it
   const up = function () {
     if (marked) saveBoard();
-    if (!sticky) setTool('select');
   };
   gesture(wrap, e, rub, up);
 }
