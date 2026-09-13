@@ -67,12 +67,35 @@ function saveBoardSoon() {
   saveTimer = setTimeout(function () { boardDirty = false; saveBoard(); }, 400);
 }
 
+/* Read, and then CHECKED. This comes out of localStorage, which means it can be a board written by
+   an older build, half-written by a browser that ran out of quota mid-save, or edited by a curious
+   twelve-year-old in devtools — this course teaches them exactly enough to try.
+
+   The whole board is drawn in one pass, so a single item missing an id or a width used to throw
+   inside paintBoard and leave the student looking at an empty canvas with their work still in
+   storage and no way to reach it. Anything unusable is repaired if it can be and dropped if it
+   cannot, which costs one sticky instead of the lot. */
+function tidyLoaded(raw) {
+  const seen = {};
+  raw.items = (raw.items || []).filter(function (i) {
+    if (!i || typeof i !== 'object') return false;
+    if (typeof i.kind !== 'string') return false;
+    if (!i.id || seen[i.id]) i.id = uid(i.kind);      // a duplicate id makes two items one item
+    seen[i.id] = true;
+    ['x', 'y', 'w', 'h'].forEach(function (k) {
+      if (typeof i[k] !== 'number' || !isFinite(i[k])) i[k] = (k === 'w' ? NOTE_W : k === 'h' ? NOTE_H : 0);
+    });
+    return true;
+  });
+  /* An arrow whose ends are gone is a line drawn from nothing to nothing. */
+  raw.links = (Array.isArray(raw.links) ? raw.links : []).filter(function (l) {
+    return l && l.id && seen[l.from] && seen[l.to];
+  });
+  return raw;
+}
 function loadBoard() {
   const raw = Storage.readJSON(BKEY, null);
-  if (raw && typeof raw === 'object' && Array.isArray(raw.items)) {
-    if (!Array.isArray(raw.links)) raw.links = [];
-    return raw;
-  }
+  if (raw && typeof raw === 'object' && Array.isArray(raw.items)) return tidyLoaded(raw);
   return starterBoard();
 }
 
@@ -156,6 +179,12 @@ function applyView() {
   /* Published for the two bits of furniture that live in board coordinates but must not shrink with
      the board — the selection bar, and the resize grips. At 30% a 24px button is 7px of target. */
   c.style.setProperty('--inv', (1 / scale).toFixed(4));
+  /* Zooming changes how big everything RENDERS without changing the board, so the too-small-for-
+     handles test has to be redone here. Only the things that carry handles are worth walking. */
+  if (board) c.querySelectorAll('.bi').forEach(function (el) {
+    const i = itemById(el.dataset.id);
+    if (i) markTiny(el, i);
+  });
   const at = $('boardZoomAt'); if (at) at.textContent = Math.round(scale * 100) + '%';
 }
 function setScale(next, at) {
@@ -240,18 +269,36 @@ function setTool(t) {
 const UNDO_MAX = 60;
 let undoStack = [], redoStack = [];
 function snapshot() { return JSON.stringify({ items: board.items, links: board.links || [] }); }
+let markedRedo = null;         // what redo held before the last mark(), so unmark() can give it back
 function mark() {
-  if (!board) return;
+  if (!board) return false;
   undoStack.push(snapshot());
   if (undoStack.length > UNDO_MAX) undoStack.shift();
+  markedRedo = redoStack.slice();
   redoStack.length = 0;
+  return true;
 }
-function unmark() { undoStack.pop(); }        // for a change that turned out to be a no-op
+/* For a change that turned out to be a no-op. It PUTS THE REDO STACK BACK: mark() clears redo, so
+   a marked-then-unmarked nothing — pasting an empty clipboard, duplicating a selection of nothing,
+   a coach reply that applied no ops — silently destroyed a student's redo in exchange for nothing
+   at all. Only pops when there is something to pop, so an unbalanced call cannot eat a real step. */
+function unmark() {
+  if (!undoStack.length) return;
+  undoStack.pop();
+  if (markedRedo) { redoStack = markedRedo; markedRedo = null; }
+}
 function restore(s) {
+  /* The editor goes first. It closes over the item object it is editing, and the line below
+     replaces board.items wholesale — so committing afterwards wrote the student's sentence into an
+     object that was no longer on the board, and the write was lost. */
+  commitEdit();
   const o = JSON.parse(s);
   board.items = o.items; board.links = o.links;
   sel = sel.filter(function (id) { return !!itemById(id); });
-  commitEdit();
+  /* An undo can remove the thing a fresh sticky's first edit was folded into, and the id would
+     otherwise keep matching something later. */
+  justPlaced = null;
+  lastNudge = 0;
   saveBoard(); paintBoard();
 }
 function undo() { if (undoStack.length) { redoStack.push(snapshot()); restore(undoStack.pop()); } }
@@ -276,6 +323,18 @@ function pasteClip() {
   });
   if (made.length) { sel = made; saveBoard(); paintBoard(); } else unmark();
 }
+
+/* ---------- what is furniture, not board ----------
+   Every one of these lives INSIDE #boardCanvasWrap, so its clicks reach the board's own pointer
+   handler before the button's. Left to run, that handler clears the selection, repaints, and
+   destroys the very button being pressed before its click event can fire.
+
+   ONE CONSTANT, because the bug this fixes was caused by there being three copies of the list. The
+   tool-options strip and the right-click menu were added later and only some of the copies were
+   updated — so every colour swatch dropped a stray sticky instead of changing a colour, and not one
+   row of the right-click menu did anything at all. A new piece of furniture goes here and is
+   covered everywhere at once. */
+const FURNITURE = '.board-palette,.board-toolopts,.board-zoom,.bi-bar,.bi-menu';
 
 /* ---------- selection ---------- */
 let sel = [];
@@ -452,9 +511,47 @@ function colourClass(c) { return c ? ' c-' + c : ' c-plain'; }
    beside each other land at the same one. Small — 1.5° is enough to say "paper on a wall"; more and
    a column of them looks broken rather than stuck. */
 function tiltOf(id) {
+  const s = String(id || '');
   let n = 0;
-  for (let k = 0; k < id.length; k++) n = (n * 31 + id.charCodeAt(k)) % 1000;
+  for (let k = 0; k < s.length; k++) n = (n * 31 + s.charCodeAt(k)) % 1000;
   return ((n / 1000) * 3 - 1.5).toFixed(2);
+}
+
+/* ---------- geometry, onto an element that already exists ----------
+   THE REASON THIS FUNCTION EXISTS. Dragging used to call paintBoard() on every pointermove, and
+   paintBoard() empties the canvas and rebuilds every item on the board from scratch. So a drag threw
+   away and recreated the element under the student's own finger sixty times a second, along with
+   everything else on the board — and the cost grew with every sticky they added, which is exactly
+   backwards from how a board gets used.
+
+   A live gesture moves what is already on screen instead. Same writes makeEl would do, addressed to
+   an element that is already there. */
+function placeEl(el, i) {
+  el.style.left = i.x + 'px'; el.style.top = i.y + 'px';
+  el.style.width = i.w + 'px'; el.style.height = i.h + 'px';
+  /* Plain text scales with its box, the way it does in Canva: dragging a corner is how you get a
+     heading rather than a label, and a separate font-size control would be a third thing to find. */
+  if (i.kind === 'text') el.style.fontSize = Math.max(11, Math.min(72, Math.round(i.h * 0.52))) + 'px';
+  if (i.rot) el.style.setProperty('--spin', i.rot + 'deg');
+  else el.style.removeProperty('--spin');
+  markTiny(el, i);
+}
+function elFor(id) {
+  const c = $('boardCanvas');
+  return c ? c.querySelector('[data-id="' + CSS.escape(String(id)) + '"]') : null;
+}
+
+/* ---------- handles get out of the way when there is no room for them ----------
+   The handles are a constant size ON SCREEN, which is right — a 10px grip has to stay a 10px target
+   at any zoom. But a 168×100 sticky at 20% renders 34×21, and eight grips, four rotate patches and
+   four ports at full screen size cover it several times over. A selected note simply could not be
+   picked up when zoomed out: every grab landed on a handle and started a resize or a rotate.
+
+   Below this, the handles are hidden and the thing is just draggable, which is all anybody wants of
+   a sticky they can barely read. Figma and Miro both do exactly this. */
+const TINY_PX = 70;
+function markTiny(el, i) {
+  el.classList.toggle('tiny', Math.min(i.w, i.h) * scale < TINY_PX);
 }
 
 function makeEl(i) {
@@ -463,11 +560,7 @@ function makeEl(i) {
     + (i.kind === 'shape' ? ' s-' + i.shape : '');
   el.dataset.id = i.id;
   if (i.lock) el.classList.add('locked');
-  el.style.left = i.x + 'px'; el.style.top = i.y + 'px';
-  el.style.width = i.w + 'px'; el.style.height = i.h + 'px';
-  /* Plain text scales with its box, the way it does in Canva: dragging a corner is how you get a
-     heading rather than a label, and a separate font-size control would be a third thing to find. */
-  if (i.kind === 'text') el.style.fontSize = Math.max(11, Math.min(72, Math.round(i.h * 0.52))) + 'px';
+  placeEl(el, i);
 
   if (i.kind === 'frame') {
     const t = document.createElement('div'); t.className = 'bi-ftitle';
@@ -536,7 +629,6 @@ function makeEl(i) {
       });
     }
   }
-  if (i.rot) el.style.setProperty('--spin', i.rot + 'deg');
   if (i.kind !== 'frame' && i.kind !== 'ink') {
     ['n', 'e', 's', 'w'].forEach(function (d) {
       const h = document.createElement('i'); h.className = 'bi-port p-' + d; h.dataset.port = d;
@@ -549,6 +641,15 @@ function makeEl(i) {
 /* ---------- links ----------
    One SVG behind everything, redrawn with the board. An arrow is stored as two ids, so it follows
    whatever it is tied to and there is no second copy of a position to keep in step. */
+/* Just the arrows, redrawn. An arrow is two ids and its shape is worked out from where those two
+   things are now, so dragging one end has to redraw it — but redrawing one SVG is nothing like
+   rebuilding the whole board, which is what a live gesture used to do to keep arrows attached. */
+function refreshLinks() {
+  const canvas = $('boardCanvas'); if (!canvas) return;
+  const old = canvas.querySelector('.bi-links:not(.ghost):not(.bi-guides)');
+  if (old) old.remove();
+  paintLinks(canvas);
+}
 function paintLinks(canvas) {
   const links = board.links || [];
   if (!links.length) return;
@@ -630,9 +731,12 @@ function startEdit(id, which, then) {
     const want = el.scrollHeight;
     if (want > i.h) { i.h = snap(want + 4); el.style.height = i.h + 'px'; }
   };
+  /* CAPTURED BEFORE fit() RUNS. fit() grows the note to fit what is already in it, so reading the
+     height afterwards recorded the grown one — and Escape then "restored" a height the note never
+     had. Open an overflowing note and press Escape a few times and it got permanently taller. */
+  const h0 = i.h;
   fit();
   ta.addEventListener('input', fit);
-  const h0 = i.h;
   editing = function (keep) {
     editing = null;
     if (!keep) i.h = h0;            // undo the growing the textarea did while it was open
@@ -642,11 +746,17 @@ function startEdit(id, which, then) {
        clicking away must not fill the stack with snapshots of nothing. The first words typed into a
        brand-new thing are part of making it, so they fold into the step that made it: one Ctrl+Z
        takes the whole sticky away, which is what a student who just made one by accident wants. */
+    const fresh = i.id === justPlaced;
     if (keep && now !== was) {
-      if (i.id === justPlaced) { if (!then) justPlaced = null; } else mark();
+      if (!fresh) mark();
       if (field === 'title') i.title = now; else i.text = now;
       saveBoard();
     }
+    /* Cleared on EVERY way out of the editor, not only when text was saved. It used to be cleared
+       inside the branch above, so a sticky placed and then escaped from kept its id here for the
+       rest of the session — and rewriting that note an hour later still counted as "part of making
+       it" and took no undo step of its own. Ctrl+Z jumped straight past the student's paragraph. */
+    if (fresh && !then) justPlaced = null;
     paintBoard();
     if (keep && then) startEdit(id, then);
   };
@@ -945,12 +1055,7 @@ function tidy() {
    has to be told about. */
 function onPointerDown(e) {
   if (e.button !== 0) return;
-  /* The furniture is INSIDE the canvas wrap — the tool rail, the zoom bar, and the bar that appears
-     over a selection — so its clicks arrive here first. Left to run, this handler cleared the
-     selection and repainted, which destroyed the very button the student was pressing before its
-     click event could fire: the colour swatches and the rename button did nothing at all, and a
-     tool click landed a stray sticky under the rail. The furniture keeps its own clicks. */
-  if (e.target.closest('.board-palette,.board-zoom,.bi-bar')) return;
+  if (e.target.closest(FURNITURE)) return;
 
   const wrap = $('boardCanvasWrap');
   const pt = toBoard(e.clientX, e.clientY);
@@ -971,7 +1076,17 @@ function onPointerDown(e) {
   if (tool === 'erase') { beginErase(e); return; }
 
   // a placing tool: one click, one object
-  if (tool !== 'select' && tool !== 'arrow' && !grip && !port) { placeAt(tool, pt); return; }
+  if (tool !== 'select' && tool !== 'arrow' && !grip && !port) {
+    /* Without this the new sticky appears and the cursor is NOT in it. placeAt focuses a textarea
+       synchronously, and then mousedown's own default action runs afterwards and moves focus to the
+       nearest focusable ancestor of what was clicked — the canvas, which is not focusable, so the
+       body — blurring the editor and committing an empty edit before a key could be pressed.
+       Double-clicking empty board worked, because dblclick fires after mouseup; clicking with the
+       sticky tool armed did not, which is exactly the kind of inconsistency that reads as broken. */
+    e.preventDefault();
+    placeAt(tool, pt);
+    return;
+  }
 
   if (tool === 'arrow' && el) { beginLink(el.dataset.id, e); return; }
   if (port && el) { beginLink(el.dataset.id, e); return; }
@@ -995,6 +1110,41 @@ function onPointerDown(e) {
   beginMarquee(e);
 }
 
+/* ---------- one way to run a gesture ----------
+   Every drag on this board — move, resize, turn, link, draw, erase, rubber-band, pan — is the same
+   shape: listen while the pointer is down, stop when it comes up. Each one wired that by hand, and
+   every single one of them forgot `pointercancel`.
+
+   Chrome fires pointercancel INSTEAD OF pointerup when a context menu opens over a captured
+   pointer, and routinely on touch. The teardown never ran, `move` stayed bound to the wrap for the
+   life of the page, and the note carried on following the mouse with no button held — through pans,
+   through tab switches, until the student reloaded. There was no way out of it from inside the app.
+
+   It also pins a gesture to ONE pointer id, so a second finger's pointerup cannot tear down the
+   first one's drag, and refuses to start a second gesture while one is live — which is what let a
+   middle-click mid-drag pan the board and move the note at the same time. */
+let liveGesture = 0;
+function gesture(wrap, e, onMove, onEnd) {
+  if (liveGesture) return false;
+  const id = e.pointerId === undefined ? -1 : e.pointerId;
+  liveGesture = id || -1;
+  try { wrap.setPointerCapture(id); } catch (err) { /* uncapturable; the listeners still work */ }
+  const move = function (ev) { if (ev.pointerId === id) onMove(ev); };
+  const end = function (ev) {
+    if (ev && ev.pointerId !== undefined && ev.pointerId !== id) return;
+    wrap.removeEventListener('pointermove', move);
+    wrap.removeEventListener('pointerup', end);
+    wrap.removeEventListener('pointercancel', end);
+    try { wrap.releasePointerCapture(id); } catch (err) { /* already released */ }
+    liveGesture = 0;
+    onEnd(ev);
+  };
+  wrap.addEventListener('pointermove', move);
+  wrap.addEventListener('pointerup', end);
+  wrap.addEventListener('pointercancel', end);
+  return true;
+}
+
 let skipDragMark = false;    // set by Alt+drag, which has already pushed its own undo step
 function beginDrag(e) {
   const wrap = $('boardCanvasWrap');
@@ -1002,6 +1152,11 @@ function beginDrag(e) {
   /* A frame takes what is standing on it. Captured once, at the start, so a note that leaves the
      frame mid-drag is not dropped halfway. Locked things stay put, including inside a frame that
      is being moved — which is the point of locking one. */
+  /* Cleared HERE, before the early return below. Alt+drag sets it and then calls this; when the
+     drag bailed out — an Alt+drag onto a locked note — the flag stayed set and suppressed the undo
+     snapshot of whatever the student dragged next. */
+  const wasAltDrag = skipDragMark;
+  skipDragMark = false;
   const moving = [];
   selItems().forEach(function (i) {
     if (i.lock) return;
@@ -1011,29 +1166,41 @@ function beginDrag(e) {
     });
   });
   if (!moving.length) return;
-  const from = moving.map(function (i) { return { i: i, x: i.x, y: i.y }; });
-  wrap.setPointerCapture(e.pointerId);
-  let marked = skipDragMark;
-  skipDragMark = false;
+  /* The ELEMENT is captured alongside the item, once, at the start. That is what lets the move
+     handler write geometry onto what is already on screen instead of rebuilding the board. */
+  const from = moving.map(function (i) { return { i: i, x: i.x, y: i.y, el: elFor(i.id) }; });
+  const bar = document.querySelector('.bi-bar');
+  if (bar) bar.remove();                        // it would hang in mid-air until the drag ended
+  let marked = wasAltDrag;
   const move = function (ev) {
-    if (!marked) { mark(); marked = true; }     // a click that only selects is not a change
     const p = toBoard(ev.clientX, ev.clientY);
     let dx = p.x - start.x, dy = p.y - start.y;
-    /* Snapped to whatever else is on the board before being snapped to the grid, because lining up
-       with the sticky beside it is what a student is actually trying to do — the grid is only there
-       so that near-misses do not happen at all. */
+    /* MARKED WHEN SOMETHING MOVES, not when the pointer twitches. A one-pixel wobble on an ordinary
+       click produces a pointermove, and marking there pushed an identical snapshot onto the undo
+       stack — and mark() clears the redo stack, so clicking a note threw away the redo a student
+       had just earned. Ctrl+Z then did nothing three or four times before undoing anything real. */
+    if (!marked && !dx && !dy) return;
+    if (!marked) { mark(); marked = true; }
+    /* Pulled level with whatever else is on the board. There is no grid any more: a drag used to be
+       snapped to a neighbour here and then immediately re-snapped to an 8px grid, which could drag
+       it back off the line it had just been aligned to. Things sit where they are put, and the
+       guides do the aligning — which is what Miro and Lucidchart both do. */
     const g = guidesFor(from, dx, dy);
     dx = g.dx; dy = g.dy;
-    from.forEach(function (f) { f.i.x = snap(f.x + dx); f.i.y = snap(f.y + dy); });
-    paintBoard();
+    from.forEach(function (f) {
+      f.i.x = Math.round(f.x + dx); f.i.y = Math.round(f.y + dy);
+      if (f.el) placeEl(f.el, f.i);
+    });
+    refreshLinks();                             // arrows stay attached to what they point at
     drawGuides(g.lines);
     saveBoardSoon();
   };
   const up = function () {
-    wrap.removeEventListener('pointermove', move); wrap.removeEventListener('pointerup', up);
-    saveBoard(); paintBoard();
+    drawGuides([]);
+    saveBoard();
+    paintBoard();                               // once, at the end, to put the handles and bar back
   };
-  wrap.addEventListener('pointermove', move); wrap.addEventListener('pointerup', up);
+  gesture(wrap, e, move, up);
 }
 
 /* ---------- alignment guides ----------
@@ -1105,7 +1272,9 @@ function beginResize(i, grip, e) {
   const wrap = $('boardCanvasWrap');
   const start = toBoard(e.clientX, e.clientY);
   const o = { x: i.x, y: i.y, w: i.w, h: i.h };
-  wrap.setPointerCapture(e.pointerId);
+  const el = elFor(i.id);
+  const bar = document.querySelector('.bi-bar');
+  if (bar) bar.remove();
   let marked = false;
   const move = function (ev) {
     if (!marked) { mark(); marked = true; }
@@ -1117,17 +1286,19 @@ function beginResize(i, grip, e) {
     const north = grip.indexOf('n') >= 0, south = grip.indexOf('s') >= 0;
     let w = east ? o.w + dx : west ? o.w - dx : o.w;
     let h = south ? o.h + dy : north ? o.h - dy : o.h;
-    w = Math.max(40, snap(w)); h = Math.max(32, snap(h));
+    // Whole pixels, no grid — see the note in beginDrag.
+    w = Math.max(40, Math.round(w)); h = Math.max(32, Math.round(h));
     i.w = w; i.h = h;
-    i.x = snap(west ? o.x + (o.w - w) : o.x);
-    i.y = snap(north ? o.y + (o.h - h) : o.y);
-    paintBoard(); saveBoardSoon();
+    i.x = Math.round(west ? o.x + (o.w - w) : o.x);
+    i.y = Math.round(north ? o.y + (o.h - h) : o.y);
+    if (el) placeEl(el, i);
+    refreshLinks();
+    saveBoardSoon();
   };
   const up = function () {
-    wrap.removeEventListener('pointermove', move); wrap.removeEventListener('pointerup', up);
     saveBoard(); paintBoard();
   };
-  wrap.addEventListener('pointermove', move); wrap.addEventListener('pointerup', up);
+  gesture(wrap, e, move, up);
 }
 
 /* Turning. The angle is measured from the item's own centre, so the thing spins where it stands
@@ -1142,7 +1313,9 @@ function beginSpin(i, e) {
     return Math.atan2(p.y - c.y, p.x - c.x) * 180 / Math.PI + 90;
   };
   const from = angle(e), was = i.rot || 0;
-  wrap.setPointerCapture(e.pointerId);
+  const el = elFor(i.id);
+  const bar = document.querySelector('.bi-bar');
+  if (bar) bar.remove();
   let marked = false;
   const move = function (ev) {
     if (!marked) { mark(); marked = true; }
@@ -1150,13 +1323,13 @@ function beginSpin(i, e) {
     if (!ev.altKey) a = Math.round(a / 15) * 15;
     i.rot = Math.round(((a % 360) + 360) % 360);
     if (i.rot === 0) delete i.rot;
-    paintBoard(); saveBoardSoon();
+    if (el) placeEl(el, i);
+    saveBoardSoon();
   };
   const up = function () {
-    wrap.removeEventListener('pointermove', move); wrap.removeEventListener('pointerup', up);
     saveBoard(); paintBoard();
   };
-  wrap.addEventListener('pointermove', move); wrap.addEventListener('pointerup', up);
+  gesture(wrap, e, move, up);
 }
 
 /* An arrow is drawn by dragging from one thing to another, which is how every board does it. The
@@ -1164,15 +1337,16 @@ function beginSpin(i, e) {
 let ghost = null;
 function beginLink(fromId, e) {
   const wrap = $('boardCanvasWrap');
-  wrap.setPointerCapture(e.pointerId);
   const move = function (ev) {
     const p = toBoard(ev.clientX, ev.clientY);
     drawGhost(itemById(fromId), p);
   };
   const up = function (ev) {
-    wrap.removeEventListener('pointermove', move); wrap.removeEventListener('pointerup', up);
     if (ghost) { ghost.remove(); ghost = null; }
-    const over = document.elementFromPoint(ev.clientX, ev.clientY);
+    /* A cancelled gesture has no meaningful drop point — it was interrupted, not finished — so the
+       arrow is abandoned rather than attached to whatever happened to be under the cursor. */
+    const over = (ev && ev.type !== 'pointercancel')
+      ? document.elementFromPoint(ev.clientX, ev.clientY) : null;
     const target = over && over.closest ? over.closest('.bi') : null;
     const toId = target ? target.dataset.id : null;
     if (toId && toId !== fromId) {
@@ -1183,7 +1357,7 @@ function beginLink(fromId, e) {
     if (!sticky) setTool('select');
     paintBoard();
   };
-  wrap.addEventListener('pointermove', move); wrap.addEventListener('pointerup', up);
+  gesture(wrap, e, move, up);
 }
 function drawGhost(from, pt) {
   if (!from) return;
@@ -1220,14 +1394,12 @@ function beginDraw(e) {
   const live = document.createElementNS(INK_NS, 'svg');
   live.setAttribute('class', 'bi-links ink-live' + colourClass(TOOL_COLOUR.draw));
   canvas.appendChild(live);
-  wrap.setPointerCapture(e.pointerId);
   const move = function (ev) {
     add(ev);
     live.innerHTML = '<polyline stroke-width="' + inkWidth + '" points="'
       + pts.map(function (p) { return p.join(','); }).join(' ') + '"/>';
   };
   const up = function () {
-    wrap.removeEventListener('pointermove', move); wrap.removeEventListener('pointerup', up);
     live.remove();
     if (pts.length >= 2) {
       let x0 = Infinity, y0 = Infinity, x1 = -Infinity, y1 = -Infinity;
@@ -1236,10 +1408,16 @@ function beginDraw(e) {
         x1 = Math.max(x1, p[0]); y1 = Math.max(y1, p[1]);
       });
       const pad = inkWidth + 4;   // room for the stroke itself, so a line is not clipped by its box
+      const w0 = Math.max(8, (x1 - x0) + pad * 2), h0 = Math.max(8, (y1 - y0) + pad * 2);
       mark();
       const o = addItem({
         kind: 'ink', colour: TOOL_COLOUR.draw, nib: inkWidth, x: x0 - pad, y: y0 - pad,
-        w: Math.max(8, (x1 - x0) + pad * 2), h: Math.max(8, (y1 - y0) + pad * 2),
+        w: w0, h: h0,
+        /* The box AS DRAWN, kept alongside the live one. The points are stored against it, and the
+           SVG viewBox scales them to whatever the box becomes — so the eraser needs this to know
+           where a resized stroke actually is now. Without it, rubbing at a stretched drawing aims
+           at where it used to be. */
+        w0: w0, h0: h0,
         pts: pts.map(function (p) { return [+(p[0] - x0 + pad).toFixed(1), +(p[1] - y0 + pad).toFixed(1)]; })
       });
       saveBoard();
@@ -1250,37 +1428,65 @@ function beginDraw(e) {
     if (!sticky) setTool('select');
     paintBoard();
   };
-  wrap.addEventListener('pointermove', move); wrap.addEventListener('pointerup', up);
+  gesture(wrap, e, move, up);
+}
+
+/* Is the eraser touching this stroke? Measured against the SEGMENTS between the sampled points, not
+   against the points themselves.
+
+   The points are sampled from pointermove, so a fast hand leaves them far apart — and at 30% zoom
+   they are three times further apart again in board units. Testing only the points meant the eraser
+   slipped through the gaps in a long straight line and the student rubbed at it repeatedly with
+   nothing happening. */
+function nearStroke(i, p, r) {
+  const pts = i.pts || [];
+  if (!pts.length) return false;
+  const r2 = r * r;
+  const px = p.x - i.x, py = p.y - i.y;          // into the stroke's own coordinates
+  /* Points are stored against the box as it was DRAWN; the box may have been resized since, and the
+     SVG scales to fit, so the same scale has to be applied here or the eraser aims at where the
+     stroke used to be. */
+  const sx = i.w / (i.w0 || i.w), sy = i.h / (i.h0 || i.h);
+  for (let k = 0; k < pts.length; k++) {
+    const bx = pts[k][0] * sx, by = pts[k][1] * sy;
+    if (k === 0) { if ((bx - px) * (bx - px) + (by - py) * (by - py) < r2) return true; continue; }
+    const ax = pts[k - 1][0] * sx, ay = pts[k - 1][1] * sy;
+    const vx = bx - ax, vy = by - ay;
+    const len2 = vx * vx + vy * vy;
+    // How far along the segment the closest point is, clamped to its ends.
+    const t = len2 ? Math.max(0, Math.min(1, ((px - ax) * vx + (py - ay) * vy) / len2)) : 0;
+    const cx = ax + vx * t - px, cy = ay + vy * t - py;
+    if (cx * cx + cy * cy < r2) return true;
+  }
+  return false;
 }
 
 /* Rubs out pen marks and nothing else. An eraser that also took away notes would be the second
    delete, and a student who picked it up to fix a line would lose a paragraph. */
 function beginErase(e) {
   const wrap = $('boardCanvasWrap');
-  wrap.setPointerCapture(e.pointerId);
   let marked = false;
   const rub = function (ev) {
     const p = toBoard(ev.clientX, ev.clientY);
     const r = 12 / scale;         // a constant size under the pointer, whatever the zoom
     const gone = (board.items || []).filter(function (i) {
       return i.kind === 'ink' && inside({ x: i.x - r, y: i.y - r, w: i.w + r * 2, h: i.h + r * 2 }, p)
-        && (i.pts || []).some(function (q) {
-          const dx = i.x + q[0] - p.x, dy = i.y + q[1] - p.y;
-          return dx * dx + dy * dy < r * r;
-        });
+        && nearStroke(i, p, r);
     });
     if (!gone.length) return;
     if (!marked) { mark(); marked = true; }
     board.items = board.items.filter(function (i) { return gone.indexOf(i) < 0; });
-    saveBoardSoon(); paintBoard();
+    /* Take away only what was rubbed out. Rebuilding the whole board mid-gesture is what made
+       everything else on it feel heavy — see placeEl. */
+    gone.forEach(function (i) { const el = elFor(i.id); if (el) el.remove(); });
+    saveBoardSoon();
   };
   rub(e);                         // a single click rubs out what is under it
   const up = function () {
-    wrap.removeEventListener('pointermove', rub); wrap.removeEventListener('pointerup', up);
     if (marked) saveBoard();
     if (!sticky) setTool('select');
   };
-  wrap.addEventListener('pointermove', rub); wrap.addEventListener('pointerup', up);
+  gesture(wrap, e, rub, up);
 }
 
 function beginMarquee(e) {
@@ -1288,7 +1494,6 @@ function beginMarquee(e) {
   const start = toBoard(e.clientX, e.clientY);
   const box = document.createElement('div'); box.className = 'bi-marquee';
   canvas.appendChild(box);
-  wrap.setPointerCapture(e.pointerId);
   const move = function (ev) {
     const p = toBoard(ev.clientX, ev.clientY);
     const r = { x: Math.min(start.x, p.x), y: Math.min(start.y, p.y), w: Math.abs(p.x - start.x), h: Math.abs(p.y - start.y) };
@@ -1297,14 +1502,13 @@ function beginMarquee(e) {
     box.__r = r;
   };
   const up = function () {
-    wrap.removeEventListener('pointermove', move); wrap.removeEventListener('pointerup', up);
     const r = box.__r; box.remove();
     if (r && r.w > 6 && r.h > 6) {
       select((board.items || []).filter(function (i) { return inside(r, centreOf(i)); })
         .map(function (i) { return i.id; }));
     }
   };
-  wrap.addEventListener('pointermove', move); wrap.addEventListener('pointerup', up);
+  gesture(wrap, e, move, up);
 }
 
 /* Panning is the middle button, space-drag, or a two-finger scroll — never a plain left-drag, which
@@ -1312,14 +1516,12 @@ function beginMarquee(e) {
 function beginPan(e) {
   const wrap = $('boardCanvasWrap');
   wrap.classList.add('panning');
-  wrap.setPointerCapture(e.pointerId);
   const sx = e.clientX - panX, sy = e.clientY - panY;
   const move = function (ev) { panX = ev.clientX - sx; panY = ev.clientY - sy; applyView(); };
   const up = function () {
     wrap.classList.remove('panning');
-    wrap.removeEventListener('pointermove', move); wrap.removeEventListener('pointerup', up);
   };
-  wrap.addEventListener('pointermove', move); wrap.addEventListener('pointerup', up);
+  gesture(wrap, e, move, up);
 }
 
 /* ---------- what a lesson can check ----------
@@ -1528,12 +1730,12 @@ if ($('boardCanvasWrap')) {
     onPointerDown(e);
   });
   wrap.addEventListener('contextmenu', function (e) {
-    if (e.target.closest('.board-palette,.board-zoom')) return;   // let the browser's menu alone
+    if (e.target.closest(FURNITURE)) return;     // let the browser's own menu have those
     e.preventDefault();
     openMenu(e);
   });
   wrap.addEventListener('dblclick', function (e) {
-    if (e.target.closest('.board-palette,.board-zoom,.bi-bar')) return;
+    if (e.target.closest(FURNITURE)) return;
     const el = e.target.closest('.bi');
     /* Whichever half was double-clicked is the half that opens. Double-clicking a sticky's heading
        and getting the body instead is the sort of thing that teaches a student the board is not

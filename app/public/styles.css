@@ -1141,31 +1141,44 @@ body.resizing-v #gameFrame{pointer-events:none;}
   clip-path:polygon(50% 0,100% 50%,50% 100%,0 50%);padding:10px 26px;}
 
 /* ---------- handles ----------
-   Only on a selected thing, so a board at rest is notes rather than notes plus furniture. Counter-
-   scaled: a 10px grip at 30% zoom is a 3px target, which is not a target. */
+   Only on a selected thing, so a board at rest is notes rather than notes plus furniture.
+
+   COUNTER-SCALED IN BOTH SIZE AND OFFSET, and the second half is the one that was missing. The
+   handles scaled with `transform:scale(var(--inv))` so a 10px grip stayed 10 screen px at any zoom
+   — but their offsets stayed a fixed `-5px` in BOARD units. At 20% zoom that grip is 50 board px
+   wide starting 5 board px out, so it reaches 45px back across the note; four corners, four sides,
+   four rotate patches and four ports between them paved over the whole sticky. Zoomed out, a
+   selected note simply could not be dragged: every grab landed on an invisible handle instead.
+
+   Multiplying the offsets by --inv as well pins each handle to its edge in screen pixels, which is
+   what it always looked like it was doing. */
 .bi-grip,.bi-port,.bi-spin,.bi-rot{transform:scale(var(--inv));}
+/* Too small on screen to hold them — see markTiny. The item stays draggable; it just cannot be
+   resized or turned until it is zoomed in enough to aim at. */
+.bi.tiny .bi-grip,.bi.tiny .bi-port,.bi.tiny .bi-spin,.bi.tiny .bi-rot{display:none;}
 .bi-rot.r-nw{transform-origin:right bottom;} .bi-rot.r-ne{transform-origin:left bottom;}
 .bi-rot.r-se{transform-origin:left top;}     .bi-rot.r-sw{transform-origin:right top;}
 .bi-grip{position:absolute;width:10px;height:10px;border-radius:2px;background:var(--azure);
   border:1.5px solid #06192e;box-sizing:border-box;}
 /* A 10px square is a 10px picture and a 22px target. Anything smaller than this is a handle a
-   twelve-year-old on a trackpad chases rather than grabs. */
+   twelve-year-old on a trackpad chases rather than grabs. Inside the scaled grip, so it follows. */
 .bi-grip::after{content:'';position:absolute;inset:-6px;}
-.bi-grip.g-nw{left:-5px;top:-5px;cursor:nwse-resize;transform-origin:left top;}
-.bi-grip.g-ne{right:-5px;top:-5px;cursor:nesw-resize;transform-origin:right top;}
-.bi-grip.g-se{right:-5px;bottom:-5px;cursor:nwse-resize;transform-origin:right bottom;}
-.bi-grip.g-sw{left:-5px;bottom:-5px;cursor:nesw-resize;transform-origin:left bottom;}
+.bi-grip.g-nw{left:calc(-5px * var(--inv));top:calc(-5px * var(--inv));cursor:nwse-resize;transform-origin:left top;}
+.bi-grip.g-ne{right:calc(-5px * var(--inv));top:calc(-5px * var(--inv));cursor:nesw-resize;transform-origin:right top;}
+.bi-grip.g-se{right:calc(-5px * var(--inv));bottom:calc(-5px * var(--inv));cursor:nwse-resize;transform-origin:right bottom;}
+.bi-grip.g-sw{left:calc(-5px * var(--inv));bottom:calc(-5px * var(--inv));cursor:nesw-resize;transform-origin:left bottom;}
 /* The four sides stretch one axis. Drawn as short bars rather than squares, so a glance says which
    way each one goes without anybody having to try it. */
 .bi-grip.side{border-radius:3px;background:var(--azure);}
-.bi-grip.g-n{top:-4px;left:50%;width:22px;height:8px;margin-left:-11px;cursor:ns-resize;transform-origin:center top;}
-.bi-grip.g-s{bottom:-4px;left:50%;width:22px;height:8px;margin-left:-11px;cursor:ns-resize;transform-origin:center bottom;}
-.bi-grip.g-w{left:-4px;top:50%;width:8px;height:22px;margin-top:-11px;cursor:ew-resize;transform-origin:left center;}
-.bi-grip.g-e{right:-4px;top:50%;width:8px;height:22px;margin-top:-11px;cursor:ew-resize;transform-origin:right center;}
+.bi-grip.g-n{top:calc(-4px * var(--inv));left:50%;width:22px;height:8px;margin-left:calc(-11px * var(--inv));cursor:ns-resize;transform-origin:center top;}
+.bi-grip.g-s{bottom:calc(-4px * var(--inv));left:50%;width:22px;height:8px;margin-left:calc(-11px * var(--inv));cursor:ns-resize;transform-origin:center bottom;}
+.bi-grip.g-w{left:calc(-4px * var(--inv));top:50%;width:8px;height:22px;margin-top:calc(-11px * var(--inv));cursor:ew-resize;transform-origin:left center;}
+.bi-grip.g-e{right:calc(-4px * var(--inv));top:50%;width:8px;height:22px;margin-top:calc(-11px * var(--inv));cursor:ew-resize;transform-origin:right center;}
 /* Turn it. BELOW the shape on a short stalk — Canva's position, and the only one the selection bar
    above the shape cannot sit on top of. The glyph is a curved arrow so the handle says what it does
    without a tooltip. */
-.bi-spin{position:absolute;left:50%;bottom:-32px;width:19px;height:19px;margin-left:-9.5px;
+.bi-spin{position:absolute;left:50%;bottom:calc(-32px * var(--inv));width:19px;height:19px;
+  margin-left:calc(-9.5px * var(--inv));
   border-radius:50%;background:var(--panel);border:1.5px solid var(--azure);box-sizing:border-box;
   transform-origin:center top;
   background-repeat:no-repeat;background-position:center;background-size:12px 12px;
@@ -1177,20 +1190,23 @@ body.resizing-v #gameFrame{pointer-events:none;}
    student who already knows the gesture finds it without being told it is there. */
 .bi-rot{position:absolute;width:18px;height:18px;
   cursor:url("data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' width='24' height='24' viewBox='0 0 24 24'><path d='M12 4V1L7.5 5.5 12 10V7a5 5 0 11-5 5H4.5a7.5 7.5 0 107.5-8z' fill='%23ffffff' stroke='%23101d2c' stroke-width='1.2' stroke-linejoin='round'/></svg>") 12 12,grab;}
-.bi-rot.r-nw{left:-19px;top:-19px;}
-.bi-rot.r-ne{right:-19px;top:-19px;}
-.bi-rot.r-se{right:-19px;bottom:-19px;}
-.bi-rot.r-sw{left:-19px;bottom:-19px;}
+.bi-rot.r-nw{left:calc(-19px * var(--inv));top:calc(-19px * var(--inv));}
+.bi-rot.r-ne{right:calc(-19px * var(--inv));top:calc(-19px * var(--inv));}
+.bi-rot.r-se{right:calc(-19px * var(--inv));bottom:calc(-19px * var(--inv));}
+.bi-rot.r-sw{left:calc(-19px * var(--inv));bottom:calc(-19px * var(--inv));}
 /* Four dots you drag an arrow out of — the gesture every board uses, and the reason the Arrow tool
-   is a shortcut rather than the only way. Hidden until the thing is pointed at. */
+   is a shortcut rather than the only way. Hidden until the thing is pointed at.
+   INVISIBLE MEANS INTANGIBLE. Without the pointer-events rule these four dots sat, fully
+   transparent, on the edge midpoints of every item on the board — selected or not — and quietly
+   ate the drag whenever a student grabbed a note anywhere near its middle edge. */
 .bi-port{position:absolute;width:11px;height:11px;border-radius:50%;background:#0d2036;
   border:2px solid var(--azure);box-sizing:border-box;opacity:0;transition:opacity .12s;
-  cursor:crosshair;}
-.bi:hover .bi-port,.bi.sel .bi-port{opacity:1;}
-.bi-port.p-n{top:-6px;left:50%;margin-left:-5.5px;transform-origin:center top;}
-.bi-port.p-s{bottom:-6px;left:50%;margin-left:-5.5px;transform-origin:center bottom;}
-.bi-port.p-e{right:-6px;top:50%;margin-top:-5.5px;transform-origin:right center;}
-.bi-port.p-w{left:-6px;top:50%;margin-top:-5.5px;transform-origin:left center;}
+  cursor:crosshair;pointer-events:none;}
+.bi:hover .bi-port,.bi.sel .bi-port{opacity:1;pointer-events:auto;}
+.bi-port.p-n{top:calc(-6px * var(--inv));left:50%;margin-left:calc(-5.5px * var(--inv));transform-origin:center top;}
+.bi-port.p-s{bottom:calc(-6px * var(--inv));left:50%;margin-left:calc(-5.5px * var(--inv));transform-origin:center bottom;}
+.bi-port.p-e{right:calc(-6px * var(--inv));top:50%;margin-top:calc(-5.5px * var(--inv));transform-origin:right center;}
+.bi-port.p-w{left:calc(-6px * var(--inv));top:50%;margin-top:calc(-5.5px * var(--inv));transform-origin:left center;}
 
 /* ---------- arrows ----------
    One SVG behind every item, redrawn with the board. Stored as two ids, so a line follows whatever
