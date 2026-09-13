@@ -29,10 +29,26 @@ it just needs to be reachable.
 2. **Root Directory: `app`.** This matters. The repo root has no `package.json`.
 3. Framework preset: **Other**. There is no build step; `app/vercel.json` routes every request to
    the Express app.
-4. Do not deploy yet — add the storage and the variables below first, or the first deploy will boot
-   without a gate and without anywhere to save anyone's work.
+4. **Add the environment variables below before deploying** — on this same screen, in the
+   Environment Variables section. The storage comes after the first deploy; see below for why.
 
-## 1b. Attach a KV store
+**Do not press "Import .env".** The local file has `AI_PROVIDER=ollama` in it, which points at
+`localhost:11434` — on Vercel that is the serverless function itself, and every AI request fails
+with "not reachable". Paste the block from §2 instead.
+
+A deploy with nothing configured is not dangerous, only useless: `server.js` calls `process.exit(1)`
+when it finds itself hosted without a sign-in, so the function crashes and every request is a 500.
+It fails closed. But there is no reason to do it.
+
+## 1b. Attach a KV store — AFTER the first deploy
+
+Storage attaches to a project, and the project does not exist until it has been created. So the
+order is: create the project with its variables → deploy → attach the store → redeploy. Between the
+first and second deploy the app works and is gated; it just has nowhere to save anyone's work, which
+matters not at all before anyone is using it.
+
+(You can also create the database first from the **team-level** Storage tab and use *Connect
+Project* afterwards. Same result, one less redeploy, slightly more clicking.)
 
 Vercel → **Storage → Create Database → Redis**, attached to this project. Vercel folded its own
 "Vercel KV" into the Marketplace, where the provider is Upstash, so the button may read **Upstash
