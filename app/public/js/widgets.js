@@ -710,6 +710,14 @@ function renderQuizCells(root) {
    option. */
 function quizVerdict(ctx, correct, wrongHint, reveal, inline) {
   if (ctx.resolved) return;
+  /* Every quiz type funnels through here, and only real answers do — restoring a saved answer on
+     reload goes straight to markQuizDone, so a reload cannot log yesterday's answers as today's.
+     Which distractor catches people is a fact about the lesson, not about the child. */
+  emit(EV.QUIZ_ANSWERED, {
+    lesson: (flat[curIdx] && flat[curIdx].id) || '',
+    key: ctx.key, kind: (ctx.q && ctx.q.type) || '',
+    correct: !!correct, attempts: ctx.attempts + 1
+  });
   if (correct) { if (!inline) ctx.say('ok', 'Correct!'); markQuizDone(ctx); return; }
   ctx.attempts++;
   if (ctx.attempts < 2) {
@@ -2253,6 +2261,10 @@ function selectLesson(idx) {
   // Same reasoning for a building zone: its board is bound to the lesson that built it.
   labPendingAdvance = null;
   curIdx = idx; const f = flat[idx];
+  /* Declared in events.js since the beginning and never actually announced. It is emitted now
+     because how long a child stays on a lesson — and which one they open and never finish — is
+     half of "where did they get stuck". */
+  emit(EV.LESSON_OPENED, { index: idx, id: f.id, title: f.l.t, module: f.m.name });
   revealModuleFor(idx);        // the module this lesson lives in opens; nothing else is touched
   // At a narrow width the outline is floating over the lesson. Picking one is the end of that job,
   // so it gets out of the way rather than sitting on top of what was just opened.

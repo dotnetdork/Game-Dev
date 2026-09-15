@@ -20,6 +20,7 @@ const usage = require('./ai/usage'); // token + cost meter for paid providers
 const tools = require('./ai/tools'); // read-only lookups an agent can call (Stage 4 Tier 2)
 const auth = require('./auth');      // Google sign-in, restricted to the school domain (off locally)
 const store = require('./store');    // per-student saves, so work survives a different machine
+const tel = require('./telemetry');  // what happened, to stdout, for tools/session-capture.js
 
 const app = express();
 /* 1mb rather than 256kb because /api/state carries a whole project, a progress ledger and a design
@@ -502,8 +503,42 @@ app.delete('/api/state', async (req, res) => {
 /* ---- what this session has spent ----
    Token counts are the provider's own, from the response to each call; the dollar figure is
    ours, from the price table in ai/usage.js. Counts reset when the server restarts. */
-app.get('/api/usage', (req, res) => res.json(usage.summary()));
-app.post('/api/usage/reset', (req, res) => { usage.reset(); res.json(usage.summary()); });
+/* BOTH OF THESE WERE OPEN TO ANYONE WHO KNEW THE URL. What the spend on a paid relay is, and a
+   button that zeroes the record of it, are not things to hand to a class — or to whoever a class
+   forwards the link to. requireAuth already covers /api/*, so the hole was only that these two ran
+   before anything checked; they are ordinary signed-in routes now, like every other endpoint. */
+app.get('/api/usage', (req, res) => {
+  if (!auth.currentUser(req)) return res.status(401).json({ error: 'Not signed in.' });
+  res.json(usage.summary());
+});
+app.post('/api/usage/reset', (req, res) => {
+  if (!auth.currentUser(req)) return res.status(401).json({ error: 'Not signed in.' });
+  usage.reset(); res.json(usage.summary());
+});
+
+/* ---- what the browser noticed ----
+   The other half of telemetry.js. Everything worth knowing that happens in the page — a click that
+   hit nothing, a game that threw on frame one, a quiz answer, a lesson opened and abandoned — is
+   invisible to the server, which only ever hears about AI requests and saves.
+   The browser batches these and posts them here; this turns them into the same stdout lines the
+   server's own events use, so one capture file holds both halves of the session.
+   IDENTITY IS STAMPED HERE, never taken from the body. A batch is a list of things that happened,
+   not a claim about who they happened to. */
+app.post('/api/events', (req, res) => {
+  const me = auth.currentUser(req);
+  if (!me) return res.status(401).json({ ok: false });
+  const list = Array.isArray(req.body && req.body.events) ? req.body.events.slice(0, 50) : [];
+  list.forEach(function (e) {
+    if (!e || typeof e !== 'object') return;
+    const ev = String(e.ev || 'client').slice(0, 40);
+    const fields = {};
+    Object.keys(e).forEach(function (k) { if (k !== 'ev' && k !== 'who') fields[k] = e[k]; });
+    fields.who = me.email;
+    tel.record(ev, fields);
+  });
+  /* 204 rather than a body: this is fire-and-forget from a sendBeacon that nothing is waiting on. */
+  res.status(204).end();
+});
 
 // ---- helpers ----
 function extractJSON(s) {
@@ -828,6 +863,36 @@ const FALLBACK_AGENT_SYSTEMS = {
    Lives in ai/quiz-check.js so it can be tested on its own — see tools/check-quiz.js. */
 const cleanQuizQuestion = require('./ai/quiz-check').cleanQuizQuestion;
 const cleanGrade = require('./ai/grade-check').cleanGrade;
+/* NOTHING USED TO BOUND HOW LONG A STUDENT'S QUESTION COULD TAKE, and a tester watched the builder
+   think for five or six minutes and produce nothing.
+   The arithmetic behind that: one answer is up to MAX_TOOL_ROUNDS lookups plus a final call, and the
+   coder can run that whole thing five times over (the first attempt plus one corrective retry per
+   guard). Twenty-five model calls, in sequence, none of them with a deadline — and on a laptop
+   there is no platform timeout to stop it either. Hosted, Vercel kills the function at maxDuration
+   and the handler never resumes, so the request that most needed recording is the one that logs
+   nothing at all.
+   Two deadlines, therefore: one per call, and one for the whole request. Both come back as a normal
+   thrown error, which every caller already turns into "the AI is not reachable right now" — a
+   sentence a child can act on, arriving in seconds instead of never. */
+const CALL_TIMEOUT_MS = Number(process.env.AI_CALL_TIMEOUT_MS || 45000);
+const TOTAL_BUDGET_MS = Number(process.env.AI_TOTAL_BUDGET_MS || 110000);
+
+/* Set per request by /api/ai. A module-level deadline is safe here only because it is read
+   immediately and never awaited across a request boundary; chatOnce is called from within one
+   request's synchronous chain of awaits. */
+let aiDeadline = 0;
+function budgetLeft() {
+  if (!aiDeadline) return CALL_TIMEOUT_MS;
+  return Math.max(0, aiDeadline - Date.now());
+}
+/* The signal for one provider call: whichever runs out first, this call's own limit or what is left
+   of the whole request's budget. */
+function callSignal() {
+  const ms = Math.min(CALL_TIMEOUT_MS, budgetLeft() || CALL_TIMEOUT_MS);
+  if (ms <= 0) throw new Error('out of time for this question');
+  return AbortSignal.timeout(ms);
+}
+
 /* One turn with the model. Returns { content, assistant, toolCalls } — toolCalls is empty
    unless tools were offered and the model chose to use one. `msgs` is the running conversation
    (history, the new message, and any tool traffic already exchanged). */
@@ -840,7 +905,7 @@ async function chatOnce(spec, system, msgs, wantJSON, withTools) {
     const r = await fetch('https://api.anthropic.com/v1/messages', {
       method: 'POST',
       headers: { 'x-api-key': ANTHROPIC_KEY, 'anthropic-version': '2023-06-01', 'content-type': 'application/json' },
-      body: JSON.stringify(body)
+      body: JSON.stringify(body), signal: callSignal()
     });
     if (!r.ok) throw new Error('Anthropic HTTP ' + r.status);
     const d = await r.json();
@@ -860,7 +925,7 @@ async function chatOnce(spec, system, msgs, wantJSON, withTools) {
     if (withTools) body.tools = tools.toolSpecs();
     const r = await fetch(OPENROUTER_URL, {
       method: 'POST', headers: { 'Authorization': 'Bearer ' + OPENROUTER_KEY, 'content-type': 'application/json' },
-      body: JSON.stringify(body)
+      body: JSON.stringify(body), signal: callSignal()
     });
     if (!r.ok) throw new Error('OpenRouter HTTP ' + r.status);
     const d = await r.json();
@@ -881,8 +946,8 @@ async function chatOnce(spec, system, msgs, wantJSON, withTools) {
   if (wantJSON && !withTools) body.format = 'json';       // Ollama ignores tool calls in strict json mode
   if (withTools) body.tools = tools.toolSpecs();
   if (!OLLAMA_THINK) body.think = false;
-  let r = await fetch(OLLAMA_URL, { method: 'POST', headers: { 'content-type': 'application/json' }, body: JSON.stringify(body) });
-  if (!r.ok && body.think === false) { delete body.think; r = await fetch(OLLAMA_URL, { method: 'POST', headers: { 'content-type': 'application/json' }, body: JSON.stringify(body) }); }
+  let r = await fetch(OLLAMA_URL, { method: 'POST', headers: { 'content-type': 'application/json' }, body: JSON.stringify(body), signal: callSignal() });
+  if (!r.ok && body.think === false) { delete body.think; r = await fetch(OLLAMA_URL, { method: 'POST', headers: { 'content-type': 'application/json' }, body: JSON.stringify(body), signal: callSignal() }); }
   if (!r.ok) throw new Error('Ollama HTTP ' + r.status);
   const d = await r.json();
   const m = d.message || {};
@@ -902,7 +967,13 @@ function toolResultMessage(provider, call, result) {
   return { role: 'tool', tool_call_id: call.id, name: call.name, content: text };
 }
 
-async function callAI(spec, system, user, wantJSON, history, toolCtx) {
+/* `onTool` is optional and is called once per tool the model actually invoked, with the call and
+   what came back. Hooked here rather than inside tools.runTool because this is the only place that
+   knows WHOSE request it is — runTool takes the prompt context, and threading an identity through
+   that would mean putting it in an object whose keys get rendered into prompts. This sees exactly
+   what runTool sees, including a model asking for a tool that does not exist: that comes back as
+   `{error}` rather than throwing, so it is invisible everywhere else. */
+async function callAI(spec, system, user, wantJSON, history, toolCtx, onTool) {
   const provider = spec.provider, model = spec.model;
   if (!model) throw new Error('No model set for ' + provider + ' — set it in .env');
   const msgs = (history || []).concat([{ role: 'user', content: user }]);
@@ -921,7 +992,9 @@ async function callAI(spec, system, user, wantJSON, history, toolCtx) {
     }
     msgs.push(turn.assistant);
     turn.toolCalls.forEach(function (call) {
-      msgs.push(toolResultMessage(provider, call, tools.runTool(call.name, call.args, toolCtx)));
+      const result = tools.runTool(call.name, call.args, toolCtx);
+      if (onTool) { try { onTool(call, result); } catch (e) { /* never break a lookup to log one */ } }
+      msgs.push(toolResultMessage(provider, call, result));
     });
   }
   return (await chatOnce(spec, system, msgs, wantJSON, false)).content;
@@ -931,6 +1004,56 @@ async function callAI(spec, system, user, wantJSON, history, toolCtx) {
 //      The student's code lives in the browser and is sent with the request. The server
 //      never stores or runs student code — it just talks to the model and returns "ops".
 app.post('/api/ai', async (req, res) => {
+  /* ONE WRAPPER ROUND res.json, RATHER THAN A LOG LINE AT EACH EXIT.
+     This handler leaves by eighteen different doors: five successful replies (one per agent shape),
+     four give-ups where a corrective guard refused the change, eight catch blocks, and the 429
+     above. Instrumenting them one at a time is instrumenting seventeen of them and discovering the
+     eighteenth on Sunday. Wrapping the one function they all call cannot miss one.
+     `seen` is filled in as the request is parsed and read here at send time, which is why it is a
+     mutable object rather than arguments. */
+  const t0 = Date.now();
+  /* The whole-request deadline the provider calls measure themselves against. Set here, at the one
+     door every AI request comes through, so the retry chain cannot outlive it however many times it
+     goes round. */
+  aiDeadline = t0 + TOTAL_BUDGET_MS;
+  const seen = { who: tel.who(auth, req), agent: '', lesson: '', where: '', q: '', tools: [], guards: [] };
+  const sendJSON = res.json.bind(res);
+  res.json = function (body) {
+    tel.record('ask', {
+      who: seen.who,
+      agent: seen.agent,
+      lesson: seen.lesson,
+      where: seen.where,
+      q: seen.q,
+      ms: Date.now() - t0,
+      status: res.statusCode,
+      /* The difference that matters for the builder: a reply that changed the game, versus a reply
+         that reads like it did and changed nothing. `ops: false` on a coder turn is the shape of
+         the complaint that it "just says done". */
+      ops: !!(body && body.ops),
+      replyLen: (body && typeof body.reply === 'string') ? body.reply.length : 0,
+      tools: seen.tools.length ? seen.tools : undefined,
+      guards: seen.guards.length ? seen.guards : undefined
+    });
+    return sendJSON(body);
+  };
+  /* A corrective guard fired. These are the builder's real failure modes and until now they left no
+     trace whatsoever: the guard corrects the model silently, and if the second attempt is no better
+     the child gets a friendly sentence and an unchanged game. "The builder just says done and
+     nothing happens" is this, and `name` says which one. */
+  const guard = function (name, detail, gaveUp) {
+    seen.guards.push(name + (gaveUp ? ':gave-up' : ''));
+    tel.record('guard', {
+      who: seen.who, agent: seen.agent, lesson: seen.lesson,
+      name: name, detail: detail || undefined, gaveUp: !!gaveUp, q: seen.q
+    });
+  };
+  /* Passed to callAI so a tool lookup is attributed to the child who caused it. */
+  const onTool = function (call, result) {
+    seen.tools.push(call.name + (result && result.error ? '!' : ''));
+    tel.record('tool', { who: seen.who, agent: seen.agent, name: call.name, args: call.args, error: (result && result.error) || undefined });
+  };
+
   if (await rateLimited(req)) return res.status(429).json({ reply: 'Slow down a moment - you have hit the request limit. Try again shortly.' });
   const message = ((req.body && req.body.message) || '').toString().slice(0, 2000);
   if (!message) return res.status(400).json({ reply: 'Please type a message.' });
@@ -940,6 +1063,12 @@ app.post('/api/ai', async (req, res) => {
   let agent = (req.body && req.body.agent) || 'coder';
   if (['coder', 'tutor', 'lab-tutor', 'quiz', 'grader', 'design-coach'].indexOf(agent) < 0) agent = 'coder';   // controller: keep to known agents
   const spec = resolveModel(agent);
+  /* The agent AFTER that whitelist, not the one the browser asked for — the UI can switch agent
+     without the student doing anything (opening Learn while in Build forces Tutor, see
+     paintAIModeAvailability in course.js), and an unrecognised name silently becomes the coder. The
+     log has to say which one actually answered or it will disagree with what the child saw. */
+  seen.agent = agent;
+  seen.q = message;
 
   // Context the browser sends about where the student is and what exists in their project.
   const b = req.body || {};
@@ -1034,6 +1163,11 @@ app.post('/api/ai', async (req, res) => {
     changedCode: String(b.changedCode || '').slice(0, 6000)
   };
 
+  /* Where the child was standing when they asked. `where` is the tab; the lesson title is what the
+     report groups by, because "everyone got stuck on Physics and Collision" is the finding. */
+  seen.lesson = ctx.lessonTitle || '';
+  seen.where = ctx.where || '';
+
   // Tier 2: when this agent has tools switched on, it may look things up instead of guessing.
   // ctx already carries the assets, files, game code and lesson this request is about.
   const agentTools = AGENT_TOOLS[agent] ? ctx : null;
@@ -1048,7 +1182,7 @@ app.post('/api/ai', async (req, res) => {
     const tutorSystem = ai.buildPrompt(agent, Object.assign({ gameCode: gameCode }, ctx))
       || (agent === 'tutor' ? fallbackTutorSystem(gameCode, context, ctx) : null);
     if (!tutorSystem) return res.status(500).json({ reply: 'The lab tutor prompt is missing (ai/agents/lab-tutor.md).' });
-    try { raw = await callAI(spec, tutorSystem, message, false, history, agentTools); }
+    try { raw = await callAI(spec, tutorSystem, message, false, history, agentTools, onTool); }
     catch (e) { return res.status(502).json({ reply: 'The tutor is not reachable right now (' + e.message + ').' }); }
     return res.json({ reply: (raw || '').trim() || 'Hmm, I am not sure — try rephrasing.' });
   }
@@ -1064,7 +1198,7 @@ app.post('/api/ai', async (req, res) => {
     let raw;
     const coachSystem = ai.buildPrompt('design-coach', ctx);
     if (!coachSystem) return res.status(500).json({ reply: 'The design coach prompt is missing (ai/agents/design-coach.md).' });
-    try { raw = await callAI(spec, coachSystem, message, false, history, agentTools); }
+    try { raw = await callAI(spec, coachSystem, message, false, history, agentTools, onTool); }
     catch (e) { return res.status(502).json({ reply: 'The coach is not reachable right now (' + e.message + ').' }); }
     return res.json({ reply: (raw || '').trim() || 'Hmm, I am not sure — tell me a bit more about your game.' });
   }
@@ -1074,7 +1208,7 @@ app.post('/api/ai', async (req, res) => {
   if (agent === 'quiz' || agent === 'grader') {
     let raw;
     const agentSystem = ai.buildPrompt(agent, ctx) || FALLBACK_AGENT_SYSTEMS[agent];
-    try { raw = await callAI(spec, agentSystem, message, true, [], agentTools); }
+    try { raw = await callAI(spec, agentSystem, message, true, [], agentTools, onTool); }
     catch (e) { return res.status(502).json({ error: 'The ' + agent + ' agent is not reachable (' + e.message + ').' }); }
     const parsedAgent = extractJSON(raw) || {};
     if (agent === 'quiz') {
@@ -1104,24 +1238,26 @@ app.post('/api/ai', async (req, res) => {
     return ops;
   }
   let raw;
-  try { raw = await callAI(spec, system, message, true, history, agentTools); }
+  try { raw = await callAI(spec, system, message, true, history, agentTools, onTool); }
   catch (e) { return res.status(502).json({ reply: 'The AI service is not reachable right now (' + e.message + ').' }); }
   let parsed = extractJSON(raw) || { reply: (raw || '').trim() || 'Done.' };
   let ops = toOps(parsed);
 
   // Claimed a change but sent nothing that makes one: ask again for the actual fields.
   if (claimsChangeWithoutOps(parsed.reply, ops)) {
+    guard('no-ops', (parsed.reply || '').slice(0, 200));
     const retry = message + '\n\nIMPORTANT: your previous answer said you had made a change, but it contained no '
       + '"config", "functions", "create", "update", "editFile", "newFile" or "replaceFile" field, so NOTHING happened '
       + 'to the game and the student saw no difference. Send the change for real this time. Remember that logic living '
       + 'in another file (movement in player.js, coins in coins.js, platforms in world.js) is changed with "editFile", '
       + 'passing that whole file back with your edit made. If you genuinely cannot do it, say so plainly and ask for '
       + 'what you need instead of claiming it is done.';
-    try { raw = await callAI(spec, system, retry, true, history, agentTools); }
+    try { raw = await callAI(spec, system, retry, true, history, agentTools, onTool); }
     catch (e) { return res.status(502).json({ reply: 'The AI service is not reachable right now (' + e.message + ').' }); }
     parsed = extractJSON(raw) || { reply: (raw || '').trim() || '' };
     ops = toOps(parsed);
     if (claimsChangeWithoutOps(parsed.reply, ops)) {
+      guard('no-ops', (parsed.reply || '').slice(0, 200), true);
       return res.json({ reply: "I couldn't work out how to make that change — can you tell me a bit more about what you want to happen?", ops: null });
     }
   }
@@ -1129,15 +1265,17 @@ app.post('/api/ai', async (req, res) => {
   // A Phaser API that does not exist: correct it once, then refuse rather than ship a crash.
   let badApis = badApisIn(ops, gameCode, ctx.files);
   if (badApis.length) {
+    guard('bad-api', badApis.map(function (b) { return b.name; }).join(', '));
     const list = badApis.map(function (b) { return '"' + b.name + '" (' + b.why + ' — ' + b.hint + ')'; }).join('; ');
     const retry = message + '\n\nIMPORTANT: your previous answer used ' + list
       + '. Redo the change using only APIs that exist, or if it cannot be done that way, change nothing and say so plainly.';
-    try { raw = await callAI(spec, system, retry, true, history, agentTools); }
+    try { raw = await callAI(spec, system, retry, true, history, agentTools, onTool); }
     catch (e) { return res.status(502).json({ reply: 'The AI service is not reachable right now (' + e.message + ').' }); }
     parsed = extractJSON(raw) || { reply: '' };
     ops = toOps(parsed);
     badApis = badApisIn(ops, gameCode, ctx.files);
     if (badApis.length) {
+      guard('bad-api', badApis.map(function (b) { return b.name; }).join(', '), true);
       return res.json({ reply: "I couldn't do that without using something Phaser doesn't have, so I left your game alone. Try asking for it a slightly different way.", ops: null });
     }
   }
@@ -1145,17 +1283,19 @@ app.post('/api/ai', async (req, res) => {
   // Reading a key that was never registered crashes on frame one: correct it once, then refuse.
   let badKeys = badKeysIn(ops, gameCode);
   if (badKeys.length) {
+    guard('bad-key', badKeys.join(', '));
     const retry = message + '\n\nIMPORTANT: your previous answer read '
       + badKeys.map(function (k) { return 'scene.keys.' + k; }).join(' and ')
       + ', but those keys are never registered, so the game crashes on the first frame. '
       + 'For SHIFT use scene.cursors.shift.isDown (it already exists). For any other key, add it to the '
       + "addKeys('W,A,S,D') call in createPlayer first. Send the corrected change.";
-    try { raw = await callAI(spec, system, retry, true, history, agentTools); }
+    try { raw = await callAI(spec, system, retry, true, history, agentTools, onTool); }
     catch (e) { return res.status(502).json({ reply: 'The AI service is not reachable right now (' + e.message + ').' }); }
     parsed = extractJSON(raw) || { reply: '' };
     ops = toOps(parsed);
     badKeys = badKeysIn(ops, gameCode);
     if (badKeys.length) {
+      guard('bad-key', badKeys.join(', '), true);
       return res.json({ reply: "I couldn't get that working without breaking your controls, so I left your game alone. Try asking for it a slightly different way.", ops: null });
     }
   }
@@ -1166,17 +1306,21 @@ app.post('/api/ai', async (req, res) => {
     const allCode = gameCode + '\n' + ctx.files.map(function (f) { return f.code; }).join('\n');
     let bad = unknownAssetKeys(ops, allCode, ctx.assets, ctx.assetSets);
     if (bad.length) {
+      guard('bad-asset', bad.join(', '));
       const retry = message + '\n\nIMPORTANT: your previous answer used the asset key(s) '
         + bad.map(function (k) { return '"' + k + '"'; }).join(', ')
         + ', which do not exist and would break the game. '
         + 'Redo it using ONLY the owned asset keys listed above, or — if this cannot be done with those — '
         + 'change nothing and reply with only {"reply":"..."} explaining which asset they would need to buy.';
-      try { raw = await callAI(spec, system, retry, true, history, agentTools); }
+      try { raw = await callAI(spec, system, retry, true, history, agentTools, onTool); }
       catch (e) { return res.status(502).json({ reply: 'The AI service is not reachable right now (' + e.message + ').' }); }
       parsed = extractJSON(raw) || { reply: (raw || '').trim() || 'Done.' };
       ops = toOps(parsed);
       bad = unknownAssetKeys(ops, gameCode, ctx.assets, ctx.assetSets);
-      if (bad.length) return res.json({ reply: assetApology(bad, ctx.assets), ops: null });
+      if (bad.length) {
+        guard('bad-asset', bad.join(', '), true);
+        return res.json({ reply: assetApology(bad, ctx.assets), ops: null });
+      }
     }
   }
 

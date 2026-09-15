@@ -52,5 +52,13 @@ const EV = {
   PROGRESS_CHANGED: 'progress:changed',  // XP, Stars or unlocks moved
   PROJECT_CHANGED: 'project:changed',    // the student's files were edited or saved
   LESSON_OPENED: 'lesson:opened',    // detail: { index, id }
-  BADGE_EARNED: 'badge:earned'       // detail: { name, lesson }
+  BADGE_EARNED: 'badge:earned',      // detail: { name, lesson }
+
+  /* Added for the tester sessions — see js/telemetry.js. These three are the moments where a child
+     is having a worse time than the screen admits: a quiz they got wrong, a door that would not
+     open, a game that refused to start. Nothing in the app reacted to them before, which is why
+     they were never announced. */
+  QUIZ_ANSWERED: 'quiz:answered',    // detail: { lesson, key, kind, correct, attempts }
+  LESSON_BLOCKED: 'lesson:blocked',  // detail: { id, why } — a locked lesson turned them away
+  GAME_FAILED: 'game:failed'         // detail: { detail, reason } — the game did not start
 };

@@ -41,6 +41,11 @@ app/.data/
 # from it. See app/tools/build-phaser-doclets.js.
 app/.cache/
 
+# captured tester sessions — what children asked the assistant, word for word, plus every error
+# their game threw. Written by `npm run session:watch`, read by `npm run session:report`. It stays
+# on the laptop that captured it: this is minors' free text and it has no business in a repository.
+app/logs/
+
 # OS junk
 .DS_Store
 Thumbs.db

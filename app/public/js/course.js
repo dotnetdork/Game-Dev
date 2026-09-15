@@ -134,7 +134,10 @@ function renderOutline() {
       + (modLocked ? '' : ' style="color:' + moduleAccent(mi) + '"') + '></span>'
       + '<span class="lbl">' + esc(m.name) + '</span>';
     head.addEventListener('click', function () {
-      if (modLocked) { toast('Finish the previous module to unlock this one.'); return; }
+      if (modLocked) {
+        emit(EV.LESSON_BLOCKED, { id: m.name, why: 'module' });
+        toast('Finish the previous module to unlock this one.'); return;
+      }
       const nowCollapsed = sec.classList.toggle('collapsed');
       secOpen[mi] = !nowCollapsed;                 // remembered, so the next rebuild honours it
       head.querySelector('.mdi').className = 'mdi ' + modIcon(!nowCollapsed);
@@ -155,7 +158,13 @@ function renderOutline() {
       row.innerHTML = '<span class="mdi ' + icon + '" aria-hidden="true"></span>'
         + '<span class="lbl">' + esc(l.t) + '</span>'
         + (done ? '<span class="sr-only"> (completed)</span>' : locked ? '<span class="sr-only"> (locked)</span>' : '');
-      row.addEventListener('click', function () { if (locked) { toast('Complete the previous lesson first.'); return; } selectLesson(idx); });
+      row.addEventListener('click', function () {
+        if (locked) {
+          emit(EV.LESSON_BLOCKED, { id: l.id, why: 'lesson' });
+          toast('Complete the previous lesson first.'); return;
+        }
+        selectLesson(idx);
+      });
       kids.appendChild(row);
     });
     sec.appendChild(head); sec.appendChild(kids); tree.appendChild(sec);

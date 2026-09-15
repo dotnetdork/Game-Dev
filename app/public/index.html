@@ -457,6 +457,11 @@
 <!-- After pages.js: it uses docSections and esc() from there, and pages.js calls into it only when
      a page is being rendered, which is long after both files have run. -->
 <script src="js/docs.js"></script>
+<!-- Last but one, on purpose. It only listens: to the event bus from events.js, to clicks on the
+     whole document, and to the messages the game frame posts. Everything it needs exists by now,
+     and nothing else needs it at load — ai.js calls telAIResponse at request time and guards the
+     call, so a broken telemetry file can never take the assistant down with it. -->
+<script src="js/telemetry.js"></script>
 <script src="js/router.js"></script>
 <script src="js/ui.js"></script>
 </body>

@@ -224,6 +224,7 @@ function applyRoute(route) {
       idx = lessonIndexById(route.id);
       if (idx < 0) toast('There is no lesson with that name — starting you where you left off.');
       else if (typeof lessonUnlocked === 'function' && !lessonUnlocked(idx)) {
+        if (typeof emit === 'function') emit(EV.LESSON_BLOCKED, { id: route.id, why: 'link' });
         toast('That lesson is still locked. Finish the one before it first.');
         idx = -1;
       }

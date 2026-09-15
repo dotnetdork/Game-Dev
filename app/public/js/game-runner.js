@@ -246,7 +246,7 @@ function gameDoc() {
   const scripts = ordered.map(function (n) { return '<' + 'script>\n' + (project.files[n] || '') + '\n<' + '/script>'; }).join('\n')
     + '\n' + errorReporterScript()                                  // must sit between the game files and main.js
     + (typeof project.files['main.js'] === 'string' ? '<' + 'script>\n' + project.files['main.js'] + '\n<' + '/script>' : '');
-  const capture = '<' + 'script>(function(){function f(a){a=[].slice.call(a);if(typeof a[0]==="string"&&/%[csdfoO]/.test(a[0])){var i=1;var o=a[0].replace(/%[csdfoO]/g,function(m){if(m==="%c"){i++;return "";}return String(a[i++]);});return (o+" "+a.slice(i).join(" ")).replace(/\\s+/g," ").trim();}return a.map(String).join(" ");}function s(l,a){try{parent.postMessage({__gamelog:true,level:l,text:f(a)},"*");}catch(e){}}var c=console,lg=c.log.bind(c);c.log=function(){lg.apply(c,arguments);s("log",arguments);};var wn=c.warn.bind(c);c.warn=function(){wn.apply(c,arguments);s("warn",arguments);};var er=c.error.bind(c);c.error=function(){er.apply(c,arguments);s("error",arguments);};window.onerror=function(m){s("error",[m]);return false;};})();<' + '/script>\n';
+  const capture = '<' + 'script>(function(){function f(a){a=[].slice.call(a);if(typeof a[0]==="string"&&/%[csdfoO]/.test(a[0])){var i=1;var o=a[0].replace(/%[csdfoO]/g,function(m){if(m==="%c"){i++;return "";}return String(a[i++]);});return (o+" "+a.slice(i).join(" ")).replace(/\\s+/g," ").trim();}return a.map(String).join(" ");}function s(l,a){try{parent.postMessage({__gamelog:true,level:l,text:f(a)},"*");}catch(e){}}var c=console,lg=c.log.bind(c);c.log=function(){lg.apply(c,arguments);s("log",arguments);};var wn=c.warn.bind(c);c.warn=function(){wn.apply(c,arguments);s("warn",arguments);};var er=c.error.bind(c);c.error=function(){er.apply(c,arguments);s("error",arguments);};window.onerror=function(m,src,ln,col){try{parent.postMessage({__gamelog:true,level:"error",text:f([m]),file:String(src||"").split("/").pop(),line:ln,col:col},"*");}catch(e){}return false;};window.addEventListener("unhandledrejection",function(e){s("error",["Unhandled promise rejection: "+((e&&e.reason&&e.reason.message)||(e&&e.reason)||"?")]);});})();<' + '/script>\n';
   /* Pause, from outside a sandbox we cannot reach into. Phaser drives its loop with
      requestAnimationFrame, so wrapping that one function freezes the game without touching the
      student's code or needing a Phaser API they have not met. Held callbacks are handed back to
@@ -336,6 +336,12 @@ function showGameFailed(on, detail) {
   const el = $('gameFailed'); if (!el) return;
   el.classList.toggle('hidden', !on);
   if (!on) return;
+  /* A game that never started is the single worst moment in this app for a child — a black stage,
+     nothing to press, and a typo somewhere in a file they cannot see. `detail` distinguishes the
+     two ways it happens: an error we caught, or four seconds of silence with no boot at all. */
+  if (typeof emit === 'function' && typeof EV !== 'undefined') {
+    emit(EV.GAME_FAILED, { detail: String(detail || '').slice(0, 200), reason: detail ? 'error' : 'no-boot' });
+  }
   const d = el.querySelector('.gf-detail');
   if (d) { d.textContent = detail || ''; d.hidden = !detail; }
 }

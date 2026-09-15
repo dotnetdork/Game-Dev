@@ -575,7 +575,7 @@ function maybeAskQuiz(en) {
     message: 'The student just made this change to their game:\n' + changed + '\n\nWhat it was meant to do: ' + (en.why || '') + '\n\nWrite ONE question checking they understood what this change does.',
     lessonTitle: c.lessonTitle, lessonContext: c.lessonContext
   }) })
-    .then(function (r) { return r.json(); }).then(function (d) {
+    .then(aiRead).then(function (d) {
       const q = d && d.result;
       // The server validates this properly (cleanQuizQuestion) and drops anything it cannot
       // vouch for. This stays as a second net, and it checks `answer` — which it did not use to.
@@ -605,7 +605,7 @@ function gradePractice(task, changed) {
     lessonTitle: c.lessonTitle, lessonContext: c.lessonContext,
     code: (project.files && project.files['game.js']) || '', files: c.files
   }) })
-    .then(function (r) { return r.json(); })
+    .then(aiRead)
     .then(function (d) {
       const g = d && d.result;
       // Second net, same as the quiz card above. A reply missing either half is not a verdict.
@@ -690,6 +690,38 @@ function aiAgentFor() {
   const onDesign = $('view-design') && !$('view-design').hidden;
   return onDesign ? 'design-coach' : 'tutor';
 }
+/* ---------- when a request fails, say what failed ----------
+ *
+ * Every one of these used to come out the same way. Nothing checked `r.ok`, so a 401 parsed to a
+ * body with no `reply` and the panel said "I am not sure how to do that one — can you say it a
+ * different way?" A child who had simply been signed out was told the robot could not understand
+ * their words, and would sit there rewording a perfectly good question. Network faults all became
+ * "Could not reach the server." with no hint of what to do about it.
+ *
+ * That is the wrong lesson to teach in a computer science course. Something went wrong, it has a
+ * name and a number, and the number is a real thing they will meet for the rest of their lives.
+ * So the status is shown, in a sentence that says whose problem it is and what to do next.
+ */
+function aiRead(r) {
+  if (typeof telAIResponse === 'function') telAIResponse(r);
+  return r.json().catch(function () { return {}; }).then(function (d) {
+    d = d || {};
+    d.__status = r.status;
+    d.__ok = r.ok;
+    return d;
+  });
+}
+function aiTrouble(status) {
+  if (!status) return 'Your browser could not reach the server at all — that is almost always the wifi rather than anything you did. Check the connection and ask again.';
+  if (status === 401) return 'You have been signed out, so the assistant never saw your question. Sign in again and ask once more — nothing you have made is lost. (HTTP 401 means "not signed in".)';
+  if (status === 429) return 'You have asked a lot of questions very quickly and the server wants you to slow down for a minute. (HTTP 429 means "too many requests".)';
+  if (status === 400) return 'The server could not make sense of that request. (HTTP 400 means "bad request".) Try asking again.';
+  if (status === 413) return 'That was too big to send — your game has more in it than one message can carry. (HTTP 413 means "too large".)';
+  if (status === 502 || status === 503 || status === 504) return 'The AI service did not answer in time. That is our end, not yours — wait a few seconds and ask again. (HTTP ' + status + '.)';
+  if (status >= 500) return 'The server hit an error while dealing with that. Not your fault — try again. (HTTP ' + status + '.)';
+  return 'That came back as HTTP ' + status + ', which this app was not expecting. Try again.';
+}
+
 function askTutor(question, context) {
   const history = chatHistory('tutor');
   addMsg('user', question); const pending = addMsg('bot', 'Thinking…');
@@ -705,12 +737,13 @@ function askTutor(question, context) {
     where: c.where, files: c.files, gameLog: c.gameLog, gameRan: c.gameRan };
   if (agent === 'design-coach' && typeof boardPayload === 'function') body.board = boardPayload();
   fetch('/api/ai', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(body) })
-    .then(function (r) { return r.json(); })
+    .then(aiRead)
     .then(function (d) {
+      if (!d.__ok) { setMsg(pending, 'bot', aiTrouble(d.__status)); return; }
       const text = d.reply || '—';
       setMsg(pending, 'bot', agent === 'design-coach' ? applyBoardOps(text) : text);
     })
-    .catch(function () { setMsg(pending, 'bot', 'Could not reach the tutor.'); })
+    .catch(function () { setMsg(pending, 'bot', aiTrouble(0)); })
     .finally(function () { setChatBusy($('aiText'), false); persistChats(); renderChatBar(); });
 }
 
@@ -753,8 +786,8 @@ function explainLine(fileName, lineNumber, lineText, snippet) {
     fileName: fileName, lineNumber: String(lineNumber), line: lineText, snippet: snippet,
     gameLog: c.gameLog, gameRan: c.gameRan
   }) })
-    .then(function (r) { return r.json(); }).then(function (d) { setMsg(pending, 'bot', d.reply || '—'); })
-    .catch(function () { setMsg(pending, 'bot', 'Could not reach the tutor.'); })
+    .then(aiRead).then(function (d) { setMsg(pending, 'bot', d.__ok ? (d.reply || '—') : aiTrouble(d.__status)); })
+    .catch(function () { setMsg(pending, 'bot', aiTrouble(0)); })
     .finally(function () { setChatBusy($('aiText'), false); persistChats(); renderChatBar(); });
 }
 
@@ -777,8 +810,11 @@ function sendAI() {
     aiMode: c.aiMode, ownedAssets: c.ownedAssets, files: c.files,
     gameLog: c.gameLog, gameRan: c.gameRan
   }) })
-    .then(function (r) { return r.json(); }).then(function (data) {
+    .then(aiRead).then(function (data) {
+      if (!data.__ok) { setMsg(pending, 'bot', aiTrouble(data.__status)); return; }
       const ops = data.ops;
+      /* No ops and no reply is the model having nothing to say, which IS a phrasing problem — so
+         that sentence stays, but only now that it cannot be shown for a failed request. */
       if (!ops) { setMsg(pending, 'bot', data.reply || 'I am not sure how to do that one — can you say it a different way?'); return; }
       setMsg(pending, 'bot', describeEdit(data.reply, ops));
 
@@ -799,7 +835,7 @@ function sendAI() {
       }
       refreshAfterEdit();
     })
-    .catch(function () { pending.textContent = 'Could not reach the server.'; })
+    .catch(function () { pending.textContent = aiTrouble(0); })
     .finally(function () { setChatBusy($('aiText'), false); persistChats(); renderChatBar(); });
 }
 $('aiSend').addEventListener('click', sendAI);
@@ -880,4 +916,4 @@ loadQuestions().then(function () {
   refreshStarters();
 });
 $('modeToggle').addEventListener('click', function () { setAIMode(aiMode === 'tutor' ? 'coder' : 'tutor'); });
-fetch('/api/info').then(function (r) { return r.json(); }).then(function (d) { aiModels = d.agents || { coder: d.model, tutor: d.model }; setAIMode(aiMode); }).catch(function () {});
+fetch('/api/info').then(aiRead).then(function (d) { aiModels = d.agents || { coder: d.model, tutor: d.model }; setAIMode(aiMode); }).catch(function () {});
