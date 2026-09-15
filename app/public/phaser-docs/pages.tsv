@@ -81,7 +81,7 @@ Phaser.Display.Canvas	namespace	79
 Phaser.Display.Canvas.CanvasInterpolation	namespace	80
 Phaser.Display.Canvas.CanvasPool	namespace	81
 Phaser.Display.Canvas.Smoothing	namespace	82
-Phaser.Display.Color	namespace	83
+Phaser.Display.Color	class	83
 Phaser.Display.Color.Interpolate	namespace	84
 Phaser.Display.ColorBand	class	85
 Phaser.Display.ColorMatrix	class	86
@@ -131,7 +131,7 @@ Phaser.GameObjects.Components.ComputedSize	namespace	129
 Phaser.GameObjects.Components.Crop	namespace	130
 Phaser.GameObjects.Components.Depth	namespace	131
 Phaser.GameObjects.Components.ElapseTimer	namespace	132
-Phaser.GameObjects.Components.FilterList	namespace	133
+Phaser.GameObjects.Components.FilterList	class	133
 Phaser.GameObjects.Components.Filters	namespace	134
 Phaser.GameObjects.Components.Flip	namespace	135
 Phaser.GameObjects.Components.GetBounds	namespace	136
@@ -159,7 +159,7 @@ Phaser.GameObjects.Events	namespace	157
 Phaser.GameObjects.Extern	class	158
 Phaser.GameObjects.GameObject	class	159
 Phaser.GameObjects.GameObjectCreator	class	160
-Phaser.GameObjects.GameObjectFactory	namespace	161
+Phaser.GameObjects.GameObjectFactory	class	161
 Phaser.GameObjects.Gradient	class	162
 Phaser.GameObjects.Graphics	class	163
 Phaser.GameObjects.Grid	class	164
@@ -193,7 +193,7 @@ Phaser.GameObjects.Particles.Zones	namespace	191
 Phaser.GameObjects.Particles.Zones.DeathZone	class	192
 Phaser.GameObjects.Particles.Zones.EdgeZone	class	193
 Phaser.GameObjects.Particles.Zones.RandomZone	class	194
-Phaser.GameObjects.PathFollower	namespace	195
+Phaser.GameObjects.PathFollower	class	195
 Phaser.GameObjects.PointLight	class	196
 Phaser.GameObjects.Polygon	class	197
 Phaser.GameObjects.Rectangle	class	198
@@ -214,13 +214,13 @@ Phaser.GameObjects.UpdateList	class	212
 Phaser.GameObjects.Video	class	213
 Phaser.GameObjects.Zone	class	214
 Phaser.Geom	namespace	215
-Phaser.Geom.Circle	namespace	216
-Phaser.Geom.Ellipse	namespace	217
+Phaser.Geom.Circle	class	216
+Phaser.Geom.Ellipse	class	217
 Phaser.Geom.Intersects	namespace	218
-Phaser.Geom.Line	namespace	219
-Phaser.Geom.Polygon	namespace	220
-Phaser.Geom.Rectangle	namespace	221
-Phaser.Geom.Triangle	namespace	222
+Phaser.Geom.Line	class	219
+Phaser.Geom.Polygon	class	220
+Phaser.Geom.Rectangle	class	221
+Phaser.Geom.Triangle	class	222
 Phaser.Input	namespace	223
 Phaser.Input.Events	namespace	224
 Phaser.Input.Gamepad	namespace	225

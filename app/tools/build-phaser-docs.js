@@ -83,6 +83,10 @@ console.log('doclets: ' + all.length);
    event, a constant — belongs to one of those and is rendered inside it. That is the unit a reader
    opens: nobody navigates to a single method without wanting the class around it. */
 const PAGE_KINDS = { class: 1, namespace: 1, interface: 1, typedef: 1, mixin: 1 };
+/* Which kind wins when a longname is documented as more than one. Phaser's own site files
+   Phaser.Display.Color — documented as a class AND a namespace — under Classes, so class outranks
+   namespace here too. Lower is stronger. */
+const PAGE_RANK = { class: 0, interface: 1, mixin: 2, typedef: 3, namespace: 4 };
 /* A typedef that is really a function signature is documentation for a callback, which reads as a
    page of its own; a plain object typedef is a config bag, which also does. Both stay. */
 
@@ -189,6 +193,24 @@ all.forEach(function (d) {
       });
     }
     const pg = pageByName.get(d.longname);
+    /* THE KIND CAN BE WRONG UNTIL THE REAL DOCLET TURNS UP, and it was staying wrong.
+
+       Two ways a page ends up mislabelled. A member can appear in the dump BEFORE its owner's own
+       doclet, and the stub made for it below guesses "namespace" — so Phaser.Geom.Circle,
+       GameObjectFactory, PathFollower and FilterList were all filed as namespaces and vanished from
+       the Classes list, ten of them against docs.phaser.io. And Phaser.Display.Color is documented
+       as BOTH a class and a namespace, where Phaser's own site picks class.
+
+       So a later doclet may upgrade the kind, and class outranks namespace. Everything else about
+       the page is still filled in rather than replaced. */
+    if (pg.stub || PAGE_RANK[d.kind] < PAGE_RANK[pg.kind]) {
+      pg.kind = d.kind;
+      pg.name = d.name || pg.name;
+      pg.memberof = d.memberof || pg.memberof;
+      pg.scope = d.scope || pg.scope;
+      pg.src = sourceOf(d) || pg.src;
+      delete pg.stub;
+    }
     if (!pg.description) pg.description = cleanMd(d.description);
     if (d.kind === 'class' && Array.isArray(d.params) && d.params.length && !pg.ctor) {
       pg.ctor = { p: slimParams(d.params) };

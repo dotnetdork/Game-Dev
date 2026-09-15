@@ -1247,7 +1247,7 @@ Phaser.Display.Canvas.Smoothing.disable	function	82
 Phaser.Display.Canvas.Smoothing.enable	function	82
 Phaser.Display.Canvas.Smoothing.getPrefix	function	82
 Phaser.Display.Canvas.Smoothing.isEnabled	function	82
-Phaser.Display.Color	namespace	83
+Phaser.Display.Color	class	83
 Phaser.Display.Color#alpha	member	83
 Phaser.Display.Color#alphaGL	member	83
 Phaser.Display.Color#blue	member	83
@@ -2552,7 +2552,7 @@ Phaser.GameObjects.Components.ElapseTimer#resetTimer	function	132
 Phaser.GameObjects.Components.ElapseTimer#setTimerPaused	function	132
 Phaser.GameObjects.Components.ElapseTimer#setTimerResetPeriod	function	132
 Phaser.GameObjects.Components.ElapseTimer#updateTimer	function	132
-Phaser.GameObjects.Components.FilterList	namespace	133
+Phaser.GameObjects.Components.FilterList	class	133
 Phaser.GameObjects.Components.FilterList#camera	member	133
 Phaser.GameObjects.Components.FilterList#list	member	133
 Phaser.GameObjects.Components.FilterList#add	function	133
@@ -3931,7 +3931,7 @@ Phaser.GameObjects.GameObjectCreator#tween	function	160
 Phaser.GameObjects.GameObjectCreator#tweenchain	function	160
 Phaser.GameObjects.GameObjectCreator#video	function	160
 Phaser.GameObjects.GameObjectCreator#zone	function	160
-Phaser.GameObjects.GameObjectFactory	namespace	161
+Phaser.GameObjects.GameObjectFactory	class	161
 Phaser.GameObjects.GameObjectFactory#displayList	member	161
 Phaser.GameObjects.GameObjectFactory#events	member	161
 Phaser.GameObjects.GameObjectFactory#scene	member	161
@@ -7138,7 +7138,7 @@ Phaser.GameObjects.Particles.Zones.RandomZone	class	194
 Phaser.GameObjects.Particles.Zones.RandomZone#source	member	194
 Phaser.GameObjects.Particles.Zones.RandomZone#total	member	194
 Phaser.GameObjects.Particles.Zones.RandomZone#getPoint	function	194
-Phaser.GameObjects.PathFollower	namespace	195
+Phaser.GameObjects.PathFollower	class	195
 Phaser.GameObjects.PathFollower#pathConfig	member	195
 Phaser.GameObjects.PathFollower#pathDelta	member	195
 Phaser.GameObjects.PathFollower#pathOffset	member	195
@@ -10252,7 +10252,7 @@ Phaser.Geom.POINT	member	215
 Phaser.Geom.POLYGON	member	215
 Phaser.Geom.RECTANGLE	member	215
 Phaser.Geom.TRIANGLE	member	215
-Phaser.Geom.Circle	namespace	216
+Phaser.Geom.Circle	class	216
 Phaser.Geom.Circle#bottom	member	216
 Phaser.Geom.Circle#diameter	member	216
 Phaser.Geom.Circle#left	member	216
@@ -10285,7 +10285,7 @@ Phaser.Geom.Circle#isEmpty	function	216
 Phaser.Geom.Circle#setEmpty	function	216
 Phaser.Geom.Circle#setPosition	function	216
 Phaser.Geom.Circle#setTo	function	216
-Phaser.Geom.Ellipse	namespace	217
+Phaser.Geom.Ellipse	class	217
 Phaser.Geom.Ellipse#bottom	member	217
 Phaser.Geom.Ellipse#height	member	217
 Phaser.Geom.Ellipse#left	member	217
@@ -10349,7 +10349,7 @@ Phaser.Geom.Intersects.RectangleToValues	function	218
 Phaser.Geom.Intersects.TriangleToCircle	function	218
 Phaser.Geom.Intersects.TriangleToLine	function	218
 Phaser.Geom.Intersects.TriangleToTriangle	function	218
-Phaser.Geom.Line	namespace	219
+Phaser.Geom.Line	class	219
 Phaser.Geom.Line#bottom	member	219
 Phaser.Geom.Line#left	member	219
 Phaser.Geom.Line#right	member	219
@@ -10395,7 +10395,7 @@ Phaser.Geom.Line#getPoints	function	219
 Phaser.Geom.Line#getRandomPoint	function	219
 Phaser.Geom.Line#setFromObjects	function	219
 Phaser.Geom.Line#setTo	function	219
-Phaser.Geom.Polygon	namespace	220
+Phaser.Geom.Polygon	class	220
 Phaser.Geom.Polygon#area	member	220
 Phaser.Geom.Polygon#points	member	220
 Phaser.Geom.Polygon#type	member	220
@@ -10415,7 +10415,7 @@ Phaser.Geom.Polygon#calculateArea	function	220
 Phaser.Geom.Polygon#contains	function	220
 Phaser.Geom.Polygon#getPoints	function	220
 Phaser.Geom.Polygon#setTo	function	220
-Phaser.Geom.Rectangle	namespace	221
+Phaser.Geom.Rectangle	class	221
 Phaser.Geom.Rectangle#bottom	member	221
 Phaser.Geom.Rectangle#centerX	member	221
 Phaser.Geom.Rectangle#centerY	member	221
@@ -10478,7 +10478,7 @@ Phaser.Geom.Rectangle#setEmpty	function	221
 Phaser.Geom.Rectangle#setPosition	function	221
 Phaser.Geom.Rectangle#setSize	function	221
 Phaser.Geom.Rectangle#setTo	function	221
-Phaser.Geom.Triangle	namespace	222
+Phaser.Geom.Triangle	class	222
 Phaser.Geom.Triangle#bottom	member	222
 Phaser.Geom.Triangle#left	member	222
 Phaser.Geom.Triangle#right	member	222

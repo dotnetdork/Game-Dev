@@ -441,7 +441,7 @@ function docsNav(activeLongname, activeGroup) {
      the truthful home comes first — Phaser.Actions IS a namespace; it merely CONTAINS functions.
      Pressing a heading opens that one and shuts whatever was open, which is what the accordion in
      Phaser's own nav does. */
-  const groups = docsGroups();
+  const groups = docsRailGroups();
   let autoOpen = '';
   for (let i = 0; i < groups.length && !autoOpen; i++) {
     if (!groups[i].leaf && groups[i].list.some(function (p) { return p.ln === activeLongname; })) {
@@ -552,11 +552,26 @@ function docsGroups() {
     { id: 'function', label: 'Functions', list: owners(fn.filter(function (e) { return e.ln.indexOf('#') < 0; }), true) },
     { id: 'constant', label: 'Constants', list: owners(co, true) },
     { id: 'typedef', label: 'Typedefs', list: (byKind.typedef || []).slice().sort(byName) },
+    /* Not a rail group — the front page's Typedefs section lists the NAMESPACES that hold typedefs,
+       the way its Constants and Events sections do, and Phaser counts fifty-seven of them. The rail
+       lists the typedef pages themselves. */
+    { id: 'typedef-owners', label: 'Typedefs', hidden: true,
+      /* Only the typedefs that HAVE an owner. Nineteen of Phaser's are global — Attachment,
+         BaseShaderConfig, CenterFunction — with no dot in the name, and asking for the part before
+         the dot handed back the name itself, so each invented a namespace of its own and the
+         section came out at 75 against Phaser's 56. */
+      list: owners((docsPages || []).filter(function (p) {
+        return p.k === 'typedef' && p.ln.indexOf('.') > 0;
+      }).map(function (p) { return { ln: p.ln }; }), false) },
     { id: 'interface', label: 'Interfaces', list: (byKind.interface || []).slice().sort(byName) },
     { id: 'mixin', label: 'Mixins', list: (byKind.mixin || []).slice().sort(byName) }
   ].filter(function (g) { return g.list.length; });
   docsGroupCache = out;
   return out;
+}
+/* The rail shows only the groups meant to be navigated; `hidden` ones exist to feed the front page. */
+function docsRailGroups() {
+  return docsGroups().filter(function (g) { return !g.hidden; });
 }
 /* Which section the reader opened by hand: a group id, '' for none, or undefined meaning "nobody has
    chosen, so open whichever holds the page they are on". Kept across pages so the nav does not shut
@@ -968,23 +983,41 @@ function paintBrowse() {
   const browse = $('docsBrowse');
   if (!browse) return;
   if (!docsPages) { browse.innerHTML = '<p class="dc-loading">Loading the reference…</p>'; return; }
-  const GROUPS = [
-    ['class', 'Classes'],
-    ['namespace', 'Namespaces'],
-    ['typedef', 'Typedefs'],
-    ['interface', 'Interfaces'],
-    ['mixin', 'Mixins']
-  ];
-  const by = {};
-  docsPages.forEach(function (p) { (by[p.k] || (by[p.k] = [])).push(p); });
-  browse.innerHTML = GROUPS.filter(function (g) { return by[g[0]] && by[g[0]].length; })
-    .map(function (g) {
-      return '<h3 class="dc-h" id="sec-' + g[0] + '">' + g[1]
-        + '<span class="dc-count">' + by[g[0]].length + '</span></h3>'
-        + '<ul class="dc-index">' + by[g[0]].map(function (p) {
-          return '<li><a data-doc="' + esc(p.ln) + '">' + esc(p.ln) + '</a></li>';
-        }).join('') + '</ul>';
-    }).join('');
+  /* THE EIGHT SECTIONS PHASER'S OWN FRONT PAGE HAS, in its order, checked against it rather than
+     chosen: Classes, Constants, Events, Game Object Classes, Game Object Functions, Arcade Physics,
+     Matter Physics, Typedefs. Ours had three — Classes, Namespaces, Typedefs — where Namespaces is
+     not one of theirs at all and Typedefs meant something different.
+
+     Constants, Events and Typedefs here are the NAMESPACES that hold them, not the things
+     themselves, which is what Phaser lists: thirteen, twenty-one and fifty-seven. */
+  const groups = docsGroups();
+  const byId = {};
+  groups.forEach(function (g) { byId[g.id] = g; });
+  const pagesOf = function (k) {
+    return docsPages.filter(function (p) { return p.k === k; })
+      .sort(function (a, b) { return a.ln < b.ln ? -1 : 1; });
+  };
+  const owners = function (kind) {
+    const g = byId[kind];
+    return g ? g.list : [];
+  };
+  const secs = [
+    ['classes', 'Classes', pagesOf('class')],
+    ['constants', 'Constants', owners('constant')],
+    ['events', 'Events', owners('event')],
+    ['go-classes', 'Game Object Classes', directChildren('Phaser.GameObjects').filter(function (k) { return k.k !== 'function'; })],
+    ['go-functions', 'Game Object Functions', directChildren('Phaser.GameObjects').filter(function (k) { return k.k === 'function'; })],
+    ['arcade', 'Arcade Physics', directChildren('Phaser.Physics.Arcade')],
+    ['matter', 'Matter Physics', directChildren('Phaser.Physics.Matter')],
+    ['typedefs', 'Typedefs', owners('typedef-owners')]
+  ].filter(function (s) { return s[2] && s[2].length; });
+
+  browse.innerHTML = secs.map(function (s) {
+    return '<h2 class="dc-h2" id="sec-' + s[0] + '">' + esc(s[1]) + '</h2>'
+      + '<ul class="dc-index">' + s[2].map(function (p) {
+        return '<li><a data-doc="' + esc(p.ln) + '">' + esc(p.ln) + '</a></li>';
+      }).join('') + '</ul>';
+  }).join('');
   browse.querySelectorAll('[data-doc]').forEach(function (b) {
     b.addEventListener('click', function (e) { e.preventDefault(); openDocsSymbol(b.getAttribute('data-doc')); });
   });
