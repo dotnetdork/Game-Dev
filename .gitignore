@@ -7,6 +7,12 @@ node_modules/
 .env.*.local
 secrets.env
 
+# the Vercel CLI's link to the project — which account and which project this directory deploys to,
+# written by `vercel link`. Not a secret, but it is per-developer: a second person cloning this repo
+# links their own, and `vercel env pull` drops real environment values into .env.local, which the
+# lines above already keep out. Vercel gitignores it by default and so do we.
+.vercel
+
 # logs
 *.log
 npm-debug.log*
