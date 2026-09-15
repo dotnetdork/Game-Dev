@@ -38,6 +38,13 @@
     </nav>
     <nav class="topright" aria-label="Reference">
       <button class="navitem" data-page="docs"><span class="mdi mdi-book-open-variant"></span>Docs</button>
+      <!-- Credits is a real page with a real address, reached from the link on Help rather than from
+           up here: it is a page people go to on purpose, not one of the six places the course is
+           lived in. This button exists ONLY so the router can tell where it is — currentRoute() asks
+           the nav which page is open, and without a button to mark, navigating to Credits left the
+           address bar pointing at the lesson behind it and broke the back button. Hidden, so it is
+           never a seventh thing to press. -->
+      <button class="navitem" data-page="credits" hidden aria-hidden="true" tabindex="-1">Credits</button>
       <button class="navitem" data-page="help"><span class="mdi mdi-help-circle-outline"></span>Help</button>
     </nav>
   </header>
@@ -113,7 +120,10 @@
             <button class="tp tp-play" id="gamePlay" title="Run your game" aria-label="Play"><span class="mdi mdi-play" aria-hidden="true"></span></button>
             <button class="tp" id="gamePause" title="Freeze the game where it is" aria-label="Pause" disabled><span class="mdi mdi-pause" aria-hidden="true"></span></button>
             <button class="tp tp-stop" id="gameStop" title="Stop the game" aria-label="Stop" disabled><span class="mdi mdi-stop" aria-hidden="true"></span></button>
-            <button class="tp tp-reset" id="gameReset" title="Restore the original starter game" aria-label="Reset"><span class="mdi mdi-restore" aria-hidden="true"></span></button>
+            <!-- Throws away everything the student has written and restores the starter files, so it
+                 is a testing control too — see the footer's Reset everything. Hidden in a student's
+                 build; the lesson that teaches undoing a change teaches Ctrl+Z, not this. -->
+            <button class="tp tp-reset" id="gameReset" data-dev-only title="Restore the original starter game" aria-label="Reset"><span class="mdi mdi-restore" aria-hidden="true"></span></button>
           </div>
           <!-- The assistant's twin of #outlineBtn, at the opposite end of the bar from it, and on
                screen only while the assistant is not.
@@ -383,7 +393,17 @@
   </div>
 
   <footer class="statusbar">
-    <span class="sb-left">Game Dev — v0.1.0</span>
+    <span class="sb-left">Game Dev — v0.1.0<!--
+      Reset everything, as an icon beside the version, and ONLY on a laptop. It puts the browser back
+      to a brand-new account — XP, Stars, unlocked assets, finished lessons, the student's game and
+      their design board — so it is a testing control and never a thing a student should come across
+      while looking for something else. It used to sit on the Help page under a heading, which is
+      exactly where a curious twelve-year-old goes.
+      `data-dev-only` is hidden by default and revealed by the attribute js/dev.js puts on <html>,
+      so a control that forgets to ask stays hidden in a student's build rather than appearing in it.
+   --><button class="sb-dev" id="resetAllBtn" data-dev-only
+        title="Reset everything — put this browser back to a brand-new account (testing only)"
+        aria-label="Reset everything (testing only)"><span class="mdi mdi-restart-alert" aria-hidden="true"></span></button></span>
     <div class="sb-mid">
       <!-- The trophy case. A badge is earned by doing a technique in your own game, so it sits
            beside the Stars it deliberately cannot be bought with. -->

@@ -41,7 +41,12 @@ let routeApplying = false;
    router ever looked at it, and every shared link landed on the wrong lesson. */
 let routerStarted = false;
 
-const PAGE_ROUTES = ['store', 'gallery', 'leaderboards', 'docs', 'help'];
+/* `credits` is here but deliberately NOT in the top bar. It is a page people go to on purpose — from
+   the link on Help, or because somebody sent them the address — rather than one of the six places
+   the course is lived in, and putting it in the nav would cost every student a button they will
+   press once to find out what it is. Routed like the rest so it can be linked and the back button
+   returns them to Help. */
+const PAGE_ROUTES = ['store', 'gallery', 'leaderboards', 'docs', 'help', 'credits'];
 /* Design, Code and Play are TOP-LEVEL, not nested under a lesson: /design, /code, /play.
    They are the student's own things. The board is their game's design, the editor is their game's
    source and the stage is their game running — none of the three changes when they turn the page,

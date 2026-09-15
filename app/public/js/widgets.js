@@ -697,17 +697,29 @@ function renderQuizCells(root) {
    card, opposite rules, so a child could not tell what guessing costs — and being shown the
    answer the instant you are wrong, with no second try, is the shape of feeling stupid.
    Now: first wrong explains and invites another go; second wrong teaches the answer. */
-function quizVerdict(ctx, correct, wrongHint, reveal) {
+/* `inline` says the card has already explained itself ON THE OPTION the student picked, so the line
+   at the foot would be saying it twice.
+
+   That is what it was doing. A wrong answer put the reason inside the option AND repeated it word
+   for word underneath; a right answer got a green tick on the row and then "✓ Correct!" below, which
+   is the tick again in words. Neither line carried anything the row did not already say, and the
+   space under a question is the one place a child looks for something they have not read yet.
+
+   What survives for an inline card is the reveal: after two wrong tries the whole-question `explain`
+   goes there, because that is the one sentence that belongs to the question rather than to any one
+   option. */
+function quizVerdict(ctx, correct, wrongHint, reveal, inline) {
   if (ctx.resolved) return;
-  if (correct) { ctx.say('ok', 'Correct!'); markQuizDone(ctx); return; }
+  if (correct) { if (!inline) ctx.say('ok', 'Correct!'); markQuizDone(ctx); return; }
   ctx.attempts++;
   if (ctx.attempts < 2) {
-    ctx.say('no', wrongHint || 'Not quite — take another look.');
+    if (!inline) ctx.say('no', wrongHint || 'Not quite — take another look.');
     if (ctx.check) ctx.check.textContent = 'Try again';
     return;
   }
   if (typeof reveal === 'function') reveal();
-  ctx.say('no', ctx.q.explain ? "Here's the answer — " + ctx.q.explain : 'Here is the answer, highlighted above.');
+  if (inline) { if (ctx.q.explain) ctx.say('no', ctx.q.explain); }
+  else ctx.say('no', ctx.q.explain ? "Here's the answer — " + ctx.q.explain : 'Here is the answer, highlighted above.');
   markQuizDone(ctx);
 }
 
@@ -772,7 +784,11 @@ function buildMCQ(q, body, ctx, isPredict) {
   });
 
   /* The content authors per-option feedback that only ever appeared as one line at the bottom of
-     the card. It belongs against the option it explains. */
+     the card. It belongs against the option it explains — INCLUDING the right one. Every correct
+     option in this course is written "Right. It is a design decision you will change many times",
+     so the sentence that says why the answer is right was already there and was only ever shown
+     when the student got it wrong twice. A child who picks the right one first time is the one most
+     able to use it. */
   function explainRow(i) {
     const row = rows[i]; if (!row || row.querySelector('.mcq-why') || !fb[i]) return;
     const why = document.createElement('span'); why.className = 'mcq-why'; why.textContent = fb[i];
@@ -788,16 +804,21 @@ function buildMCQ(q, body, ctx, isPredict) {
       + opts0.length + ' options, so no answer could ever be right. Falling back to the first one.');
     right = order.indexOf(0);
   }
-  ctx.restore = function () { rows.forEach(function (r, i) { r.disabled = true; if (i === right) r.classList.add('correct'); }); };
+  ctx.restore = function () {
+    rows.forEach(function (r, i) { r.disabled = true; if (i === right) r.classList.add('correct'); });
+    explainRow(right);                 // a reload shows what the card showed when it was answered
+  };
 
   function grade() {
     if (ctx.resolved || chosen < 0) return;
     const ok = chosen === right;
-    if (ok) { rows[chosen].classList.add('correct'); }
-    else { rows[chosen].classList.add('wrong'); rows[chosen].disabled = true; explainRow(chosen); }
+    rows[chosen].classList.add(ok ? 'correct' : 'wrong');
+    if (!ok) rows[chosen].disabled = true;
+    explainRow(chosen);                // why, on the option itself, right or wrong
     quizVerdict(ctx, ok, fb[chosen] || 'Not quite — read that one again.', function () {
       rows[right].classList.add('correct');
-    });
+      explainRow(right);
+    }, true);
     if (ctx.resolved) rows.forEach(function (r) { r.disabled = true; });
   }
 }

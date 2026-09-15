@@ -1,25 +1,30 @@
-/* check-release.js — the switches that must be flipped before students use this.
+/* check-release.js — the switches that must be right before students use this.
  *
- * NOT part of `npm test`, on purpose. `js/dev.js` holds switches whose whole job is to be ON while
- * the app is being built — `unlockAll` opens every lesson so the course can be read and proof-read
- * without playing through 22 lessons first. A daily test run that fails because a development
- * switch is on teaches you to ignore the test run.
+ * WHAT THIS CHECKS CHANGED WHEN DEV MODE STOPPED BEING A CONSTANT.
  *
- * So this is a separate gate, run deliberately:
+ * It used to read `unlockAll: true` out of js/dev.js and fail while it was on, because the flag had
+ * to be flipped back by hand before a deploy. That is a reminder with a safety net, and the net only
+ * works if somebody runs it. Dev mode is now DERIVED — on when the app is served from a laptop, off
+ * everywhere else — so the Vercel build is a student's build because of where it is, and there is
+ * no longer a constant that can be left in the wrong position.
+ *
+ * So this checks the derivation instead: that dev mode is still decided by the hostname, that a URL
+ * cannot switch it on where it is off, and that the controls which destroy a student's work are
+ * still marked as dev-only in the markup. Those are the three things that, if broken, would put a
+ * reset-everything button in front of a class.
  *
  *   npm --prefix app run check:release
  *
- * Run it before handing the app to a class, or wire it into a deploy step. The point is that
- * "did anyone flip that back?" stops being something a person has to remember and becomes
- * something that answers itself.
- *
- * Parsed out of the file as text rather than imported, because dev.js is browser JavaScript with
- * no exports and reads `location.search` at load.
+ * Parsed as text rather than imported, because dev.js is browser JavaScript with no exports that
+ * reads `location` at load.
  */
 const fs = require('fs');
 const path = require('path');
 
-const DEV_FILE = path.join(__dirname, '..', 'public', 'js', 'dev.js');
+const PUB = path.join(__dirname, '..', 'public');
+const DEV_FILE = path.join(PUB, 'js', 'dev.js');
+const INDEX_FILE = path.join(PUB, 'index.html');
+const CSS_FILE = path.join(PUB, 'styles.css');
 
 let failures = 0;
 function check(name, ok, detail) {
@@ -27,30 +32,82 @@ function check(name, ok, detail) {
   else { failures++; console.error('FAIL  ' + name + (detail ? '  — ' + detail : '')); }
 }
 
-const src = fs.readFileSync(DEV_FILE, 'utf8');
+const dev = fs.readFileSync(DEV_FILE, 'utf8');
+const html = fs.readFileSync(INDEX_FILE, 'utf8');
+const css = fs.readFileSync(CSS_FILE, 'utf8');
 
-/* Reads `name: true` / `name: false` out of the DEV object literal. Returns null if the switch
-   is missing or is set to something other than a plain boolean — either of which is a thing to
-   look at rather than something to quietly pass. */
+/* Reads `name: true` / `name: false` out of the DEV object literal. Returns null when the switch is
+   missing or is set to something that is not a plain boolean. */
 function devFlag(name) {
-  const m = src.match(new RegExp('\\b' + name + '\\s*:\\s*(true|false)\\b'));
+  const m = dev.match(new RegExp('\\b' + name + '\\s*:\\s*(true|false)\\b'));
   return m ? m[1] === 'true' : null;
 }
 
-const unlockAll = devFlag('unlockAll');
+/* 1. Dev mode is derived, not written down. A literal `on: true` here would be exactly the failure
+      mode this whole arrangement exists to remove. */
+check('dev mode is derived from the hostname, not hard-coded',
+  /\bon\s*:\s*devHost\(\)/.test(dev) && devFlag('on') === null,
+  devFlag('on') === null ? 'DEV.on = devHost()' : 'DEV.on is hard-coded to ' + devFlag('on')
+    + ' — it must be devHost(), or every deployment ships in dev mode');
+
+check('lesson unlocking is derived too, so the course runs in order for students',
+  /\bunlockAll\s*:\s*devHost\(\)/.test(dev) && devFlag('unlockAll') === null,
+  devFlag('unlockAll') === null ? 'DEV.unlockAll = devHost()' : 'unlockAll is hard-coded to ' + devFlag('unlockAll'));
+
+/* 2. devHost() must only ever answer yes for a machine, never for a deployment. Checked by running
+      the function itself against a list of hostnames rather than by reading the regex, because the
+      regex is the thing most likely to be edited into something too generous. */
+let devHost = null;
+try {
+  const body = dev.match(/function devHost\(\)\s*\{[\s\S]*?\n\}/);
+  if (body) {
+    /* eslint-disable no-new-func */
+    devHost = new Function('location', body[0] + '\nreturn devHost();');
+  }
+} catch (e) { devHost = null; }
+
+const LOCAL = ['localhost', '127.0.0.1', 'app.localhost', 'jays-laptop.local'];
+const HOSTED = ['game-dev.vercel.app', 'league-game-dev-git-main-jay.vercel.app', 'gamedev.jointheleague.org',
+  'notlocalhost.com', 'localhost.evil.com', 'my-localhost-app.net'];
+if (!devHost) {
+  check('devHost() could be read out of js/dev.js', false, 'the function was not found — this check cannot run');
+} else {
+  const wrongLocal = LOCAL.filter(function (h) { return devHost({ hostname: h }) !== true; });
+  const wrongHosted = HOSTED.filter(function (h) { return devHost({ hostname: h }) !== false; });
+  check('dev mode is ON for a laptop', !wrongLocal.length, wrongLocal.length ? 'said no to: ' + wrongLocal.join(', ') : LOCAL.length + ' hostnames');
+  check('dev mode is OFF for anything deployed', !wrongHosted.length,
+    wrongHosted.length ? 'said YES to: ' + wrongHosted.join(', ') + ' — a student build would unlock the course'
+      : HOSTED.length + ' hostnames, including ones with "localhost" inside them');
+}
+
+/* 3. A URL must not be able to switch dev things on. `?dev=1` on the deployed site would otherwise
+      be a link a student could pass round that unlocks the course and hands them a reset button. */
+check('a URL cannot switch dev mode ON where it is off',
+  /if\s*\(\s*want\s*&&\s*!here\s*\)\s*return/.test(dev),
+  'the guard in the override block is what stops ?dev=1 working on Vercel');
+
+/* 4. The controls that destroy a student's work are marked, and the marking defaults to hidden. */
+const devOnly = (html.match(/data-dev-only/g) || []).length;
+check('the destructive controls are marked dev-only', devOnly >= 2,
+  devOnly + ' element(s) carry data-dev-only — expected the footer reset and the game reset');
+check('reset-everything is marked dev-only',
+  /id="resetAllBtn"[^>]*data-dev-only|data-dev-only[^>]*id="resetAllBtn"/.test(html),
+  'the footer button that wipes the account');
+check('reset-the-game is marked dev-only',
+  /id="gameReset"[^>]*data-dev-only|data-dev-only[^>]*id="gameReset"/.test(html),
+  'the transport button that throws away their code');
+check('data-dev-only is hidden unless something says otherwise',
+  /\[data-dev-only\]\s*\{\s*display:\s*none\s*!important/.test(css),
+  'hidden is the default, so a control that forgets to ask stays out of a student build');
+
+/* 5. The sandbox is not a dev switch — it is the isolation the game frame runs under. */
 const sandboxGame = devFlag('sandboxGame');
-
-check('DEV.unlockAll is off, so the course runs in order',
-  unlockAll === false,
-  unlockAll === null ? 'could not find it in js/dev.js' : 'unlockAll = ' + unlockAll
-    + (unlockAll ? ' — every lesson is open; set it to false in app/public/js/dev.js' : ''));
-
 check('DEV.sandboxGame is on, so student code cannot reach the app',
   sandboxGame === true,
   sandboxGame === null ? 'could not find it in js/dev.js' : 'sandboxGame = ' + sandboxGame
     + (sandboxGame === false ? ' — the game frame can read the parent page; set it to true' : ''));
 
 console.log('\n' + (failures
-  ? failures + ' switch(es) still set for development — not ready for students'
-  : 'release switches are set correctly'));
+  ? failures + ' check(s) failed — not ready for students'
+  : 'release checks pass: a deployed build locks the course and hides the reset controls'));
 process.exit(failures ? 1 : 0);

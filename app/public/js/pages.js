@@ -32,6 +32,7 @@ function showPage(page) {
   else if (page === 'leaderboards') pg.innerHTML = renderBoard();
   else if (page === 'docs') pg.innerHTML = renderDocs();
   else if (page === 'help') pg.innerHTML = renderHelp();
+  else if (page === 'credits') pg.innerHTML = renderCredits();
   wirePage(page);
   paintAIBtn();
   /* Store, Gallery, Docs and Help get their own address, so they can be linked and the back button
@@ -39,6 +40,14 @@ function showPage(page) {
   if (typeof syncRoute === 'function') syncRoute();
 }
 document.querySelectorAll('.navitem').forEach(function (b) { b.addEventListener('click', function () { showPage(b.getAttribute('data-page')); }); });
+/* A link to a page from INSIDE a page — the credits link on Help. Delegated, because the thing it is
+   attached to is rendered by the page it sits on and so does not exist when this file is read. */
+document.addEventListener('click', function (e) {
+  const a = e.target.closest('[data-nav]');
+  if (!a) return;
+  e.preventDefault();
+  showPage(a.getAttribute('data-nav'));
+});
 
 /* ---------- asset store (spend Stars to unlock real Phaser assets; owned ones auto-preload by key) ---------- */
 const assets = window.STORE_ASSETS || [];
@@ -507,10 +516,87 @@ function renderHelp() {
     + '<h3><span class="mdi mdi-robot"></span>The AI Assistant</h3><p>The panel on the right has two modes — click the icon in its header to switch. <b>Tutor</b> explains things and never touches your code, so ask it "what does this line do?". <b>Build</b> edits your game when you tell it what to change. Some lessons turn Build off on purpose so you try it yourself.</p>'
     + '<p>One thing Build will not do is the <b>Practice</b> exercise at the end of a lesson — it will give you a hint and send you to Tutor instead. That exercise is the only way you find out whether you can do it, so having it done for you costs you the answer to the one question worth asking. Everything else in your game, Build will happily build.</p>'
     + '<h3><span class="mdi mdi-star"></span>Stars & the Store</h3><p>Earn ★ Stars for every lesson, practice step and lab you finish, then spend them in the <b>Store</b> to unlock art and sounds. Anything you own loads into your game automatically — just use its <b>name</b> (the green key) in your code.</p>'
-    + '<h3><span class="mdi mdi-image-outline"></span>Picture credits</h3><p>Lessons show screenshots of real games and sprites drawn by other people. Hovering any picture in a lesson names who made it; this is the same list in one place.</p>'
+    /* A LINK, not the list. The credits outgrew a section on a page about how the buttons work: the
+       pictures are only one of six kinds of borrowed thing, and the rest — the libraries the app is
+       built on, the icons, the art packs — belong beside them rather than nowhere. Kept off the top
+       bar deliberately: it is a page people go to on purpose, not one of the six places to be. */
+    + '<h3><span class="mdi mdi-folder-information-outline"></span>What this app is built from</h3>'
+    + '<p>The pictures in the lessons, the art and sounds in the Store, and the code libraries this app runs on were all made by other people. They are all named here.</p>'
+    + '<a class="gbtn" data-nav="credits"><span class="mdi mdi-folder-information-outline"></span>Credits &amp; licences</a>'
+    + '</div>';
+}
+
+/* ---------- credits ----------
+   Everything this app is built out of that somebody else made, on one page.
+
+   It used to be a section on Help, and it listed the lesson pictures only — which was the smallest
+   of the six kinds of borrowed thing here and the only one anybody had got round to. The art and
+   sound in the Store, the libraries the game engine and the editor are, the icon set, the typeface
+   on the login page and the packages the server runs on were all uncredited.
+
+   Two of those are licence CONDITIONS rather than courtesies: the CC BY pictures in the lessons
+   require the author to be named, and Apache-2.0 requires its notice to be carried. The rest is
+   here because a course that teaches children to build things should show them what it was built
+   from, and because "who made this?" should have an answer that is one click from Help.
+
+   THE VERSIONS BELOW ARE WRITTEN DOWN, and that is a deliberate cost. They are checked against the
+   files by tools/check-credits.js, which fails if this list and app/public/vendor disagree — so the
+   page cannot quietly go stale the way a hand-kept list otherwise does. The pictures are the
+   exception: they come from /api/credits, which the server derives from the lessons themselves. */
+const CREDIT_BROWSER = [
+  ['Phaser', '3.80.1', 'MIT', 'https://phaser.io', 'The game engine. Everything a student writes runs inside it.'],
+  ['CodeMirror', '5.65.16', 'MIT', 'https://codemirror.net/5/', 'The code editor on the Code tab, and the syntax colouring in every lesson.'],
+  ['JSHint', '2.13.6', 'MIT', 'https://jshint.com/', 'Finds the mistake before the game runs and says which line it is on.'],
+  ['Prettier', '2.8.8', 'MIT', 'https://prettier.io/', 'Tidies a student’s code when they press Format.'],
+  ['marked', '12.0.2', 'MIT', 'https://github.com/markedjs/marked', 'Turns the lessons, which are written as Markdown, into the pages you read.'],
+  ['DOMPurify', '3.1.6', 'Apache-2.0 / MPL-2.0', 'https://github.com/cure53/DOMPurify', 'Makes anything written by the assistant safe to put on the page.'],
+  ['js-yaml', '4.1.0', 'MIT', 'https://github.com/nodeca/js-yaml', 'Reads the course outline and the quizzes.'],
+  ['Material Design Icons', '7.4.47', 'Apache-2.0', 'https://pictogrammers.com/library/mdi/', 'Almost every icon on screen. Only the ones actually used are shipped — a subset built from the full set.'],
+  ['Cinzel', '—', 'SIL Open Font License 1.1', 'https://fonts.google.com/specimen/Cinzel', 'The typeface the app’s name is set in on the sign-in page.']
+];
+const CREDIT_SERVER = [
+  ['Express', '4.x', 'MIT', 'https://expressjs.com/', 'The web server this app is.'],
+  ['dotenv', '16.x', 'BSD-2-Clause', 'https://github.com/motdotla/dotenv', 'Reads the settings and the keys out of a file instead of the code.'],
+  ['zod', '4.x', 'MIT', 'https://zod.dev', 'Checks that what the assistant sends back is the shape it promised.'],
+  ['Model Context Protocol SDK', '1.x', 'MIT', 'https://modelcontextprotocol.io', 'How the assistant is given tools it can use.'],
+  ['jsdom', '29.x', 'MIT', 'https://github.com/jsdom/jsdom', 'Used only by the tests, which boot the whole app and read the page.']
+];
+function creditTable(rows) {
+  return '<div class="credit-grid">' + rows.map(function (r) {
+    return '<div class="credit-row"><div class="credit-who">'
+      + '<a href="' + esc(r[3]) + '" target="_blank" rel="noopener">' + esc(r[0]) + '</a>'
+      + ' <span class="credit-ver">' + esc(r[1]) + '</span>'
+      + ' <span class="credit-lic">' + esc(r[2]) + '</span></div>'
+      + '<div class="credit-where">' + esc(r[4]) + '</div></div>';
+  }).join('') + '</div>';
+}
+function renderCredits() {
+  return '<div class="phead"><div><h2><span class="mdi mdi-folder-information-outline"></span>Credits &amp; licences</h2>'
+    + '<p class="sub">Everything in this app that somebody else made.</p></div>'
+    + '<a class="gbtn" data-nav="help"><span class="mdi mdi-arrow-left"></span>Back to Help</a></div>'
+    + '<div class="help-body">'
+
+    + '<h3><span class="mdi mdi-image-outline"></span>Pictures in the lessons</h3>'
+    + '<p>Screenshots of real games, and sprites drawn by other people. Hovering any picture in a lesson names who made it; this is the same list in one place. Several are used under a Creative Commons licence that asks for the author to be named — so this list is a condition of using them, not just good manners.</p>'
     + '<div id="creditsList" class="credits-list"><p class="credits-loading">Loading…</p></div>'
-    + '<h3><span class="mdi mdi-restart"></span>Testing</h3><p>Put this browser back to a brand-new account — XP, Stars, unlocked assets, completed lessons, your game\'s code and your design board — to try the app from scratch.</p>'
-    + '<button class="gbtn" id="resetBtn"><span class="mdi mdi-delete-outline"></span>Reset everything</button></div>';
+
+    + '<h3><span class="mdi mdi-palette-outline"></span>Art and sound in the Store</h3>'
+    + '<p>Every sprite, tile and sound a student can buy with ★ Stars was made by <b>Kenney</b> and released under <b>CC0 1.0 Universal</b> — a public-domain dedication, which means no attribution is required at all. It is here anyway, because saying where things came from is the right thing to do and because students should see it done.</p>'
+    + '<div class="credit-grid"><div class="credit-row">'
+    + '<div class="credit-who"><a href="https://kenney.nl" target="_blank" rel="noopener">Kenney</a> '
+    + '<span class="credit-lic">CC0 1.0</span></div>'
+    + '<div class="credit-where">19 asset packs · 3,256 sprites, tiles and sounds</div></div></div>'
+
+    + '<h3><span class="mdi mdi-application-braces-outline"></span>Code that runs in your browser</h3>'
+    + '<p>These are shipped with the app rather than fetched from the internet, so it works on a school network that blocks most things — and so a lesson cannot break because somebody else’s website is down.</p>'
+    + creditTable(CREDIT_BROWSER)
+
+    + '<h3><span class="mdi mdi-server"></span>Code that runs on the server</h3>'
+    + creditTable(CREDIT_SERVER)
+
+    + '<h3><span class="mdi mdi-school-outline"></span>Everything else</h3>'
+    + '<p>The lessons, the diagrams drawn for them, the starter game, the design board and this app’s own code and branding are the League’s. Phaser’s own documentation is linked from the <a data-nav="docs">Docs</a> page and is worth reading.</p>'
+    + '</div>';
 }
 
 /* The same credits the pictures carry, gathered in one place. The hover line on a figure is the
@@ -606,6 +692,10 @@ function showBadgeCase() {
   modal({ title: 'Your badges', html: renderBadgeCase(), okLabel: 'Close', hideCancel: true, wide: true });
 }
 if ($('badgeBtn')) $('badgeBtn').addEventListener('click', showBadgeCase);
+/* Wired once, at load, rather than per page: it lives in the footer now, not on the Help page, so
+   there is no render for it to be wired up by. The button itself is only in the document at all on
+   a laptop — see js/dev.js and `data-dev-only`. */
+if ($('resetAllBtn')) $('resetAllBtn').addEventListener('click', resetProgress);
 
 /* A testing control, not a student feature: it puts the browser back to a first run, so it clears
    every key the app owns rather than progress alone. Anything short of that leaves a half-reset —
@@ -640,6 +730,6 @@ function wirePage(page) {
     document.querySelectorAll('#page [data-start]').forEach(function (b) { b.addEventListener('click', function () { showPage('courses'); switchView('learn'); }); });
     document.querySelectorAll('#page [data-case]').forEach(function (b) { b.addEventListener('click', showBadgeCase); });
   }
-  if (page === 'help') { var rb = $('resetBtn'); if (rb) rb.addEventListener('click', resetProgress); fillCredits(); }
+  if (page === 'credits') fillCredits();
   if (page === 'docs') { document.querySelectorAll('#page [data-goto]').forEach(function (link) { link.addEventListener('click', function (e) { e.preventDefault(); var el = document.getElementById('doc-' + link.getAttribute('data-goto')); if (el) el.scrollIntoView({ behavior: 'smooth', block: 'start' }); }); }); }
 }
