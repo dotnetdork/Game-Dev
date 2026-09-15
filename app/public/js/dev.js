@@ -25,9 +25,24 @@
  * behind this and not behind a confirmation dialog alone.
  */
 
+/* THE SERVER'S ANSWER FIRST, because it is the only one that is not a guess.
+   Every response carries `league_hosted`: 1 when the app is running on Vercel or with
+   NODE_ENV=production, 0 when it is somebody's laptop. See the note on the cookie in server.js.
+   A "1" ends the question — no hostname, no URL parameter, nothing else can turn dev mode back on.
+
+   The hostname check below remains as the fallback for the case the cookie cannot cover: a page
+   opened straight off the disk, with no server to have set it. */
+function hostedCookie() {
+  try {
+    const m = String(document.cookie || '').match(/(?:^|;\s*)league_hosted=([01])/);
+    return m ? m[1] === '1' : null;
+  } catch (e) { return null; }
+}
 /* Localhost, the loopback addresses, and the .local names a machine answers to on a school network.
    Everything else — Vercel, a preview deployment, a tunnel — is a student's build. */
 function devHost() {
+  const hosted = hostedCookie();
+  if (hosted !== null) return !hosted;
   const h = String(location.hostname || '').toLowerCase();
   if (!h) return true;                             // opened as a file: a laptop, by definition
   return h === 'localhost' || h === '127.0.0.1' || h === '::1' || h === '[::1]'

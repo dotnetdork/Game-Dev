@@ -87,6 +87,26 @@ want preview deployments to work — see the note about redirect URIs at the bot
 | `TUTOR_MODEL` | `anthropic:claude-sonnet-5` |
 | `QUIZ_MODEL` | `anthropic:claude-sonnet-5` |
 | `GRADER_MODEL` | `anthropic:claude-sonnet-5` |
+| `CODER_TOOLS` | `1` |
+| `TUTOR_TOOLS` | `1` |
+
+**The two `_TOOLS` variables are why the app has offline Phaser docs at all.** With them on, the
+coder and the tutor look up the exact Phaser the student is running — 19,000 symbols, on disk — and
+read the lesson the student is actually on. With them off, both answer from memory, and the tutor
+tells students in so many words that it cannot read any docs. It does not look like a failure; it
+looks like the AI being unhelpful. If they are unset the code now switches them on by itself, but a
+dashboard entry saying `0` still wins, so check the dashboard rather than assuming.
+
+Sign in and open `/api/info` on the deployed site to see what it actually has:
+
+```json
+{ "tools": { "coder": true, "tutor": true },
+  "lookups": { "reference": true, "api": true, "apiSymbols": 19286, "apiVersion": "4.1.0" } }
+```
+
+`tools` is the switches above. `lookups` is whether the files behind them survived into the
+deployment — a different failure, with a different cause, that looks identical from the chat panel.
+Both must be true.
 
 **Ollama cannot work here.** The default `AI_PROVIDER=ollama` points at `localhost:11434`, which on
 Vercel is the serverless function itself. If you leave it, every AI request fails with "not
@@ -281,9 +301,13 @@ through, because a child mid-sentence should not be told to slow down by a stora
 and the spend cap are still what actually bound the damage.
 
 **Function timeout.** `app/vercel.json` asks for 60s, which is the Hobby ceiling. Tool-enabled
-requests take about 25s by the notes in `.env.example`, and the coder does a corrective retry when
-it invents an asset key — so a slow request can approach that. If you see timeouts, leave
-`CODER_TOOLS=0`.
+requests take longer — the 25s in `.env.example` is measured against a local model, and the coder
+does a corrective retry when it invents an asset key — so a slow request can approach that.
+
+The obvious lever is to turn `CODER_TOOLS` off, and this document used to say so. **Don't** — that
+is how the deployed tutor ended up unable to read the app's own Phaser docs, which costs far more
+accuracy than the timeout costs anybody. Lower `AI_TOOL_ROUNDS` from 4 to 2 instead: it caps how
+many lookups one answer may make, which is what actually sets the worst case.
 
 **Everything is served by the function**, including 3,300 static files. That is on purpose: Vercel's
 CDN cannot check a session cookie, so anything it served directly would bypass the gate. If it feels

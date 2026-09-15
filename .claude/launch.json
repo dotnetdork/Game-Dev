@@ -17,6 +17,18 @@
         "TESTER_PASSWORD": "",
         "SESSION_SECRET": ""
       }
+    },
+    {
+      "name": "app-student",
+      "runtimeExecutable": "npm",
+      "runtimeArgs": ["start", "--prefix", "app"],
+      "port": 3200,
+      "autoPort": true,
+      "env": {
+        "NODE_ENV": "production",
+        "TESTER_PASSWORD": "local-student-build-check",
+        "SESSION_SECRET": "fe15d8aecb2311477984fc960b31f1557abf2862691e9b6378e4f2ec9517bab8"
+      }
     }
   ]
 }

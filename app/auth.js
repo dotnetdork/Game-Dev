@@ -605,4 +605,10 @@ function requireAuth(req, res, next) {
   res.redirect('/login.html?next=' + encodeURIComponent(req.originalUrl || '/'));
 }
 
-module.exports = { mount, requireAuth, currentUser, enabled, ready, providerStatus, testersReady, configProblem };
+/* Whether this is a real deployment rather than somebody's laptop. Exported because the browser has
+   to know it too: js/dev.js decides whether the course is locked and whether the controls that wipe
+   a student's work exist, and guessing that from the hostname is a guess. See the note on the
+   `league_hosted` cookie in server.js. */
+function isHosted() { return IS_HOSTED; }
+
+module.exports = { mount, requireAuth, currentUser, enabled, ready, providerStatus, testersReady, configProblem, isHosted };

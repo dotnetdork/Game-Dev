@@ -305,4 +305,23 @@ function runTool(name, args, ctx) {
   catch (e) { return { error: 'That lookup failed: ' + e.message }; }
 }
 
-module.exports = { TOOLS: TOOLS, toolSpecs: toolSpecs, anthropicSpecs: anthropicSpecs, runTool: runTool };
+/* Can this process actually READ the things the tools look things up in?
+   Two separate questions, and on a laptop they are both always yes, which is exactly why they need
+   asking somewhere else. Serverless platforms bundle a function from the files they can see being
+   required; these are read by a path built at runtime, so nothing traces them, and the first anyone
+   would know is an agent quietly answering from memory. Reported by /api/info so the answer comes
+   from the deployment rather than from a guess about it. */
+function status() {
+  const idx = apiIndex();
+  const meta = apiMeta();
+  let reference = false;
+  try { reference = fs.statSync(REFERENCE).size > 0; } catch (e) { reference = false; }
+  return {
+    reference: reference,                                  // the hand-written cheat sheet
+    api: idx.length > 0,                                   // the full offline API
+    apiSymbols: idx.length,
+    apiVersion: (meta && meta.version) || null
+  };
+}
+
+module.exports = { TOOLS: TOOLS, toolSpecs: toolSpecs, anthropicSpecs: anthropicSpecs, runTool: runTool, status: status };

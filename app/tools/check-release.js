@@ -62,9 +62,18 @@ try {
   const body = dev.match(/function devHost\(\)\s*\{[\s\S]*?\n\}/);
   if (body) {
     /* eslint-disable no-new-func */
-    devHost = new Function('location', body[0] + '\nreturn devHost();');
+    /* hostedCookie() is stubbed to "no answer" so this exercises the hostname fallback on its own;
+       the cookie path is checked separately below. */
+    devHost = new Function('location',
+      'function hostedCookie(){return null;}\n' + body[0] + '\nreturn devHost();');
   }
 } catch (e) { devHost = null; }
+
+/* The server's answer has to beat the hostname, or a deployment that happens to be reached on an
+   odd host name would unlock the course. */
+check('the server’s answer decides it, not the hostname',
+  /function hostedCookie\s*\(/.test(dev) && /if \(hosted !== null\) return !hosted;/.test(dev),
+  'league_hosted is set on every response by server.js');
 
 const LOCAL = ['localhost', '127.0.0.1', 'app.localhost', 'jays-laptop.local'];
 const HOSTED = ['game-dev.vercel.app', 'league-game-dev-git-main-jay.vercel.app', 'gamedev.jointheleague.org',

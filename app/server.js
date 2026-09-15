@@ -222,6 +222,29 @@ app.use((req, res, next) => {
    Mounted BEFORE the static middleware on purpose: express.static answers and returns, so a gate
    installed after it would guard the API and hand out the whole course to anyone. */
 auth.mount(app, { limit: store.bump });
+
+/* ---------- the browser has to know this is a real deployment ----------
+   js/dev.js decides three things: whether the course is unlocked, whether the footer carries a
+   button that wipes the student's account, and whether the Play tab carries one that throws away
+   their code. It was deciding them from `location.hostname` — a laptop is localhost, everything
+   else is a deployment — which is a reasonable guess and is still the fallback, but it is a guess
+   made by the client about a fact the SERVER knows for certain.
+
+   `VERCEL` is set on every Vercel deployment and NODE_ENV covers anywhere else it runs for real, so
+   the server says so outright. Readable rather than HttpOnly because the point is for a script to
+   read it, and it carries no secret — one bit that is already obvious from the URL.
+
+   Set on every response so it cannot go stale, and BEFORE the static middleware for the same reason
+   the gate above is: express.static answers and returns, so a header set after it never happens on
+   the one response that matters — the HTML itself. A cookie set by the response that delivers the
+   document is visible to that document's scripts, so dev.js sees it on the very first paint. */
+app.use((req, res, next) => {
+  const secure = req.secure || req.headers['x-forwarded-proto'] === 'https' ? '; Secure' : '';
+  res.append('Set-Cookie', 'league_hosted=' + (auth.isHosted() ? '1' : '0')
+    + '; Path=/; SameSite=Lax; Max-Age=86400' + secure);
+  next();
+});
+
 app.use(auth.requireAuth);
 
 const corsOpen = (res) => { res.setHeader('Access-Control-Allow-Origin', '*'); res.setHeader('Cross-Origin-Resource-Policy', 'cross-origin'); };
@@ -395,11 +418,25 @@ app.get('/api/lessons', (req, res) => {
   }
 });
 
-// ---- which models are running (per agent) ----
+/* ---- which models are running, and whether they can look anything up ----
+   The models were the whole of this, and the lookups were the thing that silently broke. A tutor
+   deployed with TUTOR_TOOLS=0 in its environment does not fail: it answers from memory, tells the
+   student it has no way to read the Phaser docs, and is wrong roughly as often as it was before the
+   docs existed. Nothing in the app shows that, so it went unnoticed on the deployed site while
+   working perfectly on the laptop it was tested on.
+   `tools` is the switches, `lookups` is whether the files behind them are actually readable from
+   this process. Both have to be true for an agent to answer from the docs, and they fail for
+   completely different reasons — an environment variable, and a missing file in the bundle. */
 app.get('/api/info', (req, res) => {
   const agents = {};
   ['coder', 'tutor', 'lab-tutor', 'quiz', 'grader', 'design-coach'].forEach(function (a) { const m = resolveModel(a); agents[a] = m.provider + ':' + m.model; });
-  res.json({ agents: agents, provider: DEFAULT_PROVIDER, model: resolveModel('coder').model });
+  res.json({
+    agents: agents,
+    provider: DEFAULT_PROVIDER,
+    model: resolveModel('coder').model,
+    tools: AGENT_TOOLS,
+    lookups: tools.status()
+  });
 });
 
 /* ---- the student's work, on the server ----
