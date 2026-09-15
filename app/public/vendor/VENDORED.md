@@ -20,6 +20,13 @@ network access at all — only `/api/ai` talks to anything outside the server.
 | marked | 12.0.2 | lesson Markdown + AI chat replies |
 | DOMPurify | 3.1.6 | sanitizing everything `marked` produces before it reaches innerHTML |
 | Phaser | 4.2.1 | the game engine, loaded inside the game iframe |
+
+The same version is a **devDependency** as well, and for a different reason: `npm run build:docs`
+reads `node_modules/phaser/types/phaser.json` — Phaser's own doclet dump — to generate the offline
+API reference the Docs tab serves. Nothing from it is shipped to the browser; the vendored file
+above is still what the game loads. Keep the two version numbers the same or the reference will
+describe an engine the students are not running.
+
 | @mdi/font | 7.4.47 | all UI icons (`css/` + `fonts/` must stay siblings) |
 
 ## Refreshing

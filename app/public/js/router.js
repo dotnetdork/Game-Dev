@@ -78,6 +78,9 @@ function readRoute() {
   const parts = location.pathname.replace(/^\/+|\/+$/g, '').split('/');
   const head = (parts[0] || '').toLowerCase();
   if (!head) return { kind: 'home' };
+  if (head === 'docs' && parts[1]) {
+    return { kind: 'page', page: 'docs', topic: parts[1], sym: parts[2] ? decodeURIComponent(parts[2]) : '' };
+  }
   if (PAGE_ROUTES.indexOf(head) >= 0) return { kind: 'page', page: head };
   /* `game` is the old spelling of `play`, from when the tab read "Game". Kept so links written
      before the rename still land on the stage rather than on Learn. */
@@ -105,7 +108,12 @@ function readRoute() {
 /* The path a given app state should live at. */
 function routePath(route) {
   if (!route) return '/';
-  if (route.kind === 'page') return '/' + route.page;
+  if (route.kind === 'page') {
+    if (route.page === 'docs' && route.topic) {
+      return '/docs/' + route.topic + (route.sym ? '/' + encodeURIComponent(route.sym) : '');
+    }
+    return '/' + route.page;
+  }
   if (route.kind === 'own') return '/' + route.view;
   if (route.kind === 'lesson') {
     const mod = moduleSlug(route.mi);
@@ -125,6 +133,12 @@ function currentRoute() {
   const pageOpen = pagePanel && !pagePanel.hidden;
   const openPage = document.querySelector('.navitem.on');
   const page = openPage ? openPage.getAttribute('data-page') : 'courses';
+  /* Docs is three places behind one nav button — the shelf, a reference, and one symbol's page —
+     and all three deserve an address. Without this, looking up Phaser.Physics.Arcade.Sprite and
+     sending somebody the link sent them to the shelf. */
+  if (pageOpen && page === 'docs' && typeof docsTopic !== 'undefined' && docsTopic) {
+    return { kind: 'page', page: 'docs', topic: docsTopic, sym: docsSym || '' };
+  }
   if (pageOpen && page && page !== 'courses') return { kind: 'page', page: page };
   const f = (typeof flat !== 'undefined' && typeof curIdx === 'number') ? flat[curIdx] : null;
   if (!f) return { kind: 'home' };
@@ -172,7 +186,18 @@ function lessonIndexById(id) {
 function applyRoute(route) {
   routeApplying = true;
   try {
-    if (route.kind === 'page') { showPage(route.page); return; }
+    if (route.kind === 'page') {
+      if (route.page === 'docs') {
+        /* Set where the docs are BEFORE showing the page, because render reads it. A symbol is
+           fetched, so it paints the reference first and replaces itself when the page arrives. */
+        docsTopic = route.topic || ''; docsSym = '';
+        showPage('docs');
+        if (route.sym) openDocsSymbol(route.sym);
+        return;
+      }
+      showPage(route.page);
+      return;
+    }
 
     /* Everything below is the courses view. Show it first: arriving at a lesson link from the
        Store must leave the Store, and showPage is what does that. */

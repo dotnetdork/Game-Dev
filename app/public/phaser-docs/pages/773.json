@@ -1,0 +1,1 @@
+{"l":"Phaser.Types.GameObjects.Text","n":"Text","k":"namespace","mo":"Phaser.Types.GameObjects","x":"","since":"","m":[],"kids":[["GetTextSizeObject","typedef",774],["TextConfig","typedef",775],["TextMetrics","typedef",776],["TextPadding","typedef",777],["TextShadow","typedef",778],["TextStyle","typedef",779],["TextWordWrap","typedef",780]]}

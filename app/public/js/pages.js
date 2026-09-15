@@ -488,26 +488,16 @@ function renderBoard() {
 
 /* ---------- docs / help ---------- */
 function esc(s) { return String(s == null ? '' : s).replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;').replace(/'/g, '&#39;'); }
-const docSections = [
-  { id: 'start', title: 'Getting started', mdi: 'mdi-flag-checkered', text: 'A Phaser game is built from a config object that sets the size, physics, and which scene runs.', code: 'const config = {\n  type: Phaser.AUTO,\n  width: 800, height: 600,\n  physics: { default: "arcade" },\n  scene: { create: create, update: update }\n};\nnew Phaser.Game(config);' },
-  { id: 'scenes', title: 'Scenes: create & update', mdi: 'mdi-layers', text: 'create() runs once when the scene starts, so build your world there. update() runs every frame (about 60x a second) for movement and checks.', code: 'function create() {\n  // build the world once\n}\nfunction update() {\n  // runs every frame\n}' },
-  { id: 'sprites', title: 'Sprites & images', mdi: 'mdi-shape', text: 'A sprite is a picture you can move and collide. The physics factory gives it a body so it can move and bump into things.', code: 'const player = this.physics.add.sprite(400, 300, "player");\nplayer.setCollideWorldBounds(true);' },
-  { id: 'textures', title: 'Making textures', mdi: 'mdi-palette', text: 'No art files? Draw shapes with Graphics and turn them into a texture you can use as a sprite.', code: 'const g = this.make.graphics({ add: false });\ng.fillStyle(0xffd23f, 1);\ng.fillCircle(10, 10, 10);\ng.generateTexture("coin", 20, 20);' },
-  { id: 'input', title: 'Keyboard & mouse', mdi: 'mdi-keyboard', text: 'Read the arrow keys, letter keys, or the pointer to control your game.', code: 'this.cursors = this.input.keyboard.createCursorKeys();\nthis.keys = this.input.keyboard.addKeys("A,D");\nthis.input.on("pointermove", (p) => { player.x = p.worldX; });' },
-  { id: 'physics', title: 'Movement & physics', mdi: 'mdi-arrow-all', text: 'Arcade physics moves bodies by velocity (pixels per second). Bounce and world bounds keep things on screen.', code: 'player.setVelocityX(200);\nball.setBounce(1);\nball.setCollideWorldBounds(true);' },
-  { id: 'collisions', title: 'Collisions & overlap', mdi: 'mdi-vector-intersection', text: 'overlap() tells you when two things touch (great for collecting). collider() also pushes them apart (great for walls and paddles).', code: 'this.physics.add.overlap(player, coins, grab, null, this);\nthis.physics.add.collider(ball, paddle);\nfunction grab(player, coin) { coin.destroy(); }' },
-  { id: 'groups', title: 'Groups & spawning', mdi: 'mdi-group', text: 'A group holds many similar objects, like all the falling stars, so you can create and manage them together.', code: 'this.stars = this.physics.add.group();\nconst s = this.stars.create(x, -20, "star");\ns.setVelocityY(160);' },
-  { id: 'text', title: 'Text & score', mdi: 'mdi-format-text', text: 'Show a score, lives, or messages with text objects, and update them any time with setText().', code: 'this.scoreText = this.add.text(16, 14, "Score: 0",\n  { fontFamily: "Arial", fontSize: "22px", color: "#ffffff" });\nthis.scoreText.setText("Score: " + score);' },
-  { id: 'timers', title: 'Timers', mdi: 'mdi-timer-outline', text: 'Run code on a delay or on a loop, perfect for spawning enemies every so often.', code: 'this.time.addEvent({\n  delay: 750, loop: true,\n  callback: () => spawn(this)\n});' },
-  { id: 'tweens', title: 'Tweens (smooth motion)', mdi: 'mdi-transition', text: 'Tweens smoothly change a value over time, great for pop, fade, and game feel.', code: 'this.tweens.add({\n  targets: label, y: label.y - 30, alpha: 0,\n  duration: 500\n});' }
-];
-function renderDocs() {
-  const toc = docSections.map(function (d) { return '<a data-goto="' + d.id + '"><span class="mdi ' + d.mdi + '"></span>' + d.title + '</a>'; }).join('');
-  const secs = docSections.map(function (d) { return '<div class="wiki-sec" id="doc-' + d.id + '"><h3><span class="mdi ' + d.mdi + '"></span>' + d.title + '</h3><p>' + d.text + '</p><pre>' + esc(d.code) + '</pre></div>'; }).join('');
-  return '<div class="phead"><div><h2><span class="mdi mdi-book-open-variant"></span>' + course.library + ' Docs</h2><p class="sub">A quick, beginner-friendly reference for ' + course.library + '.</p></div>'
-    + '<a class="gbtn" href="https://docs.phaser.io/" target="_blank" rel="noopener"><span class="mdi mdi-open-in-new"></span>Full ' + course.library + ' docs</a></div>'
-    + '<div class="wiki"><aside class="wiki-toc">' + toc + '</aside><div class="wiki-main">' + secs + '</div></div>';
-}
+/* The twelve hand-written beginner sections that used to be the whole Docs tab lived here. They
+   are gone because Docs now serves Phaser’s complete API — twenty thousand symbols generated
+   from Phaser’s own source — and a curated dozen sitting above it made the real reference look
+   like an appendix. Their job, giving a reader a way in when they do not yet know a name to
+   search for, is done by Browse in js/docs.js, which covers all of Phaser rather than the twelve
+   things somebody picked. Recoverable from git if the plain-English pass wants them as a seed. */
+/* renderDocs lives in js/docs.js now. The Docs tab stopped being one page the moment it had to hold
+   Phaser's whole API as well as the beginner cards — and the button that used to sit here, opening
+   phaser.io in a new window, was the thing being replaced: a dead end on a filtered school network,
+   and a one-way trip out of the app everywhere else. */
 function renderHelp() {
   return '<div class="phead"><div><h2><span class="mdi mdi-help-circle-outline"></span>Help — How this app works</h2><p class="sub">A quick guide to everything on screen.</p></div></div><div class="help-body">'
     + '<h3><span class="mdi mdi-navigation-variant"></span>The top bar</h3><p><b>Courses</b> is where you learn and build. <b>Store</b> sells art and sounds for ★ Stars. <b>Gallery</b> shows games students have published. <b>Leaderboards</b> ranks the class by XP and shows how far through the course you are. <b>Docs</b> is a quick ' + course.library + ' reference, and <b>Help</b> is this page.</p>'
@@ -593,6 +583,15 @@ function renderCredits() {
 
     + '<h3><span class="mdi mdi-server"></span>Code that runs on the server</h3>'
     + creditTable(CREDIT_SERVER)
+
+    /* Its own section because it is the one thing here that is somebody else's WRITING rather than
+       somebody else's code, and because the MIT notice has to travel with a copy. */
+    + '<h3><span class="mdi mdi-book-open-variant"></span>The Phaser reference in Docs</h3>'
+    + '<p>The API reference on the <a data-nav="docs">Docs</a> page is Phaser’s own documentation, generated from the comments in Phaser’s source code. It is here rather than linked so it works on a school network that blocks most of the internet — and so looking something up never takes you out of your game.</p>'
+    + '<div class="credit-grid"><div class="credit-row">'
+    + '<div class="credit-who"><a href="https://phaser.io" target="_blank" rel="noopener">Phaser API documentation</a> '
+    + '<span class="credit-ver">4.2.1</span> <span class="credit-lic">MIT</span></div>'
+    + '<div class="credit-where">© Richard Davey, Phaser Studio Inc. · 20,094 symbols across 1,000 pages</div></div></div>'
 
     + '<h3><span class="mdi mdi-school-outline"></span>Everything else</h3>'
     + '<p>The lessons, the diagrams drawn for them, the starter game, the design board and this app’s own code and branding are the League’s. Phaser’s own documentation is linked from the <a data-nav="docs">Docs</a> page and is worth reading.</p>'
@@ -731,5 +730,5 @@ function wirePage(page) {
     document.querySelectorAll('#page [data-case]').forEach(function (b) { b.addEventListener('click', showBadgeCase); });
   }
   if (page === 'credits') fillCredits();
-  if (page === 'docs') { document.querySelectorAll('#page [data-goto]').forEach(function (link) { link.addEventListener('click', function (e) { e.preventDefault(); var el = document.getElementById('doc-' + link.getAttribute('data-goto')); if (el) el.scrollIntoView({ behavior: 'smooth', block: 'start' }); }); }); }
+  if (page === 'docs') wireDocs();
 }

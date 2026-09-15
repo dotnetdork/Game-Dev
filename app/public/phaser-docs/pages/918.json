@@ -1,0 +1,1 @@
+{"l":"Phaser.Types.Renderer.WebGL.Wrappers.ShaderSetterConstants","n":"ShaderSetterConstants","k":"typedef","mo":"Phaser.Types.Renderer.WebGL.Wrappers","x":"A collection of ShaderSetter descriptors used to set different types of shader uniforms.","since":"4.0.0","m":[]}

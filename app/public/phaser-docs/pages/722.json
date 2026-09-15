@@ -1,0 +1,1 @@
+{"l":"Phaser.Types.GameObjects.Particles.EmitterOpEaseConfig","n":"EmitterOpEaseConfig","k":"typedef","mo":"Phaser.Types.GameObjects.Particles","x":"Defines an operation yielding a value incremented continuously across a range.","since":"3.0.0","m":[]}

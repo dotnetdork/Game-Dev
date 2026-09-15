@@ -454,6 +454,9 @@
 <script src="js/ai.js"></script>
 <script src="js/console-dock.js"></script>
 <script src="js/pages.js"></script>
+<!-- After pages.js: it uses docSections and esc() from there, and pages.js calls into it only when
+     a page is being rendered, which is long after both files have run. -->
+<script src="js/docs.js"></script>
 <script src="js/router.js"></script>
 <script src="js/ui.js"></script>
 </body>

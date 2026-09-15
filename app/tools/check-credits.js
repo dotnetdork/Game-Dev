@@ -99,6 +99,30 @@ check('the Store art names its author and licence', /Kenney/.test(pages) && /CC0
 check('the lesson pictures are still served from the course itself',
   /\/api\/credits/.test(pages), 'derived, so it cannot fall behind the lessons');
 
+/* The offline API reference describes a specific Phaser, and the game runs a specific Phaser. If
+   those drift, the Docs tab confidently documents methods the student's game does not have — which
+   is worse than having no reference at all, because it is wrong rather than absent. */
+const metaPath = path.join(PUB, 'phaser-docs', 'meta.json');
+if (!fs.existsSync(metaPath)) {
+  check('the offline Phaser reference is built', false,
+    'public/phaser-docs/meta.json is missing — run: npm run build:docs');
+} else {
+  const meta = JSON.parse(fs.readFileSync(metaPath, 'utf8'));
+  const engine = (function () {
+    const s = read('phaser/phaser.min.js');
+    const m = s && s.match(/VERSION\s*:\s*"([\d.]+)"/);
+    return m && m[1];
+  })();
+  check('the API reference documents the engine that actually ships', meta.version === engine,
+    meta.version === engine ? 'both Phaser ' + engine
+      : 'reference is Phaser ' + meta.version + ', the game runs ' + engine
+        + ' — rebuild with: npm run build:docs');
+  check('the reference carries Phaser’s licence', fs.existsSync(path.join(PUB, 'phaser-docs', 'LICENSE.md')),
+    'MIT requires the notice to travel with the copy');
+  check('the reference has pages to serve', meta.pages > 100 && meta.symbols > 1000,
+    meta.pages + ' pages, ' + meta.symbols + ' symbols');
+}
+
 console.log('\n' + (failures
   ? failures + ' credit(s) wrong'
   : 'the credits page matches what is shipped'));

@@ -1,0 +1,1 @@
+{"l":"Phaser.Types.Input","n":"Input","k":"namespace","mo":"Phaser.Types","x":"","since":"","m":[],"kids":[["EventData","typedef",789],["Gamepad","namespace",790],["HitAreaCallback","typedef",792],["InputConfiguration","typedef",793],["InputPluginContainer","typedef",794],["InteractiveObject","typedef",795],["Keyboard","namespace",796]]}

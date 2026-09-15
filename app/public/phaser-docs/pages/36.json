@@ -1,0 +1,1 @@
+{"l":"Phaser.Cameras.Scene2D.Effects","n":"Effects","k":"namespace","mo":"Phaser.Cameras.Scene2D","x":"","since":"","m":[],"kids":[["Fade","class",37],["Flash","class",38],["Pan","class",39],["RotateTo","class",40],["Shake","class",41],["Zoom","class",42]]}

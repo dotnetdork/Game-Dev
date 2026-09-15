@@ -1,0 +1,1 @@
+{"l":"Phaser.Types.GameObjects.Particles.EmitterOpSteppedConfig","n":"EmitterOpSteppedConfig","k":"typedef","mo":"Phaser.Types.GameObjects.Particles","x":"Defines an operation yielding a value incremented by steps across a range.","since":"3.0.0","m":[]}

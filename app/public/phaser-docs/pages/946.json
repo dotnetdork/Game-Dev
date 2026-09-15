@@ -1,0 +1,1 @@
+{"l":"Phaser.Types.Textures.StampConfig","n":"StampConfig","k":"typedef","mo":"Phaser.Types.Textures","x":"Configuration object for the `DynamicTexture.stamp` method.","since":"3.60.0","m":[]}

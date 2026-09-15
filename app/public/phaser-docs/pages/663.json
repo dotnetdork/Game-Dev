@@ -1,0 +1,1 @@
+{"l":"Phaser.Types.GameObjects.BitmapText.LocalBitmapTextSize","n":"LocalBitmapTextSize","k":"typedef","mo":"Phaser.Types.GameObjects.BitmapText","x":"The position and size of the Bitmap Text in local space, taking just the font size into account.","since":"3.0.0","m":[]}

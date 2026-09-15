@@ -1,0 +1,327 @@
+{
+  "version": "4.2.1",
+  "tops": [
+    {
+      "n": "Actions",
+      "l": "Phaser.Actions",
+      "k": "namespace",
+      "id": 16,
+      "x": "",
+      "c": 0,
+      "m": 57
+    },
+    {
+      "n": "Animations",
+      "l": "Phaser.Animations",
+      "k": "namespace",
+      "id": 17,
+      "x": "",
+      "c": 5,
+      "m": 0
+    },
+    {
+      "n": "BlendModes",
+      "l": "Phaser.BlendModes",
+      "k": "namespace",
+      "id": 23,
+      "x": "Phaser Blend Modes.",
+      "c": 0,
+      "m": 29
+    },
+    {
+      "n": "Cache",
+      "l": "Phaser.Cache",
+      "k": "namespace",
+      "id": 24,
+      "x": "",
+      "c": 3,
+      "m": 0
+    },
+    {
+      "n": "Cameras",
+      "l": "Phaser.Cameras",
+      "k": "namespace",
+      "id": 28,
+      "x": "",
+      "c": 15,
+      "m": 0
+    },
+    {
+      "n": "Core",
+      "l": "Phaser.Core",
+      "k": "namespace",
+      "id": 44,
+      "x": "",
+      "c": 3,
+      "m": 3
+    },
+    {
+      "n": "Curves",
+      "l": "Phaser.Curves",
+      "k": "namespace",
+      "id": 48,
+      "x": "",
+      "c": 8,
+      "m": 0
+    },
+    {
+      "n": "DOM",
+      "l": "Phaser.DOM",
+      "k": "namespace",
+      "id": 57,
+      "x": "",
+      "c": 1,
+      "m": 8
+    },
+    {
+      "n": "Data",
+      "l": "Phaser.Data",
+      "k": "namespace",
+      "id": 59,
+      "x": "",
+      "c": 3,
+      "m": 0
+    },
+    {
+      "n": "Device",
+      "l": "Phaser.Device",
+      "k": "namespace",
+      "id": 63,
+      "x": "The Device class is a collection of properties and functions that describe the device on which the Phaser Game instance is running. These values are read-only and populated during ",
+      "c": 8,
+      "m": 0
+    },
+    {
+      "n": "Display",
+      "l": "Phaser.Display",
+      "k": "namespace",
+      "id": 73,
+      "x": "",
+      "c": 17,
+      "m": 0
+    },
+    {
+      "n": "Events",
+      "l": "Phaser.Events",
+      "k": "namespace",
+      "id": 91,
+      "x": "",
+      "c": 1,
+      "m": 0
+    },
+    {
+      "n": "Filters",
+      "l": "Phaser.Filters",
+      "k": "namespace",
+      "id": 93,
+      "x": "",
+      "c": 24,
+      "m": 0
+    },
+    {
+      "n": "Game",
+      "l": "Phaser.Game",
+      "k": "class",
+      "id": 118,
+      "x": "",
+      "c": 0,
+      "m": 34
+    },
+    {
+      "n": "GameObjects",
+      "l": "Phaser.GameObjects",
+      "k": "namespace",
+      "id": 119,
+      "x": "",
+      "c": 100,
+      "m": 5
+    },
+    {
+      "n": "Geom",
+      "l": "Phaser.Geom",
+      "k": "namespace",
+      "id": 220,
+      "x": "",
+      "c": 7,
+      "m": 7
+    },
+    {
+      "n": "Input",
+      "l": "Phaser.Input",
+      "k": "namespace",
+      "id": 228,
+      "x": "",
+      "c": 26,
+      "m": 11
+    },
+    {
+      "n": "Loader",
+      "l": "Phaser.Loader",
+      "k": "namespace",
+      "id": 255,
+      "x": "",
+      "c": 40,
+      "m": 20
+    },
+    {
+      "n": "Math",
+      "l": "Phaser.Math",
+      "k": "namespace",
+      "id": 296,
+      "x": "",
+      "c": 26,
+      "m": 51
+    },
+    {
+      "n": "Physics",
+      "l": "Phaser.Physics",
+      "k": "namespace",
+      "id": 323,
+      "x": "",
+      "c": 65,
+      "m": 0
+    },
+    {
+      "n": "Plugins",
+      "l": "Phaser.Plugins",
+      "k": "namespace",
+      "id": 389,
+      "x": "",
+      "c": 5,
+      "m": 0
+    },
+    {
+      "n": "Renderer",
+      "l": "Phaser.Renderer",
+      "k": "namespace",
+      "id": 395,
+      "x": "",
+      "c": 91,
+      "m": 0
+    },
+    {
+      "n": "Scale",
+      "l": "Phaser.Scale",
+      "k": "namespace",
+      "id": 487,
+      "x": "",
+      "c": 10,
+      "m": 17
+    },
+    {
+      "n": "ScaleModes",
+      "l": "Phaser.ScaleModes",
+      "k": "namespace",
+      "id": 498,
+      "x": "Phaser Scale Modes.",
+      "c": 0,
+      "m": 3
+    },
+    {
+      "n": "Scene",
+      "l": "Phaser.Scene",
+      "k": "class",
+      "id": 499,
+      "x": "",
+      "c": 0,
+      "m": 25
+    },
+    {
+      "n": "Scenes",
+      "l": "Phaser.Scenes",
+      "k": "namespace",
+      "id": 500,
+      "x": "",
+      "c": 5,
+      "m": 12
+    },
+    {
+      "n": "Sound",
+      "l": "Phaser.Sound",
+      "k": "namespace",
+      "id": 506,
+      "x": "",
+      "c": 10,
+      "m": 0
+    },
+    {
+      "n": "Structs",
+      "l": "Phaser.Structs",
+      "k": "namespace",
+      "id": 517,
+      "x": "",
+      "c": 6,
+      "m": 0
+    },
+    {
+      "n": "Textures",
+      "l": "Phaser.Textures",
+      "k": "namespace",
+      "id": 524,
+      "x": "",
+      "c": 10,
+      "m": 2
+    },
+    {
+      "n": "Tilemaps",
+      "l": "Phaser.Tilemaps",
+      "k": "namespace",
+      "id": 535,
+      "x": "",
+      "c": 18,
+      "m": 5
+    },
+    {
+      "n": "Time",
+      "l": "Phaser.Time",
+      "k": "namespace",
+      "id": 554,
+      "x": "",
+      "c": 4,
+      "m": 0
+    },
+    {
+      "n": "TintModes",
+      "l": "Phaser.TintModes",
+      "k": "namespace",
+      "id": 559,
+      "x": "Phaser Tint Modes. Tint modes are used by the Tint component to determine how the tint color is applied to the texture. The default mode is `MULTIPLY`. They are only used in WebGL.",
+      "c": 0,
+      "m": 7
+    },
+    {
+      "n": "Tweens",
+      "l": "Phaser.Tweens",
+      "k": "namespace",
+      "id": 560,
+      "x": "",
+      "c": 11,
+      "m": 0
+    },
+    {
+      "n": "Types",
+      "l": "Phaser.Types",
+      "k": "namespace",
+      "id": 572,
+      "x": "The root types namespace.",
+      "c": 418,
+      "m": 0
+    },
+    {
+      "n": "Utils",
+      "l": "Phaser.Utils",
+      "k": "namespace",
+      "id": 991,
+      "x": "",
+      "c": 5,
+      "m": 2
+    }
+  ],
+  "generated": "2026-09-15",
+  "doclets": 20096,
+  "pages": 1000,
+  "symbols": 20094,
+  "source": "phaser/types/phaser.json",
+  "licence": "MIT",
+  "notice": "Phaser © Richard Davey, Phaser Studio Inc. Released under the MIT License. This reference is generated from Phaser 4.2.1's own source documentation."
+}

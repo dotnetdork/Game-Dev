@@ -1,0 +1,1 @@
+{"l":"Phaser.Types.GameObjects.Particles.EmitterOpOnEmitCallback","n":"EmitterOpOnEmitCallback","k":"typedef","mo":"Phaser.Types.GameObjects.Particles","x":"The returned value sets what the property will be at the START of the particle's life, on emit.","since":"3.0.0","m":[]}

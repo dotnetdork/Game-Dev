@@ -1,0 +1,1 @@
+{"l":"Phaser.Types.Input.EventData","n":"EventData","k":"typedef","mo":"Phaser.Types.Input","x":"A Phaser Input Event Data object. This object is passed to the registered event listeners and allows you to stop any further propagation.","since":"3.15.1","m":[]}
