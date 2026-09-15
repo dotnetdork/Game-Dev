@@ -1,1 +1,1 @@
-{"l":"Phaser.Types.Time.TimelineEvent","n":"TimelineEvent","k":"typedef","mo":"Phaser.Types.Time","x":"","since":"3.60.0","m":[]}
+{"l":"Phaser.Types.Time.TimelineEvent","n":"TimelineEvent","k":"typedef","mo":"Phaser.Types.Time","x":"","since":"3.60.0","scope":"static","src":"src/time/typedefs/TimelineEvent.js#L1","m":[]}

@@ -130,10 +130,24 @@ function slimReturns(rs) {
   return Object.keys(o).length ? o : undefined;
 }
 
+/* Where it is written, the way Phaser prints it: "src/animations/events/index.js#L7". `meta.path` is
+   absolute and is Rich Davey's own drive — D:\wamp\www\phaser\src\... — so only the part from `src`
+   onwards is kept. It is shown as TEXT and not as a link: Phaser's links to GitHub, and nothing in
+   this app leaves the app. */
+function sourceOf(d) {
+  const m = d.meta;
+  if (!m || !m.filename) return undefined;
+  const dir = String(m.path || '').replace(/\\/g, '/');
+  const cut = dir.indexOf('/src/');
+  const rel = cut >= 0 ? dir.slice(cut + 1) : (dir.split('/').pop() || '');
+  return (rel ? rel + '/' : '') + m.filename + (m.lineno ? '#L' + m.lineno : '');
+}
+
 /* One member, as a page renders it. Short keys because there are twenty thousand of them. */
 function slimMember(d) {
   const o = { n: d.name || '', k: d.kind || '' };
   if (d.scope === 'static') o.s = 1;
+  const src = sourceOf(d); if (src) o.src = src;
   const x = cleanMd(d.description); if (x) o.x = x;
   const p = slimParams(d.params); if (p) o.p = p;
   const r = slimReturns(d.returns); if (r) o.r = r;
@@ -166,6 +180,8 @@ all.forEach(function (d) {
         kind: d.kind,
         memberof: d.memberof || '',
         description: cleanMd(d.description),
+        scope: d.scope || '',
+        src: sourceOf(d) || '',
         since: d.since ? String(d.since) : '',
         extends: Array.isArray(d.augments) ? d.augments.map(String) : [],
         ctor: null,
@@ -224,6 +240,7 @@ pages.forEach(function (pg, i) {
   const out = {
     l: pg.longname, n: pg.name, k: pg.kind, mo: pg.memberof,
     x: pg.description, since: pg.since,
+    scope: pg.scope || undefined, src: pg.src || undefined,
     ext: pg.extends.length ? pg.extends : undefined,
     ctor: pg.ctor || undefined,
     m: pg.members

@@ -1,1 +1,1 @@
-{"l":"Phaser.Types.GameObjects.Text.TextPadding","n":"TextPadding","k":"typedef","mo":"Phaser.Types.GameObjects.Text","x":"A Text Padding configuration object as used by the Text Style.","since":"3.18.0","m":[]}
+{"l":"Phaser.Types.GameObjects.Text.TextPadding","n":"TextPadding","k":"typedef","mo":"Phaser.Types.GameObjects.Text","x":"A Text Padding configuration object as used by the Text Style.","since":"3.18.0","scope":"static","src":"src/gameobjects/text/typedefs/TextPadding.js#L1","m":[]}

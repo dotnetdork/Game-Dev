@@ -1,1 +1,1 @@
-{"l":"Phaser.Types.Physics","n":"Physics","k":"namespace","mo":"Phaser.Types","x":"","since":"","m":[],"kids":[["Arcade","namespace",852],["Matter","namespace",870]]}
+{"l":"Phaser.Types.Physics","n":"Physics","k":"namespace","mo":"Phaser.Types","x":"","since":"","scope":"static","src":"src/physics/index.js#L11","m":[],"kids":[["Arcade","namespace",852],["Matter","namespace",870]]}

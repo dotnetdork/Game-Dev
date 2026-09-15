@@ -1,1 +1,1 @@
-{"l":"Phaser.Types.GameObjects.JSONGameObject","n":"JSONGameObject","k":"typedef","mo":"Phaser.Types.GameObjects","x":"","since":"3.0.0","m":[]}
+{"l":"Phaser.Types.GameObjects.JSONGameObject","n":"JSONGameObject","k":"typedef","mo":"Phaser.Types.GameObjects","x":"","since":"3.0.0","scope":"static","src":"src/gameobjects/typedefs/JSONGameObject.js#L1","m":[]}

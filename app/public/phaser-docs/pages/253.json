@@ -1,1 +1,1 @@
-{"l":"Phaser.Input.Touch","n":"Touch","k":"namespace","mo":"Phaser.Input","x":"","since":"","m":[],"kids":[["TouchManager","class",254]]}
+{"l":"Phaser.Input.Touch","n":"Touch","k":"namespace","mo":"Phaser.Input","x":"","since":"","scope":"static","src":"src/input/touch/index.js#L7","m":[],"kids":[["TouchManager","class",254]]}

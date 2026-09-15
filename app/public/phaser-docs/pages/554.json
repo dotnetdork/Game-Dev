@@ -1,1 +1,1 @@
-{"l":"Phaser.Time","n":"Time","k":"namespace","mo":"Phaser","x":"","since":"","m":[],"kids":[["Clock","class",555],["Events","namespace",556],["Timeline","class",557],["TimerEvent","class",558]]}
+{"l":"Phaser.Time","n":"Time","k":"namespace","mo":"Phaser","x":"","since":"","scope":"static","src":"src/time/index.js#L7","m":[],"kids":[["Clock","class",555],["Events","namespace",556],["Timeline","class",557],["TimerEvent","class",558]]}

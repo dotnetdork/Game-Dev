@@ -1,1 +1,1 @@
-{"l":"Phaser.Types.GameObjects.Stencil.StencilConfig","n":"StencilConfig","k":"typedef","mo":"Phaser.Types.GameObjects.Stencil","x":"","since":"4.2.0","ext":["Phaser.Types.GameObjects.GameObjectConfig"],"m":[]}
+{"l":"Phaser.Types.GameObjects.Stencil.StencilConfig","n":"StencilConfig","k":"typedef","mo":"Phaser.Types.GameObjects.Stencil","x":"","since":"4.2.0","scope":"static","src":"src/gameobjects/stencil/typedefs/StencilConfig.js#L1","ext":["Phaser.Types.GameObjects.GameObjectConfig"],"m":[]}

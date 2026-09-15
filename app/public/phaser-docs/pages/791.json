@@ -1,1 +1,1 @@
-{"l":"Phaser.Types.Input.Gamepad.Pad","n":"Pad","k":"typedef","mo":"Phaser.Types.Input.Gamepad","x":"The Gamepad object, as extracted from GamepadEvent.","since":"3.10.0","m":[]}
+{"l":"Phaser.Types.Input.Gamepad.Pad","n":"Pad","k":"typedef","mo":"Phaser.Types.Input.Gamepad","x":"The Gamepad object, as extracted from GamepadEvent.","since":"3.10.0","scope":"static","src":"src/input/gamepad/typedefs/Pad.js#L1","m":[]}

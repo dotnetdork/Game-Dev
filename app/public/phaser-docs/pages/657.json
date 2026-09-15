@@ -1,1 +1,1 @@
-{"l":"Phaser.Types.GameObjects.BitmapText.BitmapTextSize","n":"BitmapTextSize","k":"typedef","mo":"Phaser.Types.GameObjects.BitmapText","x":"","since":"3.0.0","m":[]}
+{"l":"Phaser.Types.GameObjects.BitmapText.BitmapTextSize","n":"BitmapTextSize","k":"typedef","mo":"Phaser.Types.GameObjects.BitmapText","x":"","since":"3.0.0","scope":"static","src":"src/gameobjects/bitmaptext/typedefs/BitmapTextSize.js#L1","m":[]}

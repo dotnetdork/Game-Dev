@@ -1,1 +1,1 @@
-{"l":"Phaser.Types.GameObjects.NineSlice","n":"NineSlice","k":"namespace","mo":"Phaser.Types.GameObjects","x":"","since":"","m":[],"kids":[["NineSliceConfig","typedef",693]]}
+{"l":"Phaser.Types.GameObjects.NineSlice","n":"NineSlice","k":"namespace","mo":"Phaser.Types.GameObjects","x":"","since":"","scope":"static","src":"src/gameobjects/nineslice/typedefs/index.js#L7","m":[],"kids":[["NineSliceConfig","typedef",693]]}

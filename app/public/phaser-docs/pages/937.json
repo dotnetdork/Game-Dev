@@ -1,1 +1,1 @@
-{"l":"Phaser.Types.Sound.WebAudioDecodeEntry","n":"WebAudioDecodeEntry","k":"typedef","mo":"Phaser.Types.Sound","x":"An entry in the Web Audio Decoding Queue.","since":"3.60.0","m":[]}
+{"l":"Phaser.Types.Sound.WebAudioDecodeEntry","n":"WebAudioDecodeEntry","k":"typedef","mo":"Phaser.Types.Sound","x":"An entry in the Web Audio Decoding Queue.","since":"3.60.0","scope":"static","src":"src/sound/typedefs/WebAudioDecodeEntry.js#L1","m":[]}

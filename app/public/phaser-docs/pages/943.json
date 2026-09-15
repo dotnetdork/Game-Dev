@@ -1,1 +1,1 @@
-{"l":"Phaser.Types.Textures.RepeatConfig","n":"RepeatConfig","k":"typedef","mo":"Phaser.Types.Textures","x":"Configuration options for the `DynamicTexture.repeat` method.","since":"4.0.0","ext":["Phaser.Types.Textures.StampConfig"],"m":[]}
+{"l":"Phaser.Types.Textures.RepeatConfig","n":"RepeatConfig","k":"typedef","mo":"Phaser.Types.Textures","x":"Configuration options for the `DynamicTexture.repeat` method.","since":"4.0.0","scope":"static","src":"src/textures/typedefs/RepeatConfig.js#L1","ext":["Phaser.Types.Textures.StampConfig"],"m":[]}

@@ -1,1 +1,1 @@
-{"l":"Phaser.Scale.ZoomType","n":"ZoomType","k":"typedef","mo":"Phaser.Scale","x":"Phaser Scale Manager constants for zoom modes.\r\rTo find out what each mode does please see [Phaser.Scale.Zoom]{@link Phaser.Scale.Zoom}.","since":"3.16.0","m":[]}
+{"l":"Phaser.Scale.ZoomType","n":"ZoomType","k":"typedef","mo":"Phaser.Scale","x":"Phaser Scale Manager constants for zoom modes.\r\rTo find out what each mode does please see [Phaser.Scale.Zoom]{@link Phaser.Scale.Zoom}.","since":"3.16.0","scope":"static","src":"src/scale/const/ZOOM_CONST.js#L15","m":[]}

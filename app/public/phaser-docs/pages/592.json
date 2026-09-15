@@ -1,1 +1,1 @@
-{"l":"Phaser.Types.Cameras.Controls","n":"Controls","k":"namespace","mo":"Phaser.Types.Cameras","x":"","since":"","m":[],"kids":[["FixedKeyControlConfig","typedef",593],["SmoothedKeyControlConfig","typedef",594]]}
+{"l":"Phaser.Types.Cameras.Controls","n":"Controls","k":"namespace","mo":"Phaser.Types.Cameras","x":"","since":"","scope":"static","src":"src/cameras/controls/typedefs/index.js#L7","m":[],"kids":[["FixedKeyControlConfig","typedef",593],["SmoothedKeyControlConfig","typedef",594]]}

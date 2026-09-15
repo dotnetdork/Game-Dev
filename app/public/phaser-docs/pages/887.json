@@ -1,1 +1,1 @@
-{"l":"Phaser.Types.Plugins","n":"Plugins","k":"namespace","mo":"Phaser.Types","x":"","since":"","m":[],"kids":[["CorePluginContainer","typedef",888],["CustomPluginContainer","typedef",889],["GlobalPlugin","typedef",890]]}
+{"l":"Phaser.Types.Plugins","n":"Plugins","k":"namespace","mo":"Phaser.Types","x":"","since":"","scope":"static","src":"src/plugins/typedefs/index.js#L7","m":[],"kids":[["CorePluginContainer","typedef",888],["CustomPluginContainer","typedef",889],["GlobalPlugin","typedef",890]]}

@@ -1,1 +1,1 @@
-{"l":"Phaser.Types.Plugins.CorePluginContainer","n":"CorePluginContainer","k":"typedef","mo":"Phaser.Types.Plugins","x":"","since":"3.8.0","m":[]}
+{"l":"Phaser.Types.Plugins.CorePluginContainer","n":"CorePluginContainer","k":"typedef","mo":"Phaser.Types.Plugins","x":"","since":"3.8.0","scope":"static","src":"src/plugins/typedefs/CorePluginContainer.js#L1","m":[]}

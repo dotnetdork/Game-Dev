@@ -1,1 +1,1 @@
-{"l":"Phaser.Types.GameObjects.Graphics.RoundedRectRadius","n":"RoundedRectRadius","k":"typedef","mo":"Phaser.Types.GameObjects.Graphics","x":"","since":"3.11.0","m":[]}
+{"l":"Phaser.Types.GameObjects.Graphics.RoundedRectRadius","n":"RoundedRectRadius","k":"typedef","mo":"Phaser.Types.GameObjects.Graphics","x":"","since":"3.11.0","scope":"static","src":"src/gameobjects/graphics/typedefs/RoundedRectRadius.js#L1","m":[]}

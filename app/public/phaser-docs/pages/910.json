@@ -1,1 +1,1 @@
-{"l":"Phaser.Types.Renderer.WebGL.WebGLBlendParameters","n":"WebGLBlendParameters","k":"typedef","mo":"Phaser.Types.Renderer.WebGL","x":"","since":"4.0.0","m":[]}
+{"l":"Phaser.Types.Renderer.WebGL.WebGLBlendParameters","n":"WebGLBlendParameters","k":"typedef","mo":"Phaser.Types.Renderer.WebGL","x":"","since":"4.0.0","scope":"static","src":"src/renderer/webgl/typedefs/WebGLBlendParameters.js#L7","m":[]}

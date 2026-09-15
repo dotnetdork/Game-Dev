@@ -1,1 +1,1 @@
-{"l":"Phaser.Types.Cameras.Controls.SmoothedKeyControlConfig","n":"SmoothedKeyControlConfig","k":"typedef","mo":"Phaser.Types.Cameras.Controls","x":"","since":"3.0.0","m":[]}
+{"l":"Phaser.Types.Cameras.Controls.SmoothedKeyControlConfig","n":"SmoothedKeyControlConfig","k":"typedef","mo":"Phaser.Types.Cameras.Controls","x":"","since":"3.0.0","scope":"static","src":"src/cameras/controls/typedefs/SmoothedKeyControlConfig.js#L1","m":[]}

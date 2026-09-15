@@ -1,1 +1,1 @@
-{"l":"Phaser.Types.GameObjects.BitmapText.JSONBitmapText","n":"JSONBitmapText","k":"typedef","mo":"Phaser.Types.GameObjects.BitmapText","x":"","since":"3.0.0","ext":["Phaser.Types.GameObjects.JSONGameObject"],"m":[]}
+{"l":"Phaser.Types.GameObjects.BitmapText.JSONBitmapText","n":"JSONBitmapText","k":"typedef","mo":"Phaser.Types.GameObjects.BitmapText","x":"","since":"3.0.0","scope":"static","src":"src/gameobjects/bitmaptext/typedefs/JSONBitmapText.js#L1","ext":["Phaser.Types.GameObjects.JSONGameObject"],"m":[]}

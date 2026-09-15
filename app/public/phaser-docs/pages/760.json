@@ -1,1 +1,1 @@
-{"l":"Phaser.Types.GameObjects.Sprite","n":"Sprite","k":"namespace","mo":"Phaser.Types.GameObjects","x":"","since":"","m":[],"kids":[["SpriteConfig","typedef",761]]}
+{"l":"Phaser.Types.GameObjects.Sprite","n":"Sprite","k":"namespace","mo":"Phaser.Types.GameObjects","x":"","since":"","scope":"static","src":"src/gameobjects/sprite/typedefs/index.js#L7","m":[],"kids":[["SpriteConfig","typedef",761]]}

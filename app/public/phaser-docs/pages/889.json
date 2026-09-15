@@ -1,1 +1,1 @@
-{"l":"Phaser.Types.Plugins.CustomPluginContainer","n":"CustomPluginContainer","k":"typedef","mo":"Phaser.Types.Plugins","x":"","since":"3.8.0","m":[]}
+{"l":"Phaser.Types.Plugins.CustomPluginContainer","n":"CustomPluginContainer","k":"typedef","mo":"Phaser.Types.Plugins","x":"","since":"3.8.0","scope":"static","src":"src/plugins/typedefs/CustomPluginContainer.js#L1","m":[]}

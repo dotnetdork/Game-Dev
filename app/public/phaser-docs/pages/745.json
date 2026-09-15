@@ -1,1 +1,1 @@
-{"l":"Phaser.Types.GameObjects.Particles.ParticleEmitterOps","n":"ParticleEmitterOps","k":"typedef","mo":"Phaser.Types.GameObjects.Particles","x":"","since":"3.60.0","m":[]}
+{"l":"Phaser.Types.GameObjects.Particles.ParticleEmitterOps","n":"ParticleEmitterOps","k":"typedef","mo":"Phaser.Types.GameObjects.Particles","x":"","since":"3.60.0","scope":"static","src":"src/gameobjects/particles/typedefs/ParticleEmitterOps.js#L1","m":[]}

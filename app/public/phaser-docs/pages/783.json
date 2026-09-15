@@ -1,1 +1,1 @@
-{"l":"Phaser.Types.GameObjects.Video","n":"Video","k":"namespace","mo":"Phaser.Types.GameObjects","x":"","since":"","m":[],"kids":[["VideoConfig","typedef",784]]}
+{"l":"Phaser.Types.GameObjects.Video","n":"Video","k":"namespace","mo":"Phaser.Types.GameObjects","x":"","since":"","scope":"static","src":"src/gameobjects/video/typedefs/index.js#L7","m":[],"kids":[["VideoConfig","typedef",784]]}

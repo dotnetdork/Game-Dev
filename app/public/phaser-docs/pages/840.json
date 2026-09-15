@@ -1,1 +1,1 @@
-{"l":"Phaser.Types.Loader.FileTypes.VideoFileURLConfig","n":"VideoFileURLConfig","k":"typedef","mo":"Phaser.Types.Loader.FileTypes","x":"","since":"","m":[]}
+{"l":"Phaser.Types.Loader.FileTypes.VideoFileURLConfig","n":"VideoFileURLConfig","k":"typedef","mo":"Phaser.Types.Loader.FileTypes","x":"","since":"","scope":"static","src":"src/loader/filetypes/typedefs/VideoFileURLConfig.js#L1","m":[]}

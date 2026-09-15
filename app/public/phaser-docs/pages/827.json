@@ -1,1 +1,1 @@
-{"l":"Phaser.Types.Loader.FileTypes.PluginFileConfig","n":"PluginFileConfig","k":"typedef","mo":"Phaser.Types.Loader.FileTypes","x":"","since":"","m":[]}
+{"l":"Phaser.Types.Loader.FileTypes.PluginFileConfig","n":"PluginFileConfig","k":"typedef","mo":"Phaser.Types.Loader.FileTypes","x":"","since":"","scope":"static","src":"src/loader/filetypes/typedefs/PluginFileConfig.js#L1","m":[]}

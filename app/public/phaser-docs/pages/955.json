@@ -1,1 +1,1 @@
-{"l":"Phaser.Types.Tilemaps.LayerDataConfig","n":"LayerDataConfig","k":"typedef","mo":"Phaser.Types.Tilemaps","x":"","since":"3.0.0","m":[]}
+{"l":"Phaser.Types.Tilemaps.LayerDataConfig","n":"LayerDataConfig","k":"typedef","mo":"Phaser.Types.Tilemaps","x":"","since":"3.0.0","scope":"static","src":"src/tilemaps/typedefs/LayerDataConfig.js#L1","m":[]}

@@ -1517,8 +1517,11 @@ html[data-dev] .sb-dev{display:grid !important;}
 .dc-shell{display:grid;grid-template-columns:264px minmax(0,1fr) 208px;gap:26px;
   align-items:start;}
 .dc-shell:has(.dc-toc:empty),.dc-shell:not(:has(.dc-toc)){grid-template-columns:264px minmax(0,1fr);}
+/* `scrollbar-gutter:stable` so opening a section does not shove the rail's text sideways by the
+   width of a scrollbar that was not there a moment ago. The space is always reserved; the bar
+   appears into it. */
 .dc-nav,.dc-toc{position:sticky;top:0;max-height:calc(100vh - 150px);overflow-y:auto;
-  padding-bottom:20px;}
+  scrollbar-gutter:stable;padding-bottom:20px;}
 .dc-main{min-width:0;}
 .dn-docs{display:flex;flex-direction:column;gap:3px;padding-bottom:12px;margin-bottom:12px;
   border-bottom:1px solid var(--line);}
@@ -1542,7 +1545,8 @@ html[data-dev] .sb-dev{display:grid !important;}
 /* A section of the nav — Classes, Namespaces, Typedefs — and the flat list it opens onto. Grouped
    by kind because that is how Phaser's own navigation is arranged, and because what a reader is
    hunting is a NAME: a namespace tree would make them guess which branch it is filed under first. */
-.dn-caret{font-size:15px;color:var(--dim);transition:transform .12s;flex:none;margin-left:-4px;}
+/* On the right, where Phaser's is, and where the counts used to be. */
+.dn-caret{font-size:15px;color:var(--dim);transition:transform .12s;flex:none;margin-left:auto;}
 .dn-item.open .dn-caret{transform:rotate(90deg);}
 .dn-item{font-weight:650;}
 .dn-home{font-weight:700;color:var(--ink);}
@@ -1598,13 +1602,23 @@ html[data-dev] .sb-dev{display:grid !important;}
   .dc-nav{position:static;max-height:none;}
 }
 
-/* Phaser's own prose, delivered as the markdown it is written in rather than as one flat run of
-   escaped text with backticks visible in the middle of it. */
-.dc-prose{color:var(--muted);font-size:14px;line-height:1.65;}
-.dc-prose p{margin:0 0 9px;}
+/* ---------- typography, measured off docs.phaser.io rather than guessed ----------
+   Their computed values: h1 48/60, h2 32/40, h3 24/30, h4 16/20, body 16/26.4, code 15.2, all at
+   weight 700 for headings. Ours was running at 13–14px throughout, which is why the two never
+   looked alike however closely the structure matched — the content was right and the scale was a
+   third too small. */
+.dc-main{font-size:16px;line-height:1.65;}
+.dc-main .phead h2{font-size:48px;line-height:1.25;font-weight:700;margin:0 0 25px;}
+.dc-h2{font-size:32px;line-height:1.25;font-weight:700;margin:40px 0 20px;padding-bottom:9px;
+  border-bottom:1px solid var(--line);}
+.dc-main .dc-h{font-size:24px;line-height:1.25;font-weight:700;margin:30px 0 20px;
+  padding-bottom:7px;border-bottom:1px solid var(--line);}
+.dc-sig{font-size:20px;line-height:1.3;}
+.dc-prose{color:var(--muted);font-size:16px;line-height:1.65;}
+.dc-prose p{margin:0 0 20px;}
 .dc-prose p:last-child{margin-bottom:0;}
 .dc-prose ul,.dc-prose ol{margin:0 0 9px;padding-left:20px;display:flex;flex-direction:column;gap:3px;}
-.dc-prose code{font-family:Consolas,monospace;font-size:12.5px;background:#0d2440;
+.dc-prose code{font-family:Consolas,monospace;font-size:15.2px;background:#0d2440;
   border:1px solid var(--line);border-radius:4px;padding:1px 5px;color:#a8c6e6;}
 .dc-prose a{color:var(--azure);}
 .dc-prose strong{color:var(--ink);}
@@ -1694,6 +1708,37 @@ html[data-dev] .sb-dev{display:grid !important;}
 .dc-type{color:var(--teal);font-family:Consolas,monospace;font-size:12.5px;}
 a.dc-type{cursor:pointer;text-decoration:none;}
 a.dc-type:hover{text-decoration:underline;text-underline-offset:3px;}
+/* Parameters, as the four-column table Phaser prints: name, type, optional, description. */
+/* Their table, to the pixel: collapsed borders, 12px padding, 16px text, a 1px rule on every cell.
+   Ours had the borders declared and they were being lost to a `table{border:0}` further up this
+   stylesheet — which is why it rendered as four columns of floating text. Declared here with the
+   specificity to win. */
+.dc-tablewrap{overflow-x:auto;margin:0 0 20px;}
+table.dc-table{border-collapse:collapse;width:auto;min-width:min(100%,520px);font-size:16px;
+  border:1px solid #606770;}
+table.dc-table th,table.dc-table td{border:1px solid #606770;padding:12px;text-align:left;
+  vertical-align:top;line-height:1.5;}
+table.dc-table th{font-weight:700;background:none;color:var(--ink);white-space:nowrap;}
+table.dc-table td{color:var(--muted);}
+table.dc-table td code{font-family:Consolas,monospace;font-size:15.2px;color:var(--ink);
+  background:none;border:0;padding:0;font-weight:400;}
+table.dc-table td:nth-child(3){white-space:nowrap;}
+table.dc-table .dc-type{font-size:15.2px;}
+/* "Description:", "Parameters:", "From Phaser.GameObjects.Components.Alpha:" — Phaser labels each
+   block rather than letting prose and table run together, and on a page of three hundred members
+   those labels are most of what makes it skimmable. */
+.dc-lab{color:var(--ink);font-size:16px;font-weight:700;margin:0 0 12px;}
+.dc-from{margin-top:18px;color:var(--muted);}
+.dc-from a{color:var(--azure);cursor:pointer;text-decoration:none;}
+.dc-from a:hover{text-decoration:underline;text-underline-offset:3px;}
+.dc-h2{margin:30px 0 12px;font-size:20px;font-weight:800;padding-bottom:9px;
+  border-bottom:1px solid var(--line);}
+.dc-ver{display:inline-block;margin-bottom:12px;padding:2px 9px;border-radius:5px;
+  background:#0f2440;border:1px solid var(--line);color:var(--muted);font-size:11.5px;
+  font-weight:650;}
+.dc-src{margin:12px 0 20px;padding:8px 0 8px 14px;border-left:3px solid var(--line);
+  color:var(--muted);font-size:16px;}
+.dc-src a{color:var(--azure);font-family:Consolas,monospace;font-size:15.2px;}
 .dc-opt,.dc-def,.dc-flag{font-size:11px;color:var(--dim);margin-left:6px;}
 .dc-more{background:none;border:0;padding:0 3px;color:var(--azure);cursor:pointer;
   font-family:var(--font);font-size:12px;text-decoration:underline;text-underline-offset:3px;}

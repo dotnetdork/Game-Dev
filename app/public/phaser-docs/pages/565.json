@@ -1,1 +1,1 @@
-{"l":"Phaser.Tweens.StateType","n":"StateType","k":"typedef","mo":"Phaser.Tweens","x":"Phaser Tween state constants.","since":"3.60.0","m":[]}
+{"l":"Phaser.Tweens.StateType","n":"StateType","k":"typedef","mo":"Phaser.Tweens","x":"Phaser Tween state constants.","since":"3.60.0","scope":"static","src":"src/tweens/tween/const.js#L15","m":[]}

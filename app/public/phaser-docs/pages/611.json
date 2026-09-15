@@ -1,1 +1,1 @@
-{"l":"Phaser.Types.Core.DOMContainerConfig","n":"DOMContainerConfig","k":"typedef","mo":"Phaser.Types.Core","x":"","since":"3.12.0","m":[]}
+{"l":"Phaser.Types.Core.DOMContainerConfig","n":"DOMContainerConfig","k":"typedef","mo":"Phaser.Types.Core","x":"","since":"3.12.0","scope":"static","src":"src/core/typedefs/DOMContainerConfig.js#L1","m":[]}

@@ -1,1 +1,1 @@
-{"l":"Phaser.Types.GameObjects.StencilReference","n":"StencilReference","k":"namespace","mo":"Phaser.Types.GameObjects","x":"","since":"","m":[],"kids":[["StencilReferenceConfig","typedef",772]]}
+{"l":"Phaser.Types.GameObjects.StencilReference","n":"StencilReference","k":"namespace","mo":"Phaser.Types.GameObjects","x":"","since":"","scope":"static","src":"src/gameobjects/stencilreference/typedefs/index.js#L7","m":[],"kids":[["StencilReferenceConfig","typedef",772]]}

@@ -1,1 +1,1 @@
-{"l":"Phaser.Types.GameObjects.Container","n":"Container","k":"namespace","mo":"Phaser.Types.GameObjects","x":"","since":"","m":[],"kids":[["ContainerConfig","typedef",667]]}
+{"l":"Phaser.Types.GameObjects.Container","n":"Container","k":"namespace","mo":"Phaser.Types.GameObjects","x":"","since":"","scope":"static","src":"src/gameobjects/container/typedefs/index.js#L7","m":[],"kids":[["ContainerConfig","typedef",667]]}

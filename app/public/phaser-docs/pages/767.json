@@ -1,1 +1,1 @@
-{"l":"Phaser.Types.GameObjects.Stencil","n":"Stencil","k":"namespace","mo":"Phaser.Types.GameObjects","x":"","since":"","m":[],"kids":[["StencilConfig","typedef",768],["StencilLayerMode","typedef",769],["StencilOptions","typedef",770]]}
+{"l":"Phaser.Types.GameObjects.Stencil","n":"Stencil","k":"namespace","mo":"Phaser.Types.GameObjects","x":"","since":"","scope":"static","src":"src/gameobjects/stencil/typedefs/index.js#L7","m":[],"kids":[["StencilConfig","typedef",768],["StencilLayerMode","typedef",769],["StencilOptions","typedef",770]]}

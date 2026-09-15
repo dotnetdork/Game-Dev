@@ -1,1 +1,1 @@
-{"l":"Phaser.Types.Scenes.CreateSceneFromObjectConfig","n":"CreateSceneFromObjectConfig","k":"typedef","mo":"Phaser.Types.Scenes","x":"","since":"3.17.0","m":[]}
+{"l":"Phaser.Types.Scenes.CreateSceneFromObjectConfig","n":"CreateSceneFromObjectConfig","k":"typedef","mo":"Phaser.Types.Scenes","x":"","since":"3.17.0","scope":"static","src":"src/scene/typedefs/CreateSceneFromObjectConfig.js#L1","m":[]}

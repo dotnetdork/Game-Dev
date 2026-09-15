@@ -1,1 +1,1 @@
-{"l":"Phaser.Animations","n":"Animations","k":"namespace","mo":"Phaser","x":"","since":"","m":[],"kids":[["Animation","class",18],["AnimationFrame","class",19],["AnimationManager","class",20],["AnimationState","class",21],["Events","namespace",22]]}
+{"l":"Phaser.Animations","n":"Animations","k":"namespace","mo":"Phaser","x":"","since":"","scope":"static","src":"src/animations/index.js#L7","m":[],"kids":[["Animation","class",18],["AnimationFrame","class",19],["AnimationManager","class",20],["AnimationState","class",21],["Events","namespace",22]]}

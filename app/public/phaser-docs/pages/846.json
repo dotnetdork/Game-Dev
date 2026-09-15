@@ -1,1 +1,1 @@
-{"l":"Phaser.Types.Math.RectangleLike","n":"RectangleLike","k":"typedef","mo":"Phaser.Types.Math","x":"","since":"3.80.0","m":[]}
+{"l":"Phaser.Types.Math.RectangleLike","n":"RectangleLike","k":"typedef","mo":"Phaser.Types.Math","x":"","since":"3.80.0","scope":"static","src":"src/math/typedefs/RectangleLike.js#L1","m":[]}

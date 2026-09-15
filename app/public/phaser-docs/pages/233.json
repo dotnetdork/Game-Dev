@@ -1,1 +1,1 @@
-{"l":"Phaser.Input.Gamepad.Configs","n":"Configs","k":"namespace","mo":"Phaser.Input.Gamepad","x":"","since":"","m":[],"kids":[["DUALSHOCK_4","namespace",234],["SNES_USB","namespace",235],["XBOX_360","namespace",236]]}
+{"l":"Phaser.Input.Gamepad.Configs","n":"Configs","k":"namespace","mo":"Phaser.Input.Gamepad","x":"","since":"","scope":"static","src":"src/input/gamepad/configs/index.js#L7","m":[],"kids":[["DUALSHOCK_4","namespace",234],["SNES_USB","namespace",235],["XBOX_360","namespace",236]]}

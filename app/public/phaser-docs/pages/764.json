@@ -1,1 +1,1 @@
-{"l":"Phaser.Types.GameObjects.SpriteGPULayer.MemberAnimation","n":"MemberAnimation","k":"typedef","mo":"Phaser.Types.GameObjects.SpriteGPULayer","x":"","since":"4.0.0","m":[]}
+{"l":"Phaser.Types.GameObjects.SpriteGPULayer.MemberAnimation","n":"MemberAnimation","k":"typedef","mo":"Phaser.Types.GameObjects.SpriteGPULayer","x":"","since":"4.0.0","scope":"static","src":"src/gameobjects/spritegpulayer/typedefs/MemberAnimation.js#L1","m":[]}

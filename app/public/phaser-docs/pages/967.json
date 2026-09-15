@@ -1,1 +1,1 @@
-{"l":"Phaser.Types.Tweens.GetActiveCallback","n":"GetActiveCallback","k":"typedef","mo":"Phaser.Types.Tweens","x":"","since":"3.19.0","m":[]}
+{"l":"Phaser.Types.Tweens.GetActiveCallback","n":"GetActiveCallback","k":"typedef","mo":"Phaser.Types.Tweens","x":"","since":"3.19.0","scope":"static","src":"src/tweens/typedefs/GetActiveCallback.js#L1","m":[]}

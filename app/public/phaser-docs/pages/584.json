@@ -1,1 +1,1 @@
-{"l":"Phaser.Types.Animations.AnimationFrame","n":"AnimationFrame","k":"typedef","mo":"Phaser.Types.Animations","x":"","since":"3.0.0","m":[]}
+{"l":"Phaser.Types.Animations.AnimationFrame","n":"AnimationFrame","k":"typedef","mo":"Phaser.Types.Animations","x":"","since":"3.0.0","scope":"static","src":"src/animations/typedefs/AnimationFrame.js#L1","m":[]}

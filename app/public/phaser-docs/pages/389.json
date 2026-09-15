@@ -1,1 +1,1 @@
-{"l":"Phaser.Plugins","n":"Plugins","k":"namespace","mo":"Phaser","x":"","since":"","m":[],"kids":[["BasePlugin","class",390],["DefaultPlugins","namespace",391],["PluginCache","namespace",392],["PluginManager","class",393],["ScenePlugin","class",394]]}
+{"l":"Phaser.Plugins","n":"Plugins","k":"namespace","mo":"Phaser","x":"","since":"","scope":"static","src":"src/plugins/index.js#L7","m":[],"kids":[["BasePlugin","class",390],["DefaultPlugins","namespace",391],["PluginCache","namespace",392],["PluginManager","class",393],["ScenePlugin","class",394]]}

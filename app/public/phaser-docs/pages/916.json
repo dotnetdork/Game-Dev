@@ -1,1 +1,1 @@
-{"l":"Phaser.Types.Renderer.WebGL.Wrappers","n":"Wrappers","k":"namespace","mo":"Phaser.Types.Renderer.WebGL","x":"","since":"","m":[],"kids":[["ShaderSetter","typedef",917],["ShaderSetterConstants","typedef",918]]}
+{"l":"Phaser.Types.Renderer.WebGL.Wrappers","n":"Wrappers","k":"namespace","mo":"Phaser.Types.Renderer.WebGL","x":"","since":"","scope":"static","src":"src/renderer/webgl/wrappers/typedefs/index.js#L7","m":[],"kids":[["ShaderSetter","typedef",917],["ShaderSetterConstants","typedef",918]]}

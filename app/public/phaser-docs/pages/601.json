@@ -1,1 +1,1 @@
-{"l":"Phaser.Types.Cameras.Scene2D.CameraRotateCallback","n":"CameraRotateCallback","k":"typedef","mo":"Phaser.Types.Cameras.Scene2D","x":"","since":"3.23.0","m":[]}
+{"l":"Phaser.Types.Cameras.Scene2D.CameraRotateCallback","n":"CameraRotateCallback","k":"typedef","mo":"Phaser.Types.Cameras.Scene2D","x":"","since":"3.23.0","scope":"static","src":"src/cameras/2d/typedefs/CameraRotateCallback.js#L1","m":[]}

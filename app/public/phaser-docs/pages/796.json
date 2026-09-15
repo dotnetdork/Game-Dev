@@ -1,1 +1,1 @@
-{"l":"Phaser.Types.Input.Keyboard","n":"Keyboard","k":"namespace","mo":"Phaser.Types.Input","x":"","since":"","m":[],"kids":[["CursorKeys","typedef",797],["KeyComboConfig","typedef",798],["KeyboardKeydownCallback","typedef",799]]}
+{"l":"Phaser.Types.Input.Keyboard","n":"Keyboard","k":"namespace","mo":"Phaser.Types.Input","x":"","since":"","scope":"static","src":"src/input/keyboard/typedefs/index.js#L7","m":[],"kids":[["CursorKeys","typedef",797],["KeyComboConfig","typedef",798],["KeyboardKeydownCallback","typedef",799]]}

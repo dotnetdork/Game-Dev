@@ -1,1 +1,1 @@
-{"l":"Phaser.Cameras.Controls","n":"Controls","k":"namespace","mo":"Phaser.Cameras","x":"","since":"","m":[],"kids":[["FixedKeyControl","class",30],["SmoothedKeyControl","class",31]]}
+{"l":"Phaser.Cameras.Controls","n":"Controls","k":"namespace","mo":"Phaser.Cameras","x":"","since":"","scope":"static","src":"src/cameras/controls/index.js#L7","m":[],"kids":[["FixedKeyControl","class",30],["SmoothedKeyControl","class",31]]}

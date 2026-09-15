@@ -1,1 +1,1 @@
-{"l":"Phaser.Types.GameObjects.Text.TextMetrics","n":"TextMetrics","k":"typedef","mo":"Phaser.Types.GameObjects.Text","x":"Font metrics for a Text Style object.","since":"3.0.0","m":[]}
+{"l":"Phaser.Types.GameObjects.Text.TextMetrics","n":"TextMetrics","k":"typedef","mo":"Phaser.Types.GameObjects.Text","x":"Font metrics for a Text Style object.","since":"3.0.0","scope":"static","src":"src/gameobjects/text/typedefs/TextMetrics.js#L1","m":[]}

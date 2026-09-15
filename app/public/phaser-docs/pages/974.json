@@ -1,1 +1,1 @@
-{"l":"Phaser.Types.Tweens.TweenCallbacks","n":"TweenCallbacks","k":"typedef","mo":"Phaser.Types.Tweens","x":"","since":"3.60.0","m":[]}
+{"l":"Phaser.Types.Tweens.TweenCallbacks","n":"TweenCallbacks","k":"typedef","mo":"Phaser.Types.Tweens","x":"","since":"3.60.0","scope":"static","src":"src/tweens/typedefs/TweenCallbacks.js#L1","m":[]}

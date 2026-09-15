@@ -1,1 +1,1 @@
-{"l":"Phaser.Types.Loader.FileConfig","n":"FileConfig","k":"typedef","mo":"Phaser.Types.Loader","x":"","since":"3.0.0","m":[]}
+{"l":"Phaser.Types.Loader.FileConfig","n":"FileConfig","k":"typedef","mo":"Phaser.Types.Loader","x":"","since":"3.0.0","scope":"static","src":"src/loader/typedefs/FileConfig.js#L1","m":[]}

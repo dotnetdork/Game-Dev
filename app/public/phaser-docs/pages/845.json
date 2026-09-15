@@ -1,1 +1,1 @@
-{"l":"Phaser.Types.Math.HashSimplexConfig","n":"HashSimplexConfig","k":"typedef","mo":"Phaser.Types.Math","x":"","since":"4.0.0","m":[]}
+{"l":"Phaser.Types.Math.HashSimplexConfig","n":"HashSimplexConfig","k":"typedef","mo":"Phaser.Types.Math","x":"","since":"4.0.0","scope":"static","src":"src/math/typedefs/HashSimplexConfig.js#L1","m":[]}

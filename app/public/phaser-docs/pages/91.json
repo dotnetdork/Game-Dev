@@ -1,1 +1,1 @@
-{"l":"Phaser.Events","n":"Events","k":"namespace","mo":"Phaser","x":"","since":"","m":[],"kids":[["EventEmitter","class",92]]}
+{"l":"Phaser.Events","n":"Events","k":"namespace","mo":"Phaser","x":"","since":"","scope":"static","src":"src/events/index.js#L7","m":[],"kids":[["EventEmitter","class",92]]}

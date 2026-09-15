@@ -1,1 +1,1 @@
-{"l":"Phaser.Types.Math.Vector3Like","n":"Vector3Like","k":"typedef","mo":"Phaser.Types.Math","x":"","since":"3.50.0","m":[]}
+{"l":"Phaser.Types.Math.Vector3Like","n":"Vector3Like","k":"typedef","mo":"Phaser.Types.Math","x":"","since":"3.50.0","scope":"static","src":"src/math/typedefs/Vector3Like.js#L1","m":[]}

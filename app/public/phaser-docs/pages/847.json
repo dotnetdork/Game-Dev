@@ -1,1 +1,1 @@
-{"l":"Phaser.Types.Math.SinCosTable","n":"SinCosTable","k":"typedef","mo":"Phaser.Types.Math","x":"","since":"3.0.0","m":[]}
+{"l":"Phaser.Types.Math.SinCosTable","n":"SinCosTable","k":"typedef","mo":"Phaser.Types.Math","x":"","since":"3.0.0","scope":"static","src":"src/math/typedefs/SinCosTable.js#L1","m":[]}

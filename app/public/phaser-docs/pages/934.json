@@ -1,1 +1,1 @@
-{"l":"Phaser.Types.Sound.SoundConfig","n":"SoundConfig","k":"typedef","mo":"Phaser.Types.Sound","x":"Config object containing various sound settings.","since":"3.0.0","m":[]}
+{"l":"Phaser.Types.Sound.SoundConfig","n":"SoundConfig","k":"typedef","mo":"Phaser.Types.Sound","x":"Config object containing various sound settings.","since":"3.0.0","scope":"static","src":"src/sound/typedefs/SoundConfig.js#L1","m":[]}

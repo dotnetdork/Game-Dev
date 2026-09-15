@@ -1,1 +1,1 @@
-{"l":"Phaser.Types.GameObjects.Container.ContainerConfig","n":"ContainerConfig","k":"typedef","mo":"Phaser.Types.GameObjects.Container","x":"","since":"3.50.0","ext":["Phaser.Types.GameObjects.GameObjectConfig"],"m":[]}
+{"l":"Phaser.Types.GameObjects.Container.ContainerConfig","n":"ContainerConfig","k":"typedef","mo":"Phaser.Types.GameObjects.Container","x":"","since":"3.50.0","scope":"static","src":"src/gameobjects/container/typedefs/ContainerConfig.js#L1","ext":["Phaser.Types.GameObjects.GameObjectConfig"],"m":[]}

@@ -1,1 +1,1 @@
-{"l":"Phaser.Types.Plugins.GlobalPlugin","n":"GlobalPlugin","k":"typedef","mo":"Phaser.Types.Plugins","x":"","since":"3.0.0","m":[]}
+{"l":"Phaser.Types.Plugins.GlobalPlugin","n":"GlobalPlugin","k":"typedef","mo":"Phaser.Types.Plugins","x":"","since":"3.0.0","scope":"static","src":"src/plugins/typedefs/GlobalPlugin.js#L1","m":[]}

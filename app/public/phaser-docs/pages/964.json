@@ -1,1 +1,1 @@
-{"l":"Phaser.Types.Time.TimerEventConfig","n":"TimerEventConfig","k":"typedef","mo":"Phaser.Types.Time","x":"","since":"3.0.0","m":[]}
+{"l":"Phaser.Types.Time.TimerEventConfig","n":"TimerEventConfig","k":"typedef","mo":"Phaser.Types.Time","x":"","since":"3.0.0","scope":"static","src":"src/time/typedefs/TimerEventConfig.js#L1","m":[]}

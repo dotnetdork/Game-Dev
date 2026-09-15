@@ -1,1 +1,1 @@
-{"l":"Phaser.Types.GameObjects.CustomContext.CustomContextConfig","n":"CustomContextConfig","k":"typedef","mo":"Phaser.Types.GameObjects.CustomContext","x":"","since":"4.2.0","ext":["Phaser.Types.GameObjects.Container.ContainerConfig"],"m":[]}
+{"l":"Phaser.Types.GameObjects.CustomContext.CustomContextConfig","n":"CustomContextConfig","k":"typedef","mo":"Phaser.Types.GameObjects.CustomContext","x":"","since":"4.2.0","scope":"static","src":"src/gameobjects/customcontext/typedefs/CustomContextConfig.js#L1","ext":["Phaser.Types.GameObjects.Container.ContainerConfig"],"m":[]}

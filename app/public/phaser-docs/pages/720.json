@@ -1,1 +1,1 @@
-{"l":"Phaser.Types.GameObjects.Particles.EmitterOpCustomEmitConfig","n":"EmitterOpCustomEmitConfig","k":"typedef","mo":"Phaser.Types.GameObjects.Particles","x":"","since":"3.0.0","m":[]}
+{"l":"Phaser.Types.GameObjects.Particles.EmitterOpCustomEmitConfig","n":"EmitterOpCustomEmitConfig","k":"typedef","mo":"Phaser.Types.GameObjects.Particles","x":"","since":"3.0.0","scope":"static","src":"src/gameobjects/particles/typedefs/EmitterOpCustomEmitConfig.js#L1","m":[]}

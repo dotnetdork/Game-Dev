@@ -1,1 +1,1 @@
-{"l":"Phaser.Types.GameObjects.Rope","n":"Rope","k":"namespace","mo":"Phaser.Types.GameObjects","x":"","since":"","m":[],"kids":[["RopeConfig","typedef",756]]}
+{"l":"Phaser.Types.GameObjects.Rope","n":"Rope","k":"namespace","mo":"Phaser.Types.GameObjects","x":"","since":"","scope":"static","src":"src/gameobjects/rope/typedefs/index.js#L7","m":[],"kids":[["RopeConfig","typedef",756]]}

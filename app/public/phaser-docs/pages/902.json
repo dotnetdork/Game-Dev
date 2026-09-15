@@ -1,1 +1,1 @@
-{"l":"Phaser.Types.Renderer.WebGL.RenderNodes.DrawingContextOptions","n":"DrawingContextOptions","k":"typedef","mo":"Phaser.Types.Renderer.WebGL.RenderNodes","x":"Configuration settings for a DrawingContext.","since":"4.0.0","m":[]}
+{"l":"Phaser.Types.Renderer.WebGL.RenderNodes.DrawingContextOptions","n":"DrawingContextOptions","k":"typedef","mo":"Phaser.Types.Renderer.WebGL.RenderNodes","x":"Configuration settings for a DrawingContext.","since":"4.0.0","scope":"static","src":"src/renderer/webgl/typedefs/DrawingContextOptions.js#L7","m":[]}

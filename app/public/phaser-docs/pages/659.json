@@ -1,1 +1,1 @@
-{"l":"Phaser.Types.GameObjects.BitmapText.DisplayCallback","n":"DisplayCallback","k":"typedef","mo":"Phaser.Types.GameObjects.BitmapText","x":"","since":"","m":[]}
+{"l":"Phaser.Types.GameObjects.BitmapText.DisplayCallback","n":"DisplayCallback","k":"typedef","mo":"Phaser.Types.GameObjects.BitmapText","x":"","since":"","scope":"static","src":"src/gameobjects/bitmaptext/typedefs/DisplayCallbackConfig.js#L17","m":[]}

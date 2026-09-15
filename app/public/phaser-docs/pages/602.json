@@ -1,1 +1,1 @@
-{"l":"Phaser.Types.Cameras.Scene2D.CameraShakeCallback","n":"CameraShakeCallback","k":"typedef","mo":"Phaser.Types.Cameras.Scene2D","x":"","since":"3.5.0","m":[]}
+{"l":"Phaser.Types.Cameras.Scene2D.CameraShakeCallback","n":"CameraShakeCallback","k":"typedef","mo":"Phaser.Types.Cameras.Scene2D","x":"","since":"3.5.0","scope":"static","src":"src/cameras/2d/typedefs/CameraShakeCallback.js#L1","m":[]}

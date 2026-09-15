@@ -1,1 +1,1 @@
-{"l":"Phaser.Types.GameObjects.NoiseSimplex2D","n":"NoiseSimplex2D","k":"namespace","mo":"Phaser.Types.GameObjects","x":"","since":"","m":[],"kids":[["NoiseSimplex2DConfig","typedef",707],["NoiseSimplex2DQuadConfig","typedef",708]]}
+{"l":"Phaser.Types.GameObjects.NoiseSimplex2D","n":"NoiseSimplex2D","k":"namespace","mo":"Phaser.Types.GameObjects","x":"","since":"","scope":"static","src":"src/gameobjects/noise/noisesimplex2d/typedefs/index.js#L7","m":[],"kids":[["NoiseSimplex2DConfig","typedef",707],["NoiseSimplex2DQuadConfig","typedef",708]]}

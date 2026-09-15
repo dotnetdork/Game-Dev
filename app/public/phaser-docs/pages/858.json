@@ -1,1 +1,1 @@
-{"l":"Phaser.Types.Physics.Arcade.ArcadeWorldDefaults","n":"ArcadeWorldDefaults","k":"typedef","mo":"Phaser.Types.Physics.Arcade","x":"","since":"3.0.0","m":[]}
+{"l":"Phaser.Types.Physics.Arcade.ArcadeWorldDefaults","n":"ArcadeWorldDefaults","k":"typedef","mo":"Phaser.Types.Physics.Arcade","x":"","since":"3.0.0","scope":"static","src":"src/physics/arcade/typedefs/ArcadeWorldDefaults.js#L1","m":[]}

@@ -1,1 +1,1 @@
-{"l":"Phaser.Display.Masks","n":"Masks","k":"namespace","mo":"Phaser.Display","x":"","since":"","m":[],"kids":[["GeometryMask","class",89]]}
+{"l":"Phaser.Display.Masks","n":"Masks","k":"namespace","mo":"Phaser.Display","x":"","since":"","scope":"static","src":"src/display/mask/index.js#L7","m":[],"kids":[["GeometryMask","class",89]]}

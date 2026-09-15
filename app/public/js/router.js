@@ -79,6 +79,11 @@ function readRoute() {
   const head = (parts[0] || '').toLowerCase();
   if (!head) return { kind: 'home' };
   if (head === 'docs' && parts[1]) {
+    /* /docs/phaser/g/<id> is a group's index page — Functions, Physics, Typedefs. They are real
+       pages in Phaser's docs and so they are real addresses here. */
+    if (parts[2] === 'g' && parts[3]) {
+      return { kind: 'page', page: 'docs', topic: parts[1], group: decodeURIComponent(parts[3]) };
+    }
     return { kind: 'page', page: 'docs', topic: parts[1], sym: parts[2] ? decodeURIComponent(parts[2]) : '' };
   }
   if (PAGE_ROUTES.indexOf(head) >= 0) return { kind: 'page', page: head };
@@ -110,6 +115,7 @@ function routePath(route) {
   if (!route) return '/';
   if (route.kind === 'page') {
     if (route.page === 'docs' && route.topic) {
+      if (route.group) return '/docs/' + route.topic + '/g/' + encodeURIComponent(route.group);
       return '/docs/' + route.topic + (route.sym ? '/' + encodeURIComponent(route.sym) : '');
     }
     return '/' + route.page;
@@ -137,7 +143,7 @@ function currentRoute() {
      and all three deserve an address. Without this, looking up Phaser.Physics.Arcade.Sprite and
      sending somebody the link sent them to the shelf. */
   if (pageOpen && page === 'docs' && typeof docsTopic !== 'undefined' && docsTopic) {
-    return { kind: 'page', page: 'docs', topic: docsTopic, sym: docsSym || '' };
+    return { kind: 'page', page: 'docs', topic: docsTopic, sym: docsSym || '', group: docsGroupId || '' };
   }
   if (pageOpen && page && page !== 'courses') return { kind: 'page', page: page };
   const f = (typeof flat !== 'undefined' && typeof curIdx === 'number') ? flat[curIdx] : null;
@@ -190,9 +196,10 @@ function applyRoute(route) {
       if (route.page === 'docs') {
         /* Set where the docs are BEFORE showing the page, because render reads it. A symbol is
            fetched, so it paints the reference first and replaces itself when the page arrives. */
-        docsTopic = route.topic || ''; docsSym = '';
+        docsTopic = route.topic || ''; docsSym = ''; docsGroupId = route.group || '';
         showPage('docs');
         if (route.sym) openDocsSymbol(route.sym);
+        else if (route.group) openDocsGroup(route.group);
         return;
       }
       showPage(route.page);

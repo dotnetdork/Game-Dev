@@ -1,1 +1,1 @@
-{"l":"Phaser.Types.Physics.Arcade.ArcadePhysicsCallback","n":"ArcadePhysicsCallback","k":"typedef","mo":"Phaser.Types.Physics.Arcade","x":"","since":"","m":[]}
+{"l":"Phaser.Types.Physics.Arcade.ArcadePhysicsCallback","n":"ArcadePhysicsCallback","k":"typedef","mo":"Phaser.Types.Physics.Arcade","x":"","since":"","scope":"static","src":"src/physics/arcade/typedefs/ArcadePhysicsCallback.js#L1","m":[]}

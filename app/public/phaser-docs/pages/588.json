@@ -1,1 +1,1 @@
-{"l":"Phaser.Types.Animations.JSONAnimationFrame","n":"JSONAnimationFrame","k":"typedef","mo":"Phaser.Types.Animations","x":"","since":"3.0.0","m":[]}
+{"l":"Phaser.Types.Animations.JSONAnimationFrame","n":"JSONAnimationFrame","k":"typedef","mo":"Phaser.Types.Animations","x":"","since":"3.0.0","scope":"static","src":"src/animations/typedefs/JSONAnimationFrame.js#L1","m":[]}

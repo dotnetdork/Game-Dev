@@ -1,1 +1,1 @@
-{"l":"Phaser.Data","n":"Data","k":"namespace","mo":"Phaser","x":"","since":"","m":[],"kids":[["DataManager","class",60],["DataManagerPlugin","class",61],["Events","namespace",62]]}
+{"l":"Phaser.Data","n":"Data","k":"namespace","mo":"Phaser","x":"","since":"","scope":"static","src":"src/data/index.js#L7","m":[],"kids":[["DataManager","class",60],["DataManagerPlugin","class",61],["Events","namespace",62]]}

@@ -1,1 +1,1 @@
-{"l":"BaseShaderConfig","n":"BaseShaderConfig","k":"typedef","mo":"","x":"","since":"","m":[]}
+{"l":"BaseShaderConfig","n":"BaseShaderConfig","k":"typedef","mo":"","x":"","since":"","scope":"global","src":"src/renderer/webgl/ShaderProgramFactory.js#L9","m":[]}

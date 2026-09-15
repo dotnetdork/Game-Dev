@@ -1,1 +1,1 @@
-{"l":"Phaser.Cameras.Scene2D","n":"Scene2D","k":"namespace","mo":"Phaser.Cameras","x":"","since":"","m":[],"kids":[["BaseCamera","class",33],["Camera","class",34],["CameraManager","class",35],["Effects","namespace",36],["Events","namespace",43]]}
+{"l":"Phaser.Cameras.Scene2D","n":"Scene2D","k":"namespace","mo":"Phaser.Cameras","x":"","since":"","scope":"static","src":"src/cameras/2d/index.js#L7","m":[],"kids":[["BaseCamera","class",33],["Camera","class",34],["CameraManager","class",35],["Effects","namespace",36],["Events","namespace",43]]}

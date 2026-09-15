@@ -1,1 +1,1 @@
-{"l":"Phaser.Types.Renderer.WebGL.WebGLTextureCompression","n":"WebGLTextureCompression","k":"typedef","mo":"Phaser.Types.Renderer.WebGL","x":"","since":"3.55.0","m":[]}
+{"l":"Phaser.Types.Renderer.WebGL.WebGLTextureCompression","n":"WebGLTextureCompression","k":"typedef","mo":"Phaser.Types.Renderer.WebGL","x":"","since":"3.55.0","scope":"static","src":"src/renderer/webgl/typedefs/WebGLTextureCompression.js#L1","m":[]}

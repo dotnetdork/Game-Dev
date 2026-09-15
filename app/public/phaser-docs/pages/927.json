@@ -1,1 +1,1 @@
-{"l":"Phaser.Types.Scenes.SceneUpdateCallback","n":"SceneUpdateCallback","k":"typedef","mo":"Phaser.Types.Scenes","x":"","since":"3.0.0","m":[]}
+{"l":"Phaser.Types.Scenes.SceneUpdateCallback","n":"SceneUpdateCallback","k":"typedef","mo":"Phaser.Types.Scenes","x":"","since":"3.0.0","scope":"static","src":"src/scene/typedefs/SceneUpdateCallback.js#L1","m":[]}

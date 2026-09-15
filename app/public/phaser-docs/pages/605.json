@@ -1,1 +1,1 @@
-{"l":"Phaser.Types.Cameras.Scene2D.JSONCameraBounds","n":"JSONCameraBounds","k":"typedef","mo":"Phaser.Types.Cameras.Scene2D","x":"","since":"3.0.0","m":[]}
+{"l":"Phaser.Types.Cameras.Scene2D.JSONCameraBounds","n":"JSONCameraBounds","k":"typedef","mo":"Phaser.Types.Cameras.Scene2D","x":"","since":"3.0.0","scope":"static","src":"src/cameras/2d/typedefs/JSONCameraBounds.js#L1","m":[]}

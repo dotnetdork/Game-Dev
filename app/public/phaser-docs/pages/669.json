@@ -1,1 +1,1 @@
-{"l":"Phaser.Types.GameObjects.CustomContext.CustomContextCallback","n":"CustomContextCallback","k":"typedef","mo":"Phaser.Types.GameObjects.CustomContext","x":"","since":"4.2.0","m":[]}
+{"l":"Phaser.Types.GameObjects.CustomContext.CustomContextCallback","n":"CustomContextCallback","k":"typedef","mo":"Phaser.Types.GameObjects.CustomContext","x":"","since":"4.2.0","scope":"static","src":"src/gameobjects/customcontext/typedefs/CustomContextCallback.js#L1","m":[]}

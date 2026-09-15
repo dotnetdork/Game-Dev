@@ -1,1 +1,1 @@
-{"l":"Phaser.Types.Physics.Arcade.ImageWithStaticBody","n":"ImageWithStaticBody","k":"typedef","mo":"Phaser.Types.Physics.Arcade","x":"","since":"","ext":["Phaser.Physics.Arcade.Image"],"m":[]}
+{"l":"Phaser.Types.Physics.Arcade.ImageWithStaticBody","n":"ImageWithStaticBody","k":"typedef","mo":"Phaser.Types.Physics.Arcade","x":"","since":"","scope":"static","src":"src/physics/arcade/typedefs/ImageWithStaticBody.js#L1","ext":["Phaser.Physics.Arcade.Image"],"m":[]}

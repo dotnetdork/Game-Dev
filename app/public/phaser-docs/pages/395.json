@@ -1,1 +1,1 @@
-{"l":"Phaser.Renderer","n":"Renderer","k":"namespace","mo":"Phaser","x":"","since":"","m":[],"kids":[["Canvas","namespace",396],["Events","namespace",398],["Snapshot","namespace",399],["WebGL","namespace",400]]}
+{"l":"Phaser.Renderer","n":"Renderer","k":"namespace","mo":"Phaser","x":"","since":"","scope":"static","src":"src/renderer/index.js#L7","m":[],"kids":[["Canvas","namespace",396],["Events","namespace",398],["Snapshot","namespace",399],["WebGL","namespace",400]]}

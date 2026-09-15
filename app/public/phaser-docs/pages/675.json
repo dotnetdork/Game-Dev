@@ -1,1 +1,1 @@
-{"l":"Phaser.Types.GameObjects.Gradient","n":"Gradient","k":"namespace","mo":"Phaser.Types.GameObjects","x":"","since":"","m":[],"kids":[["GradientConfig","typedef",676],["GradientQuadConfig","typedef",677]]}
+{"l":"Phaser.Types.GameObjects.Gradient","n":"Gradient","k":"namespace","mo":"Phaser.Types.GameObjects","x":"","since":"","scope":"static","src":"src/gameobjects/gradient/typedefs/index.js#L7","m":[],"kids":[["GradientConfig","typedef",676],["GradientQuadConfig","typedef",677]]}

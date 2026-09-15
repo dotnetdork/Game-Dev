@@ -1,1 +1,1 @@
-{"l":"Phaser.Types.GameObjects.TileSprite","n":"TileSprite","k":"namespace","mo":"Phaser.Types.GameObjects","x":"","since":"","m":[],"kids":[["TileSpriteConfig","typedef",782]]}
+{"l":"Phaser.Types.GameObjects.TileSprite","n":"TileSprite","k":"namespace","mo":"Phaser.Types.GameObjects","x":"","since":"","scope":"static","src":"src/gameobjects/tilesprite/typedefs/index.js#L7","m":[],"kids":[["TileSpriteConfig","typedef",782]]}
