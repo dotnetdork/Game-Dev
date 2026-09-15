@@ -725,7 +725,7 @@ const GUIDED_RULES = '\n\nGUIDED MODE IS ON for this lesson — the student is s
 // while authoring a prompt degrades to the previous behaviour instead of breaking the app.
 function fallbackCoderSystem(gameCode, ctx) {
   return 'You are a coding assistant inside a kids game-dev course (ages 11-15). '
-    + 'The student is building a 2D Phaser 3 game. game.js defines a CONFIG object and functions '
+    + 'The student is building a 2D Phaser 4 game. game.js defines a CONFIG object and functions '
     + '(create, update, spawnObject, buildTextures, postStats, etc.); create() and update() both start with '
     + '`const scene = this;`. A separate main.js boots the game.\n\n'
     + 'CURRENT game.js:\n```javascript\n' + gameCode + '\n```\n\n'
@@ -742,8 +742,8 @@ function fallbackCoderSystem(gameCode, ctx) {
     + '- Normal "add ..." requests: use config / functions / create / update. Do NOT use replaceFile and do NOT resend the whole file.\n'
     + '- Use replaceFile ONLY when the student clearly asks to remove/delete/rewrite something.\n'
     + '- Put any new adjustable number in "config" so it appears in the settings panel.\n'
-    + '- Use only Phaser 3 APIs and the patterns already in the file. Never write a new Phaser.Game.\n'
-    + '- For drawing, use only real Phaser 3 Graphics methods (fillRect, fillRoundedRect, fillCircle, fillTriangle, beginPath/moveTo/lineTo/closePath/fillPath, generateTexture). Do NOT use HTML-canvas methods like cubicCurveTo, bezierCurveTo, or arcTo — they do not exist on Phaser Graphics and crash the game.\n'
+    + '- Use only Phaser 4 APIs and the patterns already in the file. Never write a new Phaser.Game.\n'
+    + '- For drawing, use only real Phaser Graphics methods (fillRect, fillRoundedRect, fillCircle, fillTriangle, beginPath/moveTo/lineTo/closePath/fillPath, generateTexture). Do NOT use HTML-canvas methods like cubicCurveTo, bezierCurveTo, or arcTo — they do not exist on Phaser Graphics and crash the game.\n'
     + '- If it is just a question, reply with only {"reply":"..."} and no other fields.\n'
     + '- Output nothing but the single JSON object.'
     + buildContextBlock(ctx || {})

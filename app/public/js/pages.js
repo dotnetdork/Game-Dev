@@ -544,7 +544,7 @@ function renderHelp() {
    page cannot quietly go stale the way a hand-kept list otherwise does. The pictures are the
    exception: they come from /api/credits, which the server derives from the lessons themselves. */
 const CREDIT_BROWSER = [
-  ['Phaser', '3.80.1', 'MIT', 'https://phaser.io', 'The game engine. Everything a student writes runs inside it.'],
+  ['Phaser', '4.2.1', 'MIT', 'https://phaser.io', 'The game engine. Everything a student writes runs inside it.'],
   ['CodeMirror', '5.65.16', 'MIT', 'https://codemirror.net/5/', 'The code editor on the Code tab, and the syntax colouring in every lesson.'],
   ['JSHint', '2.13.6', 'MIT', 'https://jshint.com/', 'Finds the mistake before the game runs and says which line it is on.'],
   ['Prettier', '2.8.8', 'MIT', 'https://prettier.io/', 'Tidies a student’s code when they press Format.'],

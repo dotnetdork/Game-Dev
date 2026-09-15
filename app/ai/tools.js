@@ -103,7 +103,7 @@ const TOOLS = [
   },
   {
     name: 'search_phaser_docs',
-    description: 'Look up how to do something in Phaser 3 — the real method names for movement, collisions, keys, sound, tweens, drawing and so on. Use this instead of guessing an API.',
+    description: 'Look up how to do something in Phaser 4 — the real method names for movement, collisions, keys, sound, tweens, drawing and so on. Use this instead of guessing an API.',
     parameters: { type: 'object', properties: { query: { type: 'string', description: 'what you want to do, e.g. "make something spin" or "detect a key press"' } }, required: ['query'] },
     run: function (args) {
       let doc = '';

@@ -19,7 +19,7 @@ network access at all — only `/api/ai` talks to anything outside the server.
 | js-yaml | 4.1.0 | `course.yaml`, lesson front-matter, quiz/challenge widget blocks |
 | marked | 12.0.2 | lesson Markdown + AI chat replies |
 | DOMPurify | 3.1.6 | sanitizing everything `marked` produces before it reaches innerHTML |
-| Phaser | 3.80.1 | the game engine, loaded inside the game iframe |
+| Phaser | 4.2.1 | the game engine, loaded inside the game iframe |
 | @mdi/font | 7.4.47 | all UI icons (`css/` + `fonts/` must stay siblings) |
 
 ## Refreshing

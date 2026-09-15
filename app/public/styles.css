@@ -1594,7 +1594,7 @@ html[data-dev] .sb-dev{display:grid !important;}
 .credit-where{margin-top:2px;color:var(--dim);font-size:12px;line-height:1.5;}
 .credits-loading{padding:9px 0;}
 /* The version and the licence read as metadata rather than as part of the name: same line, because
-   "Phaser 3.80.1, MIT" is one fact, but quieter, because the name is what anybody is scanning for. */
+   "Phaser 4.2.1, MIT" is one fact, but quieter, because the name is what anybody is scanning for. */
 .credit-ver{color:var(--dim);font-size:12px;font-variant-numeric:tabular-nums;}
 .credit-lic{display:inline-block;margin-left:5px;padding:1px 7px;border-radius:999px;
   background:#0f2440;border:1px solid var(--line);color:var(--muted);font-size:11px;font-weight:650;

@@ -1,4 +1,4 @@
-# Phaser 3 quick reference
+# Phaser 4 quick reference
 
 The APIs this course actually uses. `search_phaser_docs` searches this file, so the AI looks
 things up here instead of guessing. Each entry is one block; the `##` heading and the keywords

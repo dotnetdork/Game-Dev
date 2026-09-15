@@ -39,7 +39,7 @@ const server = new McpServer(
   { name: 'league-gamedev', version: '1.0.0' },
   {
     instructions:
-      'Course content and reference for the LEAGUE game-development course (Phaser 3, students aged 11-14). ' +
+      'Course content and reference for the LEAGUE game-development course (Phaser 4, students aged 11-14). ' +
       'Use search_phaser_docs before writing Phaser code, get_lesson to check what a student has been taught, ' +
       'and search_store to find art and sound. Everything here is read-only.'
   }
@@ -149,7 +149,7 @@ server.registerResource(
 server.registerResource(
   'phaser-reference',
   'reference://phaser',
-  { title: 'Phaser API reference', description: 'The curated Phaser 3 reference the coder agent is held to.', mimeType: 'text/markdown' },
+  { title: 'Phaser API reference', description: 'The curated Phaser 4 reference the coder agent is held to.', mimeType: 'text/markdown' },
   async function (uri) {
     const text = fs.readFileSync(path.join(AI_DIR, 'reference', 'phaser-api.md'), 'utf8');
     return { contents: [{ uri: uri.href, mimeType: 'text/markdown', text: text }] };
