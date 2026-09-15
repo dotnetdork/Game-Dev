@@ -417,15 +417,32 @@ function docsNav(activeLongname) {
      Namespaces, Class, Typedefs — each opening onto a flat alphabetical list of full dotted names.
      Not a namespace tree. A tree looks tidier and is worse here, because the thing a reader is
      hunting is a NAME and a tree makes them guess which branch it is filed under first. */
-  const sections = docsGroups().map(function (g) {
+  /* ONE SECTION OPEN AT A TIME. Every group used to decide for itself whether it contained the page
+     you were on, and Phaser.Actions is in two of them — it is a namespace, and it is also one of the
+     nineteen namespaces that hold static functions — so arriving there opened Namespaces AND
+     Functions, with the same row highlighted in both. Which is confusing in the ordinary way and
+     also doubles the length of the rail.
+
+     So: the first group that actually contains the page wins, and the groups are in an order where
+     the truthful home comes first — Phaser.Actions IS a namespace; it merely CONTAINS functions.
+     Pressing a heading opens that one and shuts whatever was open, which is what the accordion in
+     Phaser's own nav does. */
+  const groups = docsGroups();
+  let autoOpen = '';
+  for (let i = 0; i < groups.length && !autoOpen; i++) {
+    if (!groups[i].leaf && groups[i].list.some(function (p) { return p.ln === activeLongname; })) {
+      autoOpen = groups[i].id;
+    }
+  }
+  const openId = docsNavOpenId === undefined ? autoOpen : docsNavOpenId;
+  const sections = groups.map(function (g) {
     /* A leaf — Game Objects, Physics — is a link to that namespace's own page, the way Phaser's
        nav has them: no chevron, nothing to open. */
     if (g.leaf) {
       return '<button class="dn-item' + (activeLongname === g.leaf ? ' on' : '') + '" data-doc="'
         + esc(g.leaf) + '">' + esc(g.label) + '<span class="dn-n">' + g.list.length + '</span></button>';
     }
-    const openHere = g.list.some(function (p) { return p.ln === activeLongname; });
-    const open = docsNavOpen[g.id] === undefined ? openHere : docsNavOpen[g.id];
+    const open = openId === g.id;
     /* EVERY name, not a page of them. Phaser's nav lists all of its eleven thousand functions and
        so does this one; `content-visibility` on the rows means the browser only lays out the ones
        actually on screen, which is what makes that affordable without inventing a filter box the
@@ -511,9 +528,10 @@ function docsGroups() {
   docsGroupCache = out;
   return out;
 }
-/* Which branches the reader has opened by hand. Kept across pages so the nav does not shut itself
-   every time they follow a link. */
-const docsNavOpen = {};
+/* Which section the reader opened by hand: a group id, '' for none, or undefined meaning "nobody has
+   chosen, so open whichever holds the page they are on". Kept across pages so the nav does not shut
+   itself every time they follow a link. */
+let docsNavOpenId;
 
 /* One API page. */
 function renderDocsPage(pg) {
@@ -664,7 +682,7 @@ function wireDocsNav(host) {
   });
   nav.querySelectorAll('[data-branch]').forEach(function (b) {
     b.addEventListener('click', function () {
-      docsNavOpen[b.getAttribute('data-branch')] = !b.classList.contains('open');
+      docsNavOpenId = b.classList.contains('open') ? '' : b.getAttribute('data-branch');
       nav.innerHTML = docsNav(docsSym || '');
       wireDocsNav(host);
     });
@@ -672,26 +690,19 @@ function wireDocsNav(host) {
 }
 function wireDocs() {
   const host = $('page');
-  host.querySelectorAll('[data-doc-open]').forEach(function (b) {
+  /* THE NAV WIRES ITSELF, and nothing here may touch it. Both functions used to bind every
+     [data-branch], [data-doc] and [data-doc-open] in the whole page — and the nav is in the page —
+     so every button in the rail had two handlers on it and a single click ran both. On a section
+     heading that is open-then-close in one press: the nav appeared not to respond at all. */
+  wireDocsNav(host);
+  const main = host.querySelector('.dc-main') || host;
+  main.querySelectorAll('[data-doc-open]').forEach(function (b) {
     b.addEventListener('click', function () { openDocsTopic(b.getAttribute('data-doc-open')); });
   });
-  host.querySelectorAll('[data-doc]').forEach(function (b) {
+  main.querySelectorAll('[data-doc]').forEach(function (b) {
     b.addEventListener('click', function (e) { e.preventDefault(); openDocsSymbol(b.getAttribute('data-doc')); });
   });
-  /* Opening and shutting a section of the nav. Repaints the nav only — the page you are reading
-     does not move. */
-  host.querySelectorAll('[data-branch]').forEach(function (b) {
-    b.addEventListener('click', function () {
-      const k = b.getAttribute('data-branch');
-      docsNavOpen[k] = !b.classList.contains('open');
-      const nav = host.querySelector('.dc-nav');
-      if (nav) {
-        nav.innerHTML = docsNav(docsSym || '');
-        wireDocsNav(host);
-      }
-    });
-  });
-  host.querySelectorAll('[data-doc-page]').forEach(function (b) {
+  main.querySelectorAll('[data-doc-page]').forEach(function (b) {
     b.addEventListener('click', function (e) {
       e.preventDefault();
       loadDocsPage(b.getAttribute('data-doc-page')).then(function (pg) { openDocsSymbol(pg.l); });

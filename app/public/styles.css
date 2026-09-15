@@ -1546,8 +1546,12 @@ html[data-dev] .sb-dev{display:grid !important;}
 .dn-item.open .dn-caret{transform:rotate(90deg);}
 .dn-item{font-weight:650;}
 .dn-home{font-weight:700;color:var(--ink);}
+/* NO SCROLLBAR OF ITS OWN. This had max-height and overflow, which put a second scroll box inside
+   the rail — so the nav scrolled, and a list inside the nav scrolled, and finding a name meant
+   working out which of the two you were supposed to be dragging. One rail, one scrollbar; the list
+   is as long as it is and the rail scrolls past it, which is what Phaser's does. */
 .dn-kids{display:flex;flex-direction:column;gap:1px;margin:2px 0 6px;padding-left:10px;
-  border-left:1px solid var(--line);max-height:340px;overflow-y:auto;}
+  border-left:1px solid var(--line);}
 /* flex:none, and it is not a nicety. A flex column shrinks its children to fit, so 329 class names
    inside a 340px scroll box were squeezed to EIGHT PIXELS TALL each — the text still there, still
    the right size, clipped by a box a third its height. On screen that is a column of faint dashes,
