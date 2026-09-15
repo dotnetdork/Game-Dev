@@ -66,11 +66,26 @@ function findSource() {
   for (const p of tries) if (fs.existsSync(p)) return p;
   return null;
 }
+/* THE NOTICE HAS TO TRAVEL WITH THE COPY. This used to look one directory above the source file,
+   which was right while the source was always node_modules/phaser/types/phaser.json — its parent is
+   the package root, and the licence sits there. It stopped being right when the doclets started
+   being generated from Phaser's source instead: the source is then a file in .cache/, whose parent
+   is app/, which has no licence in it. The lookup returned null, the build printed one line saying
+   so, and the LICENSE.md beside ten megabytes of redistributed MIT documentation was deleted.
+   So it searches the places the licence actually is, in order, instead of inferring one from a path
+   that is no longer what it was. */
 function findLicence(srcPath) {
-  const pkgRoot = path.join(path.dirname(srcPath), '..');
-  for (const n of ['LICENSE.md', 'LICENSE', 'license.md']) {
-    const p = path.join(pkgRoot, n);
-    if (fs.existsSync(p)) return p;
+  const roots = [
+    path.join(path.dirname(srcPath), '..'),                       // node_modules/phaser/types/…
+    path.join(__dirname, '..', '.cache', 'phaser-' + VERSION),    // the extracted source tarball
+    path.join(__dirname, '..', 'node_modules', 'phaser'),
+    path.join(__dirname, '..', '..', 'node_modules', 'phaser')
+  ];
+  for (const root of roots) {
+    for (const n of ['LICENSE.md', 'LICENSE', 'license.md']) {
+      const p = path.join(root, n);
+      if (fs.existsSync(p)) return p;
+    }
   }
   return null;
 }
@@ -83,8 +98,19 @@ if (!SRC) {
   process.exit(1);
 }
 
+/* WHICH PHASER THIS IS, from the app's own pin rather than from whatever package.json happens to
+   sit beside the source file. That inference held while the source was always
+   node_modules/phaser/types/phaser.json — one directory up is Phaser's package.json, and its
+   version is Phaser's. Once the doclets came from .cache/ instead, one directory up was app/, and
+   the reference labelled itself "Phaser 0.1.0" — the app's version — on every page of the Docs tab.
+   devDependencies.phaser is the same single pin build-phaser-doclets.js reads to decide which
+   source tarball to fetch, so the label and the thing it labels cannot drift apart. */
+const APP_PKG = JSON.parse(fs.readFileSync(path.join(__dirname, '..', 'package.json'), 'utf8'));
+const pinned = String((APP_PKG.devDependencies && APP_PKG.devDependencies.phaser) || '').replace(/^[^0-9]*/, '');
 const pkgJson = path.join(path.dirname(SRC), '..', 'package.json');
-const version = fs.existsSync(pkgJson) ? JSON.parse(fs.readFileSync(pkgJson, 'utf8')).version : 'unknown';
+const version = pinned
+  || (fs.existsSync(pkgJson) ? JSON.parse(fs.readFileSync(pkgJson, 'utf8')).version : 'unknown');
+const VERSION = version;
 
 console.log('reading ' + SRC + ' (' + (fs.statSync(SRC).size / 1048576).toFixed(1) + ' MB)');
 const all = JSON.parse(fs.readFileSync(SRC, 'utf8'));
@@ -211,6 +237,14 @@ all.forEach(function (d) {
      both. Filtering them a second time here put the gap back even when the source had them.
      The dump this reads has already had Phaser's other four removals applied. */
   if (d.access === 'private' || d.undocumented) return;
+  /* `module` and `module.exports` are not Phaser. They are jsdoc 4 noticing the CommonJS assignment
+     at the foot of a source file and filing it as a namespace with four members — which arrived as
+     a 985th page and five search results the moment the doclets were regenerated on jsdoc 4 (3.6
+     did not emit them). Phaser documents nothing under a `module` root, so the whole prefix goes.
+     Everything else outside the Phaser namespace is real: there are 23 global typedefs on
+     docs.phaser.io — Attachment, BaseShaderConfig, EachTileCallback — so this cannot simply require
+     a "Phaser." prefix. */
+  if (d.longname === 'module' || d.longname.indexOf('module.') === 0) return;
   if (PAGE_KINDS[d.kind]) {
     /* A class and its constructor share a longname; keep the first and let the later one fill in
        anything missing rather than replacing the page wholesale. */
@@ -430,7 +464,11 @@ fs.writeFileSync(path.join(OUT, 'meta.json'), JSON.stringify({
   doclets: all.length,
   pages: pages.length,
   symbols: rows.length,
-  source: 'phaser/types/phaser.json',
+  /* Named rather than assumed: it is phaser/types/phaser.json when that is what was read, and
+     Phaser's source when the doclets were regenerated from the tarball to recover the @ignore'd
+     symbols its published dump leaves out. Two different provenances for the same page, and the
+     credits page states which one this build used. */
+  source: /phaser-doclets/.test(SRC) ? 'phaser ' + version + ' source (jsdoc)' : 'phaser/types/phaser.json',
   licence: 'MIT',
   notice: 'Phaser © Richard Davey, Phaser Studio Inc. Released under the MIT License. '
     + 'This reference is generated from Phaser ' + version + "'s own source documentation."

@@ -60,7 +60,12 @@ if (fs.existsSync(OUT) && !FORCE) {
   process.exit(0);
 }
 
-const jsdocBin = path.join(APP, 'node_modules', '.bin', process.platform === 'win32' ? 'jsdoc.cmd' : 'jsdoc');
+/* THE PACKAGE'S OWN ENTRY SCRIPT, run under this node, rather than the .bin shim.
+   On Windows the shim is jsdoc.cmd, and since Node 20 closed CVE-2024-27980 spawning a .cmd
+   without a shell fails outright with EINVAL — so the shim route is a choice between not running
+   and passing a path through cmd.exe's quoting rules. Going straight at the .js the shim would
+   have run avoids both, and is the same file on every platform. */
+const jsdocBin = path.join(APP, 'node_modules', 'jsdoc', 'jsdoc.js');
 if (!fs.existsSync(jsdocBin)) {
   console.error('jsdoc is not installed. It is a build-time dependency of this script only:');
   console.error('  npm i -D jsdoc');
@@ -147,10 +152,12 @@ function writeConfig() {
   const confPath = writeConfig();
   const dest = path.join(CACHE, 'jsdoc-out');
   console.log('running jsdoc over ' + VERSION + ' source (this takes a few minutes)');
-  execFileSync(jsdocBin, ['-c', confPath, '-t', TEMPLATE_DIR, '-d', dest], {
-    stdio: 'inherit',
-    /* The dump is large and jsdoc holds the whole parse in memory. */
-    env: Object.assign({}, process.env, { NODE_OPTIONS: '--max-old-space-size=6144' })
+  execFileSync(process.execPath, ['--max-old-space-size=6144', jsdocBin,
+    '-c', confPath, '-t', TEMPLATE_DIR, '-d', dest], {
+    stdio: 'inherit'
+    /* The dump is large and jsdoc holds the whole parse in memory — hence the heap size, which is
+       now an argument to the node that actually runs jsdoc rather than a NODE_OPTIONS the shim was
+       trusted to pass along. */
   });
   const produced = path.join(dest, 'doclets.json');
   if (!fs.existsSync(produced)) throw new Error('jsdoc finished but wrote no doclets.json');

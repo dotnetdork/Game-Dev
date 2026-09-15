@@ -318,10 +318,10 @@
     }
   ],
   "generated": "2026-09-15",
-  "doclets": 19353,
+  "doclets": 20271,
   "pages": 984,
   "symbols": 19286,
-  "source": "phaser/types/phaser.json",
+  "source": "phaser 4.1.0 source (jsdoc)",
   "licence": "MIT",
   "notice": "Phaser © Richard Davey, Phaser Studio Inc. Released under the MIT License. This reference is generated from Phaser 4.1.0's own source documentation."
 }

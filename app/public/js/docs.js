@@ -31,6 +31,19 @@ let docsTopic = '';            // '' = the shelf. 'phaser' = the Phaser referenc
 let docsSym = '';              // a longname, when an API page is open
 let docsGroupId = '';          // a group id, when one of the index pages is open
 
+/* THE SYMBOL PAGE THAT IS ACTUALLY IN HAND, and the one being fetched.
+   renderDocs() is synchronous and a symbol page is not, so opening one used to paint "Loading…" and
+   rely on the in-flight fetch to come back and replace it. That holds exactly once. Anything that
+   repaints #page afterwards — and applyRoute, showPage and the nav all do — calls renderDocs()
+   again, gets the same placeholder, and this time there is no fetch on its way to replace it. The
+   reader is left on "Loading…" for ever with the data already in memory, which is what "the docs
+   get stuck on loading" was: not a slow network, a repaint arriving after the answer.
+   Keeping the loaded page means renderDocs() can answer straight away on every repaint after the
+   first, and the pending longname means the placeholder can start its own fetch instead of being a
+   dead end. */
+let docsSymPage = null;        // { ln, pg } — the last symbol page that finished loading
+let docsSymPending = '';       // a longname whose fetch is in flight right now
+
 /* The shelf. One entry today and built as a list because the ask was explicitly for more later —
    a second reference is a row here and a renderer, not a rewrite. */
 const DOC_SHELF = [
@@ -1165,7 +1178,17 @@ function renderDocsPage(pg) {
 /* ---------- the page, whichever of the three it currently is ---------- */
 function renderDocs() {
   if (!docsTopic) return renderDocsShelf();
-  if (docsSym) return '<div class="dc-loading">Loading…</div>';
+  if (docsSym) {
+    /* Already in hand: render it now. This is every repaint after the first. */
+    if (docsSymPage && docsSymPage.ln === docsSym) return renderDocsPage(docsSymPage.pg);
+    /* Not in hand and nobody is fetching it: fetch it. Deferred by a tick because this function's
+       return value is about to be written into #page, and openDocsSymbol writes there too. */
+    if (docsSymPending !== docsSym) {
+      const want = docsSym;
+      setTimeout(function () { if (docsSym === want) openDocsSymbol(want); }, 0);
+    }
+    return '<div class="dc-loading">Loading…</div>';
+  }
   if (docsGroupId) {
     const g = docsGroups().filter(function (x) { return x.id === docsGroupId; })[0];
     if (g) return renderDocsGroup(g);
@@ -1191,6 +1214,7 @@ function openDocsGroup(id) {
 /* Opening a symbol is asynchronous, so it paints a frame of "loading" and then replaces itself. */
 function openDocsSymbol(longname) {
   docsTopic = 'phaser'; docsSym = longname;
+  docsSymPending = longname;
   const host = $('page');
   loadDocsIndex().then(function (idx) {
     const hit = idx.filter(function (e) { return e.ln === longname; })[0]
@@ -1211,6 +1235,10 @@ function openDocsSymbol(longname) {
         return copy;
       });
   }).then(function (pg) {
+    /* Kept whichever way this lands, so a repaint that arrives after the fetch has something to
+       render instead of a placeholder nothing will replace. */
+    docsSymPage = { ln: longname, pg: pg };
+    if (docsSymPending === longname) docsSymPending = '';
     if (docsSym !== longname) return;              // the reader moved on while this was in flight
     host.innerHTML = renderDocsPage(pg);
     wireDocs();
@@ -1232,6 +1260,7 @@ function openDocsSymbol(longname) {
     if (!jumped) host.scrollTop = 0;
     if (typeof syncRoute === 'function') syncRoute();
   }).catch(function () {
+    if (docsSymPending === longname) docsSymPending = '';
     if (docsSym !== longname) return;
     host.innerHTML = '<div class="phead"><div><h2>Not found</h2>'
       + '<p class="sub">There is nothing in the Phaser reference called <code>' + esc(longname) + '</code>.</p></div>'

@@ -115,8 +115,17 @@ function routePath(route) {
   if (!route) return '/';
   if (route.kind === 'page') {
     if (route.page === 'docs' && route.topic) {
+      /* THE SYMBOL WINS, because it is the more specific of the two and because it is what is on
+         the screen. Opening a class from inside a group leaves docsGroupId set on purpose — that is
+         what keeps the group's branch open in the left rail — so a reader who reached
+         Phaser.Actions through Namespaces had both, and the group being tested first meant the
+         address stayed /docs/phaser/g/namespace while the page showed Phaser.Actions. Reload or
+         send that link and you land on the group index instead of the class. applyRoute and
+         renderDocs both already answer the symbol first; this is the third place, and it was the
+         one disagreeing. */
+      if (route.sym) return '/docs/' + route.topic + '/' + encodeURIComponent(route.sym);
       if (route.group) return '/docs/' + route.topic + '/g/' + encodeURIComponent(route.group);
-      return '/docs/' + route.topic + (route.sym ? '/' + encodeURIComponent(route.sym) : '');
+      return '/docs/' + route.topic;
     }
     return '/' + route.page;
   }
