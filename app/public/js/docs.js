@@ -417,32 +417,73 @@ function docsNav(activeLongname) {
      Namespaces, Class, Typedefs — each opening onto a flat alphabetical list of full dotted names.
      Not a namespace tree. A tree looks tidier and is worse here, because the thing a reader is
      hunting is a NAME and a tree makes them guess which branch it is filed under first. */
-  const GROUPS = [
-    ['class', 'Classes'],
-    ['namespace', 'Namespaces'],
-    ['typedef', 'Typedefs'],
-    ['interface', 'Interfaces'],
-    ['mixin', 'Mixins']
-  ];
-  const by = {};
-  docsPages.forEach(function (p) { (by[p.k] || (by[p.k] = [])).push(p); });
-  const sections = GROUPS.filter(function (g) { return by[g[0]] && by[g[0]].length; }).map(function (g) {
-    const list = by[g[0]];
-    const openHere = list.some(function (p) { return p.ln === activeLongname; });
-    const open = docsNavOpen[g[0]] === undefined ? openHere : docsNavOpen[g[0]];
-    return '<button class="dn-item' + (open ? ' open' : '') + '" data-branch="' + g[0] + '">'
-      + '<span class="dn-caret mdi mdi-chevron-right"></span>' + g[1]
-      + '<span class="dn-n">' + list.length + '</span></button>'
-      + (open ? '<div class="dn-kids">' + list.map(function (p) {
+  const sections = docsGroups().map(function (g) {
+    /* A leaf — Game Objects, Physics — is a link to that namespace's own page, the way Phaser's
+       nav has them: no chevron, nothing to open. */
+    if (g.leaf) {
+      return '<button class="dn-item' + (activeLongname === g.leaf ? ' on' : '') + '" data-doc="'
+        + esc(g.leaf) + '">' + esc(g.label) + '<span class="dn-n">' + g.list.length + '</span></button>';
+    }
+    const openHere = g.list.some(function (p) { return p.ln === activeLongname; });
+    const open = docsNavOpen[g.id] === undefined ? openHere : docsNavOpen[g.id];
+    /* EVERY name, not a page of them. Phaser's nav lists all of its eleven thousand functions and
+       so does this one; `content-visibility` on the rows means the browser only lays out the ones
+       actually on screen, which is what makes that affordable without inventing a filter box the
+       real thing does not have. Searching lives in one place — the box at the top right. */
+    const body = open
+      ? '<div class="dn-kids">' + g.list.map(function (p) {
         return '<button class="dn-sub' + (p.ln === activeLongname ? ' on' : '') + '" data-doc="'
           + esc(p.ln) + '">' + esc(p.ln) + '</button>';
-      }).join('') + '</div>' : '');
+      }).join('') + '</div>'
+      : '';
+    return '<button class="dn-item' + (open ? ' open' : '') + '" data-branch="' + esc(g.id) + '">'
+      + '<span class="dn-caret mdi mdi-chevron-right"></span>' + esc(g.label)
+      + '<span class="dn-n">' + g.list.length + '</span></button>' + body;
   }).join('');
   return '<div class="dn-docs">' + shelf + '</div>'
     + '<div class="dn-list">'
     + '<button class="dn-item dn-home' + (!activeLongname ? ' on' : '') + '" data-doc-open="phaser">'
     + 'Phaser ' + esc((docsMeta && docsMeta.version) || '') + ' API Documentation</button>'
     + sections + '</div>';
+}
+
+/* EVERY GROUP PHASER'S OWN NAV HAS, in its order. Three of them — Events, Functions, Constants —
+   are not pages in this model but members of them, so they are gathered out of the search index
+   rather than the page list; clicking one still opens the page it lives on and jumps to it. Game
+   Objects and Physics are the two Phaser pulls out as direct links because they are where anybody
+   building a game actually goes. */
+let docsGroupCache = null;
+function docsGroups() {
+  if (docsGroupCache) return docsGroupCache;
+  const byKind = {};
+  (docsPages || []).forEach(function (p) { (byKind[p.k] || (byKind[p.k] = [])).push(p); });
+  const isPage = {};
+  (docsPages || []).forEach(function (p) { isPage[p.ln] = 1; });
+  const ev = [], fn = [], co = [];
+  (docsIndex || []).forEach(function (e) {
+    if (isPage[e.ln]) return;
+    if (e.k === 'event') ev.push(e);
+    else if (e.k === 'function') fn.push(e);
+    else if (e.k === 'constant') co.push(e);
+  });
+  const byName = function (a, b) { return a.ln < b.ln ? -1 : a.ln > b.ln ? 1 : 0; };
+  const under = function (prefix) {
+    return (docsPages || []).filter(function (p) { return p.ln.indexOf(prefix) === 0; });
+  };
+  const out = [
+    { id: 'namespace', label: 'Namespaces', list: (byKind.namespace || []).slice().sort(byName) },
+    { id: 'gameobjects', label: 'Game Objects', leaf: 'Phaser.GameObjects', list: under('Phaser.GameObjects') },
+    { id: 'physics', label: 'Physics', leaf: 'Phaser.Physics', list: under('Phaser.Physics') },
+    { id: 'event', label: 'Events', list: ev.sort(byName) },
+    { id: 'class', label: 'Class', list: (byKind.class || []).slice().sort(byName) },
+    { id: 'function', label: 'Functions', list: fn.sort(byName) },
+    { id: 'constant', label: 'Constants', list: co.sort(byName) },
+    { id: 'typedef', label: 'Typedefs', list: (byKind.typedef || []).slice().sort(byName) },
+    { id: 'interface', label: 'Interfaces', list: (byKind.interface || []).slice().sort(byName) },
+    { id: 'mixin', label: 'Mixins', list: (byKind.mixin || []).slice().sort(byName) }
+  ].filter(function (g) { return g.list.length; });
+  docsGroupCache = out;
+  return out;
 }
 /* Which branches the reader has opened by hand. Kept across pages so the nav does not shut itself
    every time they follow a link. */
@@ -458,8 +499,22 @@ function renderDocsPage(pg) {
     return '<h3 class="dc-h">' + label + ' <span class="dc-count">' + list.length + '</span></h3>'
       + list.map(function (m) { return docsMember(m, pg.l); }).join('');
   };
-  const kids = (pg.kids || []).map(function (k) {
-    return '<button class="dc-kid" data-doc-page="' + k[2] + '">' + esc(k[0]) + docsKindChip(k[1]) + '</button>';
+  /* What is inside a namespace, as LISTS grouped by kind — the same shape as the front page and as
+     Phaser's own namespace pages. It was a row of pills, which is the card pattern again: a pill is
+     a control you press, and these are names you scan. On Phaser.Animations the whole page was five
+     pills and nothing else, which looks like a page that failed to load rather than a namespace
+     whose contents are five classes. */
+  const KID_LABEL = { class: 'Classes', namespace: 'Namespaces', typedef: 'Typedefs',
+    interface: 'Interfaces', mixin: 'Mixins' };
+  const kidsBy = {};
+  (pg.kids || []).forEach(function (k) { (kidsBy[k[1]] || (kidsBy[k[1]] = [])).push(k); });
+  const kids = Object.keys(kidsBy).sort().map(function (kind) {
+    const list = kidsBy[kind].slice().sort(function (a, b) { return a[0] < b[0] ? -1 : 1; });
+    return '<h3 class="dc-h">' + esc(KID_LABEL[kind] || kind)
+      + '<span class="dc-count">' + list.length + '</span></h3>'
+      + '<ul class="dc-index">' + list.map(function (k) {
+        return '<li><a data-doc-page="' + k[2] + '">' + esc(pg.l + '.' + k[0]) + '</a></li>';
+      }).join('') + '</ul>';
   }).join('');
   const crumbs = [];
   if (pg.mo) {
@@ -485,9 +540,15 @@ function renderDocsPage(pg) {
   const toc = tocGroup('member', 'Properties') + tocGroup('constant', 'Constants')
     + tocGroup('function', 'Methods') + tocGroup('event', 'Events');
 
+  /* Searching from a page, without going back to the front one first. The landing page has its own
+     full-width box and keeps it; this is the same box, small, in the corner every site puts it. */
   const main = '<div class="phead"><div>'
     + '<div class="dc-crumbs">' + (crumbs.join('<span>›</span>') || '&nbsp;') + '</div>'
-    + '<h2>' + esc(pg.n) + docsKindChip(pg.k) + '</h2></div></div>'
+    + '<h2>' + esc(pg.n) + docsKindChip(pg.k) + '</h2></div>'
+    + '<div class="dc-search dc-search-sm"><span class="mdi mdi-magnify"></span>'
+    + '<input id="docsSearch" type="search" autocomplete="off" spellcheck="false" '
+    + 'placeholder="Search Phaser…" aria-label="Search the Phaser API"></div>'
+    + '</div><div id="docsResults" class="dc-results" hidden></div>'
     + '<div class="dc-page">'
     + docsProse(pg.x)
     /* Phaser builds its game objects out of two dozen mixins, so "Built on" for Sprite is a
@@ -506,7 +567,7 @@ function renderDocsPage(pg) {
     + (pg.ctor && pg.ctor.p ? '<h3 class="dc-h">Making one</h3>'
         + docsCode('new ' + pg.l + '(' + pg.ctor.p.map(function (p) { return p.o ? '[' + p.n + ']' : p.n; }).join(', ') + ')')
         + docsParams(pg.ctor.p) : '')
-    + (kids ? '<h3 class="dc-h">Inside this</h3><div class="dc-kids">' + kids + '</div>' : '')
+    + kids
     + block('member', 'Properties') + block('constant', 'Constants')
     + block('function', 'Methods') + block('event', 'Events')
     + '</div>';
@@ -605,7 +666,8 @@ function wireDocs() {
     });
   });
   host.querySelectorAll('[data-doc-page]').forEach(function (b) {
-    b.addEventListener('click', function () {
+    b.addEventListener('click', function (e) {
+      e.preventDefault();
       loadDocsPage(b.getAttribute('data-doc-page')).then(function (pg) { openDocsSymbol(pg.l); });
     });
   });

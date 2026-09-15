@@ -1531,12 +1531,13 @@ html[data-dev] .sb-dev{display:grid !important;}
 .dn-head{color:var(--dim);font-size:10.5px;font-weight:800;text-transform:uppercase;
   letter-spacing:.8px;padding:0 12px 7px;}
 .dn-list{display:flex;flex-direction:column;gap:1px;}
-.dn-item{display:flex;align-items:center;gap:8px;width:100%;text-align:left;padding:6px 12px;
-  border:0;border-radius:7px;background:none;color:var(--muted);cursor:pointer;
-  font-family:var(--font);font-size:13px;}
+.dn-item{flex:none;display:flex;align-items:center;gap:8px;width:100%;text-align:left;
+  padding:7px 12px;border:0;border-radius:7px;background:none;color:var(--muted);cursor:pointer;
+  font-family:var(--font);font-size:13px;line-height:1.4;}
 .dn-item:hover{background:#16325a;color:var(--ink);}
-.dn-item.on{background:#16325a;color:var(--ink);font-weight:700;
-  box-shadow:inset 2px 0 0 var(--brand);}
+/* Tinted, not barred. An orange rule down the left of the current row read as an alert rather than
+   as "you are here", which is the only thing it means. */
+.dn-item.on{background:#16325a;color:var(--ink);font-weight:700;}
 .dn-n{margin-left:auto;color:var(--dim);font-size:11px;font-variant-numeric:tabular-nums;}
 /* A section of the nav — Classes, Namespaces, Typedefs — and the flat list it opens onto. Grouped
    by kind because that is how Phaser's own navigation is arranged, and because what a reader is
@@ -1547,11 +1548,22 @@ html[data-dev] .sb-dev{display:grid !important;}
 .dn-home{font-weight:700;color:var(--ink);}
 .dn-kids{display:flex;flex-direction:column;gap:1px;margin:2px 0 6px;padding-left:10px;
   border-left:1px solid var(--line);max-height:340px;overflow-y:auto;}
-.dn-sub{display:block;width:100%;text-align:left;padding:4px 9px;border:0;border-radius:6px;
-  background:none;color:var(--muted);cursor:pointer;font-family:Consolas,monospace;font-size:11.5px;
+/* flex:none, and it is not a nicety. A flex column shrinks its children to fit, so 329 class names
+   inside a 340px scroll box were squeezed to EIGHT PIXELS TALL each — the text still there, still
+   the right size, clipped by a box a third its height. On screen that is a column of faint dashes,
+   which is exactly what it looked like. */
+.dn-sub{flex:none;display:block;width:100%;text-align:left;padding:5px 9px;border:0;
+  border-radius:6px;background:none;color:var(--muted);cursor:pointer;
+  font-family:Consolas,monospace;font-size:11.5px;line-height:1.45;
   overflow:hidden;text-overflow:ellipsis;white-space:nowrap;}
 .dn-sub:hover{background:#16325a;color:var(--ink);}
 .dn-sub.on{background:var(--azure);color:#06192e;font-weight:700;}
+/* Every name in the group is in the document, the way Phaser's nav has them — eleven thousand of
+   them under Functions. This is what keeps that affordable: the browser skips layout and paint for
+   rows that are not on screen, and the size hint stops the scrollbar jumping as they come into
+   view. No filter box, because the real thing does not have one and searching belongs in one
+   place. */
+.dn-sub{content-visibility:auto;contain-intrinsic-size:auto 27px;}
 
 /* The front page: a thousand names as lists, which is what you scan a thousand names in. */
 .dc-index{list-style:none;margin:0 0 6px;padding:0;
@@ -1611,6 +1623,10 @@ html[data-dev] .sb-dev{display:grid !important;}
   font-family:var(--font);font-size:15px;}
 .dc-search input:focus{outline:0;}
 .dc-search input::placeholder{color:var(--dim);}
+/* The same box, small, in the corner — so a reader who is two pages deep can look something else up
+   without going back to the front page to find the search. */
+.dc-search-sm{margin:0;flex:none;width:250px;padding:0 11px;align-self:flex-start;}
+.dc-search-sm input{padding:8px 0;font-size:13px;}
 .dc-results{margin-top:10px;display:flex;flex-direction:column;gap:2px;max-height:52vh;
   overflow-y:auto;}
 .dc-hit{display:flex;align-items:center;gap:9px;width:100%;text-align:left;padding:8px 11px;

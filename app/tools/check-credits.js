@@ -121,6 +121,47 @@ if (!fs.existsSync(metaPath)) {
     'MIT requires the notice to travel with the copy');
   check('the reference has pages to serve', meta.pages > 100 && meta.symbols > 1000,
     meta.pages + ' pages, ' + meta.symbols + ' symbols');
+
+  /* PROVENANCE. The reference is Phaser's own writing, generated from the doclet dump Phaser ships
+     on npm — not paraphrased, not summarised, and not written by a model. That is a claim worth
+     being able to check rather than be told, so this samples real descriptions out of the generated
+     pages and proves each one appears, character for character, in Phaser's own file.
+
+     Skipped when phaser is not installed, because it is a devDependency and the generated pages are
+     committed: a fresh clone can run the suite without pulling 18 MB it does not otherwise need. */
+  const srcPath = path.join(__dirname, '..', 'node_modules', 'phaser', 'types', 'phaser.json');
+  if (!fs.existsSync(srcPath)) {
+    console.log('SKIP  the reference is Phaser’s own words  — run `npm i` to install phaser and check it');
+  } else {
+    const src = fs.readFileSync(srcPath, 'utf8');
+    const pagesDir = path.join(PUB, 'phaser-docs', 'pages');
+    const files = fs.readdirSync(pagesDir).filter(function (f) { return /\.json$/.test(f); });
+    const sample = [];
+    /* Spread across the whole set rather than the first few, which are all typedefs. */
+    for (let k = 0; k < 40 && sample.length < 25; k++) {
+      const pg = JSON.parse(fs.readFileSync(path.join(pagesDir, files[Math.floor(files.length * k / 40)]), 'utf8'));
+      const texts = [pg.x].concat((pg.m || []).map(function (m) { return m.x; }))
+        .filter(function (t) { return t && t.length > 60; });
+      if (texts.length) sample.push(texts[0]);
+    }
+    /* The dump is JSON, so its string literals escape quotes and backslashes and carry the JSDoc's
+       own "\r\n * " between lines. Comparing decoded text against it therefore has to be done on a
+       run that cannot contain any of that: the longest stretch of ordinary prose characters, which
+       is identical in both. Anything shorter than forty characters is not distinctive enough to
+       prove anything, so those samples are skipped rather than counted as passes. */
+    const plainRun = function (t) {
+      const runs = t.match(/[A-Za-z0-9 ,.;:'()\-]{40,}/g) || [];
+      return runs.sort(function (a, b) { return b.length - a.length; })[0] || '';
+    };
+    const usable = sample.map(plainRun).filter(function (r) { return r.length >= 40; });
+    const missing = usable.filter(function (r) { return src.indexOf(r) < 0; });
+    check('every word of the reference is Phaser’s own', !missing.length && usable.length >= 10,
+      missing.length
+        ? missing.length + ' of ' + usable.length + ' sampled descriptions are NOT in phaser.json — first: '
+          + JSON.stringify(missing[0].slice(0, 80))
+        : usable.length + ' sampled descriptions found verbatim in phaser/types/phaser.json'
+          + (usable.length < 10 ? ' — too few to prove anything' : ''));
+  }
 }
 
 console.log('\n' + (failures
