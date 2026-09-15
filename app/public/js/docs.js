@@ -467,6 +467,32 @@ function docsGroups() {
     else if (e.k === 'constant') co.push(e);
   });
   const byName = function (a, b) { return a.ln < b.ln ? -1 : a.ln > b.ln ? 1 : 0; };
+
+  /* THESE THREE GROUPS LIST NAMESPACES, NOT MEMBERS, and that is what Phaser's own nav does.
+     Opening Functions gave eleven thousand three hundred individual method names; Phaser gives
+     nineteen — Phaser.Actions, Phaser.Core, Phaser.Curves and so on — because "Functions" there
+     means the STATIC utility functions a namespace offers, not every method on every class. Rolled
+     up to the namespace, that is 699 functions across exactly the nineteen names Phaser lists, in
+     the same order. Instance methods are excluded by the separator: the index writes a static
+     member as `Owner.name` and an instance one as `Owner#name`.
+
+     Events keep their full owner, because those owners already ARE the namespaces Phaser lists —
+     Phaser.Animations.Events, Phaser.Cache.Events, and nineteen more. */
+  const ownerOf = function (ln) {
+    const cut = Math.max(ln.lastIndexOf('#'), ln.lastIndexOf('.'));
+    return cut > 0 ? ln.slice(0, cut) : ln;
+  };
+  const owners = function (entries, roll) {
+    const seen = {}, out = [];
+    entries.forEach(function (e) {
+      let o = ownerOf(e.ln);
+      if (roll) o = o.split('.').slice(0, 2).join('.');
+      if (seen[o] || !o) return;
+      seen[o] = 1;
+      out.push({ ln: o, nm: o.split('.').pop(), k: 'namespace', p: -1 });
+    });
+    return out.sort(byName);
+  };
   const under = function (prefix) {
     return (docsPages || []).filter(function (p) { return p.ln.indexOf(prefix) === 0; });
   };
@@ -474,10 +500,10 @@ function docsGroups() {
     { id: 'namespace', label: 'Namespaces', list: (byKind.namespace || []).slice().sort(byName) },
     { id: 'gameobjects', label: 'Game Objects', leaf: 'Phaser.GameObjects', list: under('Phaser.GameObjects') },
     { id: 'physics', label: 'Physics', leaf: 'Phaser.Physics', list: under('Phaser.Physics') },
-    { id: 'event', label: 'Events', list: ev.sort(byName) },
+    { id: 'event', label: 'Events', list: owners(ev, false) },
     { id: 'class', label: 'Class', list: (byKind.class || []).slice().sort(byName) },
-    { id: 'function', label: 'Functions', list: fn.sort(byName) },
-    { id: 'constant', label: 'Constants', list: co.sort(byName) },
+    { id: 'function', label: 'Functions', list: owners(fn.filter(function (e) { return e.ln.indexOf('#') < 0; }), true) },
+    { id: 'constant', label: 'Constants', list: owners(co, true) },
     { id: 'typedef', label: 'Typedefs', list: (byKind.typedef || []).slice().sort(byName) },
     { id: 'interface', label: 'Interfaces', list: (byKind.interface || []).slice().sort(byName) },
     { id: 'mixin', label: 'Mixins', list: (byKind.mixin || []).slice().sort(byName) }
