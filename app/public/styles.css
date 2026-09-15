@@ -1506,6 +1506,100 @@ html[data-dev] .sb-dev{display:grid !important;}
   letter-spacing:.6px;}
 .dcd-blurb{color:var(--muted);font-size:13px;line-height:1.5;margin-top:4px;}
 
+/* ---------- Docs: the three-column shell ----------
+   A list down the left that never goes away, the page in the middle, a jump-to rail on the right.
+   Every reference is shaped this way because documentation is navigated rather than read: you
+   arrive somewhere, look around, and go somewhere else. The cards this replaced made every move a
+   round trip through a front page. */
+/* 264px because the names in it are full dotted paths — Phaser.Cameras.Scene2D.Effects — and that
+   is deliberate: Phaser's own nav lists them the same way, and the prefix is what tells two classes
+   called Sprite apart. */
+.dc-shell{display:grid;grid-template-columns:264px minmax(0,1fr) 208px;gap:26px;
+  align-items:start;}
+.dc-shell:has(.dc-toc:empty),.dc-shell:not(:has(.dc-toc)){grid-template-columns:264px minmax(0,1fr);}
+.dc-nav,.dc-toc{position:sticky;top:0;max-height:calc(100vh - 150px);overflow-y:auto;
+  padding-bottom:20px;}
+.dc-main{min-width:0;}
+.dn-docs{display:flex;flex-direction:column;gap:3px;padding-bottom:12px;margin-bottom:12px;
+  border-bottom:1px solid var(--line);}
+.dn-doc{display:flex;align-items:center;gap:9px;width:100%;text-align:left;padding:9px 12px;
+  border:0;border-radius:9px;background:none;color:var(--muted);cursor:pointer;
+  font-family:var(--font);font-size:14px;font-weight:700;}
+.dn-doc .mdi{font-size:17px;}
+.dn-doc:hover{background:#16325a;color:var(--ink);}
+.dn-doc.on{background:var(--azure);color:#06192e;}
+.dn-head{color:var(--dim);font-size:10.5px;font-weight:800;text-transform:uppercase;
+  letter-spacing:.8px;padding:0 12px 7px;}
+.dn-list{display:flex;flex-direction:column;gap:1px;}
+.dn-item{display:flex;align-items:center;gap:8px;width:100%;text-align:left;padding:6px 12px;
+  border:0;border-radius:7px;background:none;color:var(--muted);cursor:pointer;
+  font-family:var(--font);font-size:13px;}
+.dn-item:hover{background:#16325a;color:var(--ink);}
+.dn-item.on{background:#16325a;color:var(--ink);font-weight:700;
+  box-shadow:inset 2px 0 0 var(--brand);}
+.dn-n{margin-left:auto;color:var(--dim);font-size:11px;font-variant-numeric:tabular-nums;}
+/* A section of the nav — Classes, Namespaces, Typedefs — and the flat list it opens onto. Grouped
+   by kind because that is how Phaser's own navigation is arranged, and because what a reader is
+   hunting is a NAME: a namespace tree would make them guess which branch it is filed under first. */
+.dn-caret{font-size:15px;color:var(--dim);transition:transform .12s;flex:none;margin-left:-4px;}
+.dn-item.open .dn-caret{transform:rotate(90deg);}
+.dn-item{font-weight:650;}
+.dn-home{font-weight:700;color:var(--ink);}
+.dn-kids{display:flex;flex-direction:column;gap:1px;margin:2px 0 6px;padding-left:10px;
+  border-left:1px solid var(--line);max-height:340px;overflow-y:auto;}
+.dn-sub{display:block;width:100%;text-align:left;padding:4px 9px;border:0;border-radius:6px;
+  background:none;color:var(--muted);cursor:pointer;font-family:Consolas,monospace;font-size:11.5px;
+  overflow:hidden;text-overflow:ellipsis;white-space:nowrap;}
+.dn-sub:hover{background:#16325a;color:var(--ink);}
+.dn-sub.on{background:var(--azure);color:#06192e;font-weight:700;}
+
+/* The front page: a thousand names as lists, which is what you scan a thousand names in. */
+.dc-index{list-style:none;margin:0 0 6px;padding:0;
+  columns:2;column-gap:26px;}
+.dc-index li{break-inside:avoid;}
+.dc-index a{display:block;padding:3px 6px;border-radius:5px;color:var(--muted);
+  font-family:Consolas,monospace;font-size:12.5px;cursor:pointer;text-decoration:none;
+  overflow:hidden;text-overflow:ellipsis;white-space:nowrap;}
+.dc-index a:hover{background:#16325a;color:var(--ink);}
+@media (max-width:1100px){ .dc-index{columns:1;} }
+/* The jump-to rail. On a class with three hundred members, scrolling is not navigation. */
+.dt-title{color:var(--ink);font-size:11px;font-weight:800;text-transform:uppercase;
+  letter-spacing:.8px;padding-bottom:9px;}
+.dt-head{color:var(--dim);font-size:10.5px;font-weight:800;text-transform:uppercase;
+  letter-spacing:.7px;margin:12px 0 4px;}
+.dt-item{display:block;padding:3px 8px;border-radius:5px;color:var(--muted);font-size:12px;
+  font-family:Consolas,monospace;text-decoration:none;cursor:pointer;
+  overflow:hidden;text-overflow:ellipsis;white-space:nowrap;}
+.dt-item:hover{background:#16325a;color:var(--ink);}
+/* Inherited members are most of a long class and least of what anybody came for. */
+.dt-item.dt-inh{opacity:.5;}
+@media (max-width:1180px){
+  .dc-shell{grid-template-columns:200px minmax(0,1fr);}
+  .dc-toc{display:none;}
+}
+@media (max-width:820px){
+  .dc-shell{grid-template-columns:minmax(0,1fr);}
+  .dc-nav{position:static;max-height:none;}
+}
+
+/* Phaser's own prose, delivered as the markdown it is written in rather than as one flat run of
+   escaped text with backticks visible in the middle of it. */
+.dc-prose{color:var(--muted);font-size:14px;line-height:1.65;}
+.dc-prose p{margin:0 0 9px;}
+.dc-prose p:last-child{margin-bottom:0;}
+.dc-prose ul,.dc-prose ol{margin:0 0 9px;padding-left:20px;display:flex;flex-direction:column;gap:3px;}
+.dc-prose code{font-family:Consolas,monospace;font-size:12.5px;background:#0d2440;
+  border:1px solid var(--line);border-radius:4px;padding:1px 5px;color:#a8c6e6;}
+.dc-prose a{color:var(--azure);}
+.dc-prose strong{color:var(--ink);}
+/* A word worth explaining. A dotted underline is the oldest signal there is for "there is more
+   here", costs the sentence nothing to read past, and works on all twenty thousand pages without
+   anybody rewriting any of them. Focusable, so it is reachable without a mouse. */
+.dc-term{text-decoration:underline dotted var(--azure);text-underline-offset:3px;
+  text-decoration-thickness:1.5px;cursor:help;}
+.dc-term:hover,.dc-term:focus-visible{color:var(--ink);background:#16325a;border-radius:3px;
+  outline:0;}
+
 /* ---------- Docs: looking something up ----------
    The search box is the first thing on the page because "what arguments does this take" is the
    question a beginner actually arrives with, about twice a lesson. */
@@ -1581,14 +1675,24 @@ html[data-dev] .sb-dev{display:grid !important;}
 a.dc-type{cursor:pointer;text-decoration:none;}
 a.dc-type:hover{text-decoration:underline;text-underline-offset:3px;}
 .dc-opt,.dc-def,.dc-flag{font-size:11px;color:var(--dim);margin-left:6px;}
+.dc-more{background:none;border:0;padding:0 3px;color:var(--azure);cursor:pointer;
+  font-family:var(--font);font-size:12px;text-decoration:underline;text-underline-offset:3px;}
+.dc-more:hover{color:var(--ink);}
+.dc-ext{line-height:1.9;}
 .dc-flag{background:#0f2440;border:1px solid var(--line);border-radius:5px;padding:1px 7px;
   font-weight:650;}
 .dc-flag.dc-inh{color:var(--muted);}
-.dc-eg{margin-top:9px;}
-/* The one you asked for, on a page of three hundred. Held rather than flashed: a reader who lands
-   mid-page needs to be able to find it again after glancing away. */
-.dc-jumped{background:#16325a;border-radius:9px;padding-left:12px;padding-right:12px;
-  box-shadow:0 0 0 1px var(--azure) inset;}
+/* A real code block, coloured like the code everywhere else in this app. It used to be a bare <pre>
+   with no background, so an eight-line example read as a continuation of the paragraph above it. */
+.dc-eg{margin:10px 0 0;padding:12px 14px;background:#0b1c33;border:1px solid var(--line);
+  border-radius:9px;overflow-x:auto;font-family:Consolas,monospace;font-size:12.5px;
+  line-height:1.6;color:#c3d3e6;}
+.dc-eg code{background:none;border:0;padding:0;font:inherit;color:inherit;}
+/* The one you asked for, on a page of three hundred. A bar down the left edge, not a box round the
+   whole thing — a full border read as "this entry is special" rather than "this is the one you
+   clicked", and on a page where nothing else is boxed it looked like a container somebody had
+   forgotten to close. */
+.dc-jumped{box-shadow:-3px 0 0 var(--brand);padding-left:13px;}
 /* What KIND of thing it is, in one word. Colour-coded because a page of a hundred members is
    scanned rather than read, and "which of these are methods" is the scan. */
 .dc-kind{font-size:10.5px;font-weight:800;text-transform:uppercase;letter-spacing:.6px;

@@ -1133,7 +1133,13 @@ app.post('/api/ai', async (req, res) => {
    its last segment is treated as a missing file and left to 404 honestly — returning index.html for
    a mistyped script name would turn a clear failure into a blank page and a confusing console. */
 app.get(/^\/(?!api\/)(?!content\/).*$/, (req, res, next) => {
-  if (/\.[a-z0-9]+$/i.test(req.path.split('/').pop() || '')) return next();
+  /* ...EXCEPT under /docs/, where a dotted last segment is the normal case rather than a missing
+     file. Every name in the Phaser reference is dotted — Phaser.Physics.Arcade.Sprite — so the
+     "looks like a filename" rule 404'd every single API address the moment one was pasted or
+     reloaded, which is the one thing giving them addresses was for. There are no real files under
+     /docs, so nothing is being hidden by the exemption. */
+  const isDocs = /^\/docs(\/|$)/.test(req.path);
+  if (!isDocs && /\.[a-z0-9]+$/i.test(req.path.split('/').pop() || '')) return next();
   res.sendFile(path.join(ROOT, 'public', 'index.html'));
 });
 

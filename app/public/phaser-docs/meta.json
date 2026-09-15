@@ -87,7 +87,7 @@
       "l": "Phaser.Device",
       "k": "namespace",
       "id": 63,
-      "x": "The Device class is a collection of properties and functions that describe the device on which the Phaser Game instance is running. These values are read-only and populated during ",
+      "x": "The Device class is a collection of properties and functions that describe the device on which the Phaser Game instance is running.\r\rThese values are read-only and populated during",
       "c": 8,
       "m": 0
     },
@@ -285,7 +285,7 @@
       "l": "Phaser.TintModes",
       "k": "namespace",
       "id": 559,
-      "x": "Phaser Tint Modes. Tint modes are used by the Tint component to determine how the tint color is applied to the texture. The default mode is `MULTIPLY`. They are only used in WebGL.",
+      "x": "Phaser Tint Modes.\r\rTint modes are used by the Tint component to determine how the tint color\ris applied to the texture. The default mode is `MULTIPLY`.\rThey are only used in WebGL",
       "c": 0,
       "m": 7
     },

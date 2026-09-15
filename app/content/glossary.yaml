@@ -39,3 +39,60 @@ state: 'What your game is doing right now — playing, paused, game over. Keepin
 juice: 'Everything wrapped around a rule to make it feel good — a flash, a shake, a sound. It never changes what the rule does.'
 build: 'Your project packed into one thing another person can open, instead of the folder of files you work in.'
 scene: 'One screen of your game with its own set of objects — a title screen, a level, a game-over screen.'
+
+# ---------------------------------------------------------------------------------------------
+# Words the Phaser reference uses.
+#
+# Everything above is a word the COURSE teaches. Everything below is a word Phaser's own
+# documentation uses without stopping to explain, because it was written for people who already
+# know it. The Docs tab underlines these wherever they appear and shows the explanation on hover,
+# which is how twenty thousand pages of professional writing become readable without rewriting a
+# single one of them.
+#
+# The lessons use this half of the list too, on the same rule as the rest: bold a word in a lesson
+# and, if it is here, it becomes hoverable. So adding one is never wasted.
+#
+# Keep them short, and say what it IS before what it does.
+
+game object: 'Anything Phaser puts on the screen — a picture, some text, a shape. If you can see it, it is a game object.'
+texture: 'The actual picture — the pixels themselves. A sprite is the thing on screen; its texture is what it looks like.'
+camera: 'Which part of your world you can see. Move the camera to follow the player around a level bigger than the screen.'
+viewport: 'The rectangle of screen a camera draws into — usually the whole game window.'
+body: 'The invisible shape physics uses for a sprite. It is what actually bumps into things, and it does not have to match the picture.'
+acceleration: 'How quickly something speeds up. Velocity changes where it is; acceleration changes how fast it is going.'
+bounds: 'The edges of something — usually the edges of the world, which stop things wandering off the screen.'
+origin: 'Which point of a picture counts as its position. The middle by default, so x and y mean its centre rather than its corner.'
+tween: 'A smooth change over time — slide this over there in half a second, fade that out.'
+easing: 'Whether a tween starts slowly, ends slowly, or moves evenly the whole way. It is what makes movement feel natural instead of robotic.'
+group: 'A bag holding lots of similar things — all the coins, all the enemies — so you can deal with them all at once.'
+emitter: 'The thing that makes particles — sparks, smoke, dust.'
+particle: 'One tiny, short-lived picture. Hundreds of them together make an explosion or a trail of smoke.'
+tileset: 'The sheet of small square pictures a tilemap is built from.'
+shader: 'A small program that runs on the graphics card and decides the colour of every single pixel.'
+webgl: 'The fast way browsers draw graphics, using the graphics card. Phaser uses it whenever it can.'
+render: 'To draw something on the screen.'
+callback: 'A function you hand to Phaser so it can call it back later — when a timer runs out, or when two things touch.'
+parameter: 'A piece of information a function needs. The names inside the brackets when you look at how to call it.'
+argument: 'The actual value you pass in for a parameter.'
+property: 'Something an object remembers about itself — a sprite''s x, its width, its colour.'
+method: 'Something an object can DO. You call it by putting brackets after the name.'
+instance: 'One particular thing made from a class. Your player is an instance of Sprite.'
+class: 'A pattern for making things. Sprite is the pattern; your player is one thing made from it.'
+namespace: 'A folder for names, so Phaser can have its own Math without clashing with JavaScript''s.'
+constructor: 'The code that runs when you make a new one of something.'
+deprecated: 'Still works, but Phaser plans to remove it. Do not use it in anything new.'
+static: 'Belongs to the class itself rather than to one thing made from it, so you call it on the name.'
+boolean: 'A value that is either true or false, and nothing else.'
+integer: 'A whole number, with nothing after a decimal point.'
+float: 'A number that is allowed a decimal point.'
+array: 'A numbered list of things, counted from zero.'
+radians: 'A way of measuring angles that maths prefers. A full turn is about 6.28 of them instead of 360 degrees.'
+interpolate: 'Work out a value part-way between two others — halfway between here and there.'
+normalized: 'Squashed into the range 0 to 1, so 0 means none of it and 1 means all of it.'
+alpha: 'How see-through something is. 1 is solid, 0 is completely invisible.'
+tint: 'A colour laid over a picture to change it — turning a white ghost red without drawing a second ghost.'
+blend mode: 'How a picture''s colours mix with whatever is already behind it.'
+depth: 'Which things get drawn in front of which. Higher numbers are nearer the front.'
+delta: 'How much time passed since the last frame. Multiply movement by it and your game runs at the same speed on a fast machine and a slow one.'
+event: 'Something the game announces when it happens, so your code can listen out for it and react.'
+listener: 'Code that is waiting for an event, ready to run the moment it happens.'

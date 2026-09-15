@@ -86,7 +86,22 @@ const PAGE_KINDS = { class: 1, namespace: 1, interface: 1, typedef: 1, mixin: 1 
 /* A typedef that is really a function signature is documentation for a callback, which reads as a
    page of its own; a plain object typedef is a config bag, which also does. Both stay. */
 
+/* One line, for the places that are one line — a parameter's note, a return value's note. */
 const clean = (s) => String(s == null ? '' : s).replace(/\s+/g, ' ').trim();
+
+/* A DESCRIPTION IS MARKDOWN AND MUST STAY THAT WAY. Phaser writes these as real markdown: `code`
+   in backticks, hyphen bullet lists, blank lines between paragraphs. Collapsing every run of
+   whitespace — which is what this used to do to everything — turned a structured explanation into
+   one unbroken wall of text with visible backticks in the middle of it. Phaser.Actions.AddEffectBloom
+   became a 200-word paragraph nobody would read.
+
+   So newlines survive, trailing space on each line goes, and runs of blank lines collapse to one.
+   The reader passes it through marked and DOMPurify, the same pair the lessons already use. */
+const cleanMd = (s) => String(s == null ? '' : s)
+  .replace(/\r\n/g, '\n')
+  .split('\n').map(function (l) { return l.replace(/\s+$/, ''); }).join('\n')
+  .replace(/\n{3,}/g, '\n\n')
+  .trim();
 
 /* Type names, as written. `parsedType` is an AST of the same string and is the single biggest
    contributor to the source file's size. */
@@ -119,7 +134,7 @@ function slimReturns(rs) {
 function slimMember(d) {
   const o = { n: d.name || '', k: d.kind || '' };
   if (d.scope === 'static') o.s = 1;
-  const x = clean(d.description); if (x) o.x = x;
+  const x = cleanMd(d.description); if (x) o.x = x;
   const p = slimParams(d.params); if (p) o.p = p;
   const r = slimReturns(d.returns); if (r) o.r = r;
   const t = typeNames(d.type); if (t.length) o.t = t;
@@ -150,7 +165,7 @@ all.forEach(function (d) {
         name: d.name || d.longname,
         kind: d.kind,
         memberof: d.memberof || '',
-        description: clean(d.description),
+        description: cleanMd(d.description),
         since: d.since ? String(d.since) : '',
         extends: Array.isArray(d.augments) ? d.augments.map(String) : [],
         ctor: null,
@@ -158,7 +173,7 @@ all.forEach(function (d) {
       });
     }
     const pg = pageByName.get(d.longname);
-    if (!pg.description) pg.description = clean(d.description);
+    if (!pg.description) pg.description = cleanMd(d.description);
     if (d.kind === 'class' && Array.isArray(d.params) && d.params.length && !pg.ctor) {
       pg.ctor = { p: slimParams(d.params) };
     }
@@ -240,6 +255,15 @@ pages.forEach(function (pg, i) {
 });
 const indexText = rows.join('\n');
 fs.writeFileSync(path.join(OUT, 'index.tsv'), indexText);
+
+/* Just the PAGES — every class, namespace, typedef and the rest — as their own small file. The
+   landing page is a list of these grouped by kind, the way Phaser's own front page is, and picking
+   them back out of the big index is not possible: a static constant like Phaser.Math.PI2 has no `#`
+   in its name either, so there is nothing in a row that says "this one is a page". A thousand rows
+   is forty kilobytes and it loads beside the index. */
+fs.writeFileSync(path.join(OUT, 'pages.tsv'), pages.map(function (pg, i) {
+  return [pg.longname, pg.kind, i].join('\t');
+}).join('\n'));
 /* And the same thing gzipped, which the reader prefers.
    A megabyte of plain text over a school connection is a wait a child will interpret as the app
    being broken, and this app has no compression middleware — deliberately, since its dependency

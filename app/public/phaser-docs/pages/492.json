@@ -1,1 +1,1 @@
-{"l":"Phaser.Scale.OrientationType","n":"OrientationType","k":"typedef","mo":"Phaser.Scale","x":"Phaser Scale Manager constants for orientation. To find out what each mode does please see [Phaser.Scale.Orientation]{@link Phaser.Scale.Orientation}.","since":"3.16.0","m":[]}
+{"l":"Phaser.Scale.OrientationType","n":"OrientationType","k":"typedef","mo":"Phaser.Scale","x":"Phaser Scale Manager constants for orientation.\r\rTo find out what each mode does please see [Phaser.Scale.Orientation]{@link Phaser.Scale.Orientation}.","since":"3.16.0","m":[]}
