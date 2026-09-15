@@ -278,17 +278,23 @@ function toolDef(id) { return TOOLS.filter(function (t) { return t.id === id; })
    diamonds gets a diamond on the rail rather than having to go back through a menu every time. */
 const GROUPS = [
   { id: 'g-select', members: ['select'] },
+  /* A `panel` group is not a mode — nothing gets armed. Pressing it opens a set of things that each
+     happen once, which is what a template and a sticker both are. Miro puts Templates second in its
+     rail and Stickers near the bottom; same here, for the same reason: one is how you start a board
+     and the other is how you decorate one you already have. */
+  { id: 'g-layout', panel: 'layout', icon: 'mdi-view-dashboard-outline', name: 'Ready-made layouts', gapAfter: true },
   { id: 'g-note', members: ['note'] },
   { id: 'g-text', members: ['text'] },
   { id: 'g-frame', members: ['frame'] },
   { id: 'g-shape', members: ['rect', 'ellipse', 'diamond', 'triangle', 'arrow'], name: 'Shapes and arrows' },
-  { id: 'g-pen', members: ['draw', 'marker', 'erase'], name: 'Pen, highlighter and eraser' }
+  { id: 'g-pen', members: ['draw', 'marker', 'erase'], name: 'Pen, highlighter and eraser', gapAfter: true },
+  { id: 'g-chip', panel: 'sticker', icon: 'mdi-emoticon-outline', name: 'Stickers' }
 ];
 /* Last member used, per group. Seeded with the first of each. */
 const GROUP_AT = {};
-GROUPS.forEach(function (g) { GROUP_AT[g.id] = g.members[0]; });
+GROUPS.forEach(function (g) { if (g.members) GROUP_AT[g.id] = g.members[0]; });
 function groupOf(id) {
-  return GROUPS.filter(function (g) { return g.members.indexOf(id) >= 0; })[0] || GROUPS[0];
+  return GROUPS.filter(function (g) { return g.members && g.members.indexOf(id) >= 0; })[0] || GROUPS[0];
 }
 /* Open flyout, if any. A group with one member has nothing to show. */
 let openGroup = '';
@@ -557,6 +563,134 @@ function placeAt(what, pt, box) {
   return o;
 }
 
+/* ---------- ready-made layouts ----------
+   One press and a cluster of frames, shapes and arrows arrives, already arranged and already joined
+   up. Three of them, chosen for what this course actually asks a student to do rather than for the
+   length of Miro's own template list — a board full of templates nobody uses is a board that takes
+   longer to read.
+
+   Kanban is the one they will use every week: what I am doing, what is left, what is finished. The
+   flowchart exists because "what happens when you get hit" is the drawing a game design document
+   needs and the one that is most tedious to build by hand. The level map is the row of boxes every
+   platformer gets planned in.
+
+   Written as DATA — positions relative to the cluster's own top-left, links by index — so adding a
+   fourth is a list entry rather than a function, and every one of them goes through addItem and
+   takes exactly one undo step. */
+const LAYOUTS = [
+  {
+    id: 'kanban', icon: 'mdi-view-column-outline', name: 'Kanban — to do, doing, done',
+    build: function () {
+      const items = [];
+      ['To do', 'Doing', 'Done'].forEach(function (t, k) {
+        items.push({ kind: 'frame', title: t, x: k * 330, y: 0, w: 300, h: 430, colour: ['g', 'o', 'b'][k] });
+      });
+      items.push({
+        kind: 'note', title: 'First job', text: 'Drag me across as you go.',
+        x: 16, y: 48, w: 168, h: 100, colour: 'y'
+      });
+      return { items: items, links: [] };
+    }
+  },
+  {
+    id: 'flow', icon: 'mdi-sitemap-outline', name: 'Flowchart — a question with two answers',
+    build: function () {
+      return {
+        items: [
+          { kind: 'shape', shape: 'rect', title: '', text: 'You touch an enemy', x: 110, y: 0, w: 200, h: 90, colour: 'b' },
+          { kind: 'shape', shape: 'diamond', title: '', text: 'Any lives left?', x: 100, y: 160, w: 220, h: 130, colour: 'p' },
+          { kind: 'shape', shape: 'rect', title: '', text: 'Back to the start of the level', x: -60, y: 360, w: 200, h: 90, colour: 'o' },
+          { kind: 'shape', shape: 'rect', title: '', text: 'Game over', x: 280, y: 360, w: 200, h: 90, colour: 'r' }
+        ],
+        links: [[0, 1, ''], [1, 2, 'yes'], [1, 3, 'no']]
+      };
+    }
+  },
+  {
+    id: 'levels', icon: 'mdi-map-marker-path', name: 'Level map — a row of levels',
+    build: function () {
+      const items = [];
+      for (let k = 0; k < 4; k++) {
+        items.push({ kind: 'frame', title: 'Level ' + (k + 1), x: k * 290, y: 0, w: 260, h: 300, colour: 'b' });
+      }
+      items.push({
+        kind: 'note', title: 'What is new here', text: 'One new thing per level.',
+        x: 16, y: 44, w: 168, h: 100, colour: 'y'
+      });
+      return { items: items, links: [] };
+    }
+  }
+];
+/* The middle of what the student is looking at, in board coordinates. A template dropped at a fixed
+   spot lands off the side of the board as soon as anyone has panned. */
+function viewCentre() {
+  const wrap = $('boardCanvasWrap');
+  if (!wrap) return { x: 0, y: 0 };
+  const b = wrap.getBoundingClientRect();
+  return toBoard(b.left + b.width / 2, b.top + b.height / 2);
+}
+function dropLayout(id) {
+  const L = LAYOUTS.filter(function (x) { return x.id === id; })[0];
+  if (!L || !board) return;
+  const spec = L.build();
+  /* Centred on the view by its own bounding box, not by its first item — a flowchart whose widest
+     row is the bottom one would otherwise arrive sitting off to one side. */
+  let x0 = Infinity, y0 = Infinity, x1 = -Infinity, y1 = -Infinity;
+  spec.items.forEach(function (o) {
+    x0 = Math.min(x0, o.x); y0 = Math.min(y0, o.y);
+    x1 = Math.max(x1, o.x + o.w); y1 = Math.max(y1, o.y + o.h);
+  });
+  const c = viewCentre();
+  const ox = Math.round(c.x - (x0 + x1) / 2), oy = Math.round(c.y - (y0 + y1) / 2);
+  mark();
+  const made = spec.items.map(function (o) {
+    return addItem(Object.assign({ text: '', title: '' }, o, { x: o.x + ox, y: o.y + oy }));
+  });
+  (spec.links || []).forEach(function (l) {
+    board.links.push({ id: uid('l'), from: made[l[0]].id, to: made[l[1]].id, label: l[2] || '' });
+  });
+  openGroup = '';
+  saveBoard();
+  paintBoard();
+  /* Selected on arrival, so the first thing a student can do is drag the whole thing where they
+     want it — and one Ctrl+Z takes all of it away again if it was not what they meant. */
+  select(made.map(function (o) { return o.id; }));
+  /* The view has to be able to SHOW it. Dropped into a corner of a board zoomed right out, a
+     template is a rumour. */
+  const el = elFor(made[0].id);
+  if (el) el.classList.add('landed');
+}
+
+/* ---------- stickers ----------
+   The `chip` kind has been named in this file's header since the board was built and was never made.
+   This is it, and it is plain unicode — no asset pipeline, nothing to licence, and it scales and
+   recolours like text because it IS text.
+
+   Sixty, grouped the way a twelve-year-old would look for them: how it feels, whether it is done,
+   which way it goes, and the things a game is made of. */
+const STICKERS = [
+  '😀', '😂', '🥳', '😎', '🤔', '😱', '😭', '😴', '🤯', '😡',
+  '❤️', '🔥', '⭐', '✨', '💡', '⚡', '💥', '🎉', '👑', '💎',
+  '✅', '❌', '⚠️', '❓', '❗', '🚧', '🔒', '🎯', '🏁', '⏱️',
+  '⬆️', '⬇️', '⬅️', '➡️', '🔁', '🔀', '↩️', '🔝', '📈', '📉',
+  '🎮', '🕹️', '👾', '🚀', '🪙', '💀', '👻', '🧟', '🐉', '🗡️',
+  '🛡️', '🧪', '🔑', '🚪', '🪜', '🧱', '🌋', '🌊', '🌲', '🏆'
+];
+const CHIP_SIZE = 64;
+function placeSticker(ch) {
+  const c = viewCentre();
+  mark();
+  const o = addItem({
+    kind: 'chip', text: ch, colour: '',
+    x: Math.round(c.x - CHIP_SIZE / 2), y: Math.round(c.y - CHIP_SIZE / 2),
+    w: CHIP_SIZE, h: CHIP_SIZE
+  });
+  openGroup = '';
+  saveBoard();
+  paintBoard();
+  select([o.id]);
+}
+
 /* ---------- draw it at the size you want ----------
    Click to drop one at a sensible size, or DRAG OUT THE BOX and get exactly that. Every canvas tool
    works this way — Miro, Lucidchart, Figma, PowerPoint — and this one only did the first half: a
@@ -671,6 +805,10 @@ function placeEl(el, i) {
   /* Plain text scales with its box, the way it does in Canva: dragging a corner is how you get a
      heading rather than a label, and a separate font-size control would be a third thing to find. */
   if (i.kind === 'text') el.style.fontSize = Math.max(11, Math.min(72, Math.round(i.h * 0.52))) + 'px';
+  if (i.kind === 'chip') {
+    const g = el.querySelector('.bi-glyph');
+    if (g) g.style.fontSize = Math.round(Math.min(i.w, i.h) * 0.82) + 'px';
+  }
   if (i.rot) el.style.setProperty('--spin', i.rot + 'deg');
   else el.style.removeProperty('--spin');
   markTiny(el, i);
@@ -719,6 +857,13 @@ function makeEl(i) {
     p.textContent = i.text || '';
     if (!i.text) { p.classList.add('blank'); p.textContent = 'Write something…'; }
     el.appendChild(p);
+  } else if (i.kind === 'chip') {
+    /* A sticker is one character, sized to its box — so it scales by being dragged like everything
+       else on the board, with no image to load and nothing to licence. */
+    const s = document.createElement('div'); s.className = 'bi-glyph';
+    s.textContent = i.text || '⭐';
+    s.style.fontSize = Math.round(Math.min(i.w, i.h) * 0.82) + 'px';
+    el.appendChild(s);
   } else if (i.kind === 'ink') {
     if (i.marker) el.classList.add('marker');
     /* Drawn into its own bounding box with a viewBox, so resizing the stroke scales it — a squiggle
@@ -726,7 +871,17 @@ function makeEl(i) {
     const NS = 'http://www.w3.org/2000/svg';
     const svg = document.createElementNS(NS, 'svg');
     svg.setAttribute('class', 'bi-inkpath');
-    svg.setAttribute('viewBox', '0 0 ' + i.w + ' ' + i.h);
+    /* THE BOX AS DRAWN, not the box as it is now. The points are stored in the coordinate space of
+       the box the stroke was drawn in, and the viewBox is what maps that space onto whatever the box
+       has since become — the element is width:100% height:100%, so the SVG does the scaling and the
+       drawing stretches with its frame.
+
+       Handing it the CURRENT size instead described the points in units they are not in. Shrink a
+       drawing and its points, still spanning the original width, spilled outside a viewBox that had
+       got smaller — so the stroke came away from its own selection box and grew while the box it was
+       supposed to be inside shrank. It only looked right until the next repaint, which is what made
+       it read as the board losing track of the drawing rather than as a resize bug. */
+    svg.setAttribute('viewBox', '0 0 ' + (i.w0 || i.w) + ' ' + (i.h0 || i.h));
     svg.setAttribute('preserveAspectRatio', 'none');
     const line = document.createElementNS(NS, 'polyline');
     line.setAttribute('points', (i.pts || []).map(function (p) { return p[0] + ',' + p[1]; }).join(' '));
@@ -831,8 +986,9 @@ function paintChrome() {
   }
 }
 function minDim(i) { return Math.min(i.w, i.h); }
-/* A frame is the room, not a thing you join to something else; a pen stroke has no edge to aim at. */
-function canLink(i) { return i.kind !== 'frame' && i.kind !== 'ink'; }
+/* A frame is the room, not a thing you join to something else; a pen stroke has no edge to aim at;
+   and a sticker is decoration — four connector dots round a smiley is furniture round a joke. */
+function canLink(i) { return i.kind !== 'frame' && i.kind !== 'ink' && i.kind !== 'chip'; }
 function setHover(id) {
   if (hoverId === id) return;
   hoverId = id;
@@ -904,9 +1060,20 @@ function edgePoint(i, from, to) {
   const dx = to.x - from.x, dy = to.y - from.y;
   if (!dx && !dy) return from;
   const hw = i.w / 2, hh = i.h / 2;
-  const t = Math.min(Math.abs(dx) > 0.001 ? hw / Math.abs(dx) : Infinity,
-    Math.abs(dy) > 0.001 ? hh / Math.abs(dy) : Infinity);
-  return { x: from.x + dx * t, y: from.y + dy * t };
+  /* TURNED, if the thing it is landing on is turned. w and h describe the box before it was rotated,
+     so working the crossing out in world coordinates aims at a rectangle that is not on the screen
+     any more: an arrow into a shape at 45° used to stop short in mid-air on one side and bury its
+     head inside the shape on the other.
+
+     Same move as resizing a rotated thing — take the DIRECTION into the shape's own frame, find where
+     it leaves the unrotated box there, then turn that offset back out into the world. */
+  const th = (spinOf(i) * Math.PI) / 180;
+  const c = Math.cos(th), s = Math.sin(th);
+  const ldx = dx * c + dy * s, ldy = -dx * s + dy * c;
+  const t = Math.min(Math.abs(ldx) > 0.001 ? hw / Math.abs(ldx) : Infinity,
+    Math.abs(ldy) > 0.001 ? hh / Math.abs(ldy) : Infinity);
+  const lx = ldx * t, ly = ldy * t;
+  return { x: from.x + (lx * c - ly * s), y: from.y + (lx * s + ly * c) };
 }
 
 /* ---------- editing text in place ---------- */
@@ -915,6 +1082,10 @@ let editing = null;
    body, Ctrl+Enter, done — without a click in between. */
 function startEdit(id, which, then) {
   const i = itemById(id); if (!i) return;
+  /* A drawing and a sticker have no words on them and nowhere to put any. Without this, asking to
+     edit one threw a blank textarea across the whole thing — over the drawing, hiding it, with
+     nothing in it and no indication of what it was for. */
+  if (i.kind === 'ink' || i.kind === 'chip') return;
   commitEdit();
   const el = $('boardCanvas').querySelector('[data-id="' + id + '"]'); if (!el) return;
   /* A frame has no body — its title is the only text on it, so that is what a double-click opens. */
@@ -992,6 +1163,41 @@ function startEdit(id, which, then) {
 function commitEdit() { if (editing) editing(true); }
 
 /* ---------- the tool rail ---------- */
+/* The strip's contents when a panel group is open. Lined up with its own rail button, like the tool
+   flyouts — see the note in paintToolOptions. */
+function paintPanelAt(host, panel) {
+  const btn = $('boardPalette').querySelector('[data-group="' + panel.id + '"]');
+  if (btn) {
+    const wb = $('boardCanvasWrap').getBoundingClientRect();
+    host.style.top = Math.round(btn.getBoundingClientRect().top - wb.top) + 'px';
+  }
+  if (panel.panel === 'layout') {
+    LAYOUTS.forEach(function (L) {
+      const b = document.createElement('button');
+      b.type = 'button';
+      b.className = 'board-layout';
+      b.title = L.name; b.setAttribute('aria-label', L.name);
+      b.innerHTML = '<span class="mdi ' + L.icon + '" aria-hidden="true"></span><span></span>';
+      /* Named, not just drawn. Three icons in a row is a puzzle; three icons with "Kanban" beside
+         them is a menu — and this is the one strip on the board with room for words. */
+      b.lastChild.textContent = L.name.split(' — ')[0];
+      b.addEventListener('click', function () { dropLayout(L.id); });
+      host.appendChild(b);
+    });
+    return;
+  }
+  host.className = 'board-toolopts grid';
+  STICKERS.forEach(function (ch) {
+    const b = document.createElement('button');
+    b.type = 'button';
+    b.className = 'board-chip';
+    b.title = 'Put this on the board'; b.setAttribute('aria-label', 'Sticker ' + ch);
+    b.textContent = ch;
+    b.addEventListener('click', function () { placeSticker(ch); });
+    host.appendChild(b);
+  });
+}
+
 function railButton(host, icon, name, on, fn, cls) {
   const b = document.createElement('button');
   b.type = 'button';
@@ -1005,7 +1211,16 @@ function railButton(host, icon, name, on, fn, cls) {
 function paintTools() {
   const host = $('boardPalette'); if (!host) return;
   host.innerHTML = '';
-  GROUPS.forEach(function (g, n) {
+  GROUPS.forEach(function (g) {
+    if (g.panel) {
+      const pb = railButton(host, g.icon, g.name, openGroup === g.id, function () {
+        openGroup = openGroup === g.id ? '' : g.id;
+        paintTools(); paintToolOptions();
+      }, 'has-more');
+      pb.dataset.group = g.id;
+      if (g.gapAfter) { const s = document.createElement('span'); s.className = 'board-tool-gap'; host.appendChild(s); }
+      return;
+    }
     const at = toolDef(GROUP_AT[g.id]);
     const many = g.members.length > 1;
     const label = (many ? (g.name || at.name) + ' — ' + at.name : at.name)
@@ -1018,7 +1233,7 @@ function paintTools() {
       setTool(GROUP_AT[g.id], openGroup === g.id);
     }, many ? 'has-more' : '');
     b.dataset.group = g.id;
-    if (n === 0 || n === 3) { const s = document.createElement('span'); s.className = 'board-tool-gap'; host.appendChild(s); }
+    if (g.gapAfter) { const s = document.createElement('span'); s.className = 'board-tool-gap'; host.appendChild(s); }
   });
   const s = document.createElement('span'); s.className = 'board-tool-gap'; host.appendChild(s);
   railButton(host, 'mdi-broom', 'Tidy the loose notes into a grid', false, function () { tidy(); });
@@ -1058,6 +1273,15 @@ function paintTools() {
 function paintToolOptions() {
   const host = $('boardToolOpts'); if (!host) return;
   host.innerHTML = '';
+  host.className = 'board-toolopts';
+  /* A panel group — templates, stickers — owns the strip outright while it is open: it is a set of
+     things that happen once, not settings for a mode, so there is no colour to offer alongside. */
+  const panel = GROUPS.filter(function (x) { return x.panel && x.id === openGroup; })[0];
+  if (panel) {
+    host.hidden = false;
+    paintPanelAt(host, panel);
+    return;
+  }
   const g = groupOf(tool);
   const showMembers = openGroup === g.id && g.members.length > 1;
   const has = Object.prototype.hasOwnProperty.call(TOOL_COLOUR, tool);
@@ -1164,7 +1388,11 @@ function paintSelectionBar() {
     b.addEventListener('click', function (e) { e.stopPropagation(); fn(); });
     bar.appendChild(b);
   };
-  if (items.length === 1 && items[0].kind !== 'text') {
+  /* Not on a drawing or a sticker. Neither has anywhere to PUT a title — they have no heading
+     element — so the editor fell back to a textarea thrown across the whole thing, and a student who
+     pressed it got a box over their drawing with no way to tell what it was for. */
+  if (items.length === 1 && items[0].kind !== 'text'
+    && items[0].kind !== 'ink' && items[0].kind !== 'chip') {
     act('mdi-format-title', 'Rename — give it a title', function () { startEdit(items[0].id, 'title'); });
   }
   act('mdi-content-copy', 'Duplicate  (Ctrl+D — or Alt-drag it)', function () { duplicateSelection(); });
@@ -1288,6 +1516,15 @@ function openMenu(e) {
 }
 document.addEventListener('pointerdown', function (e) {
   if (menuEl && !e.target.closest('.bi-menu')) closeMenu();
+  /* A flyout closes when you press somewhere else — the board, another tab, anything. It used to
+     close only when you chose something from it, so opening the stickers and then deciding against
+     it left a grid of sixty emoji sitting over the board with no way to dismiss it except picking
+     one you did not want. Every menu in every app closes this way; this one simply did not. */
+  if (openGroup && !e.target.closest('.board-palette') && !e.target.closest('.board-toolopts')) {
+    openGroup = '';
+    paintTools();
+    paintToolOptions();
+  }
 }, true);
 
 /* ---------- tidy ----------
@@ -1406,6 +1643,22 @@ function onPointerDown(e) {
    first one's drag, and refuses to start a second gesture while one is live — which is what let a
    middle-click mid-drag pan the board and move the note at the same time. */
 let liveGesture = 0;
+let endLive = null;             // how to tear the live one down, if it has to be done from outside
+/* A gesture that never gets its pointerup wedges the board for good: `liveGesture` stays set and
+   every later drag, draw and rubber-band is refused with no way back except a reload. Pointer
+   capture plus the pointercancel handler makes that rare, but rare and unrecoverable is the same
+   pair this file has already been caught by once. So there are two ways out.
+
+   A fresh press with no button held is the giveaway — the previous gesture's pointer is long gone —
+   and leaving the window is the other, because a mouse released over another application never
+   reports back here at all. */
+function dropStuckGesture() {
+  if (!liveGesture) return;
+  const end = endLive;
+  liveGesture = 0; endLive = null;
+  if (end) { try { end(null); } catch (err) { /* it is already broken; do not make it worse */ } }
+}
+window.addEventListener('blur', dropStuckGesture);
 function gesture(wrap, e, onMove, onEnd) {
   if (liveGesture) return false;
   const id = e.pointerId === undefined ? -1 : e.pointerId;
@@ -1419,8 +1672,10 @@ function gesture(wrap, e, onMove, onEnd) {
     wrap.removeEventListener('pointercancel', end);
     try { wrap.releasePointerCapture(id); } catch (err) { /* already released */ }
     liveGesture = 0;
+    endLive = null;
     onEnd(ev);
   };
+  endLive = end;
   wrap.addEventListener('pointermove', move);
   wrap.addEventListener('pointerup', end);
   wrap.addEventListener('pointercancel', end);
@@ -1793,8 +2048,11 @@ function beginDraw(e) {
         pts: pts.map(function (p) { return [+(p[0] - x0 + pad).toFixed(1), +(p[1] - y0 + pad).toFixed(1)]; })
       });
       saveBoard();
+      /* NOT selected. The pen is still armed — that is the whole point of it staying armed — so the
+         next thing the student does is draw again, not act on the stroke they just finished. And
+         selecting it put the selection bar on screen on top of the pen's own colour-and-nib strip:
+         two toolbars, stacked, both offering colours, over the drawing that had just been made. */
       paintBoard();
-      select([o.id]);
       return;
     }
     paintBoard();
@@ -2098,6 +2356,10 @@ if ($('boardCanvasWrap')) {
      the panning too, and that cost the one gesture everybody already knows for "what can I do with
      this thing". */
   wrap.addEventListener('pointerdown', function (e) {
+    /* A new press while one is supposedly still live means the old one's pointer never came back —
+       see dropStuckGesture. Clear it rather than refusing this press too, which is what "the board
+       stopped responding and I had to reload" looked like. */
+    if (liveGesture && liveGesture !== e.pointerId) dropStuckGesture();
     if (e.button === 1 || spaceDown) { beginPan(e); e.preventDefault(); return; }
     if (e.button === 2) return;                  // handled by contextmenu, below
     onPointerDown(e);
@@ -2172,6 +2434,7 @@ document.addEventListener('keydown', function (e) {
      selection. One key that undoes everything at once is a key nobody presses twice. */
   if (e.key === 'Escape') {
     if (menuEl) { closeMenu(); return; }
+    if (openGroup) { openGroup = ''; paintTools(); paintToolOptions(); return; }
     if (tool !== 'select') { setTool('select'); return; }
     clearSel(); return;
   }

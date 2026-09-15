@@ -6,6 +6,17 @@
       "runtimeExecutable": "npm",
       "runtimeArgs": ["start", "--prefix", "app"],
       "port": 3000
+    },
+    {
+      "name": "app-nologin",
+      "runtimeExecutable": "npm",
+      "runtimeArgs": ["start", "--prefix", "app"],
+      "port": 3100,
+      "env": {
+        "PORT": "3100",
+        "TESTER_PASSWORD": "",
+        "SESSION_SECRET": ""
+      }
     }
   ]
 }
