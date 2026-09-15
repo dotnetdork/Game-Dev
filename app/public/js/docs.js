@@ -30,7 +30,6 @@
 let docsTopic = '';            // '' = the shelf. 'phaser' = the Phaser reference.
 let docsSym = '';              // a longname, when an API page is open
 let docsGroupId = '';          // a group id, when one of the index pages is open
-let docsQuery = '';
 
 /* The shelf. One entry today and built as a list because the ask was explicitly for more later —
    a second reference is a row here and a renderer, not a rewrite. */
@@ -49,6 +48,11 @@ const DOC_SHELF = [
    the short name is split back out here rather than carried, because it is always the last dotted
    piece and repeating it cost a quarter of the file. */
 let docsIndex = null;
+/* The same longnames as a Set. docsType asks "is this type something I can link to?" once per type
+   name on the page, and Sprite asks it 438 times — each of which was a linear walk of all nineteen
+   thousand entries. That was two thirds of the time it took to draw the page, and it was two thirds
+   of it on a Chromebook as well, where the page is already the slowest thing in the app. */
+let docsLongnames = null;
 let docsIndexLoading = null;
 let docsMeta = null;
 let docsPages = null;          // every class/namespace/typedef, for the nav tree and the front page
@@ -102,11 +106,14 @@ function loadDocsIndex() {
     fetch('/phaser-docs/pages.tsv').then(function (r) { return r.ok ? r.text() : ''; }).catch(function () { return ''; })
   ]).then(function (all) {
     docsIndex = parseDocsIndex(all[0]);
+    docsLongnames = new Set(docsIndex.map(function (e) { return e.ln; }));
     docsMeta = all[1];
     docsPages = String(all[2] || '').split('\n').map(function (L) {
       const p = L.split('\t');
       if (p.length < 3) return null;
-      return { ln: p[0], nm: p[0].split('.').pop(), k: p[1], p: +p[2] };
+      /* A fourth column, on the one row that has it: the other kinds this longname is documented as.
+         Phaser.Display.Color is a class AND a namespace, and Phaser lists it under both. */
+      return { ln: p[0], nm: p[0].split('.').pop(), k: p[1], p: +p[2], also: p[3] ? p[3].split(',') : null };
     }).filter(Boolean);
     return docsIndex;
   }).catch(function (e) {
@@ -298,7 +305,10 @@ function docsExamples(list) {
 }
 function paintDocsCode(host) {
   if (typeof paintCode !== 'function') return;
-  host.querySelectorAll('.dc-eg code').forEach(function (c) {
+  /* ALSO THE FENCED BLOCKS INSIDE DESCRIPTIONS, not only the @example ones. Phaser writes real
+     ```js blocks in its JSDoc — SmoothedKeyControl's whole config object is one — and they were
+     arriving as plain uncoloured text beside examples that were coloured. */
+  host.querySelectorAll('.dc-eg code, .dc-prose pre code').forEach(function (c) {
     /* The colours live in CodeMirror's theme stylesheet and only apply under its theme class.
        paintCode adds the cm-* class to each token, but without an ancestor carrying
        `cm-s-material-darker` every one of them inherits the same colour — which is why the examples
@@ -309,63 +319,92 @@ function paintDocsCode(host) {
 }
 /* A type, as Phaser writes it. Linked when it is something in the index, so a reader can walk from
    a method's return value to the class it returns. */
-function docsType(names) {
+function docsType(names, sep) {
   if (!names || !names.length) return '';
   return names.map(function (t) {
     const bare = String(t).replace(/^Array\.</, '').replace(/>$/, '');
-    const known = docsIndex && docsIndex.some(function (e) { return e.ln === bare && e.p >= 0; });
-    return known ? '<a class="dc-type" data-doc="' + esc(bare) + '">' + esc(t) + '</a>'
-      : '<span class="dc-type">' + esc(t) + '</span>';
-  }).join(' | ');
+    const known = !!docsLongnames && docsLongnames.has(bare);
+    /* A union can also live INSIDE one type name — `Set.<(A|B)>` arrives as a single string. Phaser
+       spaces those too, so the pipe reads as "or" rather than as part of a name. */
+    const shown = String(t).replace(/\s*\|\s*/g, ' | ');
+    return known ? '<a class="dc-type" data-doc="' + esc(bare) + '">' + esc(shown) + '</a>'
+      : '<span class="dc-type">' + esc(shown) + '</span>';
+  /* A UNION IS " | " IN A TABLE AND ", " ON A SIGNATURE LINE. Phaser's parameter tables print
+     "number | Phaser.Types.Math.Vector2Like", and its property signatures print
+     "renderer: Phaser.Renderer.Canvas.CanvasRenderer, Phaser.Renderer.WebGL.WebGLRenderer". Same
+     data, two separators, and we used the pipe in both places. */
+  }).join(sep || ' | ');
 }
-/* A TABLE, with Phaser's own four columns — name, type, optional, description — because that is
-   what its documentation prints and because a parameter list is tabular data: four facts about each
-   of several things, compared down the columns. It was an indented bullet list, which makes "is
-   this one optional?" a question you answer by reading rather than by looking. */
+/* A TABLE, with Phaser's own columns: name, type, optional, default, description.
+   THE DEFAULT IS ITS OWN COLUMN, and it appears only when something in this table actually has one —
+   which is what Phaser does, so Arc's constructor gets five columns and Body#setVelocityX gets four.
+   Ours crammed it into the "optional" cell as "Yes = 0", which reads as part of the yes/no answer
+   and put two different facts in one column. */
 function docsParams(ps) {
   if (!ps || !ps.length) return '';
+  const hasDefault = ps.some(function (p) { return p.d !== undefined; });
   return '<div class="dc-tablewrap"><table class="dc-table"><thead><tr>'
-    + '<th>name</th><th>type</th><th>optional</th><th>description</th></tr></thead><tbody>'
+    + '<th>name</th><th>type</th><th>optional</th>'
+    + (hasDefault ? '<th>default</th>' : '')
+    + '<th>description</th></tr></thead><tbody>'
     + ps.map(function (p) {
-      return '<tr><td><code>' + esc(p.n) + '</code></td>'
-        + '<td>' + (p.t ? docsType(p.t) : '') + '</td>'
-        + '<td>' + (p.o ? 'Yes' : 'No')
-        + (p.d !== undefined ? ' <span class="dc-def">= ' + esc(p.d) + '</span>' : '') + '</td>'
-        + '<td class="dc-prose">' + (p.x ? docsInline(p.x) : '') + '</td></tr>';
+      /* CLASSES, NOT COLUMN NUMBERS. The "optional" and "default" cells must not wrap and the
+         description must; keyed on nth-child that worked only while a table had five columns, and
+         on the four-column ones — most of them — it made the DESCRIPTION nowrap, which is what put
+         a horizontal scrollbar under every parameter table in the reference. */
+      return '<tr><td class="dc-c-name"><code>' + esc(p.n) + '</code></td>'
+        + '<td class="dc-c-type">' + (p.t ? docsType(p.t) : '') + '</td>'
+        + '<td class="dc-c-opt">' + (p.o ? 'Yes' : 'No') + '</td>'
+        + (hasDefault ? '<td class="dc-c-def">' + (p.d !== undefined ? '<code>' + esc(p.d) + '</code>' : '') + '</td>' : '')
+        + '<td class="dc-c-desc dc-prose">' + (p.x ? docsInline(p.x) : '') + '</td></tr>';
     }).join('')
     + '</tbody></table></div>';
-}
-function docsSignature(m) {
-  if (m.k !== 'function') return '';
-  const args = (m.p || []).map(function (p) { return p.o ? '[' + p.n + ']' : p.n; }).join(', ');
-  return '<code class="dc-sig">' + esc(m.n) + '(' + esc(args) + ')</code>';
 }
 /* One id scheme, written once, because the page builds these and the jump-to-member looks them up
    and the two silently disagreeing is a link that does nothing. */
 function memberDomId(owner, name) {
   return 'sym-' + String(owner + '-' + name).replace(/[^A-Za-z0-9_-]/g, '-');
 }
+/* ONE MEMBER, laid out the way docs.phaser.io lays one out — read off its own markup rather than
+   invented. Every block on their page is, in order:
+
+     acceleration                                  the name, on its own
+     acceleration: Phaser.Math.Vector2             a property, with its type
+     <instance> setVelocityX(value)                a method, with who it belongs to
+     Description:  …
+     Parameters:   name | type | optional | description
+     Returns: Phaser.Physics.Arcade.Body - This Body object.
+     Source: src/physics/arcade/Body.js#L2032   Since: 3.0.0
+
+   Three things here were wrong before. The `<instance>` / `<static>` marker was a "static" chip that
+   appeared only on statics, so an instance method said nothing about being one. `Since` was parsed
+   by the build, stored on every one of nineteen thousand members, and then never printed. And a
+   property's type was a "Type" row underneath instead of sitting on the signature line where Phaser
+   puts it. */
 function docsMember(m, owner) {
   const id = memberDomId(owner, m.n);
+  const args = (m.p || []).map(function (p) { return p.o ? '[' + p.n + ']' : p.n; }).join(', ');
+  const sig = m.k === 'function'
+    ? '<span class="dc-scope">&lt;' + (m.s ? 'static' : 'instance') + '&gt;</span> '
+      + esc(m.n) + '(' + esc(args) + ')'
+    /* A property and a constant carry their type — "x: number", "ZERO: Phaser.Math.Vector2". An
+       EVENT does not: Phaser prints the bare name, because the type of an event constant is always
+       `string` and saying so on all 248 of them is noise. */
+    : esc(m.n) + (m.k !== 'event' && m.t && m.t.length ? ': ' + docsType(m.t, ', ') : '');
   return '<div class="dc-member" id="' + id + '">'
-    + '<div class="dc-mhead">' + (docsSignature(m) || '<code class="dc-sig">' + esc(m.n) + '</code>')
-    + docsKindChip(m.k)
-    + (m.s ? '<span class="dc-flag">static</span>' : '')
-    + (m.ro ? '<span class="dc-flag">read-only</span>' : '')
-    /* The CLASS it came from, not the method name again. `inherits` reads
-       "Phaser.Physics.Arcade.Components.Velocity#setVelocityX", and splitting that on every dot and
-       hash popped "setVelocityX" — so a hundred inherited members each announced "from" followed by
-       their own name, which is no information at all. */
-    + (m.from ? '<span class="dc-flag dc-inh">from ' + esc(String(m.from).split('#')[0].split('.').pop()) + '</span>' : '')
-    + '</div>'
-    /* Phaser labels each block — "Description:", "Parameters:" — rather than letting the prose and
-       the table run together, and on a page of three hundred members those labels are most of what
-       makes it skimmable. */
+    + '<h3 class="dc-mname">' + esc(m.n) + '</h3>'
+    + '<div class="dc-mhead"><code class="dc-sig">' + sig + '</code>'
+    + (m.ro ? '<span class="dc-flag">read-only</span>' : '') + '</div>'
     + (m.x ? '<div class="dc-lab">Description:</div>' + docsProse(m.x) : '')
-    + (m.t && m.k !== 'function' ? '<div class="dc-line"><b>Type</b> ' + docsType(m.t) + '</div>' : '')
+    /* Between the description and the parameters, where Phaser puts them. */
+    + (m.tags && m.tags.length
+      ? '<div class="dc-lab">Tags:</div><ul class="dc-tags">'
+        + m.tags.map(function (t) { return '<li>' + esc(t) + '</li>'; }).join('') + '</ul>'
+      : '')
     + (m.p && m.p.length ? '<div class="dc-lab">Parameters:</div>' + docsParams(m.p) : '')
-    + (m.r ? '<div class="dc-line"><b>Returns</b> ' + docsType(m.r.t) + (m.r.x ? ' — ' + docsInline(m.r.x) : '') + '</div>' : '')
-    + docsSource(m.src)
+    + (m.r ? '<div class="dc-line"><b>Returns:</b> ' + docsType(m.r.t)
+      + (m.r.x ? ' - ' + docsInline(m.r.x) : '') + '</div>' : '')
+    + docsSource(m.src, m.since)
     + docsExamples(m.eg)
     + '</div>';
 }
@@ -391,15 +430,91 @@ function renderDocsShelf() {
    documentation hidden somewhere else. What those cards were for — a way in for a reader who does
    not yet know a name to type — is the Browse section's job, and Browse covers all of Phaser rather
    than the twelve things somebody picked. */
+/* THE SAME FURNITURE EVERY PAGE OF THE REFERENCE HAS, and the landing page had none of it: no
+   breadcrumb, no version badge, and a title reading "Phaser" where Phaser's reads "Phaser 4.1.0 API
+   Documentation". It looked like a different site from the pages it links to.
+
+   The wording under the title is OURS, deliberately. Phaser's own three-paragraph introduction is
+   narrative writing on docs.phaser.io, not JSDoc out of src/, so it is not covered by the MIT grant
+   the rest of this reference rests on — the same reason build-phaser-docs.js takes the doclets and
+   leaves the guides. */
 function renderPhaserDocs() {
-  const main = '<div class="phead"><div><h2><span class="mdi mdi-gamepad-variant-outline"></span>Phaser</h2>'
-    + '<p class="sub" id="docsSub">The engine your game runs on.</p></div></div>'
-    + '<div class="dc-search"><span class="mdi mdi-magnify"></span>'
-    + '<input id="docsSearch" type="search" autocomplete="off" spellcheck="false" '
-    + 'placeholder="Look up anything — setVelocityX, overlap, Sprite…" aria-label="Search the Phaser API">'
-    + '</div><div id="docsResults" class="dc-results" hidden></div>'
+  const v = (docsMeta && docsMeta.version) || '';
+  const main = '<div class="phead"><div>'
+    + docsCrumbs([['Phaser API Documentation', 'landing'],
+      ['Phaser ' + v + ' API Documentation', 'here']])
+    + docsVersionBadge()
+    + '<h2>Phaser ' + esc(v) + ' API Documentation</h2></div></div>'
+    /* THREE PARAGRAPHS, in the shape and order Phaser's landing page uses: what this is, what it
+       gives you, and where to go for the part it does not.
+
+       The WORDING is ours. Phaser's own introduction is narrative copy on docs.phaser.io rather
+       than JSDoc out of src/, so it is not covered by the MIT grant the rest of this reference
+       rests on — the same line build-phaser-docs.js draws when it takes the doclets and leaves the
+       guides. The third paragraph also has to differ in substance: theirs sends you to the Phaser
+       Guide and the examples repo, and nothing in this app sends a twelve-year-old to a site their
+       school network blocks. It sends them to the lessons instead. */
+    + '<div class="dc-page dc-intro">'
+    + docsProse('This is the complete API documentation for Phaser ' + v + '.\n\n'
+      + 'It lists every method, property, event, typedef and callback signature in the engine, '
+      + 'without any explanation of when you would want to use them.\n\n'
+      + 'For that, read it alongside the lessons in this course.')
+    + '</div>'
+    + '<div id="docsResults" class="dc-results" hidden></div>'
     + '<div id="docsBrowse" class="dc-browse"><p class="dc-loading">Loading the reference…</p></div>';
-  return docsShell(docsNav(''), main, '');
+  /* The eight section names, as a jump-to rail — the same thing Phaser's right-hand column is. It is
+     filled in by paintBrowse once the index lands, because until then there are no sections. */
+  return docsShell(docsNav(''), main, '<div id="docsToc"></div>');
+}
+
+/* THE TRAIL IS HOME › THE REFERENCE › THE BRANCH › THIS PAGE, which is what Phaser's says:
+   "Phaser API Documentation › Class › AnimationFrame". Ours walked the namespace path instead —
+   "Phaser 4.1.0 API Documentation › Phaser › Animations › AnimationFrame" — which is where the
+   symbol lives in the engine, not where the reader is in the documentation. The rail on the left
+   says Class; the trail on top has to agree with it.
+
+   Each part is [label, kind, value]: 'landing' goes to the reference's front page, 'group' opens one
+   of the rail's branches, 'doc' opens a symbol, and 'here' is where you are and is not a link. */
+function docsCrumbs(parts) {
+  return '<div class="dc-crumbs">'
+    + '<a class="dc-crumb-home" data-doc-open="" aria-label="Docs" title="Docs">'
+    + '<span class="mdi mdi-home"></span></a>'
+    + parts.map(function (p) {
+      const label = esc(p[0]);
+      if (p[1] === 'here') return '<span class="dc-crumb-sep">›</span><span class="dc-crumb-here">' + label + '</span>';
+      if (p[1] === 'group') return '<span class="dc-crumb-sep">›</span><a data-group="' + esc(p[2]) + '">' + label + '</a>';
+      if (p[1] === 'doc') return '<span class="dc-crumb-sep">›</span><a data-doc="' + esc(p[2]) + '">' + label + '</a>';
+      return '<span class="dc-crumb-sep">›</span><a data-doc-open="phaser">' + label + '</a>';
+    }).join('')
+    + '</div>';
+}
+/* THE TITLE DEPENDS ON THE BRANCH YOU CAME THROUGH, not on the symbol's kind — because on Phaser's
+   site it depends on the URL you came through, and the same symbol has more than one URL.
+   Phaser.Animations.Events is reachable at /namespace/animations-events, titled
+   "Phaser.Animations.Events", and at /event/animations-events, titled "Animations.Events". Two
+   pages, two titles, one symbol. This reference has one page per symbol, so the branch in the rail
+   stands in for the URL kind: open it under Events and it is titled the way Phaser's event page
+   titles it, open it under Namespaces and it is titled the way their namespace page does.
+
+   The row labels in the rail follow the same three rules — see rowLabel in docsGroups. */
+function docsPageTitle(pg) {
+  const groups = docsGroups();
+  const branch = groups.filter(function (g) {
+    return g.id === docsNavOpenId && g.list.some(function (p) { return p.ln === pg.l; });
+  })[0];
+  const style = branch ? branch.rowLabel : (pg.k === 'class' ? 'short' : 'full');
+  return style === 'short' ? pg.n
+    : style === 'strip' ? pg.l.replace(/^Phaser\./, '')
+      : pg.l;
+}
+/* Which branch of the rail a page belongs to, for the trail. Phaser names the branch, not the kind:
+   a namespace page says "Namespaces". */
+const DOCS_BRANCH = { class: ['Class', 'class'], namespace: ['Namespaces', 'namespace'],
+  typedef: ['Typedefs', 'typedef'], interface: ['Interfaces', 'interface'],
+  mixin: ['Mixins', 'mixin'] };
+function docsVersionBadge() {
+  const v = (docsMeta && docsMeta.version) || '';
+  return v ? '<div class="dc-ver">Version: Phaser v' + esc(v) + '</div>' : '';
 }
 
 /* ---------- the shell ----------
@@ -409,23 +524,40 @@ function renderPhaserDocs() {
    go somewhere else. The cards this replaced made every move a round trip through a front page, so
    getting from one class to a related one meant going back twice. It read as a dictionary because
    it behaved like one: a thing you look a word up in and then close. */
+/* THE SEARCH BOX LIVES IN THE RIGHT-HAND RAIL, above the jump-to list, which is where Phaser's is.
+   Ours was a full-width bar across the middle of the landing page — the single loudest thing on a
+   page whose job is to be a contents list, and absent entirely from the shape of Phaser's. One box,
+   one place, on every page of the reference rather than three near-copies in three layouts. */
+/* BOTH RAILS COLLAPSE TO A DISCLOSURE ON A NARROW SCREEN, which is what docs.phaser.io does at its
+   996px breakpoint: the left rail goes behind a menu button and the right one becomes an "On this
+   page" dropdown above the article. Ours went to a single column at 820px and stacked the left rail
+   ON TOP of the page — so on a phone the Docs tab opened on 254 namespace names and the
+   documentation itself was three screens down — and hid the right rail entirely at 1180px, which
+   also hid the search box that lives in it.
+
+   The button is always in the markup and hidden by CSS above the breakpoint, so there is one shape
+   to reason about rather than two renderers. */
 function docsShell(nav, main, toc) {
+  const rail = function (cls, label, body) {
+    return '<aside class="' + cls + '">'
+      + '<button class="dc-railtoggle" type="button" aria-expanded="false">' + esc(label)
+      + '<span class="dc-railcaret mdi mdi-chevron-down"></span></button>'
+      + '<div class="dc-railbody">' + body + '</div></aside>';
+  };
   return '<div class="dc-shell">'
-    + '<aside class="dc-nav">' + nav + '</aside>'
+    + rail('dc-nav', 'Menu', nav)
     + '<div class="dc-main">' + main + '</div>'
-    + (toc ? '<aside class="dc-toc">' + toc + '</aside>' : '')
+    + rail('dc-toc', 'On this page', docsSearchBox() + (toc || ''))
     + '</div>';
 }
 /* The left rail: which reference you are in, then the parts of it. Built from the metadata the
    build writes, so it is there before any page is fetched. */
+/* NO "Phaser" CHIP ABOVE THE LIST. It named the reference you were already in, directly above a row
+   that names it again and more precisely — "Phaser 4.1.0 API Documentation" — so the rail opened
+   with the same word twice and one of them did nothing the other did not. */
 function docsNav(activeLongname, activeGroup) {
-  const shelf = DOC_SHELF.map(function (d) {
-    return '<button class="dn-doc' + (docsTopic === d.id ? ' on' : '') + '" data-doc-open="' + esc(d.id) + '">'
-      + '<span class="mdi ' + d.mdi + '"></span>' + esc(d.name) + '</button>';
-  }).join('');
   if (!docsPages) {
-    return '<div class="dn-docs">' + shelf + '</div>'
-      + '<div class="dn-head">Phaser</div><p class="dc-loading">Loading…</p>';
+    return '<div class="dn-head">Phaser</div><p class="dc-loading">Loading…</p>';
   }
   /* GROUPED BY KIND, which is how Phaser's own navigation is arranged: a short list of headings —
      Namespaces, Class, Typedefs — each opening onto a flat alphabetical list of full dotted names.
@@ -441,7 +573,7 @@ function docsNav(activeLongname, activeGroup) {
      the truthful home comes first — Phaser.Actions IS a namespace; it merely CONTAINS functions.
      Pressing a heading opens that one and shuts whatever was open, which is what the accordion in
      Phaser's own nav does. */
-  const groups = docsRailGroups();
+  const groups = docsGroups();
   let autoOpen = '';
   for (let i = 0; i < groups.length && !autoOpen; i++) {
     if (!groups[i].leaf && groups[i].list.some(function (p) { return p.ln === activeLongname; })) {
@@ -463,8 +595,11 @@ function docsNav(activeLongname, activeGroup) {
        real thing does not have. Searching lives in one place — the box at the top right. */
     const body = open
       ? '<div class="dn-kids">' + g.list.map(function (p) {
+        const label = g.rowLabel === 'short' ? p.nm
+          : g.rowLabel === 'strip' ? p.ln.replace(/^Phaser\./, '')
+            : p.ln;
         return '<button class="dn-sub' + (p.ln === activeLongname ? ' on' : '') + '" data-doc="'
-          + esc(p.ln) + '">' + esc(p.ln) + '</button>';
+          + esc(p.ln) + '" title="' + esc(p.ln) + '">' + esc(label) + '</button>';
       }).join('') + '</div>'
       : '';
     /* The chevron sits on the RIGHT, where Phaser's does, and there is no count beside it. A number
@@ -474,10 +609,20 @@ function docsNav(activeLongname, activeGroup) {
       + (activeGroup === g.id ? ' on' : '') + '" data-group="' + esc(g.id) + '">'
       + esc(g.label) + '<span class="dn-caret mdi mdi-chevron-right"></span></button>' + body;
   }).join('');
-  return '<div class="dn-docs">' + shelf + '</div>'
-    + '<div class="dn-list">'
-    + '<button class="dn-item dn-home' + (!activeLongname ? ' on' : '') + '" data-doc-open="phaser">'
+  /* HIGHLIGHTED ONLY WHEN YOU ARE ACTUALLY ON IT. The test was "no symbol open", which is also true
+     of every group index — so opening Physics or Typedefs left this row lit alongside the one you
+     had just pressed, and the rail claimed you were in two places at once. The landing page is the
+     one with no symbol AND no group. */
+  /* The arrow goes OUT of this reference, back to the shelf of them; the row beside it goes to this
+     reference's own front page. Two different destinations, so two controls — and a button inside a
+     button is not markup, so they sit side by side in one row. */
+  return '<div class="dn-list">'
+    + '<div class="dn-homerow">'
+    + '<button class="dn-back" data-doc-open="" aria-label="Back to Docs" title="Back to Docs">'
+    + '<span class="mdi mdi-home"></span></button>'
+    + '<button class="dn-item dn-home' + (!activeLongname && !activeGroup ? ' on' : '') + '" data-doc-open="phaser">'
     + 'Phaser ' + esc((docsMeta && docsMeta.version) || '') + ' API Documentation</button>'
+    + '</div>'
     + sections + '</div>';
 }
 
@@ -493,8 +638,12 @@ function docsGroups() {
      rail rendered, the group pages rendered, and both were blank for ever. */
   if (!docsPages || !docsIndex) return [];
   if (docsGroupCache) return docsGroupCache;
+  /* A page is filed under every kind it is documented as, not only the one its page is titled with,
+     so Phaser.Display.Color appears in Classes AND in Namespaces the way it does on Phaser's site. */
   const byKind = {};
-  (docsPages || []).forEach(function (p) { (byKind[p.k] || (byKind[p.k] = [])).push(p); });
+  (docsPages || []).forEach(function (p) {
+    [p.k].concat(p.also || []).forEach(function (k) { (byKind[k] || (byKind[k] = [])).push(p); });
+  });
   const isPage = {};
   (docsPages || []).forEach(function (p) { isPage[p.ln] = 1; });
   const ev = [], fn = [], co = [];
@@ -505,6 +654,7 @@ function docsGroups() {
     else if (e.k === 'constant') co.push(e);
   });
   const byName = function (a, b) { return a.ln < b.ln ? -1 : a.ln > b.ln ? 1 : 0; };
+  const typedefs = (byKind.typedef || []).slice().sort(byName);
 
   /* THESE THREE GROUPS LIST NAMESPACES, NOT MEMBERS, and that is what Phaser's own nav does.
      Opening Functions gave eleven thousand three hundred individual method names; Phaser gives
@@ -534,8 +684,20 @@ function docsGroups() {
   const under = function (prefix) {
     return (docsPages || []).filter(function (p) { return p.ln.indexOf(prefix) === 0; });
   };
+  /* HOW EACH BRANCH WRITES ITS ROWS, read off Phaser's own sidebar rather than picked. It is not one
+     rule — every branch was showing the full dotted longname here, so Class read
+     "Phaser.Animations.Animation" where Phaser reads "Animation", and the rail was three times as
+     wide as it needed to be for the one branch a beginner opens most.
+
+       Namespaces   Phaser.Actions              the whole name
+       Class        Animation                   the last piece only
+       Functions    Phaser.Actions              the whole name
+       Constants    BlendModes                  the name without its "Phaser." prefix
+       Events       Animations.Events           likewise
+       Typedefs     Physics.Matter.Events       likewise */
   const out = [
-    { id: 'namespace', label: 'Namespaces', list: (byKind.namespace || []).slice().sort(byName) },
+    { id: 'namespace', label: 'Namespaces', rowLabel: 'full',
+      list: (byKind.namespace || []).slice().sort(byName) },
     /* No chevron on these two in Phaser's rail; their page is an index split into sections. */
     { id: 'gameobjects', label: 'Game Objects', flat: true, root: 'Phaser.GameObjects',
       /* "Game Object Classes" is everything that is not a function — Phaser files the sub-namespaces
@@ -547,31 +709,32 @@ function docsGroups() {
       list: under('Phaser.GameObjects') },
     { id: 'physics', label: 'Physics', flat: true, root: 'Phaser.Physics',
       byNamespace: true, sectionSuffix: ' Physics', list: under('Phaser.Physics') },
-    { id: 'event', label: 'Events', list: owners(ev, false) },
-    { id: 'class', label: 'Class', list: (byKind.class || []).slice().sort(byName) },
-    { id: 'function', label: 'Functions', list: owners(fn.filter(function (e) { return e.ln.indexOf('#') < 0; }), true) },
-    { id: 'constant', label: 'Constants', list: owners(co, true) },
-    { id: 'typedef', label: 'Typedefs', list: (byKind.typedef || []).slice().sort(byName) },
-    /* Not a rail group — the front page's Typedefs section lists the NAMESPACES that hold typedefs,
-       the way its Constants and Events sections do, and Phaser counts fifty-seven of them. The rail
-       lists the typedef pages themselves. */
-    { id: 'typedef-owners', label: 'Typedefs', hidden: true,
-      /* Only the typedefs that HAVE an owner. Nineteen of Phaser's are global — Attachment,
-         BaseShaderConfig, CenterFunction — with no dot in the name, and asking for the part before
-         the dot handed back the name itself, so each invented a namespace of its own and the
-         section came out at 75 against Phaser's 56. */
-      list: owners((docsPages || []).filter(function (p) {
-        return p.k === 'typedef' && p.ln.indexOf('.') > 0;
-      }).map(function (p) { return { ln: p.ln }; }), false) },
+    { id: 'event', label: 'Events', rowLabel: 'strip', list: owners(ev, false) },
+    { id: 'class', label: 'Class', rowLabel: 'short',
+      list: (byKind.class || []).slice().sort(byName) },
+    { id: 'function', label: 'Functions', rowLabel: 'full',
+      list: owners(fn.filter(function (e) { return e.ln.indexOf('#') < 0; }), true) },
+    { id: 'constant', label: 'Constants', rowLabel: 'strip', list: owners(co, true) },
+    /* THE NAMESPACES THAT HOLD TYPEDEFS, not the typedefs themselves. Phaser's Typedefs page and
+       its Typedefs branch in the rail both list fifty-seven namespaces — Phaser.Types.Core,
+       Phaser.Types.Input and the rest — exactly as its Constants and Events sections list theirs.
+       This listed all 395 typedef pages instead, so the branch was seven times the length of
+       Phaser's and opened onto a wall of bare names — `EachMapCallback<E>`, `CenterFunction` —
+       with nothing to say which part of the engine any of them belonged to.
+
+       Only the typedefs that HAVE an owner. Eighteen of Phaser's are global, with no dot in the
+       name, and asking for the part before the dot hands back the name itself — so each invented a
+       namespace of its own and the section came out at 75 against Phaser's 57. Phaser's own index
+       drops those eighteen entirely; this one keeps them, in a Global section on the Typedefs page,
+       because a page nothing links to is a page nobody finds. */
+    { id: 'typedef', label: 'Typedefs', rowLabel: 'strip',
+      list: owners(typedefs.filter(function (p) { return p.ln.indexOf('.') > 0; }), false),
+      globals: typedefs.filter(function (p) { return p.ln.indexOf('.') < 0; }) },
     { id: 'interface', label: 'Interfaces', list: (byKind.interface || []).slice().sort(byName) },
     { id: 'mixin', label: 'Mixins', list: (byKind.mixin || []).slice().sort(byName) }
   ].filter(function (g) { return g.list.length; });
   docsGroupCache = out;
   return out;
-}
-/* The rail shows only the groups meant to be navigated; `hidden` ones exist to feed the front page. */
-function docsRailGroups() {
-  return docsGroups().filter(function (g) { return !g.hidden; });
 }
 /* Which section the reader opened by hand: a group id, '' for none, or undefined meaning "nobody has
    chosen, so open whichever holds the page they are on". Kept across pages so the nav does not shut
@@ -637,14 +800,18 @@ function renderDocsGroup(g) {
     }).sort(function (a, b) { return a.ln < b.ln ? -1 : 1; })
       .map(function (s) { return section(s.nm, s.nm + (g.sectionSuffix || ''), directChildren(s.ln)); })
       .join('');
+  } else if (g.globals && g.globals.length) {
+    /* Phaser's eighteen global typedefs are callback signatures that belong to no namespace, so
+       there is no owner row that leads to them. Their own section, under the owners. */
+    body = section('owners', g.label, g.list) + section('global', 'Global', g.globals);
   } else {
     body = docsIndexList(g.list);
   }
-  if (!body) body = docsIndexList(directChildren(g.root || ''));
   const main = '<div class="phead"><div>'
-    + '<div class="dc-crumbs"><a data-doc-open="phaser">Phaser API Documentation</a></div>'
-    + '<h2>' + esc(g.label) + '</h2></div>'
-    + docsSearchBox() + '</div><div id="docsResults" class="dc-results" hidden></div>'
+    + docsCrumbs([['Phaser API Documentation', 'landing'], [g.label, 'here']])
+    + docsVersionBadge()
+    + '<h2>' + esc(g.label) + '</h2></div></div>'
+    + '<div id="docsResults" class="dc-results" hidden></div>'
     + '<div class="dc-page">' + body + '</div>';
   return docsShell(docsNav('', g.id), main, toc ? '<div class="dt-title">Jump to</div>' + toc : '');
 }
@@ -652,37 +819,220 @@ function renderDocsGroup(g) {
    the version this reference was generated from. Jay asked for it explicitly, and it is the one
    outward link in the docs — a pointer at the engine's own source, not a place a student gets lost.
    It opens in a new tab so it never takes them out of their game. */
-function docsSource(src) {
-  if (!src) return '';
+/* SOURCE AND SINCE ON ONE LINE, which is how Phaser prints it — "Source: src/math/Vector2.js#L294
+   Since: 3.0.0" — at the foot of the page and at the foot of every member on it. */
+function docsSource(src, since) {
+  if (!src && !since) return '';
   const v = (docsMeta && docsMeta.version) || '';
   const href = 'https://github.com/phaserjs/phaser/blob/v' + v + '/' + src;
-  return '<div class="dc-src">Source: <a href="' + esc(href) + '" target="_blank" rel="noopener">'
-    + esc(src) + '</a></div>';
+  return '<div class="dc-src">'
+    + (src ? 'Source: <a href="' + esc(href) + '" target="_blank" rel="noopener">' + esc(src) + '</a>' : '')
+    + (since ? ' <span class="dc-since">Since: ' + esc(since) + '</span>' : '')
+    + '</div>';
 }
+/* Searching from wherever you are, without going back to the front page first. The landing page has
+   its own full-width box and keeps it; this is the same box, small, in the corner every site puts
+   it — on a group's index page and on every API page. */
 function docsSearchBox() {
   return '<div class="dc-search dc-search-sm"><span class="mdi mdi-magnify"></span>'
     + '<input id="docsSearch" type="search" autocomplete="off" spellcheck="false" '
     + 'placeholder="Search Phaser…" aria-label="Search the Phaser API"></div>';
 }
 
+/* A TYPEDEF BRANCH PAGE SHOWS ITS TYPEDEFS IN FULL, not as a list of links to them.
+   docs.phaser.io/api-documentation/typedef/device is Audio, Browser, CanvasFeatures and five more,
+   each with its description and its table of fields, all on the one page — and the individual ones
+   have no page of their own there at all: /typedef/types-math/sincostable is a 404. Ours listed
+   eight names and made the reader click each one.
+
+   The child pages are separate files, so openDocsSymbol fetches them before rendering and hangs
+   them on `inline`. When it has not — every other branch — this renders nothing and the ordinary
+   "Typedefs:" index list is used instead. */
+function inlineTypedefs(pg) {
+  const list = pg.inline;
+  if (!list || !list.length) return '';
+  return list.map(function (t) {
+    return '<h2 class="dc-h2" id="sec-' + esc(String(t.n).replace(/[^A-Za-z0-9_-]/g, '-')) + '">'
+      + esc(t.n) + '</h2>'
+      + '<div class="dc-member">'
+      + '<h3 class="dc-mname"><span class="dc-scope">&lt;static&gt;</span> ' + esc(t.n) + '</h3>'
+      + (t.x ? docsProse(t.x) : '')
+      + (t.props && t.props.length ? docsParams(t.props) : '')
+      + (t.params && t.params.length ? '<div class="dc-lab">Parameters:</div>' + docsParams(t.params) : '')
+      + (t.ret ? '<div class="dc-line"><b>Returns:</b> ' + docsType(t.ret.t)
+        + (t.ret.x ? ' - ' + docsInline(t.ret.x) : '') + '</div>' : '')
+      + (t.t && t.t.length ? '<div class="dc-line">Type: ' + docsType(t.t, ', ') + '</div>' : '')
+      + (t.mo ? '<div class="dc-line">Member of: <a data-doc="' + esc(t.mo) + '">' + esc(t.mo) + '</a></div>' : '')
+      + docsSource(t.src, t.since)
+      + '</div>';
+  }).join('');
+}
+
+/* THE CONSTANTS BRANCH IS ITS OWN PAGE SHAPE, the way the typedefs branch is. Opened under
+   Constants, Phaser.TintModes on their site is six headings and nothing else — no description, no
+   "Scope: static", no page-level source, no "Constants:" or "Public Members" heading. Each constant
+   is an h2 with its name, its `NAME: type` line, its description and its source, IN THE ORDER IT IS
+   WRITTEN IN THE FILE rather than alphabetically.
+
+   Ours carried all the page furniture and then two stacked headings above an alphabetical list, so
+   the same six constants arrived in a different order under two headings their page does not have. */
+function renderConstantsPage(pg) {
+  /* ONLY THE CONSTANTS. Phaser.Math has fifty static functions as well as its constants, and their
+     constants page lists PI2, TAU, EPSILON and the rest — not the functions. Taking every member
+     put 205 blocks on a page that has 65. */
+  const list = (pg.m || []).filter(function (m) {
+    return !m.from && (m.k === 'constant' || (m.k === 'member' && m.s));
+  }).slice().sort(function (a, b) { return (a.ln || 0) - (b.ln || 0); });
+  /* Each constant is an h3, not an h2 — measured on their page: TintModes has one h1 at 48/60 and
+     six h3s at 24/30, no h2 anywhere, and NO horizontal rules between them. The gap from a Source
+     block to the next name is 30px, which the h3's own top margin provides once nothing blocks it
+     from collapsing. So no .dc-member wrapper here: that one draws a rule after every block. */
+  const body = list.map(function (m) {
+    const id = memberDomId(pg.l, m.n);
+    return '<div class="dc-const">'
+      + '<h3 class="dc-mname" id="' + esc(id) + '">' + esc(m.n) + '</h3>'
+      + '<div class="dc-mhead"><code class="dc-sig">' + esc(m.n)
+      + (m.t && m.t.length ? ': ' + docsType(m.t, ', ') : '') + '</code></div>'
+      + (m.x ? '<div class="dc-lab">Description:</div>' + docsProse(m.x) : '')
+      + docsSource(m.src, m.since)
+      + '</div>';
+  }).join('');
+  const toc = list.map(function (m) {
+    const id = memberDomId(pg.l, m.n);
+    return '<a class="dt-item" href="#' + id + '" data-jump="' + esc(id) + '">' + esc(m.n) + '</a>';
+  }).join('');
+  const title = docsPageTitle(pg);
+  const main = '<div class="phead"><div>'
+    + docsCrumbs([['Phaser API Documentation', 'landing'], ['Constants', 'group', 'constant'],
+      [title, 'here']])
+    + docsVersionBadge()
+    + '<h2>' + esc(title) + '</h2></div></div>'
+    + '<div id="docsResults" class="dc-results" hidden></div>'
+    + '<div class="dc-page">' + body + '</div>';
+  return docsShell(docsNav(pg.l, ''), main, toc ? '<div class="dt-title">Jump to</div>' + toc : '');
+}
+
+/* THE TYPEDEFS BRANCH, like the constants branch, is only its own entries. Their /typedef/phaser
+   page is one typedef — DeviceConf — and nothing else, while Phaser the namespace has hundreds of
+   members, classes and sub-namespaces. Rendering the namespace page and appending the typedefs put
+   all of that on it. */
+function renderTypedefsPage(pg) {
+  const title = docsPageTitle(pg);
+  const main = '<div class="phead"><div>'
+    + docsCrumbs([['Phaser API Documentation', 'landing'], ['Typedefs', 'group', 'typedef'],
+      [title, 'here']])
+    + docsVersionBadge()
+    + '<h2>' + esc(title) + '</h2></div></div>'
+    + '<div id="docsResults" class="dc-results" hidden></div>'
+    + '<div class="dc-page">' + inlineTypedefs(pg) + '</div>';
+  const toc = (pg.inline || []).map(function (t) {
+    const id = 'sec-' + String(t.n).replace(/[^A-Za-z0-9_-]/g, '-');
+    return '<a class="dt-item" href="#' + id + '" data-jump="' + esc(id) + '">' + esc(t.n) + '</a>'
+      + '<a class="dt-item dt-sub" href="#' + id + '" data-jump="' + esc(id) + '">'
+      + '&lt;static&gt; ' + esc(t.n) + '</a>';
+  }).join('');
+  return docsShell(docsNav(pg.l, ''), main, toc ? '<div class="dt-title">Jump to</div>' + toc : '');
+}
+
+/* THE EVENTS BRANCH. Their /event/data-events is an h1 and then one h2 per event, in source order,
+   with no page description, no Scope, no page-level Source and no "Static functions" heading — and
+   inside each entry the layout differs too: "Description:" runs INTO the first sentence rather than
+   sitting on its own line, the parameter table carries no "Parameters:" label, and a "Member of:"
+   line sits above the source. Every one of those was wrong when events were rendered by the
+   namespace template. */
+function renderEventsPage(pg) {
+  const list = (pg.m || []).filter(function (m) { return !m.from && m.k === 'event'; })
+    .slice().sort(function (a, b) { return (a.ln || 0) - (b.ln || 0); });
+  const body = list.map(function (m) {
+    const id = memberDomId(pg.l, m.n);
+    return '<h2 class="dc-h2" id="' + esc(id) + '">' + esc(m.n) + '</h2>'
+      + '<div class="dc-const">'
+      /* The label is part of the sentence, so it goes through the markdown with it. */
+      + (m.x ? docsProse('**Description:** ' + m.x) : '')
+      + (m.p && m.p.length ? docsParams(m.p) : '')
+      + '<div class="dc-line">Member of: <a data-doc="' + esc(pg.l) + '">' + esc(pg.l) + '</a></div>'
+      + docsSource(m.src, m.since)
+      + '</div>';
+  }).join('');
+  const toc = list.map(function (m) {
+    const id = memberDomId(pg.l, m.n);
+    return '<a class="dt-item" href="#' + id + '" data-jump="' + esc(id) + '">' + esc(m.n) + '</a>';
+  }).join('');
+  const title = docsPageTitle(pg);
+  const main = '<div class="phead"><div>'
+    + docsCrumbs([['Phaser API Documentation', 'landing'], ['Events', 'group', 'event'],
+      [title, 'here']])
+    + docsVersionBadge()
+    + '<h2>' + esc(title) + '</h2></div></div>'
+    + '<div id="docsResults" class="dc-results" hidden></div>'
+    + '<div class="dc-page">' + body + '</div>';
+  return docsShell(docsNav(pg.l, ''), main, toc ? '<div class="dt-title">Jump to</div>' + toc : '');
+}
+
 /* One API page. */
 function renderDocsPage(pg) {
-  const groups = { member: [], constant: [], function: [], event: [] };
-  (pg.m || []).forEach(function (m) { (groups[m.k] || (groups[m.k] = [])).push(m); });
-  /* PHASER'S OWN SECTION NAMES, and its own split. A class page there reads "Public Members",
-     "Inherited Members", "Public Methods", "Inherited Methods" — the class's own things first, then
-     what it got from elsewhere, gathered under a "From Phaser.GameObjects.Components.Alpha:" label
-     for each source. Ours listed everything together with a small "from" chip on each row, which on
-     Sprite means 242 of the 319 rows carry a chip and the seventy-seven that are actually Sprite's
-     own are lost in them. */
-  const block = function (kind, label) {
-    const list = (groups[kind] || []).filter(function (m) { return !m.from; });
+  if (docsNavOpenId === 'constant' && (pg.m || []).some(function (m) { return m.k === 'constant' || (m.k === 'member' && m.s); })) {
+    return renderConstantsPage(pg);
+  }
+  if (docsNavOpenId === 'event' && (pg.m || []).some(function (m) { return m.k === 'event'; })) {
+    return renderEventsPage(pg);
+  }
+  if (docsNavOpenId === 'typedef' && pg.inline && pg.inline.length) {
+    return renderTypedefsPage(pg);
+  }
+  /* SIX SECTIONS, SPLIT BY SCOPE AS WELL AS KIND, in the order docs.phaser.io prints them:
+
+       Inherited Members · Public Members · Inherited Methods · Public Methods
+       Static functions  · Constants:
+
+     Two of those were wrong and one did not exist. Inherited came AFTER the class's own, where
+     Phaser puts it first. Statics were mixed in with instance methods, so Phaser.Animations.Events
+     — which is nothing but static event names — had no section at all matching the "Static
+     functions" heading their page carries. And constants were their own heading, where Phaser emits
+     a "Constants:" label and then lists them exactly like properties. */
+  const own = [], inh = [];
+  (pg.m || []).forEach(function (m) { (m.from ? inh : own).push(m); });
+  const sect = {
+    inhMembers: inh.filter(function (m) { return m.k === 'member' || m.k === 'constant'; }),
+    pubMembers: own.filter(function (m) { return m.k === 'member' && !m.s; }),
+    inhMethods: inh.filter(function (m) { return m.k === 'function'; }),
+    pubMethods: own.filter(function (m) { return m.k === 'function' && !m.s; }),
+    /* Events live here because that is where Phaser files them: an event name is a static string on
+       a namespace, and their generator labels the whole group "Static functions". */
+    staticFns: own.filter(function (m) { return (m.k === 'function' && m.s) || m.k === 'event'; }),
+    /* ONLY REAL CONSTANTS trail the page. A static PROPERTY is not one: Phaser.GameObjects.Graphics
+       has two and lists them in the ordinary Public Members section, while Phaser.Structs.Size's
+       are @constant and get the trailing "Constants:" block. Treating "static" as "constant" gave
+       Graphics a second Public Members heading its own page does not have. */
+    constants: own.filter(function (m) { return m.k === 'constant'; })
+  };
+  sect.pubMembers = own.filter(function (m) { return m.k === 'member'; });
+  /* A CLASS HAS NO "Static functions" SECTION — its statics sit in Public Methods, mixed in by name.
+     A NAMESPACE does have one, and it is the only thing on pages like Phaser.Animations.Events.
+     Phaser.Display.Color is the case that shows it: eighteen static functions, and their class page
+     lists every one of them under Public Methods with no separate heading anywhere. */
+  if (pg.k === 'class') {
+    sect.pubMethods = sect.pubMethods.concat(sect.staticFns).sort(function (a, b) {
+      const x = a.n.toLowerCase(), y = b.n.toLowerCase();
+      return x < y ? -1 : x > y ? 1 : 0;
+    });
+    sect.staticFns = [];
+  }
+  /* `id` is separate from `label` because Phaser emits the heading "Public Members" TWICE on a class
+     with constants — once for its properties and once, after a "Constants:" label, for the constants
+     themselves. Two elements with one id is an anchor that goes to the wrong half of the page. */
+  const block = function (list, label, id) {
     if (!list.length) return '';
-    return '<h2 class="dc-h2" id="sec-' + esc(label.replace(/\s+/g, '-')) + '">' + esc(label) + '</h2>'
+    return '<h2 class="dc-h2" id="sec-' + esc((id || label).replace(/\s+/g, '-')) + '">'
+      + esc(label) + '</h2>'
       + list.map(function (m) { return docsMember(m, pg.l); }).join('');
   };
-  const inherited = function (kind, label) {
-    const list = (groups[kind] || []).filter(function (m) { return !!m.from; });
+  /* INHERITED MEMBERS ARE A LIST OF NAMES, not two hundred full blocks. Phaser prints "From
+     Phaser.GameObjects.Components.Alpha:" and then the names, each linking to that class's own page
+     — so Sprite's 178 inherited entries are 178 short links rather than 178 descriptions, parameter
+     tables and source lines. Rendering them in full is the single biggest reason our Sprite page
+     looked nothing like theirs: it was a 325 KB wall where Phaser's is a contents list. */
+  const inherited = function (list, label) {
     if (!list.length) return '';
     const by = {};
     list.forEach(function (m) {
@@ -692,7 +1042,9 @@ function renderDocsPage(pg) {
     return '<h2 class="dc-h2" id="sec-' + esc(label.replace(/\s+/g, '-')) + '">' + esc(label) + '</h2>'
       + Object.keys(by).sort().map(function (src) {
         return '<div class="dc-lab dc-from">From <a data-doc="' + esc(src) + '">' + esc(src) + '</a>:</div>'
-          + by[src].map(function (m) { return docsMember(m, pg.l); }).join('');
+          + '<ul class="dc-inh">' + by[src].map(function (m) {
+            return '<li><a data-doc="' + esc(src + '#' + m.n) + '">' + esc(m.n) + '</a></li>';
+          }).join('') + '</ul>';
       }).join('');
   };
   /* What is inside a namespace, as LISTS grouped by kind — the same shape as the front page and as
@@ -704,76 +1056,108 @@ function renderDocsPage(pg) {
     interface: 'Interfaces', mixin: 'Mixins' };
   const kidsBy = {};
   (pg.kids || []).forEach(function (k) { (kidsBy[k[1]] || (kidsBy[k[1]] = [])).push(k); });
+  /* A HEADING LIKE EVERY OTHER SECTION — "Namespaces:", "Classes:" — and no count beside it. Phaser
+     writes these as an h2 with a trailing colon and lists the short names; ours was an h3 with a
+     count badge, which made a namespace's contents look like a different kind of thing from every
+     other section on the page. */
+  /* When the typedefs are rendered in full above, the index list of their names is the same eight
+     entries a second time. */
+  if (pg.inline && pg.inline.length) delete kidsBy.typedef;
   const kids = Object.keys(kidsBy).sort().map(function (kind) {
-    const list = kidsBy[kind].slice().sort(function (a, b) { return a[0] < b[0] ? -1 : 1; });
-    return '<h3 class="dc-h">' + esc(KID_LABEL[kind] || kind)
-      + '<span class="dc-count">' + list.length + '</span></h3>'
+    const list = kidsBy[kind].slice().sort(function (a, b) {
+      return a[0].toLowerCase() < b[0].toLowerCase() ? -1 : 1;
+    });
+    const label = (KID_LABEL[kind] || kind) + ':';
+    return '<h2 class="dc-h2" id="sec-' + esc(label.replace(/[^A-Za-z]/g, '')) + '">' + esc(label) + '</h2>'
       + '<ul class="dc-index">' + list.map(function (k) {
-        return '<li><a data-doc-page="' + k[2] + '">' + esc(pg.l + '.' + k[0]) + '</a></li>';
+        return '<li><a data-doc-page="' + k[2] + '">' + esc(k[0]) + '</a></li>';
       }).join('') + '</ul>';
   }).join('');
-  const crumbs = [];
-  if (pg.mo) {
-    const parts = String(pg.mo).split('.');
-    let acc = '';
-    parts.forEach(function (p) {
-      acc = acc ? acc + '.' + p : p;
-      crumbs.push('<a data-doc="' + esc(acc) + '">' + esc(p) + '</a>');
-    });
-  }
+  const title = docsPageTitle(pg);
+  /* The trail names the branch you came through, for the same reason the title does. */
+  const open = docsGroups().filter(function (g) {
+    return g.id === docsNavOpenId && g.list.some(function (p) { return p.ln === pg.l; });
+  })[0];
+  const branch = open ? [open.label, open.id] : DOCS_BRANCH[pg.k];
+  const crumbs = [['Phaser API Documentation', 'landing']];
+  if (branch) crumbs.push([branch[0], 'group', branch[1]]);
+  crumbs.push([title, 'here']);
   /* The jump-to rail. On a class with three hundred members, scrolling is not navigation — and this
      is the one thing Phaser's own docs have that made the difference between their page and ours. */
-  const tocGroup = function (kind, label) {
-    const list = groups[kind] || [];
+  const tocGroup = function (list, label) {
     if (!list.length) return '';
     return '<div class="dt-head">' + label + '</div>'
       + list.map(function (m) {
-        return '<a class="dt-item' + (m.from ? ' dt-inh' : '') + '" href="#'
-          + memberDomId(pg.l, m.n) + '" data-jump="' + esc(memberDomId(pg.l, m.n)) + '">'
-          + esc(m.n) + '</a>';
+        return '<a class="dt-item" href="#' + memberDomId(pg.l, m.n)
+          + '" data-jump="' + esc(memberDomId(pg.l, m.n)) + '">' + esc(m.n) + '</a>';
       }).join('');
   };
-  const toc = tocGroup('member', 'Properties') + tocGroup('constant', 'Constants')
-    + tocGroup('function', 'Methods') + tocGroup('event', 'Events');
+  /* Only what the page actually renders in full. The inherited sections are lists of links to other
+     pages, so putting them in a rail that scrolls THIS page sent the reader to an anchor that is
+     not here. */
+  /* A typedef branch page's content is its inlined typedefs, so its jump-to list is those — two rows
+     each, the name and its signature line, which is what Phaser's rail shows. Without this the rail
+     on all 57 typedef pages held a search box and nothing else. */
+  const tocInline = (pg.inline || []).map(function (t) {
+    const id = 'sec-' + String(t.n).replace(/[^A-Za-z0-9_-]/g, '-');
+    return '<a class="dt-item" href="#' + id + '" data-jump="' + esc(id) + '">' + esc(t.n) + '</a>'
+      + '<a class="dt-item dt-sub" href="#' + id + '" data-jump="' + esc(id) + '">'
+      + '&lt;static&gt; ' + esc(t.n) + '</a>';
+  }).join('');
+  const toc = tocInline
+    + tocGroup(sect.pubMembers, 'Public Members')
+    + tocGroup(sect.pubMethods, 'Public Methods')
+    + tocGroup(sect.staticFns, 'Static functions')
+    + tocGroup(sect.constants, 'Constants');
 
-  /* Searching from a page, without going back to the front one first. The landing page has its own
-     full-width box and keeps it; this is the same box, small, in the corner every site puts it. */
-  /* Phaser titles a CLASS by its short name and a NAMESPACE by its full one — "Sprite", but
-     "Phaser.Animations.Events" — and the breadcrumb above carries the rest either way. */
-  const title = pg.k === 'namespace' ? pg.l : pg.n;
   const main = '<div class="phead"><div>'
-    + '<div class="dc-crumbs">' + (crumbs.join('<span>›</span>') || '&nbsp;') + '</div>'
-    + '<h2>' + esc(title) + docsKindChip(pg.k) + '</h2></div>'
-    + '<div class="dc-search dc-search-sm"><span class="mdi mdi-magnify"></span>'
-    + '<input id="docsSearch" type="search" autocomplete="off" spellcheck="false" '
-    + 'placeholder="Search Phaser…" aria-label="Search the Phaser API"></div>'
-    + '</div><div id="docsResults" class="dc-results" hidden></div>'
+    + docsCrumbs(crumbs)
+    /* Above the title, in a badge, where Phaser's sits — it was a line of body text under it. */
+    + docsVersionBadge()
+    + '<h2>' + esc(title) + '</h2></div></div>'
+    + '<div id="docsResults" class="dc-results" hidden></div>'
     + '<div class="dc-page">'
-    + '<div class="dc-ver">Version: Phaser v' + esc((docsMeta && docsMeta.version) || '') + '</div>'
-    + (pg.x ? '<div class="dc-lab">Description:</div>' + docsProse(pg.x) : '')
-    + (pg.scope ? '<div class="dc-line"><b>Scope</b> ' + esc(pg.scope) + '</div>' : '')
-    + docsSource(pg.src)
-    /* Phaser builds its game objects out of two dozen mixins, so "Built on" for Sprite is a
-       twenty-five-item wall of dotted paths above everything a reader came for. Three, then a count
-       that opens the rest — the information is still there, it is just no longer the first and
-       largest thing on the page. */
-    + (pg.ext && pg.ext.length
-      ? '<div class="dc-line dc-ext"><b>Built on</b> ' + docsType(pg.ext.slice(0, 3))
-        + (pg.ext.length > 3
-          ? ' <button class="dc-more" data-more="dc-ext-rest">and ' + (pg.ext.length - 3) + ' more</button>'
-            + '<span id="dc-ext-rest" hidden> ' + docsType(pg.ext.slice(3)) + '</span>'
-          : '')
-        + '</div>'
+    /* The description is the first thing on Phaser's page and carries no "Description:" label — that
+       label belongs to the member blocks further down, where there are other things it could be. */
+    + (pg.x ? docsProse(pg.x) : '')
+    /* THE CONSTRUCTOR COMES FIRST, above Scope and Extends and Source, because it is the thing a
+       reader opening a class came for. It was last, under a heading reading "Making one". */
+    + (pg.ctor && pg.ctor.p
+      ? '<div class="dc-lab">Constructor</div>'
+        + docsCode('new ' + pg.n + '(' + pg.ctor.p.map(function (p) { return p.o ? '[' + p.n + ']' : p.n; }).join(', ') + ')')
+        + '<div class="dc-lab">Parameters</div>' + docsParams(pg.ctor.p)
       : '')
-    + (pg.since ? '<div class="dc-line"><b>Added in Phaser</b> ' + esc(pg.since) + '</div>' : '')
-    + (pg.ctor && pg.ctor.p ? '<h3 class="dc-h">Making one</h3>'
-        + docsCode('new ' + pg.l + '(' + pg.ctor.p.map(function (p) { return p.o ? '[' + p.n + ']' : p.n; }).join(', ') + ')')
-        + docsParams(pg.ctor.p) : '')
+    + (pg.scope ? '<div class="dc-line">Scope: ' + esc(pg.scope) + '</div>' : '')
+    /* EVERY MIXIN, under Phaser's own heading. Showing three and hiding twenty-two behind "and 22
+       more" meant the answer to "where does setVelocityX actually come from" was behind a button. */
+    + (pg.ext && pg.ext.length
+      ? '<div class="dc-lab">Extends</div><div class="dc-line dc-ext">' + docsType(pg.ext) + '</div>'
+      : '')
+    /* A typedef's own fields — or, for a callback signature, its parameters and return. */
+    + (pg.props && pg.props.length ? docsParams(pg.props) : '')
+    + (pg.params && pg.params.length ? '<div class="dc-lab">Parameters:</div>' + docsParams(pg.params) : '')
+    + (pg.ret ? '<div class="dc-line"><b>Returns:</b> ' + docsType(pg.ret.t)
+      + (pg.ret.x ? ' - ' + docsInline(pg.ret.x) : '') + '</div>' : '')
+    + (pg.t && pg.t.length && pg.k === 'typedef'
+      ? '<div class="dc-line">Type: ' + docsType(pg.t, ', ') + '</div>' : '')
+    + docsSource(pg.src, pg.since)
+    + inlineTypedefs(pg)
+    + inherited(sect.inhMembers, 'Inherited Members')
+    + block(sect.pubMembers, 'Public Members')
+    + inherited(sect.inhMethods, 'Inherited Methods')
+    + block(sect.pubMethods, 'Public Methods')
+    + block(sect.staticFns, 'Static functions')
+    /* "Constants:" IS A HEADING, not a label — Phaser emits it as an h2 and then emits "Public
+       Members" as a second h2 beneath it, so a class with constants carries that heading twice.
+       And it appears only for REAL constants: a class whose trailing block is merely static
+       properties, like Phaser.Loader.LoaderPlugin, gets the second "Public Members" with no
+       "Constants:" above it. */
+    + (sect.constants.some(function (m) { return m.k === 'constant'; })
+      ? '<h2 class="dc-h2" id="sec-Constants">Constants:</h2>' : '')
+    + block(sect.constants, 'Public Members', 'Constants-members')
+    /* What is inside the namespace goes LAST, under "Namespaces:" — after everything the page
+       documents itself, which is where Phaser puts it. */
     + kids
-    + block('member', 'Public Members') + inherited('member', 'Inherited Members')
-    + block('constant', 'Constants')
-    + block('function', 'Public Methods') + inherited('function', 'Inherited Methods')
-    + block('event', 'Events')
     + '</div>';
   return docsShell(docsNav(pg.l), main, toc ? '<div class="dt-title">Jump to</div>' + toc : '');
 }
@@ -814,6 +1198,19 @@ function openDocsSymbol(longname) {
     if (!hit) throw new Error('not found');
     return loadDocsPage(hit.p);
   }).then(function (pg) {
+    /* Under the Typedefs branch, the children are the page — see inlineTypedefs. Fetched here
+       because rendering is synchronous and they live in their own files. */
+    const kids = docsNavOpenId === 'typedef'
+      ? (pg.kids || []).filter(function (k) { return k[1] === 'typedef'; }) : [];
+    if (!kids.length) return pg;
+    return Promise.all(kids.map(function (k) { return loadDocsPage(k[2]); }))
+      .then(function (loaded) {
+        const copy = {};
+        Object.keys(pg).forEach(function (k) { copy[k] = pg[k]; });
+        copy.inline = loaded;
+        return copy;
+      });
+  }).then(function (pg) {
     if (docsSym !== longname) return;              // the reader moved on while this was in flight
     host.innerHTML = renderDocsPage(pg);
     wireDocs();
@@ -843,7 +1240,12 @@ function openDocsSymbol(longname) {
   });
 }
 function openDocsTopic(id) {
-  docsTopic = id || ''; docsSym = ''; docsQuery = '';
+  /* THE GROUP HAS TO GO TOO. It did not, and renderDocs checks docsGroupId before it falls through
+     to the landing page — so once you had opened Typedefs or Class, the "Phaser 4.1.0 API
+     Documentation" row at the top of the rail and the Phaser card on the shelf both put you back on
+     that group's index, address and all, and there was no way left to reach the front page except
+     reloading. The open branch in the rail stays open; only the page changes. */
+  docsTopic = id || ''; docsSym = ''; docsGroupId = '';
   showPage('docs');
 }
 
@@ -867,7 +1269,8 @@ function wireDocsNav(host) {
       const id = b.getAttribute('data-group');
       if (docsGroupId === id && b.classList.contains('open')) {
         docsNavOpenId = '';
-        nav.innerHTML = docsNav(docsSym || '', docsGroupId);
+        /* The body, not the aside — the aside carries the narrow-screen disclosure button. */
+        (nav.querySelector('.dc-railbody') || nav).innerHTML = docsNav(docsSym || '', docsGroupId);
         wireDocsNav(host);
         return;
       }
@@ -888,6 +1291,10 @@ function wireDocs() {
   });
   main.querySelectorAll('[data-doc]').forEach(function (b) {
     b.addEventListener('click', function (e) { e.preventDefault(); openDocsSymbol(b.getAttribute('data-doc')); });
+  });
+  /* The breadcrumb's middle step — "Class", "Namespaces" — opens that branch's index page. */
+  main.querySelectorAll('[data-group]').forEach(function (b) {
+    b.addEventListener('click', function (e) { e.preventDefault(); openDocsGroup(b.getAttribute('data-group')); });
   });
   main.querySelectorAll('[data-doc-page]').forEach(function (b) {
     b.addEventListener('click', function (e) {
@@ -912,10 +1319,17 @@ function wireDocs() {
       const rest = document.getElementById(b.getAttribute('data-more'));
       if (!rest) return;
       rest.hidden = !rest.hidden;
-      b.textContent = rest.hidden ? b.dataset.shut || b.textContent : 'show fewer';
-      if (!b.dataset.shut && rest.hidden === false) b.dataset.shut = b.dataset.shut || '';
+      b.textContent = rest.hidden ? b.dataset.shut : 'show fewer';
     });
+    /* The label to go back to, captured before the first press. */
     b.dataset.shut = b.textContent;
+  });
+  /* The two rail disclosures. The button is in the markup at every width and CSS decides whether it
+     is visible, so there is nothing here that needs to know the breakpoint. */
+  host.querySelectorAll('.dc-railtoggle').forEach(function (b) {
+    b.addEventListener('click', function () {
+      b.setAttribute('aria-expanded', b.getAttribute('aria-expanded') === 'true' ? 'false' : 'true');
+    });
   });
   paintDocsCode(host);
   glossify(host.querySelector('.dc-main') || host);
@@ -934,35 +1348,90 @@ function wireDocs() {
         /* AND THE NAV. It was rendered once, before any of this had loaded, so it said "Loading…"
            and then said it for ever — the index arriving repainted the middle of the page and never
            told the left rail. That is the "stuck on loading" everybody saw. */
-        const nav = $('page').querySelector('.dc-nav');
+        /* The rail's BODY, not the whole aside — the aside also holds the disclosure button that
+           folds it away on a narrow screen, and replacing its innerHTML deleted that button. */
+        const nav = $('page').querySelector('.dc-nav .dc-railbody');
         if (nav) { nav.innerHTML = docsNav(docsSym || '', docsGroupId); wireDocsNav($('page')); }
-        const sub = $('docsSub');
-        if (sub && docsMeta) sub.textContent = 'The engine your game runs on — Phaser '
-          + docsMeta.version + ', ' + docsMeta.symbols.toLocaleString() + ' things you can look up.';
+        /* AND THE VERSION, everywhere the landing page prints it. That page is painted before the
+           index has arrived — it has to be, or the Docs tab would open on a blank frame — so the
+           version is the empty string at that moment and the title came out as "Phaser API
+           Documentation" with the number missing, the badge as "Version: Phaser v", and the first
+           sentence as "…for Phaser .". Filled in the same way and at the same moment as the nav. */
+        const v = (docsMeta && docsMeta.version) || '';
+        const main = $('page').querySelector('.dc-main');
+        if (v && main && docsTopic === 'phaser' && !docsSym && !docsGroupId) {
+          const full = 'Phaser ' + v + ' API Documentation';
+          const title = main.querySelector('.phead h2');
+          if (title) title.textContent = full;
+          const here = main.querySelector('.dc-crumb-here');
+          if (here) here.textContent = full;
+          const badge = main.querySelector('.dc-ver');
+          if (badge) badge.textContent = 'Version: Phaser v' + v;
+          const lead = main.querySelector('.dc-intro p');
+          if (lead) lead.textContent = 'This is the complete API documentation for Phaser ' + v + '.';
+        }
       }).catch(function () {
         if (browse) browse.innerHTML = '<p class="dc-warn">The reference could not be loaded. '
           + 'The cards below still work.</p>';
       });
     };
     box.addEventListener('focus', warm);
+    /* IT FILTERS THE JUMP-TO LIST BESIDE IT. That is what Phaser's box does — type "Te" there and
+       the right-hand rail narrows to the entries on THIS page that match, and the page you are
+       reading is left alone.
+
+       Ours ran a search of all nineteen thousand symbols and painted the hits into the middle
+       column, on top of the page. So typing two letters while reading Phaser.Actions replaced the
+       documentation with a list of every `text` and `texture` in the engine, which looks like the
+       page has broken rather than like a search.
+
+       A name that is nowhere on this page still has to be findable, so when nothing here matches,
+       the same box falls back to searching the whole reference — in the rail, under a heading that
+       says so, rather than over the top of what you were reading. */
+    const toc = host.querySelector('.dc-toc');
+    const fallback = document.createElement('div');
+    fallback.className = 'dt-fallback';
+    fallback.hidden = true;
+    /* Inside the rail's body, so it folds away with everything else on a narrow screen. */
+    if (toc) (toc.querySelector('.dc-railbody') || toc).appendChild(fallback);
+    if (results) results.remove();
+
     box.addEventListener('input', function () {
       warm();
-      docsQuery = box.value;
-      const q = box.value.trim();
-      if (!q) { results.hidden = true; results.innerHTML = ''; if (browse) browse.hidden = false; return; }
-      if (!docsIndex) { results.hidden = false; results.innerHTML = '<p class="dc-loading">Loading the reference…</p>'; return; }
-      const hits = searchDocs(q, 40);
-      if (browse) browse.hidden = true;
-      results.hidden = false;
-      results.innerHTML = hits.length
+      const q = box.value.trim().toLowerCase();
+      if (!toc) return;
+      const items = toc.querySelectorAll('.dt-item');
+      let shown = 0;
+      items.forEach(function (a) {
+        const hit = !q || a.textContent.toLowerCase().indexOf(q) >= 0;
+        a.hidden = !hit;
+        if (hit) shown++;
+      });
+      /* A group heading with nothing left under it is a heading for an empty list. */
+      toc.querySelectorAll('.dt-head').forEach(function (h) {
+        let n = h.nextElementSibling, any = false;
+        while (n && n.classList.contains('dt-item')) { if (!n.hidden) { any = true; break; } n = n.nextElementSibling; }
+        h.hidden = !any;
+      });
+      const title = toc.querySelector('.dt-title');
+      if (title) title.hidden = !!q && !shown;
+
+      if (!q || shown) { fallback.hidden = true; fallback.innerHTML = ''; return; }
+      if (!docsIndex) { fallback.hidden = false; fallback.innerHTML = '<p class="dc-loading">Loading…</p>'; return; }
+      const hits = searchDocs(q, 25);
+      fallback.hidden = false;
+      fallback.innerHTML = '<div class="dt-head">Elsewhere in Phaser</div>' + (hits.length
+        /* WITH THE THING IT BELONGS TO. Twelve classes have a setVelocityX, so a list of the name on
+           its own is twelve identical rows and no way to pick. */
         ? hits.map(function (e) {
-          return '<button class="dc-hit" data-doc="' + esc(e.ln) + '">'
-            + '<span class="dc-hname">' + esc(e.nm) + '</span>' + docsKindChip(e.k)
-            + '<span class="dc-hpath">' + esc(e.ln) + '</span></button>';
+          const owner = e.ln.slice(0, e.ln.length - e.nm.length).replace(/[.#]$/, '');
+          return '<a class="dt-item dt-else" data-doc="' + esc(e.ln) + '" title="' + esc(e.ln) + '">'
+            + esc(e.nm) + (owner ? '<span class="dt-owner">' + esc(owner.split('.').pop()) + '</span>' : '')
+            + '</a>';
         }).join('')
-        : '<p class="dc-none">Nothing in Phaser is called “' + esc(q) + '”.</p>';
-      results.querySelectorAll('[data-doc]').forEach(function (b) {
-        b.addEventListener('click', function () { openDocsSymbol(b.getAttribute('data-doc')); });
+        : '<p class="dc-none">Nothing in Phaser is called “' + esc(box.value.trim()) + '”.</p>');
+      fallback.querySelectorAll('[data-doc]').forEach(function (b) {
+        b.addEventListener('click', function (e) { e.preventDefault(); openDocsSymbol(b.getAttribute('data-doc')); });
       });
     });
     if (window.requestIdleCallback) requestIdleCallback(warm, { timeout: 4000 });
@@ -994,7 +1463,7 @@ function paintBrowse() {
   const byId = {};
   groups.forEach(function (g) { byId[g.id] = g; });
   const pagesOf = function (k) {
-    return docsPages.filter(function (p) { return p.k === k; })
+    return docsPages.filter(function (p) { return p.k === k || (p.also || []).indexOf(k) >= 0; })
       .sort(function (a, b) { return a.ln < b.ln ? -1 : 1; });
   };
   const owners = function (kind) {
@@ -1009,7 +1478,7 @@ function paintBrowse() {
     ['go-functions', 'Game Object Functions', directChildren('Phaser.GameObjects').filter(function (k) { return k.k === 'function'; })],
     ['arcade', 'Arcade Physics', directChildren('Phaser.Physics.Arcade')],
     ['matter', 'Matter Physics', directChildren('Phaser.Physics.Matter')],
-    ['typedefs', 'Typedefs', owners('typedef-owners')]
+    ['typedefs', 'Typedefs', owners('typedef')]
   ].filter(function (s) { return s[2] && s[2].length; });
 
   browse.innerHTML = secs.map(function (s) {
@@ -1021,4 +1490,22 @@ function paintBrowse() {
   browse.querySelectorAll('[data-doc]').forEach(function (b) {
     b.addEventListener('click', function (e) { e.preventDefault(); openDocsSymbol(b.getAttribute('data-doc')); });
   });
+  /* The eight section names in the right-hand rail, the way every other page of the reference has a
+     jump-to list. The landing page is the longest page in the app — 335 classes before Constants
+     even starts — and it was the one page with no way to skip down it. */
+  const toc = $('docsToc');
+  if (toc) {
+    toc.innerHTML = '<div class="dt-title">Jump to</div>'
+      + secs.map(function (s) {
+        return '<a class="dt-item" href="#sec-' + s[0] + '" data-jump="sec-' + s[0] + '">'
+          + esc(s[1]) + '</a>';
+      }).join('');
+    toc.querySelectorAll('[data-jump]').forEach(function (link) {
+      link.addEventListener('click', function (e) {
+        e.preventDefault();
+        const el = document.getElementById(link.getAttribute('data-jump'));
+        if (el) el.scrollIntoView({ block: 'start', behavior: 'smooth' });
+      });
+    });
+  }
 }

@@ -1,1 +1,1 @@
-{"l":"Phaser.Types.GameObjects.Sprite","n":"Sprite","k":"namespace","mo":"Phaser.Types.GameObjects","x":"","since":"","scope":"static","src":"src/gameobjects/sprite/typedefs/index.js#L7","m":[],"kids":[["SpriteConfig","typedef",749]]}
+{"l":"Phaser.Types.GameObjects.Shader","n":"Shader","k":"namespace","mo":"Phaser.Types.GameObjects","x":"","since":"","scope":"static","src":"src/gameobjects/shader/typedefs/index.js#L7","m":[],"kids":[["ShaderConfig","typedef",749],["ShaderQuadConfig","typedef",750]]}

@@ -1,1 +1,1 @@
-{"l":"Phaser.Types.Math.SinCosTable","n":"SinCosTable","k":"typedef","mo":"Phaser.Types.Math","x":"","since":"3.0.0","scope":"static","src":"src/math/typedefs/SinCosTable.js#L1","m":[]}
+{"l":"Phaser.Types.Math","n":"Math","k":"namespace","mo":"Phaser.Types","x":"","since":"","scope":"static","src":"src/math/typedefs/index.js#L7","m":[],"kids":[["HashCellConfig","typedef",829],["HashSimplexConfig","typedef",830],["RectangleLike","typedef",831],["SinCosTable","typedef",832],["Vector2Like","typedef",833],["Vector3Like","typedef",834],["Vector4Like","typedef",835]]}

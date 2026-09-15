@@ -1,1 +1,1 @@
-{"l":"ContentLoadedCallback","n":"ContentLoadedCallback","k":"typedef","mo":"","x":"A callback function to be invoked once the DOM content is fully loaded and the device is ready.","since":"","scope":"global","src":"src/dom/DOMContentLoaded.js#L9","m":[]}
+{"l":"ContentLoadedCallback","n":"ContentLoadedCallback","k":"typedef","mo":"","x":"A callback function to be invoked once the DOM content is fully loaded and the device is ready.","since":"","scope":"global","src":"src/dom/DOMContentLoaded.js#L9","t":["function"],"m":[]}

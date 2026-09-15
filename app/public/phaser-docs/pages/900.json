@@ -1,1 +1,1 @@
-{"l":"Phaser.Types.Scenes.CreateSceneFromObjectConfig","n":"CreateSceneFromObjectConfig","k":"typedef","mo":"Phaser.Types.Scenes","x":"","since":"3.17.0","scope":"static","src":"src/scene/typedefs/CreateSceneFromObjectConfig.js#L1","m":[]}
+{"l":"Phaser.Types.Renderer.WebGL.Wrappers","n":"Wrappers","k":"namespace","mo":"Phaser.Types.Renderer.WebGL","x":"","since":"","scope":"static","src":"src/renderer/webgl/wrappers/typedefs/index.js#L7","m":[],"kids":[["ShaderSetter","typedef",901],["ShaderSetterConstants","typedef",902]]}

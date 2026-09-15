@@ -1,1 +1,1 @@
-{"l":"EachTextureCallback","n":"EachTextureCallback","k":"typedef","mo":"","x":"","since":"","scope":"global","src":"src/textures/TextureManager.js#L26","m":[]}
+{"l":"EachTextureCallback","n":"EachTextureCallback","k":"typedef","mo":"","x":"","since":"","scope":"global","src":"src/textures/TextureManager.js#L26","t":["function"],"params":[{"n":"texture","t":["Phaser.Textures.Texture"],"x":"Each texture in the Texture Manager."},{"n":"args","t":["*"],"o":1,"x":"Additional arguments that will be passed to the callback, after the child."}],"m":[]}

@@ -1,1 +1,1 @@
-{"l":"CenterFunction","n":"CenterFunction","k":"typedef","mo":"","x":"","since":"","scope":"global","src":"src/geom/triangle/CenterOn.js#L10","m":[]}
+{"l":"CenterFunction","n":"CenterFunction","k":"typedef","mo":"","x":"","since":"","scope":"global","src":"src/geom/triangle/CenterOn.js#L10","t":["function"],"params":[{"n":"triangle","t":["Phaser.Geom.Triangle"],"x":"The Triangle to return the center coordinates of."}],"ret":{"t":["Phaser.Math.Vector2"],"x":"The center point of the Triangle according to the function."},"m":[]}

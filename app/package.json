@@ -12,7 +12,8 @@
     "check:release": "node tools/check-release.js",
     "build:images": "python tools/resize-brand-images.py",
     "build:icons": "node tools/subset-icons.js",
-    "build:docs": "node --max-old-space-size=4096 tools/build-phaser-docs.js"
+    "build:doclets": "node tools/build-phaser-doclets.js",
+    "build:docs": "node tools/build-phaser-doclets.js && node --max-old-space-size=4096 tools/build-phaser-docs.js"
   },
   "engines": {
     "node": ">=18"
@@ -38,7 +39,15 @@
     "express": "^4.19.2",
     "zod": "^4.4.3"
   },
+  "//devDependencies": [
+    "jsdoc generates the doclet dump the Docs tab is built from. It is NOT used at runtime and is",
+    "not needed to run the app — only to re-run `npm run build:docs`, whose output is committed.",
+    "It is here because phaser's own types/phaser.json, which ships on npm, is missing two",
+    "namespaces its website shows: Phaser's docs build drops @ignore'd doclets. See",
+    "tools/build-phaser-doclets.js. Pinned to 3.x because that is what Phaser's own build uses."
+  ],
   "devDependencies": {
+    "jsdoc": "^3.6.11",
     "jsdom": "^29.1.1",
     "phaser": "4.1.0"
   }

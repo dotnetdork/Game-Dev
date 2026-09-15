@@ -1,1 +1,1 @@
-{"l":"Phaser.Types.GameObjects.RenderTexture.RenderTextureConfig","n":"RenderTextureConfig","k":"typedef","mo":"Phaser.Types.GameObjects.RenderTexture","x":"","since":"3.2.0","scope":"static","src":"src/gameobjects/rendertexture/typedefs/RenderTextureConfig.js#L1","m":[]}
+{"l":"Phaser.Types.GameObjects.PathFollower","n":"PathFollower","k":"namespace","mo":"Phaser.Types.GameObjects","x":"","since":"","scope":"static","src":"src/gameobjects/pathfollower/typedefs/index.js#L7","m":[],"kids":[["PathConfig","typedef",742]]}

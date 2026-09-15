@@ -1,1 +1,1 @@
-{"l":"EachMapCallback<E>","n":"EachMapCallback<E>","k":"typedef","mo":"","x":"","since":"","scope":"global","src":"src/structs/Map.js#L9","m":[]}
+{"l":"EachMapCallback<E>","n":"EachMapCallback<E>","k":"typedef","mo":"","x":"","since":"","scope":"global","src":"src/structs/Map.js#L9","t":["function"],"params":[{"n":"key","t":["string"],"x":"The key of the Map entry."},{"n":"entry","t":["E"],"x":"The value of the Map entry."}],"ret":{"t":["boolean"],"x":"The callback result."},"m":[]}

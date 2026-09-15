@@ -1,1 +1,1 @@
-{"l":"EachTileCallback","n":"EachTileCallback","k":"typedef","mo":"","x":"","since":"","scope":"global","src":"src/tilemaps/components/ForEachTile.js#L9","m":[]}
+{"l":"EachTileCallback","n":"EachTileCallback","k":"typedef","mo":"","x":"","since":"","scope":"global","src":"src/tilemaps/components/ForEachTile.js#L9","t":["function"],"params":[{"n":"value","t":["Phaser.Tilemaps.Tile"],"x":"The Tile."},{"n":"index","t":["number"],"x":"The index of the tile."},{"n":"array","t":["Array.<Phaser.Tilemaps.Tile>"],"x":"An array of Tile objects."}],"m":[]}

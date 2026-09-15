@@ -1,1 +1,1 @@
-{"l":"CreateCallback","n":"CreateCallback","k":"typedef","mo":"","x":"","since":"","scope":"global","src":"src/gameobjects/blitter/Blitter.js#L16","m":[]}
+{"l":"CreateCallback","n":"CreateCallback","k":"typedef","mo":"","x":"","since":"","scope":"global","src":"src/gameobjects/blitter/Blitter.js#L16","t":["function"],"params":[{"n":"bob","t":["Phaser.GameObjects.Bob"],"x":"The Bob that was created by the Blitter."},{"n":"index","t":["number"],"x":"The position of the Bob within the Blitter display list."}],"m":[]}

@@ -1,1 +1,1 @@
-{"l":"Phaser.Types.Tweens.TweenDataConfig","n":"TweenDataConfig","k":"typedef","mo":"Phaser.Types.Tweens","x":"","since":"3.0.0","scope":"static","src":"src/tweens/typedefs/TweenDataConfig.js#L1","m":[]}
+{"l":"Phaser.Types.Tweens.TweenCallbackTypes","n":"TweenCallbackTypes","k":"typedef","mo":"Phaser.Types.Tweens","x":"","since":"3.60.0","scope":"static","src":"src/tweens/typedefs/TweenCallbackTypes.js#L1","t":["'onActive'","'onComplete'","'onLoop'","'onPause'","'onRepeat'","'onResume'","'onStart'","'onStop'","'onUpdate'","'onYoyo'"],"m":[]}

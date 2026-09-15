@@ -46,8 +46,20 @@ const PAGES = path.join(OUT, 'pages');
 /* The doclet dump, from wherever Phaser is installed. Checked in order so this runs from a plain
    `npm install` as well as from a tarball somebody unpacked by hand. */
 function findSource() {
+  /* THE GENERATED DUMP FIRST, and the published one only as a fallback. types/phaser.json is what
+     npm ships and it is missing Phaser.Physics.Arcade.ProcessX and ProcessY — twelve @ignore'd
+     functions that Phaser's own site renders, because their docs build keeps @ignore and their
+     package build does not. tools/build-phaser-doclets.js regenerates the full set from Phaser's
+     source at the pinned tag; `npm run build:docs` runs it first.
+     Falling back rather than failing, so a checkout with no jsdoc still builds a reference — one
+     that is two namespaces short, and says so. */
+  const pkg = path.join(__dirname, '..', 'package.json');
+  let ver = '';
+  try { ver = String(JSON.parse(fs.readFileSync(pkg, 'utf8')).devDependencies.phaser || '').replace(/^[^0-9]*/, ''); }
+  catch (e) { /* fall through to the plain lookups */ }
   const tries = [
     process.argv[2],
+    ver && path.join(__dirname, '..', '.cache', 'phaser-doclets-' + ver + '.json'),
     path.join(__dirname, '..', 'node_modules', 'phaser', 'types', 'phaser.json'),
     path.join(__dirname, '..', '..', 'node_modules', 'phaser', 'types', 'phaser.json')
   ].filter(Boolean);
@@ -91,7 +103,11 @@ const PAGE_RANK = { class: 0, interface: 1, mixin: 2, typedef: 3, namespace: 4 }
    page of its own; a plain object typedef is a config bag, which also does. Both stay. */
 
 /* One line, for the places that are one line — a parameter's note, a return value's note. */
-const clean = (s) => String(s == null ? '' : s).replace(/\s+/g, ' ').trim();
+/* THE LEADING HYPHEN IS JSDOC'S SEPARATOR, NOT PROSE. Phaser writes `@return {Phaser.Time.Clock} -
+   This Clock instance.` and jsdoc hands back the description still carrying "- ". Rendered through
+   marked that is a bullet list, so three of Clock's return values became single-item lists where
+   Phaser prints them inline after the type. Stripped once here rather than guarded at every use. */
+const clean = (s) => String(s == null ? '' : s).replace(/\s+/g, ' ').trim().replace(/^-\s+/, '');
 
 /* A DESCRIPTION IS MARKDOWN AND MUST STAY THAT WAY. Phaser writes these as real markdown: `code`
    in backticks, hyphen bullet lists, blank lines between paragraphs. Collapsing every run of
@@ -150,6 +166,11 @@ function sourceOf(d) {
 /* One member, as a page renders it. Short keys because there are twenty thousand of them. */
 function slimMember(d) {
   const o = { n: d.name || '', k: d.kind || '' };
+  /* THE LINE IT IS DECLARED ON. Phaser's class pages list members alphabetically, but its constants
+     pages list them in SOURCE order — Phaser.TintModes reads MULTIPLY, FILL, ADD, SCREEN, OVERLAY,
+     HARD_LIGHT there and ADD, FILL, HARD_LIGHT… here. Carrying the line number is the only way to
+     put them back in the order they were written. */
+  if (d.meta && d.meta.lineno) o.ln = d.meta.lineno;
   if (d.scope === 'static') o.s = 1;
   const src = sourceOf(d); if (src) o.src = src;
   const x = cleanMd(d.description); if (x) o.x = x;
@@ -161,6 +182,16 @@ function slimMember(d) {
   if (d.inherited && d.inherits) o.from = String(d.inherits);
   if (d.overrides) o.over = String(d.overrides);
   if (Array.isArray(d.fires) && d.fires.length) o.fires = d.fires.map(String);
+  /* THE CUSTOM TAGS PHASER PRINTS — @generic, @genericUse, @webglOnly. Its config sets
+     allowUnknownTags, so jsdoc keeps them, and its template renders their NAMES as a "Tags:" list
+     between the description and the parameters. 2,689 of them across the API: nineteen on
+     Phaser.GameObjects.Container alone, and every one was being dropped here. The values are
+     TypeScript codegen hints and Phaser does not print them either — only the names. */
+  if (Array.isArray(d.tags) && d.tags.length) {
+    o.tags = d.tags.map(function (t) { return String(t.originalTitle || t.title || ''); })
+      .filter(Boolean);
+    if (!o.tags.length) delete o.tags;
+  }
   /* Only 151 doclets in the whole of Phaser carry one, so this costs almost nothing and is the most
      useful thing on the page when it is there. */
   if (Array.isArray(d.examples) && d.examples.length) o.eg = d.examples.map(String).slice(0, 3);
@@ -173,7 +204,13 @@ const orphans = [];
 
 all.forEach(function (d) {
   if (!d || !d.longname) return;
-  if (d.access === 'private' || d.undocumented || d.ignore) return;
+  /* `ignore` IS NOT FILTERED HERE, and that is deliberate.
+     Phaser's own scripts/tsgen/bin/publish.js ends with `data({ ignore: true }).remove()`, which is
+     the single reason Phaser.Physics.Arcade.ProcessX and ProcessY — twelve @ignore'd collision
+     helpers — have never existed in the phaser.json published on npm, while docs.phaser.io renders
+     both. Filtering them a second time here put the gap back even when the source had them.
+     The dump this reads has already had Phaser's other four removals applied. */
+  if (d.access === 'private' || d.undocumented) return;
   if (PAGE_KINDS[d.kind]) {
     /* A class and its constructor share a longname; keep the first and let the later one fill in
        anything missing rather than replacing the page wholesale. */
@@ -183,16 +220,29 @@ all.forEach(function (d) {
         name: d.name || d.longname,
         kind: d.kind,
         memberof: d.memberof || '',
-        description: cleanMd(d.description),
+        /* A CLASS KEEPS ITS PROSE IN `classdesc`, NOT `description`. jsdoc splits the two: the text
+           above `@class` describes the class and lands in classdesc, while `description` is left for
+           the constructor and is empty on all but six of Phaser's 335 classes. Reading only
+           `description` silently dropped the opening paragraphs of every class page in the
+           reference — 825 of 984 pages arrived with nothing under the title. */
+        description: cleanMd(d.classdesc || d.description),
         scope: d.scope || '',
         src: sourceOf(d) || '',
         since: d.since ? String(d.since) : '',
         extends: Array.isArray(d.augments) ? d.augments.map(String) : [],
         ctor: null,
+        props: Array.isArray(d.properties) && d.properties.length ? slimParams(d.properties) : null,
+        /* A typedef's own type — "object", "function" — which Phaser prints under its table. */
+        type: typeNames(d.type),
         members: []
       });
     }
     const pg = pageByName.get(d.longname);
+    /* EVERY kind this longname is documented as, not just the winning one. Phaser.Display.Color is
+       both a class and a namespace, and docs.phaser.io lists it under BOTH Classes and Namespaces —
+       254 namespaces there against our 253 once the page itself is filed as a class. One page, two
+       places to find it, which is what Phaser does. */
+    (pg.kinds || (pg.kinds = {}))[d.kind] = 1;
     /* THE KIND CAN BE WRONG UNTIL THE REAL DOCLET TURNS UP, and it was staying wrong.
 
        Two ways a page ends up mislabelled. A member can appear in the dump BEFORE its owner's own
@@ -211,7 +261,26 @@ all.forEach(function (d) {
       pg.src = sourceOf(d) || pg.src;
       delete pg.stub;
     }
-    if (!pg.description) pg.description = cleanMd(d.description);
+    /* A TYPEDEF'S FIELDS ARE `@property` TAGS, not member doclets. jsdoc hands them back on the
+       typedef's own doclet as `properties`, in the same shape as `params`, and nothing here was
+       reading them — so every one of Phaser's 396 typedef pages came out as a name, a sentence and
+       nothing else, where its page on docs.phaser.io is a table of the fields the object holds.
+       Phaser.Device.Audio alone documents eleven of them. */
+    if (Array.isArray(d.properties) && d.properties.length && !pg.props) {
+      pg.props = slimParams(d.properties);
+    }
+    /* A typedef can be a CALLBACK SIGNATURE rather than an object bag — EachTileCallback,
+       DataEachCallback and eighty others. Those carry params and a return instead of properties,
+       and Phaser prints them the same way it prints a method's. */
+    if (Array.isArray(d.params) && d.params.length && !pg.params && d.kind !== 'class') {
+      pg.params = slimParams(d.params);
+    }
+    if (Array.isArray(d.returns) && d.returns.length && !pg.ret) pg.ret = slimReturns(d.returns);
+    if (!pg.description) pg.description = cleanMd(d.classdesc || d.description);
+    /* `since` the same way. A class and its constructor share a longname and only one of the two
+       carries it, so whichever doclet arrived first decided — and the pages that lost the coin toss
+       printed "Source: …" where Phaser prints "Source: …  Since: 3.0.0". */
+    if (!pg.since && d.since) pg.since = String(d.since);
     if (d.kind === 'class' && Array.isArray(d.params) && d.params.length && !pg.ctor) {
       pg.ctor = { p: slimParams(d.params) };
     }
@@ -244,13 +313,21 @@ const pages = Array.from(pageByName.values())
 /* Members in a sensible reading order: what it is made of, then what it can do, then what it
    announces. Inherited members last within each, because a child is looking for the class's own. */
 const KIND_ORDER = { member: 0, constant: 1, function: 2, event: 3 };
+/* CASE-INSENSITIVELY, the way Phaser orders its own lists. A plain `<` compares by code point, so
+   every capital sorts before every lowercase: `addToDisplayList` came before `addedToScene` because
+   'T' is 84 and 'e' is 101. Phaser reads addedToScene, addToDisplayList, addToUpdateList. On a class
+   like Arc that is most of a 60-name inherited list in a visibly different order. */
+const byName = function (a, b) {
+  const x = a.toLowerCase(), y = b.toLowerCase();
+  return x < y ? -1 : x > y ? 1 : (a < b ? -1 : a > b ? 1 : 0);
+};
 pages.forEach(function (pg) {
   pg.members.sort(function (a, b) {
     const ka = KIND_ORDER[a.k] === undefined ? 9 : KIND_ORDER[a.k];
     const kb = KIND_ORDER[b.k] === undefined ? 9 : KIND_ORDER[b.k];
     if (ka !== kb) return ka - kb;
     if (!!a.from !== !!b.from) return a.from ? 1 : -1;
-    return a.n < b.n ? -1 : a.n > b.n ? 1 : 0;
+    return byName(a.n, b.n);
   });
 });
 
@@ -265,6 +342,10 @@ pages.forEach(function (pg, i) {
     scope: pg.scope || undefined, src: pg.src || undefined,
     ext: pg.extends.length ? pg.extends : undefined,
     ctor: pg.ctor || undefined,
+    props: pg.props || undefined,
+    t: pg.type && pg.type.length ? pg.type : undefined,
+    params: pg.params || undefined,
+    ret: pg.ret || undefined,
     m: pg.members
   };
   /* Children of this page, so a namespace lists what is inside it rather than being a dead end. */
@@ -300,8 +381,15 @@ fs.writeFileSync(path.join(OUT, 'index.tsv'), indexText);
    them back out of the big index is not possible: a static constant like Phaser.Math.PI2 has no `#`
    in its name either, so there is nothing in a row that says "this one is a page". A thousand rows
    is forty kilobytes and it loads beside the index. */
+/* A FOURTH COLUMN, present only on the handful of pages that need it: the other kinds this longname
+   is documented as, comma-separated. Today that is exactly one row — Phaser.Display.Color, a class
+   that is also a namespace — and it is what lets the Namespaces list reach 254 the way Phaser's
+   does without inventing a second page. The reader treats a missing column as "no others". */
 fs.writeFileSync(path.join(OUT, 'pages.tsv'), pages.map(function (pg, i) {
-  return [pg.longname, pg.kind, i].join('\t');
+  const also = Object.keys(pg.kinds || {}).filter(function (k) { return k !== pg.kind; }).sort();
+  const row = [pg.longname, pg.kind, i];
+  if (also.length) row.push(also.join(','));
+  return row.join('\t');
 }).join('\n'));
 /* And the same thing gzipped, which the reader prefers.
    A megabyte of plain text over a school connection is a wait a child will interpret as the app

@@ -123,7 +123,7 @@
       "l": "Phaser.Game",
       "k": "class",
       "id": 118,
-      "x": "",
+      "x": "The Phaser.Game instance is the main controller for the entire Phaser game. It is responsible\nfor handling the boot process, parsing the configuration values, creating the renderer",
       "c": 0,
       "m": 34
     },
@@ -178,14 +178,14 @@
       "k": "namespace",
       "id": 318,
       "x": "",
-      "c": 65,
+      "c": 67,
       "m": 0
     },
     {
       "n": "Plugins",
       "l": "Phaser.Plugins",
       "k": "namespace",
-      "id": 384,
+      "id": 386,
       "x": "",
       "c": 5,
       "m": 0
@@ -194,7 +194,7 @@
       "n": "Renderer",
       "l": "Phaser.Renderer",
       "k": "namespace",
-      "id": 390,
+      "id": 392,
       "x": "",
       "c": 88,
       "m": 0
@@ -203,7 +203,7 @@
       "n": "Scale",
       "l": "Phaser.Scale",
       "k": "namespace",
-      "id": 479,
+      "id": 481,
       "x": "",
       "c": 10,
       "m": 17
@@ -212,7 +212,7 @@
       "n": "ScaleModes",
       "l": "Phaser.ScaleModes",
       "k": "namespace",
-      "id": 490,
+      "id": 492,
       "x": "Phaser Scale Modes.",
       "c": 0,
       "m": 3
@@ -221,8 +221,8 @@
       "n": "Scene",
       "l": "Phaser.Scene",
       "k": "class",
-      "id": 491,
-      "x": "",
+      "id": 493,
+      "x": "A base Phaser.Scene class which can be extended for your own use.\n\nA Scene is the fundamental organizational unit in Phaser. Each Scene has its own\ndisplay list, update loop, camer",
       "c": 0,
       "m": 25
     },
@@ -230,7 +230,7 @@
       "n": "Scenes",
       "l": "Phaser.Scenes",
       "k": "namespace",
-      "id": 492,
+      "id": 494,
       "x": "",
       "c": 5,
       "m": 12
@@ -239,7 +239,7 @@
       "n": "Sound",
       "l": "Phaser.Sound",
       "k": "namespace",
-      "id": 498,
+      "id": 500,
       "x": "",
       "c": 10,
       "m": 0
@@ -248,7 +248,7 @@
       "n": "Structs",
       "l": "Phaser.Structs",
       "k": "namespace",
-      "id": 509,
+      "id": 511,
       "x": "",
       "c": 6,
       "m": 0
@@ -257,7 +257,7 @@
       "n": "Textures",
       "l": "Phaser.Textures",
       "k": "namespace",
-      "id": 516,
+      "id": 518,
       "x": "",
       "c": 10,
       "m": 2
@@ -266,7 +266,7 @@
       "n": "Tilemaps",
       "l": "Phaser.Tilemaps",
       "k": "namespace",
-      "id": 527,
+      "id": 529,
       "x": "",
       "c": 18,
       "m": 5
@@ -275,7 +275,7 @@
       "n": "Time",
       "l": "Phaser.Time",
       "k": "namespace",
-      "id": 546,
+      "id": 548,
       "x": "",
       "c": 4,
       "m": 0
@@ -284,7 +284,7 @@
       "n": "TintModes",
       "l": "Phaser.TintModes",
       "k": "namespace",
-      "id": 551,
+      "id": 553,
       "x": "Phaser Tint Modes.\n\nTint modes are used by the Tint component to determine how the tint color\nis applied to the texture. The default mode is `MULTIPLY`.\nThey are only used in WebGL",
       "c": 0,
       "m": 6
@@ -293,7 +293,7 @@
       "n": "Tweens",
       "l": "Phaser.Tweens",
       "k": "namespace",
-      "id": 552,
+      "id": 554,
       "x": "",
       "c": 11,
       "m": 0
@@ -302,25 +302,25 @@
       "n": "Types",
       "l": "Phaser.Types",
       "k": "namespace",
-      "id": 564,
+      "id": 566,
       "x": "The root types namespace.",
-      "c": 406,
+      "c": 408,
       "m": 0
     },
     {
       "n": "Utils",
       "l": "Phaser.Utils",
       "k": "namespace",
-      "id": 971,
+      "id": 975,
       "x": "",
       "c": 5,
       "m": 2
     }
   ],
   "generated": "2026-09-15",
-  "doclets": 19181,
-  "pages": 981,
-  "symbols": 19179,
+  "doclets": 19353,
+  "pages": 984,
+  "symbols": 19286,
   "source": "phaser/types/phaser.json",
   "licence": "MIT",
   "notice": "Phaser © Richard Davey, Phaser Studio Inc. Released under the MIT License. This reference is generated from Phaser 4.1.0's own source documentation."

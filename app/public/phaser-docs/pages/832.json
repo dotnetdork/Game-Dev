@@ -1,1 +1,1 @@
-{"l":"Phaser.Types.Physics","n":"Physics","k":"namespace","mo":"Phaser.Types","x":"","since":"","scope":"static","src":"src/physics/index.js#L11","m":[],"kids":[["Arcade","namespace",833],["Matter","namespace",851]]}
+{"l":"Phaser.Types.Math.SinCosTable","n":"SinCosTable","k":"typedef","mo":"Phaser.Types.Math","x":"","since":"3.0.0","scope":"static","src":"src/math/typedefs/SinCosTable.js#L1","props":[{"n":"sin","t":["number"],"x":"The sine value."},{"n":"cos","t":["number"],"x":"The cosine value."},{"n":"length","t":["number"],"x":"The length."}],"t":["object"],"m":[]}

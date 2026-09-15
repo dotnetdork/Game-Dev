@@ -1,1 +1,1 @@
-{"l":"Phaser.Types.GameObjects.Zone.ZoneConfig","n":"ZoneConfig","k":"typedef","mo":"Phaser.Types.GameObjects.Zone","x":"","since":"3.50.0","scope":"static","src":"src/gameobjects/zone/typedefs/ZoneConfig.js#L1","ext":["Phaser.Types.GameObjects.GameObjectConfig"],"m":[]}
+{"l":"Phaser.Types.GameObjects.Video","n":"Video","k":"namespace","mo":"Phaser.Types.GameObjects","x":"","since":"","scope":"static","src":"src/gameobjects/video/typedefs/index.js#L7","m":[],"kids":[["VideoConfig","typedef",769]]}

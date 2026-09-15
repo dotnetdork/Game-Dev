@@ -1,1 +1,1 @@
-{"l":"Phaser.Types.Core.FPSConfig","n":"FPSConfig","k":"typedef","mo":"Phaser.Types.Core","x":"","since":"3.0.0","scope":"static","src":"src/core/typedefs/FPSConfig.js#L1","m":[]}
+{"l":"Phaser.Types.Core.BootCallback","n":"BootCallback","k":"typedef","mo":"Phaser.Types.Core","x":"","since":"3.0.0","scope":"static","src":"src/core/typedefs/BootCallback.js#L1","t":["function"],"params":[{"n":"game","t":["Phaser.Game"],"x":"The game."}],"m":[]}

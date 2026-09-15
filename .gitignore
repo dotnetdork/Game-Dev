@@ -29,6 +29,12 @@ npm-debug.log*
 # is ignored rather than cleaned.
 app/.data/
 
+# build-time scratch for the Phaser reference: the downloaded source tarball at the pinned tag, the
+# extracted tree, and the 28 MB doclet dump jsdoc produces from it. All of it is regenerable with
+# `npm run build:docs`, and what actually gets committed is app/public/phaser-docs, which is built
+# from it. See app/tools/build-phaser-doclets.js.
+app/.cache/
+
 # OS junk
 .DS_Store
 Thumbs.db

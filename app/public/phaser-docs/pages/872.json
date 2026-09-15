@@ -1,1 +1,1 @@
-{"l":"Phaser.Types.Renderer","n":"Renderer","k":"namespace","mo":"Phaser.Types","x":"","since":"","scope":"static","src":"src/renderer/index.js#L11","m":[],"kids":[["Snapshot","namespace",873],["WebGL","namespace",876]]}
+{"l":"Phaser.Types.Plugins","n":"Plugins","k":"namespace","mo":"Phaser.Types","x":"","since":"","scope":"static","src":"src/plugins/typedefs/index.js#L7","m":[],"kids":[["CorePluginContainer","typedef",873],["CustomPluginContainer","typedef",874],["GlobalPlugin","typedef",875]]}

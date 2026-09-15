@@ -1,1 +1,1 @@
-{"l":"Phaser.Types.GameObjects.NoiseCell2D","n":"NoiseCell2D","k":"namespace","mo":"Phaser.Types.GameObjects","x":"","since":"","scope":"static","src":"src/gameobjects/noise/noisecell2d/typedefs/index.js#L7","m":[],"kids":[["NoiseCell2DConfig","typedef",686],["NoiseCell2DQuadConfig","typedef",687]]}
+{"l":"Phaser.Types.GameObjects.Noise","n":"Noise","k":"namespace","mo":"Phaser.Types.GameObjects","x":"","since":"","scope":"static","src":"src/gameobjects/noise/typedefs/index.js#L7","m":[],"kids":[["NoiseConfig","typedef",686],["NoiseQuadConfig","typedef",687]]}

@@ -1,1 +1,1 @@
-{"l":"Phaser.Types.Input.Gamepad","n":"Gamepad","k":"namespace","mo":"Phaser.Types.Input","x":"","since":"","scope":"static","src":"src/input/gamepad/typedefs/index.js#L7","m":[],"kids":[["Pad","typedef",773]]}
+{"l":"Phaser.Types.Geom","n":"Geom","k":"namespace","mo":"Phaser.Types","x":"","since":"","scope":"static","src":"src/geom/typedefs/index.js#L7","m":[]}

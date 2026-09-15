@@ -1,1 +1,1 @@
-{"l":"EachContainerCallback","n":"EachContainerCallback","k":"typedef","mo":"","x":"","since":"","scope":"global","src":"src/gameobjects/container/Container.js#L1178","m":[]}
+{"l":"EachContainerCallback","n":"EachContainerCallback","k":"typedef","mo":"","x":"","since":"","scope":"global","src":"src/gameobjects/container/Container.js#L1196","t":["function"],"params":[{"n":"item","t":["*"],"x":"The child Game Object of the Container."},{"n":"args","t":["*"],"o":1,"x":"Additional arguments that will be passed to the callback, after the child."}],"m":[]}

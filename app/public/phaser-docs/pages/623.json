@@ -1,1 +1,1 @@
-{"l":"Phaser.Types.Curves.JSONCurve","n":"JSONCurve","k":"typedef","mo":"Phaser.Types.Curves","x":"","since":"3.0.0","scope":"static","src":"src/curves/typedefs/JSONCurve.js#L1","m":[]}
+{"l":"Phaser.Types.Core.WidthHeight","n":"WidthHeight","k":"typedef","mo":"Phaser.Types.Core","x":"","since":"3.16.0","scope":"static","src":"src/core/typedefs/WidthHeight.js#L1","props":[{"n":"width","t":["number"],"o":1,"d":"0","x":"The width."},{"n":"height","t":["number"],"o":1,"d":"0","x":"The height."}],"t":["object"],"m":[]}

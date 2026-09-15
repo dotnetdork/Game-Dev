@@ -1,1 +1,1 @@
-{"l":"Phaser.Types.Geom","n":"Geom","k":"namespace","mo":"Phaser.Types","x":"","since":"","scope":"static","src":"src/geom/typedefs/index.js#L7","m":[]}
+{"l":"Phaser.Types.GameObjects.Video.VideoConfig","n":"VideoConfig","k":"typedef","mo":"Phaser.Types.GameObjects.Video","x":"","since":"3.50.0","scope":"static","src":"src/gameobjects/video/typedefs/VideoConfig.js#L1","ext":["Phaser.Types.GameObjects.GameObjectConfig"],"props":[{"n":"key","t":["string"],"o":1,"x":"Optional key of the Video this Game Object will play, as stored in the Video Cache."}],"t":["object"],"m":[]}

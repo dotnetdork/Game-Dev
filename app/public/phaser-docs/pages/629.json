@@ -1,1 +1,1 @@
-{"l":"Phaser.Types.Display.HSVColorObject","n":"HSVColorObject","k":"typedef","mo":"Phaser.Types.Display","x":"","since":"3.0.0","scope":"static","src":"src/display/typedefs/HSVColorObject.js#L1","m":[]}
+{"l":"Phaser.Types.Display","n":"Display","k":"namespace","mo":"Phaser.Types","x":"","since":"","scope":"static","src":"src/display/typedefs/index.js#L1","m":[],"kids":[["ColorBandConfig","typedef",630],["ColorObject","typedef",631],["HSVColorObject","typedef",632],["InputColorObject","typedef",633]]}

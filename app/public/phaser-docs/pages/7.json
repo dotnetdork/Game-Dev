@@ -1,1 +1,1 @@
-{"l":"DebugGraphNode","n":"DebugGraphNode","k":"typedef","mo":"","x":"","since":"","scope":"global","src":"src/renderer/webgl/renderNodes/RenderNodeManager.js#L71","m":[]}
+{"l":"DebugGraphNode","n":"DebugGraphNode","k":"typedef","mo":"","x":"","since":"","scope":"global","src":"src/renderer/webgl/renderNodes/RenderNodeManager.js#L71","props":[{"n":"name","t":["string"],"x":"The name of the node."},{"n":"children","t":["Array.<DebugGraphNode>"],"x":"The children of the node."},{"n":"parent","t":["DebugGraphNode"],"x":"The parent of the node."}],"t":["object"],"m":[]}

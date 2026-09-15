@@ -1528,19 +1528,26 @@ html[data-dev] .sb-dev{display:grid !important;}
    width of a scrollbar that was not there a moment ago. The space is always reserved; the bar
    appears into it. */
 .dc-nav,.dc-toc{position:sticky;top:0;max-height:calc(100vh - 150px);overflow-y:auto;
-  scrollbar-gutter:stable;padding-bottom:20px;}
+  scrollbar-gutter:stable;padding-bottom:20px;padding-right:10px;}
 .dc-main{min-width:0;}
-.dn-docs{display:flex;flex-direction:column;gap:3px;padding-bottom:12px;margin-bottom:12px;
-  border-bottom:1px solid var(--line);}
-.dn-doc{display:flex;align-items:center;gap:9px;width:100%;text-align:left;padding:9px 12px;
-  border:0;border-radius:9px;background:none;color:var(--muted);cursor:pointer;
-  font-family:var(--font);font-size:14px;font-weight:700;}
-.dn-doc .mdi{font-size:17px;}
-.dn-doc:hover{background:#16325a;color:var(--ink);}
-.dn-doc.on{background:var(--azure);color:#06192e;}
 .dn-head{color:var(--dim);font-size:10.5px;font-weight:800;text-transform:uppercase;
   letter-spacing:.8px;padding:0 12px 7px;}
 .dn-list{display:flex;flex-direction:column;gap:1px;}
+/* The way back out of a reference, beside the row that leads into it. */
+.dn-homerow{display:flex;align-items:stretch;gap:0;}
+/* The label keeps a little of its own padding, but not the full 12px — the arrow is already acting
+   as the row's left margin, and stacking the two put a thumb's width of nothing between them. */
+/* One line. The arrow, the rail's scrollbar gutter and the row's own padding together left about
+   200px for a 210px label, so "Phaser 4.1.0 API Documentation" wrapped and the arrow sat against
+   the middle of a two-line block. */
+.dn-homerow .dn-item{flex:1;min-width:0;padding-left:7px;padding-right:6px;font-size:12.5px;
+  white-space:nowrap;overflow:hidden;text-overflow:ellipsis;display:block;}
+/* The glyph sits ON the text baseline row rather than floating above it — an mdi icon's box is
+   taller than its drawing, so centring the box left the house looking high against the label. */
+.dn-back{display:flex;align-items:center;justify-content:center;flex:0 0 auto;width:22px;
+  border:0;border-radius:7px;background:none;color:var(--dim);cursor:pointer;padding:0;}
+.dn-back .mdi{font-size:16px;line-height:1;display:block;position:relative;top:1px;}
+.dn-back:hover{background:#16325a;color:var(--ink);}
 .dn-item{flex:none;display:flex;align-items:center;gap:8px;width:100%;text-align:left;
   padding:7px 12px;border:0;border-radius:7px;background:none;color:var(--muted);cursor:pointer;
   font-family:var(--font);font-size:13px;line-height:1.4;}
@@ -1561,8 +1568,10 @@ html[data-dev] .sb-dev{display:grid !important;}
    the rail — so the nav scrolled, and a list inside the nav scrolled, and finding a name meant
    working out which of the two you were supposed to be dragging. One rail, one scrollbar; the list
    is as long as it is and the rail scrolls past it, which is what Phaser's does. */
-.dn-kids{display:flex;flex-direction:column;gap:1px;margin:2px 0 6px;padding-left:10px;
-  border-left:1px solid var(--line);}
+/* NO RULE DOWN THE LEFT. The indent already says these belong to the section above them, and a
+   hairline that appears only while a section is open reads as something having gone wrong with the
+   rail rather than as structure. */
+.dn-kids{display:flex;flex-direction:column;gap:1px;margin:2px 0 6px;padding-left:10px;}
 /* flex:none, and it is not a nicety. A flex column shrinks its children to fit, so 329 class names
    inside a 340px scroll box were squeezed to EIGHT PIXELS TALL each — the text still there, still
    the right size, clipped by a box a third its height. On screen that is a column of faint dashes,
@@ -1598,15 +1607,41 @@ html[data-dev] .sb-dev{display:grid !important;}
   font-family:Consolas,monospace;text-decoration:none;cursor:pointer;
   overflow:hidden;text-overflow:ellipsis;white-space:nowrap;}
 .dt-item:hover{background:#16325a;color:var(--ink);}
+/* The signature line under a typedef's name in the rail, indented the way Phaser's is. */
+.dt-sub{padding-left:20px;color:var(--dim);}
 /* Inherited members are most of a long class and least of what anybody came for. */
 .dt-item.dt-inh{opacity:.5;}
+/* ---------- the rails, and where they fold ----------
+   Above 996px both rails are columns and their toggle buttons do not exist as far as the reader is
+   concerned. 996px is docs.phaser.io's own breakpoint, and below it their left rail goes behind a
+   menu button and their right one becomes an "On this page" dropdown above the article. This used
+   to hide the right rail at 1180px — taking the search box with it — and at 820px it dropped to one
+   column with the left rail ON TOP, so a phone opened the Docs tab on 254 namespace names with the
+   documentation three screens below. */
+.dc-railtoggle{display:none;}
 @media (max-width:1180px){
-  .dc-shell{grid-template-columns:200px minmax(0,1fr);}
-  .dc-toc{display:none;}
+  .dc-shell{grid-template-columns:200px minmax(0,1fr) 200px;}
 }
-@media (max-width:820px){
-  .dc-shell{grid-template-columns:minmax(0,1fr);}
-  .dc-nav{position:static;max-height:none;}
+@media (max-width:996px){
+  .dc-shell{grid-template-columns:minmax(0,1fr);gap:0;}
+  .dc-nav,.dc-toc{position:static;max-height:none;overflow:visible;padding-right:0;
+    padding-bottom:0;margin-bottom:12px;}
+  /* Menu, then "On this page", then the article — the order Phaser's phone layout uses. Both rails
+     are one closed row each, so they cost three lines above the documentation rather than hiding it
+     under 254 of them. */
+  .dc-nav{order:1;}
+  .dc-toc{order:2;}
+  .dc-main{order:3;}
+  .dc-railtoggle{display:flex;align-items:center;justify-content:space-between;gap:8px;width:100%;
+    padding:11px 14px;border:1px solid var(--line);border-radius:9px;background:#0d2440;
+    color:var(--ink);font-family:var(--font);font-size:13.5px;font-weight:700;cursor:pointer;}
+  .dc-railtoggle:hover{background:#16325a;}
+  .dc-railcaret{font-size:18px;color:var(--dim);transition:transform .12s;}
+  .dc-railtoggle[aria-expanded="true"] .dc-railcaret{transform:rotate(180deg);}
+  .dc-railbody{display:none;padding:12px 2px 0;}
+  .dc-railtoggle[aria-expanded="true"] + .dc-railbody{display:block;}
+  /* Opened on a phone, a 254-row list must not be the whole scroll. */
+  .dc-nav .dc-railbody{max-height:60vh;overflow-y:auto;}
 }
 
 /* ---------- typography, measured off docs.phaser.io rather than guessed ----------
@@ -1616,17 +1651,49 @@ html[data-dev] .sb-dev{display:grid !important;}
    third too small. */
 .dc-main{font-size:16px;line-height:1.65;}
 .dc-main .phead h2{font-size:48px;line-height:1.25;font-weight:700;margin:0 0 25px;}
-.dc-h2{font-size:32px;line-height:1.25;font-weight:700;margin:40px 0 20px;padding-bottom:9px;
-  border-bottom:1px solid var(--line);}
-.dc-main .dc-h{font-size:24px;line-height:1.25;font-weight:700;margin:30px 0 20px;
-  padding-bottom:7px;border-bottom:1px solid var(--line);}
-.dc-sig{font-size:20px;line-height:1.3;}
+/* SCOPED UNDER .dc-main, and that is not decoration. The app's own `.page h2` — 28px, 4px below,
+   `display:flex` — is one specificity point above a bare `.dc-h2`, so every section heading in the
+   reference was being set by the shell's rule and none of these measurements applied. Same lesson
+   this file already records twice: in one long stylesheet, position and specificity both count.
+
+   NO RULE UNDER A HEADING, either: measured on their page, every h2 in the article body is
+   `0px none`. The line that looks like one under "Static functions" is the previous member's
+   separator, not the heading's own. */
+.dc-main .dc-h2{font-size:32px;line-height:1.25;font-weight:700;margin:40px 0 20px;
+  display:block;border-bottom:0;padding-bottom:0;}
+.dc-main .dc-h{font-size:24px;line-height:1.25;font-weight:700;margin:30px 0 20px;}
+/* Their h3 — the member's name — and h4, its signature line, to the pixel: 24/30 at 30px above and
+   20px below, then 16/20 at 25px above and 20px below. */
+.dc-main .dc-mname{font-size:24px;line-height:1.25;font-weight:700;margin:30px 0 20px;
+  color:var(--ink);display:block;}
+.dc-main .dc-mhead{margin:25px 0 20px;}
+.dc-main .dc-sig{font-size:16px;line-height:1.25;}
 .dc-prose{color:var(--muted);font-size:16px;line-height:1.65;}
 .dc-prose p{margin:0 0 20px;}
-.dc-prose p:last-child{margin-bottom:0;}
+/* THE LAST PARAGRAPH KEEPS ITS 20px, except inside a table cell. Zeroing it everywhere is what put
+   the description hard against the top of the table underneath it — Phaser leaves the same 20px
+   after the last paragraph as after any other. In a cell there is nothing following it, so there
+   the zero is right and the row would otherwise be 20px too tall. */
+td.dc-prose p:last-child{margin-bottom:0;}
 .dc-prose ul,.dc-prose ol{margin:0 0 9px;padding-left:20px;display:flex;flex-direction:column;gap:3px;}
+/* The search box's fallback list, when nothing on this page matches what was typed. */
+.dt-fallback{margin-top:16px;}
+.dt-owner{color:var(--dim);font-size:11px;margin-left:7px;}
+/* @generic, @webglOnly and the rest — the custom JSDoc tags Phaser prints above the parameters. */
+.dc-tags{list-style:disc;margin:0 0 20px;padding-left:22px;color:var(--muted);font-size:15px;}
+.dc-tags li{margin:0 0 3px;}
+/* Inline `code` — a quiet chip, the way Phaser's reads inside a sentence. */
 .dc-prose code{font-family:Consolas,monospace;font-size:15.2px;background:#0d2440;
   border:1px solid var(--line);border-radius:4px;padding:1px 5px;color:#a8c6e6;}
+/* A FENCED BLOCK IS ONE BOX, NOT A CHIP PER LINE. Phaser's JSDoc contains real ```js blocks, and
+   the inline-code rule above was hitting the <code> inside <pre> as well — so a fourteen-line
+   config example rendered as fourteen separate bordered chips stacked on top of each other, each
+   with its own background, which is what SmoothedKeyControl looked like. The block gets the same
+   treatment as an @example block: one dark panel, padded, scrolling sideways if it must. */
+.dc-prose pre{margin:0 0 20px;padding:14px 16px;background:#0b1f3a;border:1px solid var(--line);
+  border-radius:9px;overflow-x:auto;}
+.dc-prose pre code{display:block;background:none;border:0;border-radius:0;padding:0;
+  color:var(--ink);font-size:14.5px;line-height:1.6;white-space:pre;}
 .dc-prose a{color:var(--azure);}
 .dc-prose strong{color:var(--ink);}
 /* A word worth explaining. A dotted underline is the oldest signal there is for "there is more
@@ -1648,10 +1715,11 @@ html[data-dev] .sb-dev{display:grid !important;}
   font-family:var(--font);font-size:15px;}
 .dc-search input:focus{outline:0;}
 .dc-search input::placeholder{color:var(--dim);}
-/* The same box, small, in the corner — so a reader who is two pages deep can look something else up
-   without going back to the front page to find the search. */
-.dc-search-sm{margin:0;flex:none;width:250px;padding:0 11px;align-self:flex-start;}
+/* IN THE RIGHT-HAND RAIL, above the jump-to list, which is where Phaser's search sits. It is the
+   full width of that rail rather than a fixed 250px, and it is the only search on the page. */
+.dc-search-sm{margin:0 0 16px;width:auto;padding:0 10px;border-radius:9px;}
 .dc-search-sm input{padding:8px 0;font-size:13px;}
+.dc-search-sm .mdi{font-size:16px;}
 .dc-results{margin-top:10px;display:flex;flex-direction:column;gap:2px;max-height:52vh;
   overflow-y:auto;}
 .dc-hit{display:flex;align-items:center;gap:9px;width:100%;text-align:left;padding:8px 11px;
@@ -1694,12 +1762,45 @@ html[data-dev] .sb-dev{display:grid !important;}
   padding-bottom:7px;border-bottom:1px solid var(--line);}
 .dc-count{color:var(--dim);font-weight:650;font-size:12.5px;margin-left:5px;}
 .dc-lede{color:var(--muted);font-size:13.5px;margin:-4px 0 12px;}
+/* Home, then the reference, then where you are — and the last one is not a link to the page you are
+   already on, it is a tinted label. Phaser's trail reads exactly this way. */
 .dc-crumbs{display:flex;flex-wrap:wrap;align-items:center;gap:6px;color:var(--dim);font-size:12px;
-  margin-bottom:5px;}
+  margin-bottom:9px;}
 .dc-crumbs a{color:var(--muted);cursor:pointer;text-decoration:none;}
 .dc-crumbs a:hover{color:var(--azure);text-decoration:underline;text-underline-offset:3px;}
+.dc-crumb-home{display:inline-flex;align-items:center;}
+/* Same correction as the rail's: nudged onto the text's own optical line. */
+.dc-crumb-home .mdi{font-size:15px;line-height:1;position:relative;top:1px;}
+.dc-crumb-sep{color:var(--dim);opacity:.7;}
+.dc-crumb-here{padding:2px 8px;border-radius:6px;background:#16325a;color:var(--ink);
+  font-weight:650;}
 .dc-page{padding-bottom:40px;}
-.dc-member{padding:14px 0;border-bottom:1px solid var(--line);}
+/* THE RHYTHM AT THE TOP OF THE PAGE. The title block carried its own 22px and the heading inside it
+   another 25px, so the first paragraph sat 47px below the title where Phaser's sits about 30 — and
+   the browse list that follows then ran straight into the last paragraph with almost nothing
+   between them. Set explicitly here rather than left to margins collapsing through three wrappers. */
+.dc-main .phead{margin-bottom:0;}
+.dc-intro{padding-bottom:0;margin-bottom:40px;}
+.dc-main #docsBrowse .dc-h2:first-child{margin-top:0;}
+/* A RULE BETWEEN MEMBERS, NOT AFTER EVERY ONE. With a border on the bottom of each, the last member
+   of a section drew a line and then the next section's heading drew its own directly beneath it —
+   two rules a few pixels apart, where Phaser has one. Between siblings only, so a heading is always
+   preceded by space rather than by a stray line. */
+/* NO PADDING AT ALL, and the separator is a rule AFTER every member — which is exactly what Phaser
+   emits: each block ends with an <hr>, and its headings carry no border of their own.
+
+   Measured on their page, the distance from a member's Source line to the next heading is 65px, and
+   it is built by margin collapsing: the source block's 16px runs into the rule's 24px above (→24),
+   then the rule itself (1px), then the rule's 24px below runs into the heading's 40px (→40).
+   Reproduced here with the same numbers, so the rhythm matches rather than approximates. Padding on
+   the wrapper would block every one of those collapses — which is what stacked 20+14+30=64px
+   between a heading and the name beneath it, against their 30. */
+.dc-member{padding:0;}
+.dc-member::after{content:'';display:block;border-top:1px solid var(--line);margin:24px 0 0;}
+/* A constants page has no rules between its entries — their page emits none — so this wrapper is
+   bare and the 30px between a Source block and the next name comes from the heading's own margin. */
+.dc-const{padding:0;}
+.dc-main .dc-const:first-child .dc-mname{margin-top:0;}
 .dc-mhead{display:flex;align-items:center;flex-wrap:wrap;gap:8px;}
 .dc-sig{font-family:Consolas,monospace;font-size:14.5px;color:var(--ink);font-weight:650;
   background:none;padding:0;}
@@ -1720,32 +1821,71 @@ a.dc-type:hover{text-decoration:underline;text-underline-offset:3px;}
    Ours had the borders declared and they were being lost to a `table{border:0}` further up this
    stylesheet — which is why it rendered as four columns of floating text. Declared here with the
    specificity to win. */
-.dc-tablewrap{overflow-x:auto;margin:0 0 20px;}
-table.dc-table{border-collapse:collapse;width:auto;min-width:min(100%,520px);font-size:16px;
-  border:1px solid #606770;}
-table.dc-table th,table.dc-table td{border:1px solid #606770;padding:12px;text-align:left;
+.dc-tablewrap{overflow-x:auto;margin:0 0 24px;}
+table.dc-table{border-collapse:collapse;width:100%;font-size:16px;border:1px solid var(--line);}
+table.dc-table th,table.dc-table td{border:1px solid var(--line);padding:12px 14px;text-align:left;
   vertical-align:top;line-height:1.5;}
-table.dc-table th{font-weight:700;background:none;color:var(--ink);white-space:nowrap;}
+/* STRIPED, because a parameter table is read across a row and every row looked identical. Phaser's
+   alternates; ours was one flat colour with hairlines, so on a nine-parameter constructor the eye
+   had nothing to hold the row together and people read the wrong description for the wrong name. */
+table.dc-table th{font-weight:700;background:#102a4c;color:var(--ink);white-space:nowrap;}
 table.dc-table td{color:var(--muted);}
+table.dc-table tbody tr:nth-child(odd){background:#0b1f3a;}
+table.dc-table tbody tr:nth-child(even){background:#0e2545;}
 table.dc-table td code{font-family:Consolas,monospace;font-size:15.2px;color:var(--ink);
   background:none;border:0;padding:0;font-weight:400;}
-table.dc-table td:nth-child(3){white-space:nowrap;}
+/* ONLY THE DESCRIPTION WRAPS. Name, type, optional and default are single tokens and stay on one
+   line; the description takes whatever width is left over and flows. Letting the first three wrap
+   too broke identifiers down the middle — `supportInverseAlpha` came out as five stacked fragments
+   — and leaving none of them wrapping pushed the table past the page and put a sideways scrollbar
+   under every parameter list in the reference. */
+table.dc-table td.dc-c-name,table.dc-table td.dc-c-type,
+table.dc-table td.dc-c-opt,table.dc-table td.dc-c-def,
+table.dc-table th{white-space:nowrap;}
+/* NO `width:100%` HERE. With `table-layout:auto` that is a request for the column's preferred
+   width, so the table resolved wider than its container and overflowed — which is what put the
+   sideways scrollbar back and squeezed these descriptions into three lines. Auto layout already
+   hands the leftover space to the one column that wraps. */
+table.dc-table td.dc-c-desc{white-space:normal;}
 table.dc-table .dc-type{font-size:15.2px;}
 /* "Description:", "Parameters:", "From Phaser.GameObjects.Components.Alpha:" — Phaser labels each
    block rather than letting prose and table run together, and on a page of three hundred members
    those labels are most of what makes it skimmable. */
-.dc-lab{color:var(--ink);font-size:16px;font-weight:700;margin:0 0 12px;}
+/* ROOM ABOVE, not only below. These labels had none, so "Parameters" sat hard against the bottom of
+   the code block above it and read as that block's caption rather than as the heading of the table
+   below. Phaser leaves a clear gap above each one. The first label in a block keeps its top edge. */
+.dc-lab{color:var(--ink);font-size:16px;font-weight:700;margin:26px 0 12px;}
+.dc-lab:first-child{margin-top:0;}
+/* "Returns:" is a sentence, not a section heading, and sits close to what it describes. */
+.dc-member .dc-line{margin:14px 0 0;}
 .dc-from{margin-top:18px;color:var(--muted);}
 .dc-from a{color:var(--azure);cursor:pointer;text-decoration:none;}
 .dc-from a:hover{text-decoration:underline;text-underline-offset:3px;}
-.dc-h2{margin:30px 0 12px;font-size:20px;font-weight:800;padding-bottom:9px;
-  border-bottom:1px solid var(--line);}
+/* The section-heading rule that USED to live here set 20px and a bottom border, and because it sat
+   four hundred lines below the measured typography block it won — so every "Public Members",
+   "Static functions" and typedef name on every page rendered at two thirds of Phaser's size with a
+   rule underneath that their headings do not have. Removed; see the typography block above. */
 .dc-ver{display:inline-block;margin-bottom:12px;padding:2px 9px;border-radius:5px;
   background:#0f2440;border:1px solid var(--line);color:var(--muted);font-size:11.5px;
   font-weight:650;}
-.dc-src{margin:12px 0 20px;padding:8px 0 8px 14px;border-left:3px solid var(--line);
+.dc-src{margin:12px 0 16px;padding:8px 0 8px 14px;border-left:3px solid var(--line);
   color:var(--muted);font-size:16px;}
 .dc-src a{color:var(--azure);font-family:Consolas,monospace;font-size:15.2px;}
+/* "Source: src/math/Vector2.js#L294   Since: 3.0.0" — both on one line, the way Phaser prints it. */
+.dc-since{margin-left:18px;white-space:nowrap;}
+/* .dc-mname's size and rhythm are set in the typography block above, measured off their h3. */
+/* <instance> / <static> — dimmed, because it qualifies the signature rather than being part of it. */
+.dc-scope{color:var(--dim);font-weight:400;}
+/* INHERITED MEMBERS ARE NAMES, NOT BLOCKS. Sprite inherits 178 of them; as full descriptions that
+   was a 325 KB page, and as columns of links it is a contents list you can actually scan. */
+.dc-inh{list-style:none;margin:0 0 18px;padding:0;
+  columns:3;column-gap:28px;}
+.dc-inh li{break-inside:avoid;margin:0 0 4px;}
+.dc-inh a{color:var(--azure);cursor:pointer;text-decoration:none;
+  font-family:Consolas,monospace;font-size:14px;}
+.dc-inh a:hover{text-decoration:underline;text-underline-offset:3px;}
+@media (max-width:900px){.dc-inh{columns:2;}}
+@media (max-width:560px){.dc-inh{columns:1;}}
 .dc-opt,.dc-def,.dc-flag{font-size:11px;color:var(--dim);margin-left:6px;}
 .dc-more{background:none;border:0;padding:0 3px;color:var(--azure);cursor:pointer;
   font-family:var(--font);font-size:12px;text-decoration:underline;text-underline-offset:3px;}
@@ -1756,7 +1896,7 @@ table.dc-table .dc-type{font-size:15.2px;}
 .dc-flag.dc-inh{color:var(--muted);}
 /* A real code block, coloured like the code everywhere else in this app. It used to be a bare <pre>
    with no background, so an eight-line example read as a continuation of the paragraph above it. */
-.dc-eg{margin:10px 0 0;padding:12px 14px;background:#0b1c33;border:1px solid var(--line);
+.dc-eg{margin:0 0 20px;padding:14px 16px;background:#0b1c33;border:1px solid var(--line);
   border-radius:9px;overflow-x:auto;font-family:Consolas,monospace;font-size:12.5px;
   line-height:1.6;color:#c3d3e6;}
 .dc-eg code{background:none;border:0;padding:0;font:inherit;color:inherit;}
@@ -3099,17 +3239,31 @@ body[data-tier="mid"] .lesson-content > .tip.aside .mdi{display:none;}
 @media (max-width: 700px){
   .topbar{gap:8px;padding:0 8px;}
   .brand .brand-tag{display:none;}          /* "Level 1" — the least load-bearing text on screen */
-  .topnav{flex:1;min-width:0;overflow-x:auto;scrollbar-width:none;-ms-overflow-style:none;}
-  .topnav::-webkit-scrollbar{display:none;}
-  .navitem{white-space:nowrap;flex:none;min-height:40px;}
-  .topright{margin-left:0;flex:none;}
+  /* ICONS ONLY. The labels made the strip wider than the screen, so it scrolled sideways and the
+     last destination sat off the edge with "Gal…" clipped at the fold. `font-size:0` on the button
+     collapses the label text without removing it, so the icon is all that shows and a screen reader
+     still reads "Gallery". Every destination fits at once, which is the point of a tab strip. */
+  .topnav{flex:1;min-width:0;display:flex;justify-content:flex-start;gap:2px;}
+  .navitem{flex:none;min-height:40px;min-width:42px;justify-content:center;gap:0;padding:0 9px;
+    font-size:0;}
+  .navitem .mdi{font-size:20px;}
+  .topright{margin-left:auto;flex:none;}
+  .topright .gbtn,.topright button{min-height:40px;min-width:42px;justify-content:center;gap:0;
+    padding:0 9px;font-size:0;}
+  .topright .gbtn .mdi,.topright button .mdi{font-size:19px;}
   /* The XP bar and level chip: the part of the status bar that is decoration rather than state. */
   .statusbar .sb-mid{display:none;}
   .statusbar{gap:10px;padding:0 10px;}
   .statusbar .sb-left,.statusbar .sb-right{min-width:0;flex:1;overflow:hidden;
     text-overflow:ellipsis;white-space:nowrap;}
   /* Touch targets. 26-30px is fine for a trackpad and not for a finger. */
-  .vtab{min-height:40px;}
+  /* The lesson's own tab strip, the same way as the top nav: Learn / Design / Code / Play become
+     their icons, which stops the strip squeezing the lesson title beside it down to "Ga…". */
+  .vtab{min-height:40px;min-width:44px;justify-content:center;gap:0;padding:0 10px;font-size:0;}
+  .vtab .mdi{font-size:19px;}
+  .vtabs{gap:2px;}
+  .viewbar{gap:8px;}
+  .viewbar.has-transport .vb-left{max-width:none;min-width:0;}
   /* Both dimensions, so the button stays square rather than becoming a tall sliver. */
   .tp{width:40px;height:40px;}
   .viewbar{height:auto;min-height:44px;}

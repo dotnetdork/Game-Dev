@@ -12,8 +12,8 @@
       "runtimeExecutable": "npm",
       "runtimeArgs": ["start", "--prefix", "app"],
       "port": 3100,
+      "autoPort": true,
       "env": {
-        "PORT": "3100",
         "TESTER_PASSWORD": "",
         "SESSION_SECRET": ""
       }

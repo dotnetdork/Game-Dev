@@ -1,1 +1,1 @@
-{"l":"EachListCallback<I>","n":"EachListCallback<I>","k":"typedef","mo":"","x":"","since":"","scope":"global","src":"src/structs/List.js#L12","m":[]}
+{"l":"EachListCallback<I>","n":"EachListCallback<I>","k":"typedef","mo":"","x":"","since":"","scope":"global","src":"src/structs/List.js#L12","t":["function"],"params":[{"n":"item","t":["I"],"x":"The item which is currently being processed."},{"n":"args","t":["*"],"o":1,"x":"Additional arguments that will be passed to the callback, after the child."}],"m":[]}

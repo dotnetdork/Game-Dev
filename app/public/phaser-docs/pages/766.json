@@ -1,1 +1,1 @@
-{"l":"Phaser.Types.GameObjects.Video.VideoConfig","n":"VideoConfig","k":"typedef","mo":"Phaser.Types.GameObjects.Video","x":"","since":"3.50.0","scope":"static","src":"src/gameobjects/video/typedefs/VideoConfig.js#L1","ext":["Phaser.Types.GameObjects.GameObjectConfig"],"m":[]}
+{"l":"Phaser.Types.GameObjects.TileSprite","n":"TileSprite","k":"namespace","mo":"Phaser.Types.GameObjects","x":"","since":"","scope":"static","src":"src/gameobjects/tilesprite/typedefs/index.js#L7","m":[],"kids":[["TileSpriteConfig","typedef",767]]}
