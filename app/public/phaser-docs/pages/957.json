@@ -1,1 +1,1 @@
-{"l":"Phaser.Types.Tilemaps.ObjectLayerConfig","n":"ObjectLayerConfig","k":"typedef","mo":"Phaser.Types.Tilemaps","x":"","since":"3.0.0","scope":"static","src":"src/tilemaps/typedefs/ObjectLayerConfig.js#L1","m":[]}
+{"l":"Phaser.Types.Tweens.TweenDataConfig","n":"TweenDataConfig","k":"typedef","mo":"Phaser.Types.Tweens","x":"","since":"3.0.0","scope":"static","src":"src/tweens/typedefs/TweenDataConfig.js#L1","m":[]}

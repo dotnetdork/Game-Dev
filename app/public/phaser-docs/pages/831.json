@@ -1,1 +1,1 @@
-{"l":"Phaser.Types.Loader.FileTypes.ScenePluginFileConfig","n":"ScenePluginFileConfig","k":"typedef","mo":"Phaser.Types.Loader.FileTypes","x":"","since":"","scope":"static","src":"src/loader/filetypes/typedefs/ScenePluginFileConfig.js#L1","m":[]}
+{"l":"Phaser.Types.Math.Vector4Like","n":"Vector4Like","k":"typedef","mo":"Phaser.Types.Math","x":"","since":"3.50.0","scope":"static","src":"src/math/typedefs/Vector4Like.js#L1","m":[]}

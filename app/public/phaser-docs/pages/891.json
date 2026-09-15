@@ -1,1 +1,1 @@
-{"l":"Phaser.Types.Renderer","n":"Renderer","k":"namespace","mo":"Phaser.Types","x":"","since":"","scope":"static","src":"src/renderer/index.js#L11","m":[],"kids":[["Snapshot","namespace",892],["WebGL","namespace",895]]}
+{"l":"Phaser.Types.Renderer.WebGL.WebGLConst","n":"WebGLConst","k":"typedef","mo":"Phaser.Types.Renderer.WebGL","x":"","since":"3.50.0","scope":"static","src":"src/renderer/webgl/typedefs/WebGLConst.js#L1","m":[]}

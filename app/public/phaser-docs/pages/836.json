@@ -1,1 +1,1 @@
-{"l":"Phaser.Types.Loader.FileTypes.TilemapImpactFileConfig","n":"TilemapImpactFileConfig","k":"typedef","mo":"Phaser.Types.Loader.FileTypes","x":"","since":"","scope":"static","src":"src/loader/filetypes/typedefs/TilemapImpactFileConfig.js#L1","m":[]}
+{"l":"Phaser.Types.Physics.Arcade.ArcadeColliderType","n":"ArcadeColliderType","k":"typedef","mo":"Phaser.Types.Physics.Arcade","x":"An Arcade Physics Collider Type.","since":"3.0.0","scope":"static","src":"src/physics/arcade/typedefs/ArcadeColliderType.js#L1","m":[]}

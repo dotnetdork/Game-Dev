@@ -1,1 +1,1 @@
-{"l":"Phaser.Types.Physics.Arcade.GameObjectWithDynamicBody","n":"GameObjectWithDynamicBody","k":"typedef","mo":"Phaser.Types.Physics.Arcade","x":"","since":"","scope":"static","src":"src/physics/arcade/typedefs/GameObjectWithDynamicBody.js#L1","ext":["Phaser.GameObjects.GameObject"],"m":[]}
+{"l":"Phaser.Types.Physics.Matter.MatterDebugConfig","n":"MatterDebugConfig","k":"typedef","mo":"Phaser.Types.Physics.Matter","x":"","since":"3.22.0","scope":"static","src":"src/physics/matter-js/typedefs/MatterDebugConfig.js#L1","m":[]}

@@ -1,1 +1,1 @@
-{"l":"Phaser.Types.Textures.TextureSourceElement","n":"TextureSourceElement","k":"typedef","mo":"Phaser.Types.Textures","x":"","since":"4.0.0","scope":"static","src":"src/textures/typedefs/TextureSourceElement.js#L1","m":[]}
+{"l":"Phaser.Types.Tweens.GetEndCallback","n":"GetEndCallback","k":"typedef","mo":"Phaser.Types.Tweens","x":"","since":"3.18.0","scope":"static","src":"src/tweens/typedefs/GetEndCallback.js#L1","m":[]}

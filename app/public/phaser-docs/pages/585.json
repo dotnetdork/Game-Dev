@@ -1,1 +1,1 @@
-{"l":"Phaser.Types.Animations.GenerateFrameNames","n":"GenerateFrameNames","k":"typedef","mo":"Phaser.Types.Animations","x":"","since":"3.0.0","scope":"static","src":"src/animations/typedefs/GenerateFrameNames.js#L1","m":[]}
+{"l":"Phaser.Types.Cameras.Controls.FixedKeyControlConfig","n":"FixedKeyControlConfig","k":"typedef","mo":"Phaser.Types.Cameras.Controls","x":"","since":"3.0.0","scope":"static","src":"src/cameras/controls/typedefs/FixedKeyControlConfig.js#L1","m":[]}

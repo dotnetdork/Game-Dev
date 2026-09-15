@@ -1,1 +1,1 @@
-{"l":"Phaser.Types.GameObjects.Particles.EmitterOpOnUpdateType","n":"EmitterOpOnUpdateType","k":"typedef","mo":"Phaser.Types.GameObjects.Particles","x":"","since":"3.18.0","scope":"static","src":"src/gameobjects/particles/typedefs/EmitterOpOnUpdateType.js#L1","m":[]}
+{"l":"Phaser.Types.GameObjects.Particles.ParticleEmitterCallback","n":"ParticleEmitterCallback","k":"typedef","mo":"Phaser.Types.GameObjects.Particles","x":"","since":"3.0.0","scope":"static","src":"src/gameobjects/particles/typedefs/ParticleEmitterCallback.js#L1","m":[]}

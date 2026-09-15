@@ -1,1 +1,1 @@
-{"l":"Phaser.Types.Physics.Matter.MatterCollisionPair","n":"MatterCollisionPair","k":"typedef","mo":"Phaser.Types.Physics.Matter","x":"","since":"3.22.0","scope":"static","src":"src/physics/matter-js/typedefs/MatterCollisionPair.js#L1","m":[]}
+{"l":"Phaser.Types.Renderer.WebGL.RenderNodes.BatchHandlerConfig","n":"BatchHandlerConfig","k":"typedef","mo":"Phaser.Types.Renderer.WebGL.RenderNodes","x":"","since":"4.0.0","scope":"static","src":"src/renderer/webgl/renderNodes/typedefs/BatchHandlerConfig.js#L7","m":[]}

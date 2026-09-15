@@ -1,1 +1,1 @@
-{"l":"Phaser.Types.Math.HashSimplexConfig","n":"HashSimplexConfig","k":"typedef","mo":"Phaser.Types.Math","x":"","since":"4.0.0","scope":"static","src":"src/math/typedefs/HashSimplexConfig.js#L1","m":[]}
+{"l":"Phaser.Types.Physics.Arcade.ImageWithDynamicBody","n":"ImageWithDynamicBody","k":"typedef","mo":"Phaser.Types.Physics.Arcade","x":"","since":"","scope":"static","src":"src/physics/arcade/typedefs/ImageWithDynamicBody.js#L1","ext":["Phaser.Physics.Arcade.Image"],"m":[]}

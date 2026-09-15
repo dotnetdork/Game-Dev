@@ -1,1 +1,1 @@
-{"l":"Phaser.Types.Scenes.SettingsConfig","n":"SettingsConfig","k":"typedef","mo":"Phaser.Types.Scenes","x":"","since":"3.0.0","scope":"static","src":"src/scene/typedefs/SettingsConfig.js#L1","m":[]}
+{"l":"Phaser.Types.Textures.TextureSourceElement","n":"TextureSourceElement","k":"typedef","mo":"Phaser.Types.Textures","x":"","since":"4.0.0","scope":"static","src":"src/textures/typedefs/TextureSourceElement.js#L1","m":[]}

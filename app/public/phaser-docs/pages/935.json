@@ -1,1 +1,1 @@
-{"l":"Phaser.Types.Sound.SoundMarker","n":"SoundMarker","k":"typedef","mo":"Phaser.Types.Sound","x":"Marked section of a sound represented by name, and optionally start time, duration, and config object.","since":"3.0.0","scope":"static","src":"src/sound/typedefs/SoundMarker.js#L1","m":[]}
+{"l":"Phaser.Types.Tilemaps.LayerDataConfig","n":"LayerDataConfig","k":"typedef","mo":"Phaser.Types.Tilemaps","x":"","since":"3.0.0","scope":"static","src":"src/tilemaps/typedefs/LayerDataConfig.js#L1","m":[]}

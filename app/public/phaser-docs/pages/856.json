@@ -1,1 +1,1 @@
-{"l":"Phaser.Types.Physics.Arcade.ArcadePhysicsCallback","n":"ArcadePhysicsCallback","k":"typedef","mo":"Phaser.Types.Physics.Arcade","x":"","since":"","scope":"static","src":"src/physics/arcade/typedefs/ArcadePhysicsCallback.js#L1","m":[]}
+{"l":"Phaser.Types.Physics.Matter.MatterChamferConfig","n":"MatterChamferConfig","k":"typedef","mo":"Phaser.Types.Physics.Matter","x":"","since":"3.22.0","scope":"static","src":"src/physics/matter-js/typedefs/MatterChamferConfig.js#L1","m":[]}

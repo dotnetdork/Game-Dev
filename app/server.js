@@ -69,15 +69,37 @@ const OLLAMA_THINK = /^(1|true|yes|on)$/i.test(process.env.OLLAMA_THINK || '');
 // Per-agent so it can be enabled where it pays (the coder) without slowing the tutor down.
 // Off => Tier 1 behaviour exactly as before. Each tool round is another model call, so this
 // trades latency for accuracy; the deterministic Tier 1 validators still run either way.
+/* ON BY DEFAULT for the two agents that write or explain code, and the default changed deliberately.
+   It used to be off everywhere, on the grounds that a tool round is another model call and the only
+   thing to look up was a five-kilobyte cheat sheet covering twenty APIs. Both halves of that have
+   changed: the lookup is now the complete Phaser reference, on disk, no network, and the cost of NOT
+   looking things up is measurable.
+
+   Measured, in fact. Asked four questions about the engine it is running, an agent with no tools
+   said setTintFill "colors a sprite as a flat silhouette" (it is deprecated and does nothing in
+   Phaser 4), invented a `restitution` parameter on setCollideWorldBounds that has never existed, and
+   said Phaser.GameObjects.StencilReference was "made up" — it is a real class with ninety members.
+   Three confidently wrong answers out of four, any of which written into a child's game is a crash
+   or a silent no-op they cannot debug.
+
+   A truthy env var still forces it on and an explicit 0 still forces it off; the change is only what
+   happens when nobody has said. */
+function agentTool(name, dflt) {
+  const v = process.env[name];
+  if (v === undefined || v === '') return dflt;
+  return /^(1|true|yes|on)$/i.test(v);
+}
 const AGENT_TOOLS = {
-  coder:  /^(1|true|yes|on)$/i.test(process.env.CODER_TOOLS  || ''),
-  tutor:  /^(1|true|yes|on)$/i.test(process.env.TUTOR_TOOLS  || ''),
-  'lab-tutor': /^(1|true|yes|on)$/i.test(process.env.TUTOR_TOOLS || ''),
-  quiz:   /^(1|true|yes|on)$/i.test(process.env.QUIZ_TOOLS   || ''),
-  grader: /^(1|true|yes|on)$/i.test(process.env.GRADER_TOOLS || ''),
+  coder:  agentTool('CODER_TOOLS', true),
+  tutor:  agentTool('TUTOR_TOOLS', true),
+  'lab-tutor': agentTool('TUTOR_TOOLS', true),
+  /* The quiz and grader agents mark work against an answer that is already in their prompt; there
+     is nothing for them to look up, so they keep paying nothing for the option. */
+  quiz:   agentTool('QUIZ_TOOLS', false),
+  grader: agentTool('GRADER_TOOLS', false),
   /* The design coach rides on TUTOR_TOOLS: it is the tutor's job on a different tab, and there is
      nothing on a design board for a tool to look up — the board is already in the prompt. */
-  'design-coach': /^(1|true|yes|on)$/i.test(process.env.TUTOR_TOOLS || '')
+  'design-coach': agentTool('TUTOR_TOOLS', true)
 };
 const MAX_TOOL_ROUNDS = Number(process.env.AI_TOOL_ROUNDS || 4);
 const ANTHROPIC_KEY = process.env.ANTHROPIC_API_KEY || '';

@@ -1,1 +1,1 @@
-{"l":"Phaser.Types.GameObjects.Text.TextWordWrap","n":"TextWordWrap","k":"typedef","mo":"Phaser.Types.GameObjects.Text","x":"A Text Word Wrap configuration object as used by the Text Style configuration.","since":"3.0.0","scope":"static","src":"src/gameobjects/text/typedefs/TextWordWrap.js#L1","m":[]}
+{"l":"Phaser.Types.Input.Keyboard.KeyComboConfig","n":"KeyComboConfig","k":"typedef","mo":"Phaser.Types.Input.Keyboard","x":"","since":"3.0.0","scope":"static","src":"src/input/keyboard/typedefs/KeyComboConfig.js#L1","m":[]}

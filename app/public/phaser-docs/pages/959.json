@@ -1,1 +1,1 @@
-{"l":"Phaser.Types.Tilemaps.TiledObject","n":"TiledObject","k":"typedef","mo":"Phaser.Types.Tilemaps","x":"","since":"3.0.0","scope":"static","src":"src/tilemaps/typedefs/TiledObject.js#L1","m":[]}
+{"l":"Phaser.Types.Tweens.TweenFrameDataConfig","n":"TweenFrameDataConfig","k":"typedef","mo":"Phaser.Types.Tweens","x":"","since":"3.60.0","scope":"static","src":"src/tweens/typedefs/TweenFrameDataConfig.js#L1","m":[]}

@@ -1,1 +1,1 @@
-{"l":"Phaser.Types.Tweens.TweenOnActiveCallback","n":"TweenOnActiveCallback","k":"typedef","mo":"Phaser.Types.Tweens","x":"","since":"3.19.0","scope":"static","src":"src/tweens/typedefs/TweenOnActiveCallback.js#L1","m":[]}
+{"l":"WebGLContextCallback","n":"WebGLContextCallback","k":"typedef","mo":"","x":"","since":"","scope":"global","src":"src/renderer/webgl/WebGLRenderer.js#L44","m":[]}

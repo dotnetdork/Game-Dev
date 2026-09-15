@@ -1,1 +1,1 @@
-{"l":"Phaser.Types.Sound.AudioSpriteSound","n":"AudioSpriteSound","k":"typedef","mo":"Phaser.Types.Sound","x":"Audio sprite sound type.","since":"3.0.0","scope":"static","src":"src/sound/typedefs/AudioSpriteSound.js#L1","m":[]}
+{"l":"Phaser.Types.Tilemaps.CreateFromObjectsClassTypeConstructor","n":"CreateFromObjectsClassTypeConstructor","k":"typedef","mo":"Phaser.Types.Tilemaps","x":"","since":"3.60.0","scope":"static","src":"src/tilemaps/typedefs/CreateFromObjectsClassTypeConstructor.js#L1","m":[]}

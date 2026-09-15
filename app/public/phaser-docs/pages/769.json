@@ -1,1 +1,1 @@
-{"l":"Phaser.Types.GameObjects.Stencil.StencilLayerMode","n":"StencilLayerMode","k":"typedef","mo":"Phaser.Types.GameObjects.Stencil","x":"","since":"4.2.0","scope":"static","src":"src/gameobjects/stencil/typedefs/StencilLayerModes.js#L1","m":[]}
+{"l":"Phaser.Types.Geom","n":"Geom","k":"namespace","mo":"Phaser.Types","x":"","since":"","scope":"static","src":"src/geom/typedefs/index.js#L7","m":[]}

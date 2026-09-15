@@ -1,1 +1,1 @@
-{"l":"Phaser.Types.GameObjects.NoiseCell4D.NoiseCell4DConfig","n":"NoiseCell4DConfig","k":"typedef","mo":"Phaser.Types.GameObjects.NoiseCell4D","x":"","since":"4.0.0","scope":"static","src":"src/gameobjects/noise/noisecell4d/typedefs/NoiseCell4DConfig.js#L1","ext":["Phaser.Types.GameObjects.GameObjectConfig"],"m":[]}
+{"l":"Phaser.Types.GameObjects.Particles.EdgeZoneSource","n":"EdgeZoneSource","k":"typedef","mo":"Phaser.Types.GameObjects.Particles","x":"","since":"3.0.0","scope":"static","src":"src/gameobjects/particles/typedefs/EdgeZoneSource.js#L1","m":[]}

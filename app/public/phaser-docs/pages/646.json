@@ -1,1 +1,1 @@
-{"l":"Phaser.Types.Filters.NormalToolsConfig","n":"NormalToolsConfig","k":"typedef","mo":"Phaser.Types.Filters","x":"","since":"4.0.0","scope":"static","src":"src/filters/typedefs/NormalToolsConfig.js#L1","m":[]}
+{"l":"Phaser.Types.GameObjects.BitmapText.BitmapTextConfig","n":"BitmapTextConfig","k":"typedef","mo":"Phaser.Types.GameObjects.BitmapText","x":"","since":"3.0.0","scope":"static","src":"src/gameobjects/bitmaptext/typedefs/BitmapTextConfig.js#L1","ext":["Phaser.Types.GameObjects.GameObjectConfig"],"m":[]}

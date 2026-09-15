@@ -1,1 +1,1 @@
-{"l":"Phaser.Types.GameObjects.Rope.RopeConfig","n":"RopeConfig","k":"typedef","mo":"Phaser.Types.GameObjects.Rope","x":"","since":"3.50.0","scope":"static","src":"src/gameobjects/rope/typedefs/RopeConfig.js#L1","ext":["Phaser.Types.GameObjects.GameObjectConfig"],"m":[]}
+{"l":"Phaser.Types.GameObjects.Text.GetTextSizeObject","n":"GetTextSizeObject","k":"typedef","mo":"Phaser.Types.GameObjects.Text","x":"Results object from a call to GetTextSize.","since":"3.0.0","scope":"static","src":"src/gameobjects/text/typedefs/GetTextSizeObject.js#L1","m":[]}

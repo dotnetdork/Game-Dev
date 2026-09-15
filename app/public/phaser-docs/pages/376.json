@@ -1,1 +1,1 @@
-{"l":"Phaser.Physics.Matter.Events.CollisionStartEvent","n":"CollisionStartEvent","k":"typedef","mo":"Phaser.Physics.Matter.Events","x":"","since":"","scope":"static","src":"src/physics/matter-js/events/COLLISION_START_EVENT.js#L7","m":[]}
+{"l":"Phaser.Physics.Matter.Matter","n":"Matter","k":"namespace","mo":"Phaser.Physics.Matter","x":"","since":"","scope":"static","src":"src/physics/matter-js/CustomMain.js#L7","m":[]}

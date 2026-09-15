@@ -1,1 +1,1 @@
-{"l":"Phaser.Types.Loader.FileTypes.ImageFrameConfig","n":"ImageFrameConfig","k":"typedef","mo":"Phaser.Types.Loader.FileTypes","x":"","since":"","scope":"static","src":"src/loader/filetypes/typedefs/ImageFrameConfig.js#L1","m":[]}
+{"l":"Phaser.Types.Loader.FileTypes.UnityAtlasFileConfig","n":"UnityAtlasFileConfig","k":"typedef","mo":"Phaser.Types.Loader.FileTypes","x":"","since":"","scope":"static","src":"src/loader/filetypes/typedefs/UnityAtlasFileConfig.js#L1","m":[]}

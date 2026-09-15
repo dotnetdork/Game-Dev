@@ -1,1 +1,1 @@
-{"l":"Phaser.Types.Loader.FileTypes.AudioFileConfig","n":"AudioFileConfig","k":"typedef","mo":"Phaser.Types.Loader.FileTypes","x":"","since":"","scope":"static","src":"src/loader/filetypes/typedefs/AudioFileConfig.js#L1","m":[]}
+{"l":"Phaser.Types.Loader.FileTypes.PackFileConfig","n":"PackFileConfig","k":"typedef","mo":"Phaser.Types.Loader.FileTypes","x":"","since":"","scope":"static","src":"src/loader/filetypes/typedefs/PackFileConfig.js#L1","m":[]}

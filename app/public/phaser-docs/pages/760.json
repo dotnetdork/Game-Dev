@@ -1,1 +1,1 @@
-{"l":"Phaser.Types.GameObjects.Sprite","n":"Sprite","k":"namespace","mo":"Phaser.Types.GameObjects","x":"","since":"","scope":"static","src":"src/gameobjects/sprite/typedefs/index.js#L7","m":[],"kids":[["SpriteConfig","typedef",761]]}
+{"l":"Phaser.Types.GameObjects.Text.TextShadow","n":"TextShadow","k":"typedef","mo":"Phaser.Types.GameObjects.Text","x":"A Text Shadow configuration object as used by the Text Style.","since":"3.0.0","scope":"static","src":"src/gameobjects/text/typedefs/TextShadow.js#L1","m":[]}

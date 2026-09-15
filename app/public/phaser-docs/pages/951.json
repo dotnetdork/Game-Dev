@@ -1,1 +1,1 @@
-{"l":"Phaser.Types.Tilemaps.CreateFromObjectsClassTypeConstructor","n":"CreateFromObjectsClassTypeConstructor","k":"typedef","mo":"Phaser.Types.Tilemaps","x":"","since":"3.60.0","scope":"static","src":"src/tilemaps/typedefs/CreateFromObjectsClassTypeConstructor.js#L1","m":[]}
+{"l":"Phaser.Types.Tweens.StaggerConfig","n":"StaggerConfig","k":"typedef","mo":"Phaser.Types.Tweens","x":"","since":"3.19.0","scope":"static","src":"src/tweens/typedefs/StaggerConfig.js#L1","m":[]}

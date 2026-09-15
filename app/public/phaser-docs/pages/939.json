@@ -1,1 +1,1 @@
-{"l":"Phaser.Types.Textures.CaptureConfig","n":"CaptureConfig","k":"typedef","mo":"Phaser.Types.Textures","x":"Configuration object for the `DynamicTexture.capture` method.","since":"4.0.0","scope":"static","src":"src/textures/typedefs/CaptureConfig.js#L1","m":[]}
+{"l":"Phaser.Types.Tilemaps.TiledObject","n":"TiledObject","k":"typedef","mo":"Phaser.Types.Tilemaps","x":"","since":"3.0.0","scope":"static","src":"src/tilemaps/typedefs/TiledObject.js#L1","m":[]}

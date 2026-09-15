@@ -1,1 +1,1 @@
-{"l":"Phaser.Types.Physics.Arcade.GameObjectWithBody","n":"GameObjectWithBody","k":"typedef","mo":"Phaser.Types.Physics.Arcade","x":"","since":"","scope":"static","src":"src/physics/arcade/typedefs/GameObjectWithBody.js#L1","ext":["Phaser.GameObjects.GameObject"],"m":[]}
+{"l":"Phaser.Types.Physics.Matter.MatterConstraintRenderConfig","n":"MatterConstraintRenderConfig","k":"typedef","mo":"Phaser.Types.Physics.Matter","x":"","since":"3.22.0","scope":"static","src":"src/physics/matter-js/typedefs/MatterConstraintRenderConfig.js#L1","m":[]}

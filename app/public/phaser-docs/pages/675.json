@@ -1,1 +1,1 @@
-{"l":"Phaser.Types.GameObjects.Gradient","n":"Gradient","k":"namespace","mo":"Phaser.Types.GameObjects","x":"","since":"","scope":"static","src":"src/gameobjects/gradient/typedefs/index.js#L7","m":[],"kids":[["GradientConfig","typedef",676],["GradientQuadConfig","typedef",677]]}
+{"l":"Phaser.Types.GameObjects.Group.GroupClassTypeConstructor","n":"GroupClassTypeConstructor","k":"typedef","mo":"Phaser.Types.GameObjects.Group","x":"","since":"3.0.0","scope":"static","src":"src/gameobjects/group/typedefs/GroupClassTypeConstructor.js#L1","m":[]}

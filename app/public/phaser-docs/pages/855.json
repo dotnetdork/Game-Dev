@@ -1,1 +1,1 @@
-{"l":"Phaser.Types.Physics.Arcade.ArcadeColliderType","n":"ArcadeColliderType","k":"typedef","mo":"Phaser.Types.Physics.Arcade","x":"An Arcade Physics Collider Type.","since":"3.0.0","scope":"static","src":"src/physics/arcade/typedefs/ArcadeColliderType.js#L1","m":[]}
+{"l":"Phaser.Types.Physics.Matter.MatterBodyTileOptions","n":"MatterBodyTileOptions","k":"typedef","mo":"Phaser.Types.Physics.Matter","x":"","since":"3.0.0","scope":"static","src":"src/physics/matter-js/typedefs/MatterBodyTileOptions.js#L1","m":[]}

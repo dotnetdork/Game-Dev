@@ -1,1 +1,1 @@
-{"l":"Phaser.Types.Physics.Matter.MatterTileOptions","n":"MatterTileOptions","k":"typedef","mo":"Phaser.Types.Physics.Matter","x":"","since":"3.0.0","scope":"static","src":"src/physics/matter-js/typedefs/MatterTileOptions.js#L1","m":[]}
+{"l":"Phaser.Types.Renderer.WebGL.RenderNodes.SubmitterQuadConfig","n":"SubmitterQuadConfig","k":"typedef","mo":"Phaser.Types.Renderer.WebGL.RenderNodes","x":"","since":"4.0.0","scope":"static","src":"src/renderer/webgl/renderNodes/typedefs/SubmitterQuadConfig.js#L7","m":[]}

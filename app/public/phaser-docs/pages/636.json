@@ -1,1 +1,1 @@
-{"l":"Phaser.Types.Display.ColorBandConfig","n":"ColorBandConfig","k":"typedef","mo":"Phaser.Types.Display","x":"","since":"4.0.0","scope":"static","src":"src/display/typedefs/ColorBandConfig.js#L1","m":[]}
+{"l":"Phaser.Types.Filters.KeyConfig","n":"KeyConfig","k":"typedef","mo":"Phaser.Types.Filters","x":"","since":"4.0.0","scope":"static","src":"src/filters/typedefs/KeyConfig.js#L1","m":[]}

@@ -1,1 +1,1 @@
-{"l":"Phaser.Types.Animations.Animation","n":"Animation","k":"typedef","mo":"Phaser.Types.Animations","x":"","since":"3.0.0","scope":"static","src":"src/animations/typedefs/Animation.js#L1","m":[]}
+{"l":"Phaser.Types.Cameras","n":"Cameras","k":"namespace","mo":"Phaser.Types","x":"","since":"","scope":"static","src":"src/cameras/index.js#L11","m":[],"kids":[["Controls","namespace",584],["Scene2D","namespace",587]]}

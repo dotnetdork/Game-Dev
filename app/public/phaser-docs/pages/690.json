@@ -1,1 +1,1 @@
-{"l":"Phaser.Types.GameObjects.Group.GroupMultipleCreateCallback","n":"GroupMultipleCreateCallback","k":"typedef","mo":"Phaser.Types.GameObjects.Group","x":"","since":"3.0.0","scope":"static","src":"src/gameobjects/group/typedefs/GroupMultipleCreateCallback.js#L1","m":[]}
+{"l":"Phaser.Types.GameObjects.NoiseCell3D.NoiseCell3DQuadConfig","n":"NoiseCell3DQuadConfig","k":"typedef","mo":"Phaser.Types.GameObjects.NoiseCell3D","x":"","since":"4.0.0","scope":"static","src":"src/gameobjects/noise/noisecell3d/typedefs/NoiseCell3DQuadConfig.js#L1","m":[]}

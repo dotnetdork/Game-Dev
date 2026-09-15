@@ -1,1 +1,1 @@
-{"l":"Phaser.Types.Curves","n":"Curves","k":"namespace","mo":"Phaser.Types","x":"","since":"","scope":"static","src":"src/curves/typedefs/index.js#L7","m":[],"kids":[["EllipseCurveConfig","typedef",631],["JSONCurve","typedef",632],["JSONEllipseCurve","typedef",633],["JSONPath","typedef",634]]}
+{"l":"Phaser.Types.Display.InputColorObject","n":"InputColorObject","k":"typedef","mo":"Phaser.Types.Display","x":"","since":"3.0.0","scope":"static","src":"src/display/typedefs/InputColorObject.js#L1","m":[]}

@@ -1,1 +1,1 @@
-{"l":"Phaser.Types.Plugins.CustomPluginContainer","n":"CustomPluginContainer","k":"typedef","mo":"Phaser.Types.Plugins","x":"","since":"3.8.0","scope":"static","src":"src/plugins/typedefs/CustomPluginContainer.js#L1","m":[]}
+{"l":"Phaser.Types.Renderer.WebGL.WebGLBatchEntry","n":"WebGLBatchEntry","k":"typedef","mo":"Phaser.Types.Renderer.WebGL","x":"","since":"4.0.0","scope":"static","src":"src/renderer/webgl/typedefs/WebGLBatchEntry.js#L1","m":[]}

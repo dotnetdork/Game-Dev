@@ -1,1 +1,1 @@
-{"l":"Phaser.Types.GameObjects.Particles.DeathZoneObject","n":"DeathZoneObject","k":"typedef","mo":"Phaser.Types.GameObjects.Particles","x":"","since":"3.60.0","scope":"static","src":"src/gameobjects/particles/typedefs/DeathZoneObject.js#L1","m":[]}
+{"l":"Phaser.Types.GameObjects.Particles.EmitterOpOnEmitType","n":"EmitterOpOnEmitType","k":"typedef","mo":"Phaser.Types.GameObjects.Particles","x":"","since":"3.18.0","scope":"static","src":"src/gameobjects/particles/typedefs/EmitterOpOnEmitType.js#L1","m":[]}

@@ -1,1 +1,1 @@
-{"l":"Phaser.Types.Loader.FileTypes.TilemapCSVFileConfig","n":"TilemapCSVFileConfig","k":"typedef","mo":"Phaser.Types.Loader.FileTypes","x":"","since":"","scope":"static","src":"src/loader/filetypes/typedefs/TilemapCSVFileConfig.js#L1","m":[]}
+{"l":"Phaser.Types.Physics.Arcade.ArcadeBodyCollision","n":"ArcadeBodyCollision","k":"typedef","mo":"Phaser.Types.Physics.Arcade","x":"","since":"3.0.0","scope":"static","src":"src/physics/arcade/typedefs/ArcadeBodyCollision.js#L1","m":[]}

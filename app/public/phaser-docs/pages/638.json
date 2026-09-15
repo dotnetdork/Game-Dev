@@ -1,1 +1,1 @@
-{"l":"Phaser.Types.Display.HSVColorObject","n":"HSVColorObject","k":"typedef","mo":"Phaser.Types.Display","x":"","since":"3.0.0","scope":"static","src":"src/display/typedefs/HSVColorObject.js#L1","m":[]}
+{"l":"Phaser.Types.Filters.NormalToolsSourceCallback","n":"NormalToolsSourceCallback","k":"typedef","mo":"Phaser.Types.Filters","x":"","since":"4.0.0","scope":"static","src":"src/filters/typedefs/NormalToolsSourceCallback.js#L1","m":[]}

@@ -1,1 +1,1 @@
-{"l":"Phaser.Types.Filters.PanoramaBlurConfig","n":"PanoramaBlurConfig","k":"typedef","mo":"Phaser.Types.Filters","x":"","since":"4.0.0","scope":"static","src":"src/filters/typedefs/PanoramaBlurConfig.js#L1","m":[]}
+{"l":"Phaser.Types.GameObjects.BitmapText.BitmapTextSize","n":"BitmapTextSize","k":"typedef","mo":"Phaser.Types.GameObjects.BitmapText","x":"","since":"3.0.0","scope":"static","src":"src/gameobjects/bitmaptext/typedefs/BitmapTextSize.js#L1","m":[]}

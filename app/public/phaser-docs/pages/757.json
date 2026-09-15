@@ -1,1 +1,1 @@
-{"l":"Phaser.Types.GameObjects.Shader","n":"Shader","k":"namespace","mo":"Phaser.Types.GameObjects","x":"","since":"","scope":"static","src":"src/gameobjects/shader/typedefs/index.js#L7","m":[],"kids":[["ShaderConfig","typedef",758],["ShaderQuadConfig","typedef",759]]}
+{"l":"Phaser.Types.GameObjects.Text.TextConfig","n":"TextConfig","k":"typedef","mo":"Phaser.Types.GameObjects.Text","x":"","since":"3.0.0","scope":"static","src":"src/gameobjects/text/typedefs/TextConfig.js#L1","ext":["Phaser.Types.GameObjects.GameObjectConfig"],"m":[]}

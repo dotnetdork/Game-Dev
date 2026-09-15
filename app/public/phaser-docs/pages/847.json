@@ -1,1 +1,1 @@
-{"l":"Phaser.Types.Math.SinCosTable","n":"SinCosTable","k":"typedef","mo":"Phaser.Types.Math","x":"","since":"3.0.0","scope":"static","src":"src/math/typedefs/SinCosTable.js#L1","m":[]}
+{"l":"Phaser.Types.Physics.Arcade.PhysicsGroupConfig","n":"PhysicsGroupConfig","k":"typedef","mo":"Phaser.Types.Physics.Arcade","x":"","since":"3.0.0","scope":"static","src":"src/physics/arcade/typedefs/PhysicsGroupConfig.js#L1","ext":["Phaser.Types.GameObjects.Group.GroupConfig"],"m":[]}

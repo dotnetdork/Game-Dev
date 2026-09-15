@@ -1,1 +1,1 @@
-{"l":"Phaser.Types.GameObjects.BitmapText.DisplayCallback","n":"DisplayCallback","k":"typedef","mo":"Phaser.Types.GameObjects.BitmapText","x":"","since":"","scope":"static","src":"src/gameobjects/bitmaptext/typedefs/DisplayCallbackConfig.js#L17","m":[]}
+{"l":"Phaser.Types.GameObjects.DecomposeMatrixResults","n":"DecomposeMatrixResults","k":"typedef","mo":"Phaser.Types.GameObjects","x":"","since":"3.60.0","scope":"static","src":"src/gameobjects/typedefs/DecomposeMatrixResults.js#L1","m":[]}

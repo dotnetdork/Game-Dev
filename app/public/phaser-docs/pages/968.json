@@ -1,1 +1,1 @@
-{"l":"Phaser.Types.Tweens.GetEndCallback","n":"GetEndCallback","k":"typedef","mo":"Phaser.Types.Tweens","x":"","since":"3.18.0","scope":"static","src":"src/tweens/typedefs/GetEndCallback.js#L1","m":[]}
+{"l":"Phaser.Types.Tweens.TweenOnUpdateCallback","n":"TweenOnUpdateCallback","k":"typedef","mo":"Phaser.Types.Tweens","x":"","since":"3.18.0","scope":"static","src":"src/tweens/typedefs/TweenOnUpdateCallback.js#L1","m":[]}

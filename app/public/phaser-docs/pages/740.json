@@ -1,1 +1,1 @@
-{"l":"Phaser.Types.GameObjects.Particles.ParticleEmitterConfig","n":"ParticleEmitterConfig","k":"typedef","mo":"Phaser.Types.GameObjects.Particles","x":"","since":"3.0.0","scope":"static","src":"src/gameobjects/particles/typedefs/ParticleEmitterConfig.js#L1","m":[]}
+{"l":"Phaser.Types.GameObjects.RenderTexture","n":"RenderTexture","k":"namespace","mo":"Phaser.Types.GameObjects","x":"","since":"","scope":"static","src":"src/gameobjects/rendertexture/typedefs/index.js#L7","m":[],"kids":[["RenderTextureConfig","typedef",741]]}

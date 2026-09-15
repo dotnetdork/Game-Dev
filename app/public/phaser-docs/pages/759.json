@@ -1,1 +1,1 @@
-{"l":"Phaser.Types.GameObjects.Shader.ShaderQuadConfig","n":"ShaderQuadConfig","k":"typedef","mo":"Phaser.Types.GameObjects.Shader","x":"","since":"4.0.0","scope":"static","src":"src/gameobjects/shader/typedefs/ShaderQuadConfig.js#L1","m":[]}
+{"l":"Phaser.Types.GameObjects.Text.TextPadding","n":"TextPadding","k":"typedef","mo":"Phaser.Types.GameObjects.Text","x":"A Text Padding configuration object as used by the Text Style.","since":"3.18.0","scope":"static","src":"src/gameobjects/text/typedefs/TextPadding.js#L1","m":[]}

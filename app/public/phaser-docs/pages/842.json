@@ -1,1 +1,1 @@
-{"l":"Phaser.Types.Loader.XHRSettingsObject","n":"XHRSettingsObject","k":"typedef","mo":"Phaser.Types.Loader","x":"","since":"3.0.0","scope":"static","src":"src/loader/typedefs/XHRSettingsObject.js#L1","m":[]}
+{"l":"Phaser.Types.Physics.Arcade.GameObjectWithBody","n":"GameObjectWithBody","k":"typedef","mo":"Phaser.Types.Physics.Arcade","x":"","since":"","scope":"static","src":"src/physics/arcade/typedefs/GameObjectWithBody.js#L1","ext":["Phaser.GameObjects.GameObject"],"m":[]}

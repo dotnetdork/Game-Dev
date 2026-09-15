@@ -1,1 +1,1 @@
-{"l":"Phaser.Types.GameObjects.TileSprite","n":"TileSprite","k":"namespace","mo":"Phaser.Types.GameObjects","x":"","since":"","scope":"static","src":"src/gameobjects/tilesprite/typedefs/index.js#L7","m":[],"kids":[["TileSpriteConfig","typedef",782]]}
+{"l":"Phaser.Types.Input.Keyboard.KeyboardKeydownCallback","n":"KeyboardKeydownCallback","k":"typedef","mo":"Phaser.Types.Input.Keyboard","x":"","since":"3.0.0","scope":"static","src":"src/input/keyboard/typedefs/KeyboardKeydownCallback.js#L1","m":[]}

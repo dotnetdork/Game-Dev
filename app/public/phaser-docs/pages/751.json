@@ -1,1 +1,1 @@
-{"l":"Phaser.Types.GameObjects.PathFollower.PathConfig","n":"PathConfig","k":"typedef","mo":"Phaser.Types.GameObjects.PathFollower","x":"Settings for a PathFollower.","since":"3.0.0","scope":"static","src":"src/gameobjects/pathfollower/typedefs/PathConfig.js#L1","m":[]}
+{"l":"Phaser.Types.GameObjects.SpriteGPULayer.Member","n":"Member","k":"typedef","mo":"Phaser.Types.GameObjects.SpriteGPULayer","x":"","since":"4.0.0","scope":"static","src":"src/gameobjects/spritegpulayer/typedefs/Member.js#L1","m":[]}

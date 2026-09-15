@@ -1,1 +1,1 @@
-{"l":"Phaser.Types.GameObjects.StencilReference.StencilReferenceConfig","n":"StencilReferenceConfig","k":"typedef","mo":"Phaser.Types.GameObjects.StencilReference","x":"","since":"4.2.0","scope":"static","src":"src/gameobjects/stencilreference/typedefs/StencilReferenceConfig.js#L1","ext":["Phaser.Types.GameObjects.GameObjectConfig"],"m":[]}
+{"l":"Phaser.Types.Input.Gamepad","n":"Gamepad","k":"namespace","mo":"Phaser.Types.Input","x":"","since":"","scope":"static","src":"src/input/gamepad/typedefs/index.js#L7","m":[],"kids":[["Pad","typedef",773]]}

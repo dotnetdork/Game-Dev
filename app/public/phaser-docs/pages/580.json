@@ -1,1 +1,1 @@
-{"l":"Phaser.Types.Actions.FitToRegionItemCoverage","n":"FitToRegionItemCoverage","k":"typedef","mo":"Phaser.Types.Actions","x":"","since":"4.0.0","scope":"static","src":"src/actions/typedefs/FitToRegionItemCoverage.js#L1","m":[]}
+{"l":"Phaser.Types.Animations.JSONAnimationFrame","n":"JSONAnimationFrame","k":"typedef","mo":"Phaser.Types.Animations","x":"","since":"3.0.0","scope":"static","src":"src/animations/typedefs/JSONAnimationFrame.js#L1","m":[]}

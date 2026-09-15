@@ -1,1 +1,1 @@
-{"l":"Phaser.Types.GameObjects.TileSprite.TileSpriteConfig","n":"TileSpriteConfig","k":"typedef","mo":"Phaser.Types.GameObjects.TileSprite","x":"","since":"3.0.0","scope":"static","src":"src/gameobjects/tilesprite/typedefs/TileSpriteConfig.js#L1","ext":["Phaser.Types.GameObjects.GameObjectConfig"],"m":[]}
+{"l":"Phaser.Types.Loader","n":"Loader","k":"namespace","mo":"Phaser.Types","x":"","since":"","scope":"static","src":"src/loader/typedefs/index.js#L7","m":[],"kids":[["FileConfig","typedef",783],["FileTypes","namespace",784],["XHRSettingsObject","typedef",823]]}

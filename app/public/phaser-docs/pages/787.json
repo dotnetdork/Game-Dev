@@ -1,1 +1,1 @@
-{"l":"Phaser.Types.Geom","n":"Geom","k":"namespace","mo":"Phaser.Types","x":"","since":"","scope":"static","src":"src/geom/typedefs/index.js#L7","m":[]}
+{"l":"Phaser.Types.Loader.FileTypes.AtlasXMLFileConfig","n":"AtlasXMLFileConfig","k":"typedef","mo":"Phaser.Types.Loader.FileTypes","x":"","since":"","scope":"static","src":"src/loader/filetypes/typedefs/AtlasXMLFileConfig.js#L1","m":[]}

@@ -1,1 +1,1 @@
-{"l":"Phaser.Types.GameObjects.Particles.ParticleSortCallback","n":"ParticleSortCallback","k":"typedef","mo":"Phaser.Types.GameObjects.Particles","x":"","since":"3.60.0","scope":"static","src":"src/gameobjects/particles/typedefs/ParticleSortCallback.js#L1","m":[]}
+{"l":"Phaser.Types.GameObjects.Shader.ShaderQuadConfig","n":"ShaderQuadConfig","k":"typedef","mo":"Phaser.Types.GameObjects.Shader","x":"","since":"4.0.0","scope":"static","src":"src/gameobjects/shader/typedefs/ShaderQuadConfig.js#L1","m":[]}

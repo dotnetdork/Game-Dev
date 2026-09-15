@@ -1,1 +1,1 @@
-{"l":"Phaser.Types.Sound.EachActiveSoundCallback","n":"EachActiveSoundCallback","k":"typedef","mo":"Phaser.Types.Sound","x":"","since":"3.0.0","scope":"static","src":"src/sound/typedefs/EachActiveSoundCallback.js#L1","m":[]}
+{"l":"Phaser.Types.Tilemaps.FilteringOptions","n":"FilteringOptions","k":"typedef","mo":"Phaser.Types.Tilemaps","x":"","since":"3.0.0","scope":"static","src":"src/tilemaps/typedefs/FilteringOptions.js#L1","m":[]}

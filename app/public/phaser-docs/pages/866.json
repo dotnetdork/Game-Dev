@@ -1,1 +1,1 @@
-{"l":"Phaser.Types.Physics.Arcade.PhysicsGroupConfig","n":"PhysicsGroupConfig","k":"typedef","mo":"Phaser.Types.Physics.Arcade","x":"","since":"3.0.0","scope":"static","src":"src/physics/arcade/typedefs/PhysicsGroupConfig.js#L1","ext":["Phaser.Types.GameObjects.Group.GroupConfig"],"m":[]}
+{"l":"Phaser.Types.Physics.Matter.MatterWalls","n":"MatterWalls","k":"typedef","mo":"Phaser.Types.Physics.Matter","x":"","since":"3.0.0","scope":"static","src":"src/physics/matter-js/typedefs/MatterWalls.js#L1","m":[]}

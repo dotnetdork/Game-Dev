@@ -1,1 +1,1 @@
-{"l":"Phaser.Types.Core.AudioConfig","n":"AudioConfig","k":"typedef","mo":"Phaser.Types.Core","x":"Config object containing various sound settings.","since":"3.0.0","scope":"static","src":"src/core/typedefs/AudioConfig.js#L1","m":[]}
+{"l":"Phaser.Types.Core.InputConfig","n":"InputConfig","k":"typedef","mo":"Phaser.Types.Core","x":"","since":"3.0.0","scope":"static","src":"src/core/typedefs/InputConfig.js#L1","m":[]}

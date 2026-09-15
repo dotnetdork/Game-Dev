@@ -1,1 +1,1 @@
-{"l":"Phaser.Types.Math.Vector4Like","n":"Vector4Like","k":"typedef","mo":"Phaser.Types.Math","x":"","since":"3.50.0","scope":"static","src":"src/math/typedefs/Vector4Like.js#L1","m":[]}
+{"l":"Phaser.Types.Physics.Arcade.SpriteWithStaticBody","n":"SpriteWithStaticBody","k":"typedef","mo":"Phaser.Types.Physics.Arcade","x":"","since":"","scope":"static","src":"src/physics/arcade/typedefs/SpriteWithStaticBody.js#L1","ext":["Phaser.Physics.Arcade.Sprite"],"m":[]}

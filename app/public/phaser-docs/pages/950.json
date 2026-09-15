@@ -1,1 +1,1 @@
-{"l":"Phaser.Types.Tilemaps.CreateFromObjectLayerConfig","n":"CreateFromObjectLayerConfig","k":"typedef","mo":"Phaser.Types.Tilemaps","x":"","since":"3.50.0","scope":"static","src":"src/tilemaps/typedefs/CreateFromObjectLayerConfig.js#L1","m":[]}
+{"l":"Phaser.Types.Tweens.NumberTweenBuilderConfig","n":"NumberTweenBuilderConfig","k":"typedef","mo":"Phaser.Types.Tweens","x":"","since":"3.18.0","scope":"static","src":"src/tweens/typedefs/NumberTweenBuilderConfig.js#L1","m":[]}

@@ -1,1 +1,1 @@
-{"l":"Phaser.Types.Tweens.TweenDataConfig","n":"TweenDataConfig","k":"typedef","mo":"Phaser.Types.Tweens","x":"","since":"3.0.0","scope":"static","src":"src/tweens/typedefs/TweenDataConfig.js#L1","m":[]}
+{"l":"TextStyleWordWrapCallback","n":"TextStyleWordWrapCallback","k":"typedef","mo":"","x":"A custom function that will be responsible for wrapping the text.","since":"","scope":"global","src":"src/gameobjects/text/typedefs/TextWordWrap.js#L13","m":[]}

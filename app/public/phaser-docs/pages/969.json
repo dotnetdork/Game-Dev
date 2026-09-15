@@ -1,1 +1,1 @@
-{"l":"Phaser.Types.Tweens.GetStartCallback","n":"GetStartCallback","k":"typedef","mo":"Phaser.Types.Tweens","x":"","since":"3.18.0","scope":"static","src":"src/tweens/typedefs/GetStartCallback.js#L1","m":[]}
+{"l":"Phaser.Types.Tweens.TweenOnYoyoCallback","n":"TweenOnYoyoCallback","k":"typedef","mo":"Phaser.Types.Tweens","x":"","since":"3.18.0","scope":"static","src":"src/tweens/typedefs/TweenOnYoyoCallback.js#L1","m":[]}

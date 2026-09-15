@@ -1,1 +1,1 @@
-{"l":"Phaser.Types.Time","n":"Time","k":"namespace","mo":"Phaser.Types","x":"","since":"","scope":"static","src":"src/time/typedefs/index.js#L7","m":[],"kids":[["TimelineEvent","typedef",962],["TimelineEventConfig","typedef",963],["TimerEventConfig","typedef",964]]}
+{"l":"Phaser.Types.Tweens.TweenOnCompleteCallback","n":"TweenOnCompleteCallback","k":"typedef","mo":"Phaser.Types.Tweens","x":"","since":"3.18.0","scope":"static","src":"src/tweens/typedefs/TweenOnCompleteCallback.js#L1","m":[]}

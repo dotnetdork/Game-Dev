@@ -1,1 +1,1 @@
-{"l":"Phaser.Types.GameObjects.Particles.ParticleEmitterRandomZoneConfig","n":"ParticleEmitterRandomZoneConfig","k":"typedef","mo":"Phaser.Types.GameObjects.Particles","x":"","since":"3.0.0","scope":"static","src":"src/gameobjects/particles/typedefs/ParticleEmitterRandomZoneConfig.js#L1","m":[]}
+{"l":"Phaser.Types.GameObjects.Shader.ShaderConfig","n":"ShaderConfig","k":"typedef","mo":"Phaser.Types.GameObjects.Shader","x":"","since":"3.50.0","scope":"static","src":"src/gameobjects/shader/typedefs/ShaderConfig.js#L1","ext":["Phaser.Types.GameObjects.GameObjectConfig"],"m":[]}

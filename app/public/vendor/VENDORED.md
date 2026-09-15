@@ -19,15 +19,18 @@ network access at all — only `/api/ai` talks to anything outside the server.
 | js-yaml | 4.1.0 | `course.yaml`, lesson front-matter, quiz/challenge widget blocks |
 | marked | 12.0.2 | lesson Markdown + AI chat replies |
 | DOMPurify | 3.1.6 | sanitizing everything `marked` produces before it reaches innerHTML |
-| Phaser | 4.2.1 | the game engine, loaded inside the game iframe |
-
-The same version is a **devDependency** as well, and for a different reason: `npm run build:docs`
-reads `node_modules/phaser/types/phaser.json` — Phaser's own doclet dump — to generate the offline
-API reference the Docs tab serves. Nothing from it is shipped to the browser; the vendored file
-above is still what the game loads. Keep the two version numbers the same or the reference will
-describe an engine the students are not running.
-
+| Phaser | 4.1.0 | the game engine, loaded inside the game iframe |
 | @mdi/font | 7.4.47 | all UI icons (`css/` + `fonts/` must stay siblings) |
+
+Phaser is also a **devDependency**, at the same version and for a different reason:
+`npm run build:docs` reads `node_modules/phaser/types/phaser.json` — Phaser's own doclet dump — to
+generate the offline API reference the Docs tab serves. Nothing from it reaches the browser; the
+vendored file above is still what the game loads.
+
+**Keep those two version numbers identical.** `npm test` fails if they drift, because a reference
+that documents an engine the students are not running is worse than no reference: it is wrong rather
+than absent. 4.1.0 is deliberate — it is what docs.phaser.io itself is generated from, so the
+reference here matches Phaser's own site exactly.
 
 ## Refreshing
 

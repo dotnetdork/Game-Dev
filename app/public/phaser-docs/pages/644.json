@@ -1,1 +1,1 @@
-{"l":"Phaser.Types.Filters.ImageLightSourceCallback","n":"ImageLightSourceCallback","k":"typedef","mo":"Phaser.Types.Filters","x":"","since":"4.0.0","scope":"static","src":"src/filters/typedefs/ImageLightSourceCallback.js#L1","m":[]}
+{"l":"Phaser.Types.GameObjects.BitmapText.BitmapFontData","n":"BitmapFontData","k":"typedef","mo":"Phaser.Types.GameObjects.BitmapText","x":"Bitmap Font data that can be used by a BitmapText Game Object.","since":"3.0.0","scope":"static","src":"src/gameobjects/bitmaptext/typedefs/BitmapFontData.js#L1","m":[]}

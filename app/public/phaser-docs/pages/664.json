@@ -1,1 +1,1 @@
-{"l":"Phaser.Types.GameObjects.BitmapText.RetroFontConfig","n":"RetroFontConfig","k":"typedef","mo":"Phaser.Types.GameObjects.BitmapText","x":"","since":"3.6.0","scope":"static","src":"src/gameobjects/bitmaptext/typedefs/RetroFontConfig.js#L1","m":[]}
+{"l":"Phaser.Types.GameObjects.Gradient.GradientConfig","n":"GradientConfig","k":"typedef","mo":"Phaser.Types.GameObjects.Gradient","x":"","since":"4.0.0","scope":"static","src":"src/gameobjects/gradient/typedefs/GradientConfig.js#L1","ext":["Phaser.Types.GameObjects.GameObjectConfig"],"m":[]}

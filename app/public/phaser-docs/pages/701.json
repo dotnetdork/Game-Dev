@@ -1,1 +1,1 @@
-{"l":"Phaser.Types.GameObjects.NoiseCell3D.NoiseCell3DConfig","n":"NoiseCell3DConfig","k":"typedef","mo":"Phaser.Types.GameObjects.NoiseCell3D","x":"","since":"4.0.0","scope":"static","src":"src/gameobjects/noise/noisecell3d/typedefs/NoiseCell3DConfig.js#L1","ext":["Phaser.Types.GameObjects.GameObjectConfig"],"m":[]}
+{"l":"Phaser.Types.GameObjects.Particles.DeathZoneObject","n":"DeathZoneObject","k":"typedef","mo":"Phaser.Types.GameObjects.Particles","x":"","since":"3.60.0","scope":"static","src":"src/gameobjects/particles/typedefs/DeathZoneObject.js#L1","m":[]}

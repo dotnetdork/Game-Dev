@@ -1,1 +1,1 @@
-{"l":"Phaser.Types.Renderer.WebGL.WebGLAttributeLayout","n":"WebGLAttributeLayout","k":"typedef","mo":"Phaser.Types.Renderer.WebGL","x":"","since":"4.0.0","scope":"static","src":"src/renderer/webgl/typedefs/WebGLAttributeBufferLayout.js#L7","m":[]}
+{"l":"Phaser.Types.Scenes.SettingsConfig","n":"SettingsConfig","k":"typedef","mo":"Phaser.Types.Scenes","x":"","since":"3.0.0","scope":"static","src":"src/scene/typedefs/SettingsConfig.js#L1","m":[]}

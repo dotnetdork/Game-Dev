@@ -1,1 +1,1 @@
-{"l":"Phaser.Types.Renderer.WebGL.WebGLConst","n":"WebGLConst","k":"typedef","mo":"Phaser.Types.Renderer.WebGL","x":"","since":"3.50.0","scope":"static","src":"src/renderer/webgl/typedefs/WebGLConst.js#L1","m":[]}
+{"l":"Phaser.Types.Sound.AudioSpriteSound","n":"AudioSpriteSound","k":"typedef","mo":"Phaser.Types.Sound","x":"Audio sprite sound type.","since":"3.0.0","scope":"static","src":"src/sound/typedefs/AudioSpriteSound.js#L1","m":[]}

@@ -1,1 +1,1 @@
-{"l":"Phaser.Types.GameObjects.Text.TextShadow","n":"TextShadow","k":"typedef","mo":"Phaser.Types.GameObjects.Text","x":"A Text Shadow configuration object as used by the Text Style.","since":"3.0.0","scope":"static","src":"src/gameobjects/text/typedefs/TextShadow.js#L1","m":[]}
+{"l":"Phaser.Types.Input.Keyboard","n":"Keyboard","k":"namespace","mo":"Phaser.Types.Input","x":"","since":"","scope":"static","src":"src/input/keyboard/typedefs/index.js#L7","m":[],"kids":[["CursorKeys","typedef",779],["KeyComboConfig","typedef",780],["KeyboardKeydownCallback","typedef",781]]}

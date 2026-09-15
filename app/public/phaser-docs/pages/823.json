@@ -1,1 +1,1 @@
-{"l":"Phaser.Types.Loader.FileTypes.OBJFileConfig","n":"OBJFileConfig","k":"typedef","mo":"Phaser.Types.Loader.FileTypes","x":"","since":"","scope":"static","src":"src/loader/filetypes/typedefs/OBJFileConfig.js#L1","m":[]}
+{"l":"Phaser.Types.Loader.XHRSettingsObject","n":"XHRSettingsObject","k":"typedef","mo":"Phaser.Types.Loader","x":"","since":"3.0.0","scope":"static","src":"src/loader/typedefs/XHRSettingsObject.js#L1","m":[]}

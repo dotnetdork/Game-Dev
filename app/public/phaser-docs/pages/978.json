@@ -1,1 +1,1 @@
-{"l":"Phaser.Types.Tweens.TweenDataGenConfig","n":"TweenDataGenConfig","k":"typedef","mo":"Phaser.Types.Tweens","x":"","since":"3.0.0","scope":"static","src":"src/tweens/typedefs/TweenDataGenConfig.js#L1","m":[]}
+{"l":"TilemapFilterCallback","n":"TilemapFilterCallback","k":"typedef","mo":"","x":"A predicate, to test each element of the array.","since":"","scope":"global","src":"src/tilemaps/Tilemap.js#L25","m":[]}

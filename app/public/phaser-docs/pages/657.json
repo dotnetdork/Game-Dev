@@ -1,1 +1,1 @@
-{"l":"Phaser.Types.GameObjects.BitmapText.BitmapTextSize","n":"BitmapTextSize","k":"typedef","mo":"Phaser.Types.GameObjects.BitmapText","x":"","since":"3.0.0","scope":"static","src":"src/gameobjects/bitmaptext/typedefs/BitmapTextSize.js#L1","m":[]}
+{"l":"Phaser.Types.GameObjects.Container","n":"Container","k":"namespace","mo":"Phaser.Types.GameObjects","x":"","since":"","scope":"static","src":"src/gameobjects/container/typedefs/index.js#L7","m":[],"kids":[["ContainerConfig","typedef",658]]}

@@ -1,1 +1,1 @@
-{"l":"Phaser.Types.GameObjects.Text.TextStyle","n":"TextStyle","k":"typedef","mo":"Phaser.Types.GameObjects.Text","x":"A Text Style configuration object as used by the Text Game Object.","since":"3.0.0","scope":"static","src":"src/gameobjects/text/typedefs/TextStyle.js#L1","m":[]}
+{"l":"Phaser.Types.Input.Keyboard.CursorKeys","n":"CursorKeys","k":"typedef","mo":"Phaser.Types.Input.Keyboard","x":"","since":"3.0.0","scope":"static","src":"src/input/keyboard/typedefs/CursorKeys.js#L1","m":[]}

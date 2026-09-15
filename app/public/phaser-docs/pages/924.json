@@ -1,1 +1,1 @@
-{"l":"Phaser.Types.Scenes.SceneTransitionConfig","n":"SceneTransitionConfig","k":"typedef","mo":"Phaser.Types.Scenes","x":"","since":"3.5.0","scope":"static","src":"src/scene/typedefs/SceneTransitionConfig.js#L1","m":[]}
+{"l":"Phaser.Types.Textures.SpriteSheetConfig","n":"SpriteSheetConfig","k":"typedef","mo":"Phaser.Types.Textures","x":"","since":"3.0.0","scope":"static","src":"src/textures/typedefs/SpriteSheetConfig.js#L1","m":[]}

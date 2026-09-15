@@ -1,1 +1,1 @@
-{"l":"Phaser.Types.GameObjects.SpriteGPULayer.Member","n":"Member","k":"typedef","mo":"Phaser.Types.GameObjects.SpriteGPULayer","x":"","since":"4.0.0","scope":"static","src":"src/gameobjects/spritegpulayer/typedefs/Member.js#L1","m":[]}
+{"l":"Phaser.Types.GameObjects.TileSprite","n":"TileSprite","k":"namespace","mo":"Phaser.Types.GameObjects","x":"","since":"","scope":"static","src":"src/gameobjects/tilesprite/typedefs/index.js#L7","m":[],"kids":[["TileSpriteConfig","typedef",764]]}

@@ -1,1 +1,1 @@
-{"l":"Phaser.Types.Physics.Arcade.ImageWithStaticBody","n":"ImageWithStaticBody","k":"typedef","mo":"Phaser.Types.Physics.Arcade","x":"","since":"","scope":"static","src":"src/physics/arcade/typedefs/ImageWithStaticBody.js#L1","ext":["Phaser.Physics.Arcade.Image"],"m":[]}
+{"l":"Phaser.Types.Physics.Matter.MatterTileOptions","n":"MatterTileOptions","k":"typedef","mo":"Phaser.Types.Physics.Matter","x":"","since":"3.0.0","scope":"static","src":"src/physics/matter-js/typedefs/MatterTileOptions.js#L1","m":[]}

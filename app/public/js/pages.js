@@ -534,7 +534,7 @@ function renderHelp() {
    page cannot quietly go stale the way a hand-kept list otherwise does. The pictures are the
    exception: they come from /api/credits, which the server derives from the lessons themselves. */
 const CREDIT_BROWSER = [
-  ['Phaser', '4.2.1', 'MIT', 'https://phaser.io', 'The game engine. Everything a student writes runs inside it.'],
+  ['Phaser', '4.1.0', 'MIT', 'https://phaser.io', 'The game engine. Everything a student writes runs inside it.'],
   ['CodeMirror', '5.65.16', 'MIT', 'https://codemirror.net/5/', 'The code editor on the Code tab, and the syntax colouring in every lesson.'],
   ['JSHint', '2.13.6', 'MIT', 'https://jshint.com/', 'Finds the mistake before the game runs and says which line it is on.'],
   ['Prettier', '2.8.8', 'MIT', 'https://prettier.io/', 'Tidies a student’s code when they press Format.'],
@@ -590,7 +590,7 @@ function renderCredits() {
     + '<p>The API reference on the <a data-nav="docs">Docs</a> page is Phaser’s own documentation, generated from the comments in Phaser’s source code. It is here rather than linked so it works on a school network that blocks most of the internet — and so looking something up never takes you out of your game.</p>'
     + '<div class="credit-grid"><div class="credit-row">'
     + '<div class="credit-who"><a href="https://phaser.io" target="_blank" rel="noopener">Phaser API documentation</a> '
-    + '<span class="credit-ver">4.2.1</span> <span class="credit-lic">MIT</span></div>'
+    + '<span class="credit-ver">4.1.0</span> <span class="credit-lic">MIT</span></div>'
     + '<div class="credit-where">© Richard Davey, Phaser Studio Inc. · 20,094 symbols across 1,000 pages</div></div></div>'
 
     + '<h3><span class="mdi mdi-school-outline"></span>Everything else</h3>'

@@ -1,1 +1,1 @@
-{"l":"Phaser.Types.Core.NOOP","n":"NOOP","k":"typedef","mo":"Phaser.Types.Core","x":"This callback type is completely empty, a no-operation.","since":"3.0.0","scope":"static","src":"src/core/typedefs/NOOP.js#L1","m":[]}
+{"l":"Phaser.Types.Core.WidthHeight","n":"WidthHeight","k":"typedef","mo":"Phaser.Types.Core","x":"","since":"3.16.0","scope":"static","src":"src/core/typedefs/WidthHeight.js#L1","m":[]}

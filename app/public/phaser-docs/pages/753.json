@@ -1,1 +1,1 @@
-{"l":"Phaser.Types.GameObjects.RenderTexture.RenderTextureConfig","n":"RenderTextureConfig","k":"typedef","mo":"Phaser.Types.GameObjects.RenderTexture","x":"","since":"3.2.0","scope":"static","src":"src/gameobjects/rendertexture/typedefs/RenderTextureConfig.js#L1","m":[]}
+{"l":"Phaser.Types.GameObjects.SpriteGPULayer.SetAnimation","n":"SetAnimation","k":"typedef","mo":"Phaser.Types.GameObjects.SpriteGPULayer","x":"","since":"4.0.0","scope":"static","src":"src/gameobjects/spritegpulayer/typedefs/SetAnimation.js#L1","m":[]}

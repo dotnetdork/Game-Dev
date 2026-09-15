@@ -1,1 +1,1 @@
-{"l":"Phaser.Types.GameObjects.Particles.ParticleEmitterFrameConfig","n":"ParticleEmitterFrameConfig","k":"typedef","mo":"Phaser.Types.GameObjects.Particles","x":"","since":"3.0.0","scope":"static","src":"src/gameobjects/particles/typedefs/ParticleEmitterFrameConfig.js#L1","m":[]}
+{"l":"Phaser.Types.GameObjects.Rope.RopeConfig","n":"RopeConfig","k":"typedef","mo":"Phaser.Types.GameObjects.Rope","x":"","since":"3.50.0","scope":"static","src":"src/gameobjects/rope/typedefs/RopeConfig.js#L1","ext":["Phaser.Types.GameObjects.GameObjectConfig"],"m":[]}

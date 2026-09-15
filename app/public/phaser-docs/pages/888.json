@@ -1,1 +1,1 @@
-{"l":"Phaser.Types.Plugins.CorePluginContainer","n":"CorePluginContainer","k":"typedef","mo":"Phaser.Types.Plugins","x":"","since":"3.8.0","scope":"static","src":"src/plugins/typedefs/CorePluginContainer.js#L1","m":[]}
+{"l":"Phaser.Types.Renderer.WebGL.WebGLAttributeLayout","n":"WebGLAttributeLayout","k":"typedef","mo":"Phaser.Types.Renderer.WebGL","x":"","since":"4.0.0","scope":"static","src":"src/renderer/webgl/typedefs/WebGLAttributeBufferLayout.js#L7","m":[]}

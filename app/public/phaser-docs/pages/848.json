@@ -1,1 +1,1 @@
-{"l":"Phaser.Types.Math.Vector2Like","n":"Vector2Like","k":"typedef","mo":"Phaser.Types.Math","x":"","since":"3.0.0","scope":"static","src":"src/math/typedefs/Vector2Like.js#L1","m":[]}
+{"l":"Phaser.Types.Physics.Arcade.PhysicsGroupDefaults","n":"PhysicsGroupDefaults","k":"typedef","mo":"Phaser.Types.Physics.Arcade","x":"","since":"3.0.0","scope":"static","src":"src/physics/arcade/typedefs/PhysicsGroupDefaults.js#L1","m":[]}

@@ -1,1 +1,1 @@
-{"l":"Phaser.Types.GameObjects.Graphics.Styles","n":"Styles","k":"typedef","mo":"Phaser.Types.GameObjects.Graphics","x":"Graphics style settings.","since":"3.0.0","scope":"static","src":"src/gameobjects/graphics/typedefs/Styles.js#L1","m":[]}
+{"l":"Phaser.Types.GameObjects.Noise.NoiseConfig","n":"NoiseConfig","k":"typedef","mo":"Phaser.Types.GameObjects.Noise","x":"","since":"4.0.0","scope":"static","src":"src/gameobjects/noise/typedefs/NoiseConfig.js#L1","ext":["Phaser.Types.GameObjects.GameObjectConfig"],"m":[]}

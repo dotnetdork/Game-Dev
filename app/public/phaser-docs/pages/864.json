@@ -1,1 +1,1 @@
-{"l":"Phaser.Types.Physics.Arcade.ImageWithDynamicBody","n":"ImageWithDynamicBody","k":"typedef","mo":"Phaser.Types.Physics.Arcade","x":"","since":"","scope":"static","src":"src/physics/arcade/typedefs/ImageWithDynamicBody.js#L1","ext":["Phaser.Physics.Arcade.Image"],"m":[]}
+{"l":"Phaser.Types.Physics.Matter.MatterSetBodyConfig","n":"MatterSetBodyConfig","k":"typedef","mo":"Phaser.Types.Physics.Matter","x":"","since":"3.22.0","scope":"static","src":"src/physics/matter-js/typedefs/MatterSetBodyConfig.js#L1","m":[]}

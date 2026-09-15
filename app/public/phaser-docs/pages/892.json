@@ -1,1 +1,1 @@
-{"l":"Phaser.Types.Renderer.Snapshot","n":"Snapshot","k":"namespace","mo":"Phaser.Types.Renderer","x":"","since":"","scope":"static","src":"src/renderer/snapshot/typedefs/index.js#L7","m":[],"kids":[["SnapshotCallback","typedef",893],["SnapshotState","typedef",894]]}
+{"l":"Phaser.Types.Renderer.WebGL.WebGLGlobalParameters","n":"WebGLGlobalParameters","k":"typedef","mo":"Phaser.Types.Renderer.WebGL","x":"","since":"4.0.0","scope":"static","src":"src/renderer/webgl/typedefs/WebGLGlobalParameters.js#L7","m":[]}

@@ -1,1 +1,1 @@
-{"l":"Phaser.Types.GameObjects.Graphics.LineStyle","n":"LineStyle","k":"typedef","mo":"Phaser.Types.GameObjects.Graphics","x":"Graphics line style (or stroke style) settings.","since":"3.0.0","scope":"static","src":"src/gameobjects/graphics/typedefs/LineStyle.js#L1","m":[]}
+{"l":"Phaser.Types.GameObjects.NineSlice","n":"NineSlice","k":"namespace","mo":"Phaser.Types.GameObjects","x":"","since":"","scope":"static","src":"src/gameobjects/nineslice/typedefs/index.js#L7","m":[],"kids":[["NineSliceConfig","typedef",681]]}

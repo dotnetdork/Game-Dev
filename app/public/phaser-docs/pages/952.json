@@ -1,1 +1,1 @@
-{"l":"Phaser.Types.Tilemaps.DebugStyleOptions","n":"DebugStyleOptions","k":"typedef","mo":"Phaser.Types.Tilemaps","x":"","since":"3.0.0","scope":"static","src":"src/tilemaps/typedefs/DebugStyleOptions.js#L1","m":[]}
+{"l":"Phaser.Types.Tweens.TweenBuilderConfig","n":"TweenBuilderConfig","k":"typedef","mo":"Phaser.Types.Tweens","x":"","since":"3.18.0","scope":"static","src":"src/tweens/typedefs/TweenBuilderConfig.js#L1","ext":["object"],"m":[]}

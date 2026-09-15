@@ -1,1 +1,1 @@
-{"l":"Phaser.Types.GameObjects.JSONGameObject","n":"JSONGameObject","k":"typedef","mo":"Phaser.Types.GameObjects","x":"","since":"3.0.0","scope":"static","src":"src/gameobjects/typedefs/JSONGameObject.js#L1","m":[]}
+{"l":"Phaser.Types.GameObjects.NoiseCell4D","n":"NoiseCell4D","k":"namespace","mo":"Phaser.Types.GameObjects","x":"","since":"","scope":"static","src":"src/gameobjects/noise/noisecell4d/typedefs/index.js#L7","m":[],"kids":[["NoiseCell4DConfig","typedef",692],["NoiseCell4DQuadConfig","typedef",693]]}

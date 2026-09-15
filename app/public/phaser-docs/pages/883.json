@@ -1,1 +1,1 @@
-{"l":"Phaser.Types.Physics.Matter.MatterSetBodyConfig","n":"MatterSetBodyConfig","k":"typedef","mo":"Phaser.Types.Physics.Matter","x":"","since":"3.22.0","scope":"static","src":"src/physics/matter-js/typedefs/MatterSetBodyConfig.js#L1","m":[]}
+{"l":"Phaser.Types.Renderer.WebGL.RenderNodes.GameObjectBatcherConfig","n":"GameObjectBatcherConfig","k":"typedef","mo":"Phaser.Types.Renderer.WebGL.RenderNodes","x":"","since":"4.0.0","scope":"static","src":"src/renderer/webgl/renderNodes/typedefs/GameObjectBatcherConfig.js#L7","m":[]}

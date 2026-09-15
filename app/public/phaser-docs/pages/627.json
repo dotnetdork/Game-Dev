@@ -1,1 +1,1 @@
-{"l":"Phaser.Types.Core.TimeStepCallback","n":"TimeStepCallback","k":"typedef","mo":"Phaser.Types.Core","x":"","since":"3.0.0","scope":"static","src":"src/core/typedefs/TimeStepCallback.js#L1","m":[]}
+{"l":"Phaser.Types.Display.ColorBandConfig","n":"ColorBandConfig","k":"typedef","mo":"Phaser.Types.Display","x":"","since":"4.0.0","scope":"static","src":"src/display/typedefs/ColorBandConfig.js#L1","m":[]}

@@ -1,1 +1,1 @@
-{"l":"Phaser.Types.GameObjects.Text.TextConfig","n":"TextConfig","k":"typedef","mo":"Phaser.Types.GameObjects.Text","x":"","since":"3.0.0","scope":"static","src":"src/gameobjects/text/typedefs/TextConfig.js#L1","ext":["Phaser.Types.GameObjects.GameObjectConfig"],"m":[]}
+{"l":"Phaser.Types.Input.InputConfiguration","n":"InputConfiguration","k":"typedef","mo":"Phaser.Types.Input","x":"","since":"3.0.0","scope":"static","src":"src/input/typedefs/InputConfiguration.js#L1","m":[]}

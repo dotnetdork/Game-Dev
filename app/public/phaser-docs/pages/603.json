@@ -1,1 +1,1 @@
-{"l":"Phaser.Types.Cameras.Scene2D.CameraZoomCallback","n":"CameraZoomCallback","k":"typedef","mo":"Phaser.Types.Cameras.Scene2D","x":"","since":"3.11.0","scope":"static","src":"src/cameras/2d/typedefs/CameraZoomCallback.js#L1","m":[]}
+{"l":"Phaser.Types.Core.FPSConfig","n":"FPSConfig","k":"typedef","mo":"Phaser.Types.Core","x":"","since":"3.0.0","scope":"static","src":"src/core/typedefs/FPSConfig.js#L1","m":[]}

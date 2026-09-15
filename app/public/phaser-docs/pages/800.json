@@ -1,1 +1,1 @@
-{"l":"Phaser.Types.Loader","n":"Loader","k":"namespace","mo":"Phaser.Types","x":"","since":"","scope":"static","src":"src/loader/typedefs/index.js#L7","m":[],"kids":[["FileConfig","typedef",801],["FileTypes","namespace",802],["XHRSettingsObject","typedef",842]]}
+{"l":"Phaser.Types.Loader.FileTypes.ImageFileConfig","n":"ImageFileConfig","k":"typedef","mo":"Phaser.Types.Loader.FileTypes","x":"","since":"","scope":"static","src":"src/loader/filetypes/typedefs/ImageFileConfig.js#L1","m":[]}

@@ -1,1 +1,1 @@
-{"l":"Phaser.Types.GameObjects.BitmapText.DisplayCallbackConfig","n":"DisplayCallbackConfig","k":"typedef","mo":"Phaser.Types.GameObjects.BitmapText","x":"","since":"3.0.0","scope":"static","src":"src/gameobjects/bitmaptext/typedefs/DisplayCallbackConfig.js#L1","m":[]}
+{"l":"Phaser.Types.GameObjects.FiltersInternalExternal","n":"FiltersInternalExternal","k":"typedef","mo":"Phaser.Types.GameObjects","x":"","since":"4.0.0","scope":"static","src":"src/gameobjects/typedefs/FiltersInternalExternal.js#L1","m":[]}

@@ -1,1 +1,1 @@
-{"l":"Phaser.Types.Core.PluginObject","n":"PluginObject","k":"typedef","mo":"Phaser.Types.Core","x":"","since":"3.8.0","scope":"static","src":"src/core/typedefs/PluginObject.js#L1","m":[]}
+{"l":"Phaser.Types.Curves.EllipseCurveConfig","n":"EllipseCurveConfig","k":"typedef","mo":"Phaser.Types.Curves","x":"","since":"","scope":"static","src":"src/curves/typedefs/EllipseCurveConfig.js#L1","m":[]}

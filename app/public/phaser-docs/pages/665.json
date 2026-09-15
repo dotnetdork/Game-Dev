@@ -1,1 +1,1 @@
-{"l":"Phaser.Types.GameObjects.BitmapText.TintConfig","n":"TintConfig","k":"typedef","mo":"Phaser.Types.GameObjects.BitmapText","x":"","since":"3.0.0","scope":"static","src":"src/gameobjects/bitmaptext/typedefs/TintConfig.js#L1","m":[]}
+{"l":"Phaser.Types.GameObjects.Gradient.GradientQuadConfig","n":"GradientQuadConfig","k":"typedef","mo":"Phaser.Types.GameObjects.Gradient","x":"","since":"4.0.0","scope":"static","src":"src/gameobjects/gradient/typedefs/GradientQuadConfig.js#L1","m":[]}

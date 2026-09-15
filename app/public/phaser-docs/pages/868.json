@@ -1,1 +1,1 @@
-{"l":"Phaser.Types.Physics.Arcade.SpriteWithDynamicBody","n":"SpriteWithDynamicBody","k":"typedef","mo":"Phaser.Types.Physics.Arcade","x":"","since":"","scope":"static","src":"src/physics/arcade/typedefs/SpriteWithDynamicBody.js#L1","ext":["Phaser.Physics.Arcade.Sprite"],"m":[]}
+{"l":"Phaser.Types.Plugins","n":"Plugins","k":"namespace","mo":"Phaser.Types","x":"","since":"","scope":"static","src":"src/plugins/typedefs/index.js#L7","m":[],"kids":[["CorePluginContainer","typedef",869],["CustomPluginContainer","typedef",870],["GlobalPlugin","typedef",871]]}

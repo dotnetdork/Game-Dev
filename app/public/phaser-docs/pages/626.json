@@ -1,1 +1,1 @@
-{"l":"Phaser.Types.Core.ScaleConfig","n":"ScaleConfig","k":"typedef","mo":"Phaser.Types.Core","x":"","since":"3.16.0","scope":"static","src":"src/core/typedefs/ScaleConfig.js#L1","m":[]}
+{"l":"Phaser.Types.Display","n":"Display","k":"namespace","mo":"Phaser.Types","x":"","since":"","scope":"static","src":"src/display/typedefs/index.js#L1","m":[],"kids":[["ColorBandConfig","typedef",627],["ColorObject","typedef",628],["HSVColorObject","typedef",629],["InputColorObject","typedef",630]]}

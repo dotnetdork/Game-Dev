@@ -1,1 +1,1 @@
-{"l":"Phaser.Types.Physics.Matter.MatterBody","n":"MatterBody","k":"typedef","mo":"Phaser.Types.Physics.Matter","x":"","since":"3.22.0","scope":"static","src":"src/physics/matter-js/typedefs/MatterBody.js#L1","m":[]}
+{"l":"Phaser.Types.Plugins.GlobalPlugin","n":"GlobalPlugin","k":"typedef","mo":"Phaser.Types.Plugins","x":"","since":"3.0.0","scope":"static","src":"src/plugins/typedefs/GlobalPlugin.js#L1","m":[]}

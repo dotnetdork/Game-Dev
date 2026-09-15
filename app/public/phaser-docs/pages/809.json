@@ -1,1 +1,1 @@
-{"l":"Phaser.Types.Loader.FileTypes.BinaryFileConfig","n":"BinaryFileConfig","k":"typedef","mo":"Phaser.Types.Loader.FileTypes","x":"","since":"","scope":"static","src":"src/loader/filetypes/typedefs/BinaryFileConfig.js#L1","m":[]}
+{"l":"Phaser.Types.Loader.FileTypes.SVGFileConfig","n":"SVGFileConfig","k":"typedef","mo":"Phaser.Types.Loader.FileTypes","x":"","since":"","scope":"static","src":"src/loader/filetypes/typedefs/SVGFileConfig.js#L1","m":[]}

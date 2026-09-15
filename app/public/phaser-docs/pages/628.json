@@ -1,1 +1,1 @@
-{"l":"Phaser.Types.Core.TouchInputConfig","n":"TouchInputConfig","k":"typedef","mo":"Phaser.Types.Core","x":"","since":"3.0.0","scope":"static","src":"src/core/typedefs/TouchInputConfig.js#L1","m":[]}
+{"l":"Phaser.Types.Display.ColorObject","n":"ColorObject","k":"typedef","mo":"Phaser.Types.Display","x":"","since":"3.0.0","scope":"static","src":"src/display/typedefs/ColorObject.js#L1","m":[]}

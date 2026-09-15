@@ -1,1 +1,1 @@
-{"l":"Phaser.Types.GameObjects.Particles.ParticleEmitterEdgeZoneConfig","n":"ParticleEmitterEdgeZoneConfig","k":"typedef","mo":"Phaser.Types.GameObjects.Particles","x":"","since":"3.0.0","scope":"static","src":"src/gameobjects/particles/typedefs/ParticleEmitterEdgeZoneConfig.js#L1","m":[]}
+{"l":"Phaser.Types.GameObjects.Rope","n":"Rope","k":"namespace","mo":"Phaser.Types.GameObjects","x":"","since":"","scope":"static","src":"src/gameobjects/rope/typedefs/index.js#L7","m":[],"kids":[["RopeConfig","typedef",744]]}

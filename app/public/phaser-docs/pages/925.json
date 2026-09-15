@@ -1,1 +1,1 @@
-{"l":"Phaser.Types.Scenes.SceneTransitionOnStartCallback","n":"SceneTransitionOnStartCallback","k":"typedef","mo":"Phaser.Types.Scenes","x":"","since":"3.60.0","scope":"static","src":"src/scene/typedefs/SceneTransitionStartCallback.js#L1","m":[]}
+{"l":"Phaser.Types.Textures.SpriteSheetFromAtlasConfig","n":"SpriteSheetFromAtlasConfig","k":"typedef","mo":"Phaser.Types.Textures","x":"","since":"3.0.0","scope":"static","src":"src/textures/typedefs/SpriteSheetFromAtlasConfig.js#L1","m":[]}

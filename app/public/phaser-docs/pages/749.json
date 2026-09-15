@@ -1,1 +1,1 @@
-{"l":"Phaser.Types.GameObjects.Particles.RandomZoneSourceCallback","n":"RandomZoneSourceCallback","k":"typedef","mo":"Phaser.Types.GameObjects.Particles","x":"","since":"3.0.0","scope":"static","src":"src/gameobjects/particles/typedefs/RandomZoneSourceCallback.js#L1","m":[]}
+{"l":"Phaser.Types.GameObjects.Sprite.SpriteConfig","n":"SpriteConfig","k":"typedef","mo":"Phaser.Types.GameObjects.Sprite","x":"","since":"3.0.0","scope":"static","src":"src/gameobjects/sprite/typedefs/SpriteConfig.js#L1","ext":["Phaser.Types.GameObjects.GameObjectConfig"],"m":[]}

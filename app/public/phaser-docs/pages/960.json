@@ -1,1 +1,1 @@
-{"l":"Phaser.Types.Tilemaps.TilemapConfig","n":"TilemapConfig","k":"typedef","mo":"Phaser.Types.Tilemaps","x":"","since":"3.0.0","scope":"static","src":"src/tilemaps/typedefs/TilemapConfig.js#L1","m":[]}
+{"l":"Phaser.Types.Tweens.TweenOnActiveCallback","n":"TweenOnActiveCallback","k":"typedef","mo":"Phaser.Types.Tweens","x":"","since":"3.19.0","scope":"static","src":"src/tweens/typedefs/TweenOnActiveCallback.js#L1","m":[]}

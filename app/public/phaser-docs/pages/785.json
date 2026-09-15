@@ -1,1 +1,1 @@
-{"l":"Phaser.Types.GameObjects.Zone","n":"Zone","k":"namespace","mo":"Phaser.Types.GameObjects","x":"","since":"","scope":"static","src":"src/gameobjects/zone/typedefs/index.js#L7","m":[],"kids":[["ZoneConfig","typedef",786]]}
+{"l":"Phaser.Types.Loader.FileTypes.AsepriteFileConfig","n":"AsepriteFileConfig","k":"typedef","mo":"Phaser.Types.Loader.FileTypes","x":"","since":"","scope":"static","src":"src/loader/filetypes/typedefs/AsepriteFileConfig.js#L1","m":[]}

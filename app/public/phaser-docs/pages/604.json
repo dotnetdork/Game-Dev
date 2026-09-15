@@ -1,1 +1,1 @@
-{"l":"Phaser.Types.Cameras.Scene2D.JSONCamera","n":"JSONCamera","k":"typedef","mo":"Phaser.Types.Cameras.Scene2D","x":"","since":"3.0.0","scope":"static","src":"src/cameras/2d/typedefs/JSONCamera.js#L1","m":[]}
+{"l":"Phaser.Types.Core.GameConfig","n":"GameConfig","k":"typedef","mo":"Phaser.Types.Core","x":"","since":"3.0.0","scope":"static","src":"src/core/typedefs/GameConfig.js#L1","m":[]}

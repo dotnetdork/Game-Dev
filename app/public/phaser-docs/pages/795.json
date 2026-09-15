@@ -1,1 +1,1 @@
-{"l":"Phaser.Types.Input.InteractiveObject","n":"InteractiveObject","k":"typedef","mo":"Phaser.Types.Input","x":"","since":"3.0.0","scope":"static","src":"src/input/typedefs/InteractiveObject.js#L1","m":[]}
+{"l":"Phaser.Types.Loader.FileTypes.CompressedTextureFileEntry","n":"CompressedTextureFileEntry","k":"typedef","mo":"Phaser.Types.Loader.FileTypes","x":"","since":"","scope":"static","src":"src/loader/filetypes/typedefs/CompressedTextureFileConfig.js#L1","m":[]}

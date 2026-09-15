@@ -1,5 +1,5 @@
 {
-  "version": "4.2.1",
+  "version": "4.1.0",
   "tops": [
     {
       "n": "Actions",
@@ -87,7 +87,7 @@
       "l": "Phaser.Device",
       "k": "namespace",
       "id": 63,
-      "x": "The Device class is a collection of properties and functions that describe the device on which the Phaser Game instance is running.\r\rThese values are read-only and populated during",
+      "x": "The Device class is a collection of properties and functions that describe the device on which the Phaser Game instance is running.\n\nThese values are read-only and populated during",
       "c": 8,
       "m": 0
     },
@@ -133,14 +133,14 @@
       "k": "namespace",
       "id": 119,
       "x": "",
-      "c": 100,
+      "c": 95,
       "m": 5
     },
     {
       "n": "Geom",
       "l": "Phaser.Geom",
       "k": "namespace",
-      "id": 220,
+      "id": 215,
       "x": "",
       "c": 7,
       "m": 7
@@ -149,7 +149,7 @@
       "n": "Input",
       "l": "Phaser.Input",
       "k": "namespace",
-      "id": 228,
+      "id": 223,
       "x": "",
       "c": 26,
       "m": 11
@@ -158,7 +158,7 @@
       "n": "Loader",
       "l": "Phaser.Loader",
       "k": "namespace",
-      "id": 255,
+      "id": 250,
       "x": "",
       "c": 40,
       "m": 20
@@ -167,7 +167,7 @@
       "n": "Math",
       "l": "Phaser.Math",
       "k": "namespace",
-      "id": 296,
+      "id": 291,
       "x": "",
       "c": 26,
       "m": 51
@@ -176,7 +176,7 @@
       "n": "Physics",
       "l": "Phaser.Physics",
       "k": "namespace",
-      "id": 323,
+      "id": 318,
       "x": "",
       "c": 65,
       "m": 0
@@ -185,7 +185,7 @@
       "n": "Plugins",
       "l": "Phaser.Plugins",
       "k": "namespace",
-      "id": 389,
+      "id": 384,
       "x": "",
       "c": 5,
       "m": 0
@@ -194,16 +194,16 @@
       "n": "Renderer",
       "l": "Phaser.Renderer",
       "k": "namespace",
-      "id": 395,
+      "id": 390,
       "x": "",
-      "c": 91,
+      "c": 88,
       "m": 0
     },
     {
       "n": "Scale",
       "l": "Phaser.Scale",
       "k": "namespace",
-      "id": 487,
+      "id": 479,
       "x": "",
       "c": 10,
       "m": 17
@@ -212,7 +212,7 @@
       "n": "ScaleModes",
       "l": "Phaser.ScaleModes",
       "k": "namespace",
-      "id": 498,
+      "id": 490,
       "x": "Phaser Scale Modes.",
       "c": 0,
       "m": 3
@@ -221,7 +221,7 @@
       "n": "Scene",
       "l": "Phaser.Scene",
       "k": "class",
-      "id": 499,
+      "id": 491,
       "x": "",
       "c": 0,
       "m": 25
@@ -230,7 +230,7 @@
       "n": "Scenes",
       "l": "Phaser.Scenes",
       "k": "namespace",
-      "id": 500,
+      "id": 492,
       "x": "",
       "c": 5,
       "m": 12
@@ -239,7 +239,7 @@
       "n": "Sound",
       "l": "Phaser.Sound",
       "k": "namespace",
-      "id": 506,
+      "id": 498,
       "x": "",
       "c": 10,
       "m": 0
@@ -248,7 +248,7 @@
       "n": "Structs",
       "l": "Phaser.Structs",
       "k": "namespace",
-      "id": 517,
+      "id": 509,
       "x": "",
       "c": 6,
       "m": 0
@@ -257,7 +257,7 @@
       "n": "Textures",
       "l": "Phaser.Textures",
       "k": "namespace",
-      "id": 524,
+      "id": 516,
       "x": "",
       "c": 10,
       "m": 2
@@ -266,7 +266,7 @@
       "n": "Tilemaps",
       "l": "Phaser.Tilemaps",
       "k": "namespace",
-      "id": 535,
+      "id": 527,
       "x": "",
       "c": 18,
       "m": 5
@@ -275,7 +275,7 @@
       "n": "Time",
       "l": "Phaser.Time",
       "k": "namespace",
-      "id": 554,
+      "id": 546,
       "x": "",
       "c": 4,
       "m": 0
@@ -284,16 +284,16 @@
       "n": "TintModes",
       "l": "Phaser.TintModes",
       "k": "namespace",
-      "id": 559,
-      "x": "Phaser Tint Modes.\r\rTint modes are used by the Tint component to determine how the tint color\ris applied to the texture. The default mode is `MULTIPLY`.\rThey are only used in WebGL",
+      "id": 551,
+      "x": "Phaser Tint Modes.\n\nTint modes are used by the Tint component to determine how the tint color\nis applied to the texture. The default mode is `MULTIPLY`.\nThey are only used in WebGL",
       "c": 0,
-      "m": 7
+      "m": 6
     },
     {
       "n": "Tweens",
       "l": "Phaser.Tweens",
       "k": "namespace",
-      "id": 560,
+      "id": 552,
       "x": "",
       "c": 11,
       "m": 0
@@ -302,26 +302,26 @@
       "n": "Types",
       "l": "Phaser.Types",
       "k": "namespace",
-      "id": 572,
+      "id": 564,
       "x": "The root types namespace.",
-      "c": 418,
+      "c": 406,
       "m": 0
     },
     {
       "n": "Utils",
       "l": "Phaser.Utils",
       "k": "namespace",
-      "id": 991,
+      "id": 971,
       "x": "",
       "c": 5,
       "m": 2
     }
   ],
   "generated": "2026-09-15",
-  "doclets": 20096,
-  "pages": 1000,
-  "symbols": 20094,
+  "doclets": 19181,
+  "pages": 981,
+  "symbols": 19179,
   "source": "phaser/types/phaser.json",
   "licence": "MIT",
-  "notice": "Phaser © Richard Davey, Phaser Studio Inc. Released under the MIT License. This reference is generated from Phaser 4.2.1's own source documentation."
+  "notice": "Phaser © Richard Davey, Phaser Studio Inc. Released under the MIT License. This reference is generated from Phaser 4.1.0's own source documentation."
 }

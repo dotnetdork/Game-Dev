@@ -1,1 +1,1 @@
-{"l":"Phaser.Types.Core.PhysicsConfig","n":"PhysicsConfig","k":"typedef","mo":"Phaser.Types.Core","x":"","since":"3.0.0","scope":"static","src":"src/core/typedefs/PhysicsConfig.js#L1","m":[]}
+{"l":"Phaser.Types.Curves","n":"Curves","k":"namespace","mo":"Phaser.Types","x":"","since":"","scope":"static","src":"src/curves/typedefs/index.js#L7","m":[],"kids":[["EllipseCurveConfig","typedef",622],["JSONCurve","typedef",623],["JSONEllipseCurve","typedef",624],["JSONPath","typedef",625]]}

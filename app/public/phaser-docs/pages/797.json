@@ -1,1 +1,1 @@
-{"l":"Phaser.Types.Input.Keyboard.CursorKeys","n":"CursorKeys","k":"typedef","mo":"Phaser.Types.Input.Keyboard","x":"","since":"3.0.0","scope":"static","src":"src/input/keyboard/typedefs/CursorKeys.js#L1","m":[]}
+{"l":"Phaser.Types.Loader.FileTypes.GLSLFileConfig","n":"GLSLFileConfig","k":"typedef","mo":"Phaser.Types.Loader.FileTypes","x":"","since":"","scope":"static","src":"src/loader/filetypes/typedefs/GLSLFileConfig.js#L1","m":[]}

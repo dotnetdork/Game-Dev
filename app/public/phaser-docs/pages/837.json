@@ -1,1 +1,1 @@
-{"l":"Phaser.Types.Loader.FileTypes.TilemapJSONFileConfig","n":"TilemapJSONFileConfig","k":"typedef","mo":"Phaser.Types.Loader.FileTypes","x":"","since":"","scope":"static","src":"src/loader/filetypes/typedefs/TilemapJSONFileConfig.js#L1","m":[]}
+{"l":"Phaser.Types.Physics.Arcade.ArcadePhysicsCallback","n":"ArcadePhysicsCallback","k":"typedef","mo":"Phaser.Types.Physics.Arcade","x":"","since":"","scope":"static","src":"src/physics/arcade/typedefs/ArcadePhysicsCallback.js#L1","m":[]}

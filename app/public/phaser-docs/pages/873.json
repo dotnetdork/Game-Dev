@@ -1,1 +1,1 @@
-{"l":"Phaser.Types.Physics.Matter.MatterBodyRenderConfig","n":"MatterBodyRenderConfig","k":"typedef","mo":"Phaser.Types.Physics.Matter","x":"","since":"3.22.0","scope":"static","src":"src/physics/matter-js/typedefs/MatterBodyRenderConfig.js#L1","m":[]}
+{"l":"Phaser.Types.Renderer.Snapshot","n":"Snapshot","k":"namespace","mo":"Phaser.Types.Renderer","x":"","since":"","scope":"static","src":"src/renderer/snapshot/typedefs/index.js#L7","m":[],"kids":[["SnapshotCallback","typedef",874],["SnapshotState","typedef",875]]}

@@ -1,1 +1,1 @@
-{"l":"Phaser.Types.GameObjects.SpriteGPULayer.SetAnimation","n":"SetAnimation","k":"typedef","mo":"Phaser.Types.GameObjects.SpriteGPULayer","x":"","since":"4.0.0","scope":"static","src":"src/gameobjects/spritegpulayer/typedefs/SetAnimation.js#L1","m":[]}
+{"l":"Phaser.Types.GameObjects.Video","n":"Video","k":"namespace","mo":"Phaser.Types.GameObjects","x":"","since":"","scope":"static","src":"src/gameobjects/video/typedefs/index.js#L7","m":[],"kids":[["VideoConfig","typedef",766]]}

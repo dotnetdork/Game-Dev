@@ -1,1 +1,1 @@
-{"l":"Phaser.Types.Core.RenderConfig","n":"RenderConfig","k":"typedef","mo":"Phaser.Types.Core","x":"","since":"3.0.0","scope":"static","src":"src/core/typedefs/RenderConfig.js#L1","m":[]}
+{"l":"Phaser.Types.Curves.JSONEllipseCurve","n":"JSONEllipseCurve","k":"typedef","mo":"Phaser.Types.Curves","x":"","since":"3.0.0","scope":"static","src":"src/curves/typedefs/JSONEllipseCurve.js#L1","m":[]}

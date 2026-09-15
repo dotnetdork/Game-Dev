@@ -1,1 +1,1 @@
-{"l":"Phaser.Types.Loader.FileTypes.BitmapFontFileConfig","n":"BitmapFontFileConfig","k":"typedef","mo":"Phaser.Types.Loader.FileTypes","x":"","since":"","scope":"static","src":"src/loader/filetypes/typedefs/BitmapFontFileConfig.js#L1","m":[]}
+{"l":"Phaser.Types.Loader.FileTypes.SVGSizeConfig","n":"SVGSizeConfig","k":"typedef","mo":"Phaser.Types.Loader.FileTypes","x":"","since":"","scope":"static","src":"src/loader/filetypes/typedefs/SVGSizeConfig.js#L1","m":[]}

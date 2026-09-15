@@ -1,1 +1,1 @@
-{"l":"Phaser.Types.Cameras.Scene2D.CameraPaddingWrapper","n":"CameraPaddingWrapper","k":"typedef","mo":"Phaser.Types.Cameras.Scene2D","x":"","since":"4.0.0","scope":"static","src":"src/cameras/2d/typedefs/CameraPaddingWrapper.js#L1","ext":["Phaser.Cameras.Scene2D.Camera"],"m":[]}
+{"l":"Phaser.Types.Core.BannerConfig","n":"BannerConfig","k":"typedef","mo":"Phaser.Types.Core","x":"","since":"3.0.0","scope":"static","src":"src/core/typedefs/BannerConfig.js#L1","m":[]}

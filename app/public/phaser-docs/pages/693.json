@@ -1,1 +1,1 @@
-{"l":"Phaser.Types.GameObjects.NineSlice.NineSliceConfig","n":"NineSliceConfig","k":"typedef","mo":"Phaser.Types.GameObjects.NineSlice","x":"","since":"3.60.0","scope":"static","src":"src/gameobjects/nineslice/typedefs/NineSliceConfig.js#L1","ext":["Phaser.Types.GameObjects.GameObjectConfig"],"m":[]}
+{"l":"Phaser.Types.GameObjects.NoiseCell4D.NoiseCell4DQuadConfig","n":"NoiseCell4DQuadConfig","k":"typedef","mo":"Phaser.Types.GameObjects.NoiseCell4D","x":"","since":"4.0.0","scope":"static","src":"src/gameobjects/noise/noisecell4d/typedefs/NoiseCell4DQuadConfig.js#L1","m":[]}

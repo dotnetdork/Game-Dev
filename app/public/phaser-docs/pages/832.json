@@ -1,1 +1,1 @@
-{"l":"Phaser.Types.Loader.FileTypes.ScriptFileConfig","n":"ScriptFileConfig","k":"typedef","mo":"Phaser.Types.Loader.FileTypes","x":"","since":"","scope":"static","src":"src/loader/filetypes/typedefs/ScriptFileConfig.js#L1","m":[]}
+{"l":"Phaser.Types.Physics","n":"Physics","k":"namespace","mo":"Phaser.Types","x":"","since":"","scope":"static","src":"src/physics/index.js#L11","m":[],"kids":[["Arcade","namespace",833],["Matter","namespace",851]]}

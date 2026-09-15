@@ -1,1 +1,1 @@
-{"l":"Phaser.Types.Loader.FileTypes.HTMLTextureFileConfig","n":"HTMLTextureFileConfig","k":"typedef","mo":"Phaser.Types.Loader.FileTypes","x":"","since":"","scope":"static","src":"src/loader/filetypes/typedefs/HTMLTextureFileConfig.js#L1","m":[]}
+{"l":"Phaser.Types.Loader.FileTypes.TilemapImpactFileConfig","n":"TilemapImpactFileConfig","k":"typedef","mo":"Phaser.Types.Loader.FileTypes","x":"","since":"","scope":"static","src":"src/loader/filetypes/typedefs/TilemapImpactFileConfig.js#L1","m":[]}

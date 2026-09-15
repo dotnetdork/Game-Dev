@@ -1,1 +1,1 @@
-{"l":"Phaser.Types.GameObjects.Zone.ZoneConfig","n":"ZoneConfig","k":"typedef","mo":"Phaser.Types.GameObjects.Zone","x":"","since":"3.50.0","scope":"static","src":"src/gameobjects/zone/typedefs/ZoneConfig.js#L1","ext":["Phaser.Types.GameObjects.GameObjectConfig"],"m":[]}
+{"l":"Phaser.Types.Loader.FileTypes.AtlasJSONFileConfig","n":"AtlasJSONFileConfig","k":"typedef","mo":"Phaser.Types.Loader.FileTypes","x":"","since":"","scope":"static","src":"src/loader/filetypes/typedefs/AtlasJSONFileConfig.js#L1","m":[]}
