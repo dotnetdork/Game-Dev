@@ -119,8 +119,15 @@ function renderPracticeTask(p) {
   if (p.steps && p.steps.length) s += renderSteps(p.steps) + '\n';
   return s.trim();
 }
+/* An unknown {{placeholder}} becomes '' — and now says so once.
+   Silence here is how the grader came to be judging children's work having been told neither the
+   task nor what they changed: its .md asked for slots this function never filled, every one
+   rendered empty, and the whole context the server had assembled was thrown away without a word.
+   A typo in a prompt (`{{lessonTitel}}`) is the same failure in miniature — a quietly worse agent,
+   with nothing anywhere to say why. Warned once per name, the way a missing file is. */
 function fill(text, vars) {
   return text.replace(/\{\{(\w+)\}\}/g, function (m, key) {
+    if (!(key in vars)) warn('nothing fills {{' + key + '}}, so it rendered empty');
     const v = vars[key];
     return (v === undefined || v === null) ? '' : String(v);
   });

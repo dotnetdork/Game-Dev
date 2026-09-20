@@ -14,7 +14,6 @@ const tel = require('../telemetry');
 const models = require('../ai/models');
 const provider = require('../ai/provider');
 const guards = require('../ai/guards');
-const fallback = require('../ai/fallback');
 const cleanQuizQuestion = require('../ai/quiz-check').cleanQuizQuestion;
 const cleanGrade = require('../ai/grade-check').cleanGrade;
 
@@ -23,11 +22,36 @@ const { AGENT_TOOLS, resolveModel } = models;
 const { TOTAL_BUDGET_MS, callAI } = provider;
 const { extractJSON, sanitizeHistory, unknownAssetKeys, assetApology, badApisIn, badKeysIn,
   claimsChangeWithoutOps } = guards;
-const { buildContextBlock, fallbackCoderSystem, fallbackTutorSystem, FALLBACK_AGENT_SYSTEMS } = fallback;
 
 /* Injected by mount(): auth and store, which this file must not require directly — the rate
    limiter keys on the session and counts in the store, and both belong to the app. */
 let auth = null, store = null;
+
+/* THE PROMPT, OR A LOUD FAILURE. There used to be a second set of prompts — 110 lines of string
+   literals in server.js, used when an ai/agents/*.md was missing or malformed. Phase 3 deleted
+   them, and the reasoning is worth keeping where the decision is:
+
+   They had already drifted. The Markdown prompts grew slots for the lab, the design board, the
+   grader's task and explain-a-line; the literals never did. So the "fallback" did not degrade
+   gracefully to the previous behaviour — it quietly switched the child to a different, worse
+   assistant that had never been tested and that nobody was watching, because nothing reported it.
+   That is the same failure as the grader being handed no context at all: silent, invisible, and
+   found by reading rather than by anything going wrong.
+
+   The .md files are committed and tools/check-prompts.js asserts every one of the six builds
+   complete on every `npm test`. If one is genuinely missing, a 500 naming the file is the honest
+   answer and somebody fixes it in a minute. */
+function promptFor(agent, vars, res) {
+  const system = ai.buildPrompt(agent, vars);
+  if (system) return system;
+  console.error('[ai] no prompt for "' + agent + '" — ai/agents/' + agent + '.md is missing or malformed');
+  res.status(500).json({
+    reply: 'This assistant is not set up correctly right now, so I cannot answer. '
+      + 'That is a problem at our end, not anything you did — please tell whoever is running the class.',
+    error: 'missing prompt: ai/agents/' + agent + '.md'
+  });
+  return null;
+}
 
 function mount(app, deps) {
   auth = deps && deps.auth;
@@ -106,7 +130,11 @@ function mount(app, deps) {
     const message = ((req.body && req.body.message) || '').toString().slice(0, 2000);
     if (!message) return res.status(400).json({ reply: 'Please type a message.' });
     const gameCode = ((req.body && req.body.code) || '').toString().slice(0, 100000);
-    const context = ((req.body && req.body.context) || '').toString().slice(0, 4000);
+    /* `req.body.context` is still sent by js/ai.js (askTutor's second argument) and is no longer
+       read: the only thing that used it was fallbackTutorSystem, which Phase 3 deleted. The tutor's
+       .md takes {{lessonContext}} instead, which the browser also sends and which is not truncated
+       by a different limit. Left unparsed rather than silently re-plumbed — the client-side caller
+       should be tidied in its own commit, the way `studentId` still needs to be. */
     const history = sanitizeHistory(req.body && req.body.history);
     let agent = (req.body && req.body.agent) || 'coder';
     if (['coder', 'tutor', 'lab-tutor', 'quiz', 'grader', 'design-coach'].indexOf(agent) < 0) agent = 'coder';   // controller: keep to known agents
@@ -128,7 +156,8 @@ function mount(app, deps) {
       lessonTitle: (b.lessonTitle || '').toString().slice(0, 120),
       lessonContext: (b.lessonContext || '').toString().slice(0, 3000),
       /* The lesson's practice exercise, sent separately because lessonContext is truncated long
-         before it. See buildContextBlock for what the coder is told to do with it. */
+         before it. ai/agents/coder.md's {{practiceTask}} is what the coder is told to do with it:
+         recognise the exercise and decline to do it for them. */
       practiceTask: (b.practiceTask && typeof b.practiceTask === 'object') ? {
         title: String(b.practiceTask.title || '').slice(0, 120),
         task: String(b.practiceTask.task || '').slice(0, 400),
@@ -242,9 +271,8 @@ function mount(app, deps) {
        advice about their Phaser game being empty. Adding an agent means adding it to this list. */
     if (agent === 'tutor' || agent === 'lab-tutor') {
       let raw;
-      const tutorSystem = ai.buildPrompt(agent, Object.assign({ gameCode: gameCode }, ctx))
-        || (agent === 'tutor' ? fallbackTutorSystem(gameCode, context, ctx) : null);
-      if (!tutorSystem) return res.status(500).json({ reply: 'The lab tutor prompt is missing (ai/agents/lab-tutor.md).' });
+      const tutorSystem = promptFor(agent, Object.assign({ gameCode: gameCode }, ctx), res);
+      if (!tutorSystem) return;
       try { raw = await callAI(spec, tutorSystem, message, false, history, agentTools, onTool); }
       catch (e) { return res.status(502).json({ reply: 'The tutor is not reachable right now (' + e.message + ').' }); }
       return res.json({ reply: (raw || '').trim() || 'Hmm, I am not sure — try rephrasing.' });
@@ -270,7 +298,8 @@ function mount(app, deps) {
     // the quiz's answer key is checked, and the grader's verdict is checked against its own hint.
     if (agent === 'quiz' || agent === 'grader') {
       let raw;
-      const agentSystem = ai.buildPrompt(agent, ctx) || FALLBACK_AGENT_SYSTEMS[agent];
+      const agentSystem = promptFor(agent, ctx, res);
+      if (!agentSystem) return;
       try { raw = await callAI(spec, agentSystem, message, true, [], agentTools, onTool); }
       catch (e) { return res.status(502).json({ error: 'The ' + agent + ' agent is not reachable (' + e.message + ').' }); }
       const parsedAgent = extractJSON(raw) || {};
@@ -292,7 +321,8 @@ function mount(app, deps) {
     }
 
     // CODER (default): return ops the browser applies to game.js.
-    const system = ai.buildPrompt('coder', Object.assign({ gameCode: gameCode }, ctx)) || fallbackCoderSystem(gameCode, ctx);
+    const system = promptFor('coder', Object.assign({ gameCode: gameCode }, ctx), res);
+    if (!system) return;
     function toOps(parsed) {
       const ops = {};
       ['config', 'functions', 'create', 'update', 'newFile', 'editFile', 'replaceFile'].forEach(function (k) {
