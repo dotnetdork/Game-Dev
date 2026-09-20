@@ -2226,6 +2226,13 @@ h2 .dc-kind{margin-left:9px;vertical-align:4px;}
   color:#cfe6ff;font-family:var(--font);font-size:12.5px;font-weight:600;padding:7px 13px;cursor:pointer;margin-top:2px;}
 .prop-review:hover{background:#12304f;}
 .prop-review .mdi{font-size:16px;}
+/* The second way to accept, on the card itself — see renderProposal in js/ai.js. Quieter than the
+   Apply on the review bar, because reading the diff first is still the path we want. */
+.prop-apply{display:inline-flex;align-items:center;gap:6px;background:var(--brand);color:var(--brand-ink);
+  border:0;border-radius:8px;font-family:var(--font);font-size:12.5px;font-weight:700;padding:7px 13px;
+  cursor:pointer;margin-top:6px;margin-left:8px;}
+.prop-apply:hover{filter:brightness(1.08);}
+.prop-apply .mdi{font-size:16px;}
 
 /* ---------- reviewing a change in the editor ---------- */
 .review-bar{flex:none;display:flex;align-items:center;gap:10px;padding:9px 12px;background:#1a130a;

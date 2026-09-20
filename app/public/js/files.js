@@ -200,6 +200,15 @@ function openFile(name) { if (reviewing) endReview(); if (!$('view-code').hidden
    here went with the documents folder: design.md is edited on the Design tab now, as a board, and
    the only markdown this tree could have opened was that one file. */
 function loadCode() {
+  /* THE BAR IS A VIEW OF `reviewing`, NOT A SECOND COPY OF IT.
+     It used to be switched on in startReview and off in endReview and nowhere else, which made its
+     visibility a separate piece of state that had to be kept in step by hand. Every path that
+     repainted the editor without going through those two — and there are several, including the
+     delayed loadCode() that fires when the editor tools finish downloading — could leave the diff
+     on screen with no bar above it. A student then sees their change, correctly, and has no way to
+     accept it: reported from the deployed build on 20 September.
+     Deriving it here costs one line and makes the desync impossible, whichever path caused it. */
+  const bar = $('reviewBar'); if (bar) bar.hidden = !reviewing;
   if (reviewing) { showDiffInEditor(reviewing); return; }
   const t = project.files[currentFile];
   /* formatJS is Prettier's JavaScript parser. Handed a page of prose it either throws or rewrites

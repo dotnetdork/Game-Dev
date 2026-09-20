@@ -453,6 +453,18 @@ function renderProposal(en) {
     b.innerHTML = '<span class="mdi mdi-file-compare"></span>Review the change' + (names ? ' in ' + names : '') + (summary ? ' (' + summary + ')' : '');
     b.addEventListener('click', function () { startReview(en); });
     wrap.appendChild(b);
+    /* AND A WAY TO SAY YES FROM HERE.
+       Accepting used to live in exactly one place — the Apply button on the bar above the editor —
+       so anything that left that bar off the screen left the student with a change they could read
+       and no way to take it. That happened on the deployed build and is what prompted this.
+       The bar is the better place to accept from, because it sits beside the diff and the whole
+       point is that they read it first. This is the second door, not a replacement: it is on the
+       card their eye is already on, and it means the action can never go missing with one strip of
+       UI. Both call the same acceptProposal. */
+    const ok = document.createElement('button'); ok.className = 'prop-apply'; ok.type = 'button';
+    ok.innerHTML = '<span class="mdi mdi-check"></span>Apply it';
+    ok.addEventListener('click', function () { acceptProposal(en); });
+    wrap.appendChild(ok);
   } else {
     const done = document.createElement('div'); done.className = 'prop-state ' + en.state;
     done.textContent = en.state === 'applied' ? '✓ Applied to your game' : 'Not applied';
