@@ -193,7 +193,25 @@ function eventsFrom(raw) {
 /* Events already written, so a backfill over a window already captured does not double it up.
    Keyed on time+kind+who, which is as unique as an event gets and cheap to hold for a session. */
 const seenIds = new Set();
+/* THE ONE NON-EVENT WORTH INTERRUPTING FOR.
+   The server prints this at boot when no save store is configured, and it means every child's work
+   lives in one browser on one machine and is gone the moment that changes. It is the single thing
+   most likely to be quietly wrong during a session, it cannot be fixed from here, and until now it
+   sat in a log nobody was reading while the capture beside it scrolled happily past. Said once, at
+   the top, so whoever is watching knows before the children do. */
+let warnedNoStore = false;
+function noticeStoreWarning(text) {
+  if (warnedNoStore || text.indexOf('no per-student save store is configured') < 0) return;
+  warnedNoStore = true;
+  console.error('\n' + C.red + '  ⚠  NO SAVE STORE ON THIS DEPLOYMENT' + C.off
+    + '\n     Work lives in one browser on one machine and does not follow a sign-in.'
+    + '\n     Free fix: make a database at upstash.com, then add UPSTASH_REDIS_REST_URL and'
+    + '\n     UPSTASH_REDIS_REST_TOKEN to the Vercel project and redeploy. Vercel\'s own'
+    + '\n     Marketplace Redis starts at $8/month; going to Upstash directly does not.\n');
+}
+
 function handleRaw(raw) {
+  noticeStoreWarning(String(raw || ''));
   eventsFrom(raw).forEach(function (e) {
     if (!e.t) e.t = new Date().toISOString();
     const id = e.t + '|' + e.ev + '|' + (e.who || '');

@@ -50,13 +50,19 @@ matters not at all before anyone is using it.
 (You can also create the database first from the **team-level** Storage tab and use *Connect
 Project* afterwards. Same result, one less redeploy, slightly more clicking.)
 
-Vercel → **Storage → Create Database → Redis**, attached to this project. Vercel folded its own
-"Vercel KV" into the Marketplace, where the provider is Upstash, so the button may read **Upstash
-for Redis** instead. Either is fine, and so is a database created directly at upstash.com with its
-two REST variables pasted in by hand: `app/store.js` reads both `KV_REST_API_*` and
-`UPSTASH_REDIS_REST_*` and uses whichever is present.
+**Take the free route, not the obvious one.** Vercel → Storage → Create Database → Redis walks you
+into the Marketplace, where Vercel folded its own "Vercel KV"; the provider there is Upstash and the
+plans it offers a Hobby team start at **$8/month**. That buys nothing this course needs.
 
-Nothing to configure — attaching it injects the variables itself.
+Instead, make the database at **upstash.com** directly — its free tier is 500,000 commands a month,
+256 MB and 10 GB of bandwidth, against a class that writes a few kilobytes per student — and paste
+its two REST values into the Vercel project as `UPSTASH_REDIS_REST_URL` and
+`UPSTASH_REDIS_REST_TOKEN`. `app/store.js:47-48` reads both those names and the `KV_REST_API_*` pair
+Vercel would have injected, and uses whichever is present, so the app cannot tell the difference.
+
+If someone later puts the team on a plan where Marketplace Redis is free, that route works too and
+injects its variables itself. Either way, **redeploy afterwards** — variables only reach a build that
+happens after them.
 
 **Two things stop working without it**, and neither fails loudly in the browser:
 
@@ -67,9 +73,8 @@ Nothing to configure — attaching it injects the variables itself.
   in-memory counter, which on serverless counts only the requests that happen to land on the same
   short-lived instance.
 
-The boot log says which you have: `saves: redis` or `saves: none`.
-
-Free tier is far more than a class needs — a few kilobytes per student.
+The boot log says which you have: `saves: redis` or `saves: none`. So does a signed-in
+`GET /api/state`, which reports `store: true` once the store is live.
 
 ## 2. Environment variables
 
