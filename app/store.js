@@ -149,7 +149,21 @@ function memBump(key, windowSec) {
 async function bump(key, windowSec) {
   const local = memBump(key, windowSec);          // always counted, so a laptop and a cold instance both work
   if (MODE !== 'redis') return local;
-  const k = 'gd:v1:rl:' + String(key).replace(/[^a-z0-9@._:-]/gi, '_');
+  /* THE SAME PRIVACY RULE AS keyFor, WHICH THIS USED TO IGNORE.
+     The note at the top of this file says a Redis key must not carry a child's identity, because
+     keys show up in dashboards and logs and a list of children's email addresses is not a thing to
+     leave in one. The state keys have always been hashed. These were not: the rate-limit key was
+     built by sanitising the caller's string, so `ai:jonathan@tester` — or a real school address on
+     a Google sign-in — sat in the key itself, in the clear, in the same database.
+     The prefix stays readable so `ai:` and `login:` can still be told apart when looking at the
+     store; only the part that names a person is hashed. Counters in flight reset once, which costs
+     nothing: the window is ten minutes and the limit is 40. */
+  const raw = String(key);
+  const cut = raw.indexOf(':');
+  const kind = cut > 0 ? raw.slice(0, cut) : 'k';
+  const who = cut > 0 ? raw.slice(cut + 1) : raw;
+  const k = 'gd:v1:rl:' + kind.replace(/[^a-z0-9-]/gi, '_') + ':'
+    + crypto.createHash('sha256').update(who).digest('hex').slice(0, 32);
   try {
     const n = Number(await redis(['incr', k]));
     /* Only the first writer sets the expiry, so a steady stream of requests cannot keep pushing the

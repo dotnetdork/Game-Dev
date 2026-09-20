@@ -16,7 +16,7 @@
 # What replaces it is the DESIGN tab, between Learn and Code: the same board, always open, worked on
 # across the whole course instead of six times behind a gate. "Their own game" stopped being a place
 # they are sent to and became a place they can always get back to. The six checkpoint lessons are in
-# content/_archive-v1/ with their zone specs and openers, because the board layouts and the coach
+# docs/archive/course-v1/ with their zone specs and openers, because the board layouts and the coach
 # briefs in them are worth mining.
 #
 # A lesson that wants design work asks for it in its own `yourturn`, checked with
@@ -48,9 +48,9 @@
 # character they chose. Identity is most of what keeps a twelve-year-old going.
 #
 # from-project-to-playable was cut (2026-09-09): 765 words on .exe-versus-web builds for a student
-# who will never make an .exe. It is in content/_archive-v1/ with its openers.
+# who will never make an .exe. It is in docs/archive/course-v1/ with its openers.
 #
-# The v1 course (47 shorter lessons) is kept in content/_archive-v1/ .
+# The v1 course (47 shorter lessons) is kept in docs/archive/course-v1/ .
 id: course1
 name: "Game Dev — Level 1"
 library: Phaser

@@ -73,7 +73,13 @@ const { DEFAULT_PROVIDER, AGENT_TOOLS, resolveModel } = models;
    block Phaser and every asset. Naming the host grants exactly the same server that `'self'` was
    meant to grant, and costs nothing when the frame is unsandboxed. */
 function cspFor(req) {
-  const origin = (req.headers['x-forwarded-proto'] || req.protocol) + '://' + req.headers.host;
+  /* auth.origin(req), not a second derivation. This built the origin itself from x-forwarded-proto
+     and a raw `host` header, which differs from auth.js's version in two ways that matter: it
+     ignores PUBLIC_ORIGIN, and it does not take the first value when a proxy sends a comma-joined
+     list. So a deployment that needed PUBLIC_ORIGIN to make OAuth work — the one case the override
+     exists for — got a Content-Security-Policy naming a different origin from the one it actually
+     serves itself on, which is a policy that blocks the app rather than protecting it. */
+  const origin = auth.origin(req);
   return [
     "default-src 'self' " + origin,
     "script-src 'self' 'unsafe-inline' " + origin,   // see note above: srcdoc games are inline scripts
@@ -138,9 +144,12 @@ auth.mount(app, { limit: store.bump });
    the one response that matters — the HTML itself. A cookie set by the response that delivers the
    document is visible to that document's scripts, so dev.js sees it on the very first paint. */
 app.use((req, res, next) => {
-  const secure = req.secure || req.headers['x-forwarded-proto'] === 'https' ? '; Secure' : '';
+  /* auth.secureCookie(), not a second rule of its own. This asked whether the REQUEST arrived over
+     TLS while auth.js asked whether the PROCESS is hosted, so on the same response the session
+     cookie and this one could be marked differently — and this one is what tells the browser it is
+     talking to a deployment at all. One answer, in the file that owns cookies. */
   res.append('Set-Cookie', 'league_hosted=' + (auth.isHosted() ? '1' : '0')
-    + '; Path=/; SameSite=Lax; Max-Age=86400' + secure);
+    + '; Path=/; SameSite=Lax; Max-Age=86400' + auth.secureCookie());
   next();
 });
 

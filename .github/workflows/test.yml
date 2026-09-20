@@ -7,14 +7,27 @@ on:
 jobs:
   test:
     runs-on: ubuntu-latest
+    strategy:
+      fail-fast: false
+      # 20 is the floor `engines` allows; 24 is what Vercel actually runs, and nothing tested it
+      # until now — so the version that serves children was the one version never exercised.
+      # fail-fast off because "it breaks on 24 only" is the finding, and cancelling the other job
+      # hides which half of that sentence is true.
+      matrix:
+        node: ['20', '24']
+    name: test (node ${{ matrix.node }})
     steps:
       - uses: actions/checkout@v4
       - uses: actions/setup-node@v4
         with:
-          node-version: '20'
+          node-version: ${{ matrix.node }}
       - name: Install
         working-directory: app
-        run: npm ci || npm install
+        # `npm ci` only. It was `npm ci || npm install`, which turns the one thing ci is FOR —
+        # failing when package-lock.json disagrees with package.json — into a silent fallback that
+        # installs something else and carries on. A stale lockfile then reaches production without
+        # anyone being told, which is the opposite of what the check was there to do.
+        run: npm ci
       - name: Test
         working-directory: app
         # check-html       tag balance + the containment the three-column layout depends on

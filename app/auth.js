@@ -291,7 +291,14 @@ function ready(key) {
   if (DEMO || BYPASS) return true;                 // every button renders, none of them is real
   return !!(secret() && PROVIDERS[key].ready());
 }
-/* Always. The login page is now part of the app rather than a thing that appears in production. */
+/* THIS IS A CONSTANT WEARING A FUNCTION'S CLOTHES, and it is kept deliberately.
+   It returns true, always, because the login page became part of the app rather than something
+   that only appears in production — and the audit that prompted this pass suggested deleting it
+   and its three call sites. It stays for one reason: `if (!enabled()) return next();` is the first
+   line of requireAuth, so this function is the single switch that would turn the gate off for the
+   whole app. Inlining `true` there does not remove the concept, it removes the NAME of the concept
+   and leaves three places that each independently assume the gate is on.
+   A reviewer asking "what would it take to serve this without sign-in?" should find one answer. */
 function enabled() { return true; }
 function providerStatus() {
   const out = {};
@@ -387,11 +394,22 @@ function clearSession(res) {
   setCookie(res, WHO_COOKIE, '', 0, true);
 }
 
+/* WHEN A COOKIE IS Secure, decided once.
+   There were two answers to this in the codebase and they did not agree: this file asked whether
+   the process is hosted (NODE_ENV/VERCEL), and the league_hosted middleware in server.js asked
+   whether the REQUEST arrived over TLS. Either is defensible alone; having both means the session
+   cookie and the cookie that tells the browser it is talking to a deployment can be marked
+   differently on the same response, and nobody would notice until one of them stopped being sent.
+   Exported so server.js uses this one rather than keeping its own. */
+function secureCookie() {
+  return (process.env.NODE_ENV === 'production' || process.env.VERCEL) ? '; Secure' : '';
+}
+
 function setCookie(res, name, value, maxAgeSec, readable) {
   /* HttpOnly: script cannot read it, so an XSS in a lesson widget cannot steal a session.
      SameSite=Lax: survives the redirect back from the provider, not sent on cross-site POSTs.
      Secure: dropped only on plain-HTTP localhost, where there is no TLS to require. */
-  const secure = (process.env.NODE_ENV === 'production' || process.env.VERCEL) ? '; Secure' : '';
+  const secure = secureCookie();
   const bits = [name + '=' + encodeURIComponent(value), 'Path=/', 'SameSite=Lax' + secure];
   /* `readable` is the one exception, and it carries a name rather than a credential — see
      WHO_COOKIE. Everything else stays HttpOnly. */
@@ -570,7 +588,11 @@ function mount(app, opts) {
   app.get('/auth/me', function (req, res) {
     const u = currentUser(req);
     res.json(u
-      ? { signedIn: true, email: u.email, name: u.name || '', via: u.via || '', local: !!u.local }
+      /* `local: !!u.local` used to be reported here. Nothing has ever set `u.local` — the field was
+         left behind when the local pseudo-user was removed, so this reported `false` to every
+         caller for every session. Gone rather than kept: a field that is always false is worse than
+         no field, because a reader reasonably assumes something somewhere sets it. */
+      ? { signedIn: true, email: u.email, name: u.name || '', via: u.via || '' }
       : { signedIn: false, enabled: enabled(), providers: providerStatus(), testers: testersReady() });
   });
 }
@@ -611,4 +633,4 @@ function requireAuth(req, res, next) {
    `league_hosted` cookie in server.js. */
 function isHosted() { return IS_HOSTED; }
 
-module.exports = { mount, requireAuth, currentUser, enabled, ready, providerStatus, testersReady, configProblem, isHosted };
+module.exports = { mount, requireAuth, currentUser, enabled, ready, providerStatus, testersReady, configProblem, isHosted, secureCookie, origin };
