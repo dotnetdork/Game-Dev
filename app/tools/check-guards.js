@@ -53,6 +53,34 @@ check('the same sentence WITH ops is allowed through',
 check('a plain answer with no ops is not mistaken for a claim',
   G.claimsChangeWithoutOps('The game loop runs about sixty times a second.', {}) === false,
   'the tutor answering a question must not trip this');
+/* The four shapes the widened check exists for. Every one of these walked through the old regex,
+   which wanted a first-person pronoun — and "Done." is the single most common one in the capture,
+   caught by nothing, printed to a child whose game had not changed. */
+check('"Done." is caught',
+  G.claimsChangeWithoutOps('Done.', {}) === true,
+  'the sentence the whole complaint is named after');
+check('"Added it." is caught',
+  G.claimsChangeWithoutOps('Added it.', {}) === true,
+  'a past-tense verb with nobody in front of it is still a claim');
+check('"Changed the speed to 300." is caught',
+  G.claimsChangeWithoutOps('Changed the speed to 300.', {}) === true,
+  'same shape, different verb');
+check("\"There's an extra coin now\" is caught",
+  G.claimsChangeWithoutOps("There's an extra coin now, up on the left platform.", {}) === true,
+  'the prompt\'s own worked-example wording, which never mentions "I"');
+/* And the other direction, which is the whole reason the regex could not simply be made greedy:
+   the same sentence WITH a change in it is a correct answer, and a question back or an honest
+   "I could not" is the conversation this release is trying to make possible. */
+check("\"There's an extra coin now\" WITH ops is allowed",
+  G.claimsChangeWithoutOps("There's an extra coin now, up on the left platform.",
+    { editFile: { name: 'coins.js', code: 'x' } }) === false,
+  'it is only a lie when nothing was sent');
+check('an honest "I could not" is allowed',
+  G.claimsChangeWithoutOps('I could not work that one out — can you say it another way?', {}) === false,
+  'the reply this release wants MORE of must not trigger a retry');
+check('a question back is allowed',
+  G.claimsChangeWithoutOps('Which platform do you mean — the left one or the top one?', {}) === false,
+  'asking is not claiming');
 
 /* ---------- 2. Phaser APIs that do not exist ---------- */
 const canvasOnGraphics = { create: "const g = scene.add.graphics(); g.bezierCurveTo(1, 2, 3, 4, 5, 6);" };
@@ -105,6 +133,27 @@ check('a key defined in ANOTHER project file counts as real',
   G.unknownAssetKeys({ update: "scene.add.sprite(1, 1, 'boss');" },
     GAME + "\nscene.load.image('boss', 'boss.png');", OWNED, SETS).length === 0,
   'the whole project is the baseline, not game.js alone');
+
+/* ---------- 5. the line the app adds when it holds a change back ----------
+   This is the other half of "the model's words reach the student": the app stops replacing the
+   model's explanation with a canned string and appends one of these instead. The note has to name
+   the specific thing that was wrong, or it is the canned string again under a new name. */
+const apiNote = G.heldNote('bad-api', G.badApisIn(canvasOnGraphics, GAME, []), OWNED);
+check('the bad-api note names the API and what to use instead',
+  /bezierCurveTo/.test(apiNote) && /fillRoundedRect/.test(apiNote),
+  apiNote.slice(0, 80));
+const keyNote = G.heldNote('bad-key', G.badKeysIn({ update: 'if (scene.keys.SPACE.isDown) jump();' }, GAME), OWNED);
+check('the bad-key note names the key', /SPACE/.test(keyNote), keyNote.slice(0, 80));
+const assetNote = G.heldNote('bad-asset',
+  G.unknownAssetKeys({ create: "scene.add.sprite(10, 10, 'dragon');" }, GAME, OWNED, SETS), OWNED);
+check('the bad-asset note names the key and what they do own',
+  /dragon/.test(assetNote) && /hero/.test(assetNote), assetNote.slice(0, 80));
+check('the no-ops note says plainly that nothing changed',
+  /didn.t actually change anything/i.test(G.heldNote('no-ops')),
+  'the one sentence this file is still allowed to invent');
+check('an unknown guard name adds nothing at all',
+  G.heldNote('something-else', ['x'], OWNED) === '',
+  'silence rather than a sentence nobody wrote');
 
 /* ---------- the plumbing the guards sit behind ---------- */
 check('JSON is found inside a model reply wrapped in prose',

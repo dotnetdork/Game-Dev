@@ -7,6 +7,9 @@
 const usage = require('./usage');
 const tools = require('./tools');
 const models = require('./models');
+/* Only for extractJSON, in the round-0 shortcut below. guards.js requires nothing at all — it is
+   the pure half of the AI story — so this cannot make a cycle. */
+const { extractJSON } = require('./guards');
 
 const { DEFAULT_PROVIDER, OLLAMA_URL, OLLAMA_NUM_CTX, OLLAMA_NUM_PREDICT, OLLAMA_THINK,
   ANTHROPIC_KEY, OPENROUTER_KEY, OPENROUTER_URL, MAX_TOOL_ROUNDS } = models;
@@ -21,9 +24,15 @@ const { DEFAULT_PROVIDER, OLLAMA_URL, OLLAMA_NUM_CTX, OLLAMA_NUM_PREDICT, OLLAMA
    nothing at all.
    Two deadlines, therefore: one per call, and one for the whole request. Both come back as a normal
    thrown error, which every caller already turns into "the AI is not reachable right now" — a
-   sentence a child can act on, arriving in seconds instead of never. */
+   sentence a child can act on, arriving in seconds instead of never.
+
+   A BUDGET ABOVE THE PLATFORM'S OWN TIMEOUT IS DECORATION. This defaulted to 110s against Vercel's
+   60s function ceiling (app/vercel.json), so hosted, the budget could never fire: Vercel killed the
+   function first and the request that most needed recording logged nothing — the exact outcome the
+   paragraph above says this prevents. The default is under the ceiling now. A laptop on slow Ollama
+   that genuinely needs longer sets AI_TOTAL_BUDGET_MS in .env, where the platform is its own. */
 const CALL_TIMEOUT_MS = Number(process.env.AI_CALL_TIMEOUT_MS || 45000);
-const TOTAL_BUDGET_MS = Number(process.env.AI_TOTAL_BUDGET_MS || 110000);
+const TOTAL_BUDGET_MS = Number(process.env.AI_TOTAL_BUDGET_MS || 50000);
 
 /* THE DEADLINE BELONGS TO THE REQUEST, NOT TO THE MODULE.
    It was a module-level `let` for a day, on the reasoning that it is written and read inside one
@@ -40,11 +49,17 @@ function budgetLeft(spec) {
   return Math.max(0, deadline - Date.now());
 }
 /* The signal for one provider call: whichever runs out first, this call's own limit or what is left
-   of the whole request's budget. */
+   of the whole request's budget.
+
+   The no-deadline fallback used to be written `budgetLeft(spec) || CALL_TIMEOUT_MS`, which made the
+   throw below unreachable: budgetLeft returns 0 when the deadline has passed, 0 is falsy, so an
+   exhausted budget handed the next call a fresh 45 seconds instead of stopping. The fallback is
+   only for a spec with no deadline at all, which is asked here rather than inferred from a zero. */
 function callSignal(spec) {
-  const ms = Math.min(CALL_TIMEOUT_MS, budgetLeft(spec) || CALL_TIMEOUT_MS);
-  if (ms <= 0) throw new Error('out of time for this question');
-  return AbortSignal.timeout(ms);
+  const ms = (spec && spec.deadline) ? budgetLeft(spec) : CALL_TIMEOUT_MS;
+  const use = Math.min(CALL_TIMEOUT_MS, ms);
+  if (use <= 0) throw new Error('out of time for this question');
+  return AbortSignal.timeout(use);
 }
 
 /* One turn with the model. Returns { content, assistant, toolCalls } — toolCalls is empty
@@ -138,11 +153,20 @@ async function callAI(spec, system, user, wantJSON, history, toolCtx, onTool) {
   // asking for JSON suppresses tool calls entirely (the model invents a fake tool result
   // instead). So phase 1 lets it look things up with JSON mode OFF, and phase 2 asks for the
   // real answer with tools off and JSON back on, with the tool results in the conversation.
+  //
+  // WITH ONE SHORTCUT, AND IT IS HALF OF EVERY CODER REQUEST. A JSON agent that needed no lookup
+  // answered in full on round 0 — and this threw that answer away and asked the same question
+  // again with tools off, because phase-1 output was never trusted for a JSON agent. Two model
+  // calls for every Build message, where the tutor spends one. So: if it already came back as
+  // JSON that parses, that IS the answer. It is not trusted any further than before — the
+  // deterministic guards in routes/ai.js run on it either way — and anything that does not parse
+  // still falls through to the proper final call below.
   for (let round = 0; round < MAX_TOOL_ROUNDS; round++) {
     const turn = await chatOnce(spec, system, msgs, false, true);
     if (!turn.toolCalls.length) {
       if (!wantJSON) return turn.content;     // plain-text agent: this is already the answer
-      break;                                  // JSON agent: fall through and ask properly
+      if (extractJSON(turn.content)) return turn.content;
+      break;                                  // not usable JSON: fall through and ask properly
     }
     msgs.push(turn.assistant);
     turn.toolCalls.forEach(function (call) {

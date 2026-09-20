@@ -828,26 +828,46 @@ function sendAI() {
       /* No ops and no reply is the model having nothing to say, which IS a phrasing problem — so
          that sentence stays, but only now that it cannot be shown for a failed request. */
       if (!ops) { setMsg(pending, 'bot', data.reply || 'I am not sure how to do that one — can you say it a different way?'); return; }
-      setMsg(pending, 'bot', describeEdit(data.reply, ops));
 
-      // Numbers live in config.js and are the tinkering loop — they land straight away.
+      /* Numbers live in config.js and are the tinkering loop — they land straight away.
+         APPLIED BEFORE ANYTHING IS SAID ABOUT THEM, which is the whole point of this order.
+         "Changed speed to 300." used to be printed here and mergeConfig run afterwards — and
+         mergeConfig returns the file unchanged when it cannot find a CONFIG block to edit. So a
+         student could read that their speed had changed, press Play, and find it had not. */
+      let cfgApplied = null;
       if (ops.config && typeof ops.config === 'object') {
         const cf = configFile(), cfgBefore = project.files[cf] || '';
         const cfgAfter = mergeConfig(cfgBefore, ops.config);
-        if (cfgAfter !== cfgBefore && validJS(cfgAfter)) { project.files[cf] = cfgAfter; saveProject(); }
+        cfgApplied = (cfgAfter !== cfgBefore && validJS(cfgAfter));
+        if (cfgApplied) { project.files[cf] = cfgAfter; saveProject(); }
       }
+      /* The model's sentence is dropped when the merge failed, which is the one place this file
+         does that. A config reply is always "changed X to Y" and carries nothing else, so keeping
+         it next to "nothing changed" leaves a twelve-year-old to work out which half of one message
+         is true. The branch below keeps the reply because a code change's reply says what it TRIED,
+         which is what they need in order to ask again. */
+      setMsg(pending, 'bot', cfgApplied === false && !opsChangeCode(ops)
+        ? "I couldn't find those numbers in " + configFile() + ", so nothing changed. Have a look at what is in there and tell me which one you meant."
+        : describeEdit(data.reply, ops));
 
       // A change to the code itself is proposed, not applied — the student reads it first.
       if (opsChangeCode(ops)) {
         const en = addProposal(data.why, ops, data.reply);
         // the card carries the action; this bubble is the sentence explaining it
-        setMsg(pending, 'bot', en ? en.why
-          : "I couldn't work out where to put that change safely, so I left your game alone. Try asking for it a different way.");
+        if (en) { setMsg(pending, 'bot', en.why); return; }
+        /* No card: opsToChanges could not place the edit. The model's explanation is still the best
+           thing the student has, so it is kept and the reason is added to it rather than written
+           over the top of it. */
+        setMsg(pending, 'bot', (saysSomething(data.reply) ? String(data.reply).trim() + '\n\n' : '')
+          + "I couldn't work out where to put that change safely, so I left your game alone. Try asking for it a different way.");
         return;
       }
       refreshAfterEdit();
     })
-    .catch(function () { pending.textContent = aiTrouble(0); })
+    /* setMsg, not pending.textContent: a bare write is overwritten by startThinking's interval 2.2
+       seconds later and never reaches __entry, so the error flashed and the saved turn still said
+       "Thinking…". Every branch in here has to end in setMsg on `pending` for the same reason. */
+    .catch(function () { setMsg(pending, 'bot', aiTrouble(0)); })
     .finally(function () { setChatBusy($('aiText'), false); persistChats(); renderChatBar(); });
 }
 $('aiSend').addEventListener('click', sendAI);

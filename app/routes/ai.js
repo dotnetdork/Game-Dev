@@ -20,8 +20,8 @@ const cleanGrade = require('../ai/grade-check').cleanGrade;
 /* Pulled off the modules above so the moved code reads exactly as it did in server.js. */
 const { AGENT_TOOLS, resolveModel } = models;
 const { TOTAL_BUDGET_MS, callAI } = provider;
-const { extractJSON, sanitizeHistory, unknownAssetKeys, assetApology, badApisIn, badKeysIn,
-  claimsChangeWithoutOps } = guards;
+const { extractJSON, sanitizeHistory, unknownAssetKeys, badApisIn, badKeysIn,
+  claimsChangeWithoutOps, heldNote } = guards;
 
 /* Injected by mount(): auth and store, which this file must not require directly — the rate
    limiter keys on the session and counts in the store, and both belong to the app. */
@@ -103,6 +103,11 @@ function mount(app, deps) {
            that reads like it did and changed nothing. `ops: false` on a coder turn is the shape of
            the complaint that it "just says done". */
         ops: !!(body && body.ops),
+        /* And, when it changed nothing, whether the model MEANT to: `held` is the word it sets when
+           it asked a question back, declined the practice exercise, or hit something it could not
+           do. Absent on a coder turn that changed nothing is the real failure — the reply that
+           reads like an answer and is not one. session-report.js splits the count by this. */
+        held: (body && body.held) || undefined,
         replyLen: (body && typeof body.reply === 'string') ? body.reply.length : 0,
         tools: seen.tools.length ? seen.tools : undefined,
         guards: seen.guards.length ? seen.guards : undefined
@@ -330,80 +335,127 @@ function mount(app, deps) {
       });
       return ops;
     }
+    /* ---------- what the student actually reads ----------
+       THE APP USED TO TALK OVER THE MODEL. Seven places in this branch substituted a sentence of
+       their own for the model's words: five of them said "Done." when nothing had changed, and the
+       give-up path threw away `parsed.reply` entirely and printed one of four canned strings. The
+       retry prompts below ask the model, in so many words, to "change nothing and say so plainly" —
+       and when it did exactly that, the explanation it wrote was discarded and an eleven-year-old
+       read "Try asking for it a slightly different way."
+
+       One rule now, and these three helpers are all of it: the model's words reach the student, and
+       the app only ever ADDS a status line. Nothing here invents a sentence except the one honest
+       give-up in heldNote('no-ops'), which exists because a model that says nothing has left us
+       nothing to pass on. */
+    const HELD_WORDS = ['practice', 'question', 'blocked'];
+    function heldOf(parsed) {
+      const h = (parsed && typeof parsed.held === 'string') ? parsed.held.trim().toLowerCase() : '';
+      return HELD_WORDS.indexOf(h) >= 0 ? h : '';
+    }
+    function parseAnswer(r) {
+      const p = extractJSON(r);
+      if (p) return p;
+      const text = String(r || '').trim().replace(/^```[a-z]*\s*/i, '').replace(/\s*```$/, '').trim();
+      /* Prose is a real answer — the model talking rather than filling in a form — so it becomes the
+         reply. A blob that starts with `{` and did not parse is a TRUNCATED JSON object: on Ollama
+         the final call runs with format:'json' (provider.js:100), so that is nearly always what a
+         non-parsing answer is, and this branch used to show that blob to a child. */
+      return { reply: (text && text[0] !== '{') ? text : '' };
+    }
+    function words(parsed) {
+      const p = parsed || {};
+      if (typeof p.reply === 'string' && p.reply.trim()) return p.reply.trim();
+      if (typeof p.why === 'string' && p.why.trim()) return p.why.trim();
+      return '';
+    }
+    function replyFrom(parsed, ops) {
+      const said = words(parsed);
+      if (said) return said;
+      /* Ops but no words. The browser derives "Changed speed to 300." from the ops themselves
+         (js/ai.js describeEdit), which is better than anything this file could write — and a
+         sentence from here would replace it, because it counts as the model having said something.
+         So say nothing on purpose. */
+      if (ops && Object.keys(ops).length) return '';
+      return heldNote('no-ops');
+    }
+
     let raw;
     try { raw = await callAI(spec, system, message, true, history, agentTools, onTool); }
     catch (e) { return unreachable(e); }
-    let parsed = extractJSON(raw) || { reply: (raw || '').trim() || 'Done.' };
+    let parsed = parseAnswer(raw);
     let ops = toOps(parsed);
+    let held = heldOf(parsed);
 
-    /* ---------- the four corrective guards ----------
-       Each one was the same seventeen lines: detect, tell the model what it got wrong, ask once
-       more, detect again, and if it is still wrong leave the game untouched and say something a
-       child can act on. Only the detector, the correction and the apology ever differed, so they
-       are a table of four and one loop rather than four near-copies — which is how the third of
-       them came to re-check against a narrower baseline than it first checked (below).
+    /* ---------- the four corrective guards, in ONE pass ----------
+       Each one is a detector, a correction to send back, and — if the second attempt is wrong too —
+       a short line telling the student what was held back. A table of four rather than four
+       near-copies, which is how the third of them came to re-check against a narrower baseline than
+       it first checked (see bad-asset below).
 
-       ORDER MATTERS AND IS PRESERVED. A guard runs against whatever the guard before it left in
-       `ops`, so a retry provoked by a bad Phaser API is what the keyboard guard then inspects. One
-       request can therefore spend four retries, and only the last failure reaches the student.
+       THEY USED TO RUN IN SEQUENCE, one retry each. That was deliberate and it was too expensive:
+       four guards × one retry, each retry itself up to MAX_TOOL_ROUNDS + 1 model calls, is
+       twenty-five calls for one child's question, and the capture showed a single coder pass taking
+       ten seconds against a 60s Vercel ceiling. Now: run every applicable detector, send ONE
+       correction listing everything that fired, retry ONCE, re-run every detector. Worst case drops
+       from five callAI to two.
 
-       `parse` is per-guard because the four fallbacks differ — '' for two of them, 'Done.' for
-       another — and those differences are carried across verbatim rather than tidied into one.
-       They look accidental; changing them is a behaviour change and this is not the commit for
-       it. */
+       Nothing is lost by combining them, because only one combination can occur: no-ops needs
+       EMPTY ops and the other three need code in ops, so no-ops never co-fires with anything. The
+       one case the old loop recovered and this does not is a retry that fixes the API and then
+       invents an unregistered key — that request now ends with the change held and the model's own
+       explanation shown, rather than with a third and fourth model call.
+
+       `retry` returns only the correction paragraph; the loop puts the student's message in front
+       of it once, however many fired. */
     const allCode = function () {
       return gameCode + '\n' + ctx.files.map(function (f) { return f.code; }).join('\n');
     };
     const GUARDS = [
       {
         name: 'no-ops',
-        find: function () { return claimsChangeWithoutOps(parsed.reply, ops) ? ['claimed a change'] : []; },
-        detail: function () { return (parsed.reply || '').slice(0, 200); },
-        parse: function (r) { return extractJSON(r) || { reply: (r || '').trim() || '' }; },
+        find: function () { return claimsChangeWithoutOps(words(parsed), ops) ? ['claimed a change'] : []; },
+        detail: function () { return words(parsed).slice(0, 200); },
         retry: function () {
-          return message + '\n\nIMPORTANT: your previous answer said you had made a change, but it contained no '
+          return 'IMPORTANT: your previous answer said you had made a change, but it contained no '
             + '"config", "functions", "create", "update", "editFile", "newFile" or "replaceFile" field, so NOTHING happened '
             + 'to the game and the student saw no difference. Send the change for real this time. Remember that logic living '
-            + 'in another file (movement in player.js, coins in coins.js, platforms in world.js) is changed with "editFile", '
-            + 'passing that whole file back with your edit made. If you genuinely cannot do it, say so plainly and ask for '
-            + 'what you need instead of claiming it is done.';
-        },
-        giveUp: function () { return "I couldn't work out how to make that change — can you tell me a bit more about what you want to happen?"; }
+            + 'in another file (movement in player.js, coins in coins.js, platforms in world.js, and any file they added '
+            + 'themselves) is changed with "editFile", passing that whole file back with your edit made. If you genuinely '
+            + 'cannot do it, say so plainly in "reply", set "held", and ask for what you need instead of claiming it is done.';
+        }
       },
       {
-        // A Phaser API that does not exist: correct it once, then refuse rather than ship a crash.
+        // A Phaser API that does not exist: correct it once, then hold the change rather than ship a crash.
         name: 'bad-api',
         find: function () { return badApisIn(ops, gameCode, ctx.files); },
         detail: function (hits) { return hits.map(function (b) { return b.name; }).join(', '); },
-        parse: function (r) { return extractJSON(r) || { reply: '' }; },
         retry: function (hits) {
           const list = hits.map(function (b) { return '"' + b.name + '" (' + b.why + ' — ' + b.hint + ')'; }).join('; ');
-          return message + '\n\nIMPORTANT: your previous answer used ' + list
-            + '. Redo the change using only APIs that exist, or if it cannot be done that way, change nothing and say so plainly.';
-        },
-        giveUp: function () { return "I couldn't do that without using something Phaser doesn't have, so I left your game alone. Try asking for it a slightly different way."; }
+          return 'IMPORTANT: your previous answer used ' + list
+            + '. Redo the change using only APIs that exist. If it cannot be done that way, send no edit field, set '
+            + '"held":"blocked", and use "reply" to tell the student what you tried, why Phaser will not do it, and the '
+            + 'nearest thing you CAN build — they will read that reply exactly as you write it.';
+        }
       },
       {
-        // Reading a key that was never registered crashes on frame one: correct it once, then refuse.
+        // Reading a key that was never registered crashes on frame one: correct it once, then hold it.
         name: 'bad-key',
         find: function () { return badKeysIn(ops, gameCode); },
         detail: function (hits) { return hits.join(', '); },
-        parse: function (r) { return extractJSON(r) || { reply: '' }; },
         retry: function (hits) {
-          return message + '\n\nIMPORTANT: your previous answer read '
+          return 'IMPORTANT: your previous answer read '
             + hits.map(function (k) { return 'scene.keys.' + k; }).join(' and ')
             + ', but those keys are never registered, so the game crashes on the first frame. '
             + 'For SHIFT use scene.cursors.shift.isDown (it already exists). For any other key, add it to the '
             + "addKeys('W,A,S,D') call in createPlayer first. Send the corrected change.";
-        },
-        giveUp: function () { return "I couldn't get that working without breaking your controls, so I left your game alone. Try asking for it a slightly different way."; }
+        }
       },
       {
         /* Asset keys the student does not own. Silently skipped when the browser sent no asset list
            — there is nothing to check against, and treating "we were not told" as "they own
            nothing" would refuse every change that touches a sprite.
 
-           ONE BEHAVIOUR CHANGE IN THIS COMMIT, AND IT IS A BUG FIX. Both checks now use the whole
+           ONE BEHAVIOUR CHANGE CAME IN WITH THE TABLE, AND IT WAS A BUG FIX. Both checks use the whole
            project. The first one always did; the re-check used game.js alone, so a key the model
            correctly moved into player.js on its second attempt was reported as invented and the
            child was told to go and buy an asset they already owned. Nothing about the duplicated
@@ -413,38 +465,83 @@ function mount(app, deps) {
         when: function () { return !!ctx.hasAssetList; },
         find: function () { return unknownAssetKeys(ops, allCode(), ctx.assets, ctx.assetSets); },
         detail: function (hits) { return hits.join(', '); },
-        parse: function (r) { return extractJSON(r) || { reply: (r || '').trim() || 'Done.' }; },
         retry: function (hits) {
-          return message + '\n\nIMPORTANT: your previous answer used the asset key(s) '
+          return 'IMPORTANT: your previous answer used the asset key(s) '
             + hits.map(function (k) { return '"' + k + '"'; }).join(', ')
             + ', which do not exist and would break the game. '
             + 'Redo it using ONLY the owned asset keys listed above, or — if this cannot be done with those — '
-            + 'change nothing and reply with only {"reply":"..."} explaining which asset they would need to buy.';
-        },
-        giveUp: function (hits) { return assetApology(hits, ctx.assets); }
+            + 'send no edit field, set "held":"blocked", and use "reply" to name the asset they would need to buy.';
+        }
       }
     ];
 
-    for (let i = 0; i < GUARDS.length; i++) {
-      const g = GUARDS[i];
-      if (g.when && !g.when()) continue;
-      let hits = g.find();
-      if (!hits.length) continue;
+    /* Every detector that applies, against whatever is in `ops` right now. */
+    const fired = function () {
+      const out = [];
+      GUARDS.forEach(function (g) {
+        if (g.when && !g.when()) return;
+        const hits = g.find();
+        if (hits.length) out.push({ g: g, hits: hits });
+      });
+      return out;
+    };
+    /* THE ONE PLACE THE MODEL'S SELF-REPORT IS TRUSTED, and only to skip a retry.
+       CLAIMS_A_CHANGE had to widen to catch "Done." and "There's an extra coin now", and a regex
+       that wide also matches a perfectly good conversational reply that DESCRIBES the game ("your
+       speed is now 200 — want 300?"). The model telling us it deliberately changed nothing is the
+       missing piece of context: the event is still recorded, so the report can show how often this
+       happens, but the request does not spend a second model call arriving back where it started. */
+    const heldSkipsNoOps = function (list) {
+      if (!held) return list;
+      return list.filter(function (h) {
+        if (h.g.name !== 'no-ops') return true;
+        guard('no-ops', h.g.detail(h.hits));
+        return false;
+      });
+    };
 
-      guard(g.name, g.detail(hits));
-      try { raw = await callAI(spec, system, g.retry(hits), true, history, agentTools, onTool); }
+    const hits = heldSkipsNoOps(fired());
+    if (hits.length) {
+      hits.forEach(function (h) { guard(h.g.name, h.g.detail(h.hits)); });
+      const correction = message + '\n\n' + hits.map(function (h) { return h.g.retry(h.hits); }).join('\n\n');
+      try { raw = await callAI(spec, system, correction, true, history, agentTools, onTool); }
       catch (e) { return unreachable(e); }
-      parsed = g.parse(raw);
+      parsed = parseAnswer(raw);
       ops = toOps(parsed);
+      held = heldOf(parsed);
 
-      hits = g.find();
-      if (hits.length) {
-        guard(g.name, g.detail(hits), true);
-        return res.json({ reply: g.giveUp(hits), ops: null });
+      const still = heldSkipsNoOps(fired());
+      if (still.length) {
+        still.forEach(function (h) { guard(h.g.name, h.g.detail(h.hits), true); });
+        ops = {};
+        /* THE MODEL'S WORDS SURVIVE THIS. The old code returned a canned sentence here and dropped
+           `parsed.reply` on the floor — including when the reply was the plain-English explanation
+           the retry had just asked for. Now the app adds a line and keeps the explanation.
+           Order matters: a model still insisting "I've added the dragon!" gets the correction FIRST,
+           so the first thing a child reads is that nothing changed. */
+        const notes = still.map(function (h) { return heldNote(h.g.name, h.hits, ctx.assets); }).filter(Boolean);
+        const said = words(parsed);
+        let text;
+        if (still.some(function (h) { return h.g.name === 'no-ops'; })) {
+          text = heldNote('no-ops');      // its reply IS the defect — this is the one we replace
+        } else if (claimsChangeWithoutOps(said, {})) {
+          text = notes.concat(said ? [said] : []).join('\n\n');
+        } else {
+          text = (said ? [said] : []).concat(notes).join('\n\n');
+        }
+        /* `held` stays whatever the MODEL declared, which is usually nothing: a change this app
+           held back is not the model choosing to hold one, and the `guard` events above already
+           record it with gaveUp. Conflating the two would hide real failures in the report. */
+        return res.json({ reply: text, ops: null, held: held || undefined });
       }
     }
 
-    res.json({ reply: parsed.reply || 'Done.', why: parsed.why || '', ops: Object.keys(ops).length ? ops : null });
+    res.json({
+      reply: replyFrom(parsed, ops),
+      why: parsed.why || '',
+      ops: Object.keys(ops).length ? ops : null,
+      held: Object.keys(ops).length ? undefined : (held || undefined)
+    });
   });
 }
 

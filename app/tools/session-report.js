@@ -127,11 +127,27 @@ else {
   }
 }
 
+/* CHANGED NOTHING IS NOT ONE THING. A builder turn that asked which of two things the student
+   meant is the assistant working; a turn that declined the practice exercise is the course working.
+   Only the last row — nothing changed and no reason given — is "it just says done", and lumping all
+   three together is what made that number unreadable. `held` is the word the model sets when it
+   holds an edit back on purpose; see routes/ai.js. */
 const coderTurns = of('ask').filter(function (e) { return e.agent === 'coder' && e.status < 400; });
 const noChange = coderTurns.filter(function (e) { return !e.ops; });
 if (coderTurns.length) {
-  console.log('\n  ' + bold(noChange.length + ' of ' + coderTurns.length)
-    + ' builder replies changed nothing at all' + dim('  (this is "it just says done")'));
+  console.log('\n  ' + bold(noChange.length + ' of ' + coderTurns.length) + ' builder replies changed nothing:');
+  const HELD = [
+    ['question', 'asked the student a question back', grn],
+    ['practice', 'was this lesson\'s practice exercise', grn],
+    ['blocked', 'said why it could not', yel]
+  ];
+  HELD.forEach(function (row) {
+    const n = noChange.filter(function (e) { return e.held === row[0]; }).length;
+    console.log('  ' + String(n).padStart(4) + '  ' + (n ? row[2](row[1]) : dim(row[1])));
+  });
+  const silent = noChange.filter(function (e) { return ['question', 'practice', 'blocked'].indexOf(e.held) < 0; }).length;
+  console.log('  ' + String(silent).padStart(4) + '  '
+    + (silent ? red('no reason given') : dim('no reason given')) + dim('  (this is "it just says done")'));
 }
 
 /* ---------- 3. things that were not buttons ---------- */

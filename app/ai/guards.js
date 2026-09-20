@@ -213,13 +213,72 @@ function badKeysIn(ops, gameCode) {
 // ---- "I added it!" with no ops is a lie the student acts on ----
 // A reply is not a change: unless the JSON carries an op field, nothing happens to the game.
 // Small models will happily claim success anyway, so the claim is checked against the ops.
-const CLAIMS_A_CHANGE = /\b(i(?:'ve| have)? (?:added|changed|updated|set|made|created|implemented|fixed|adjusted)|now (?:sprints?|jumps?|runs?|moves?|has|can|will)|will now|you can now|is now)\b/i;
+//
+// IT USED TO WANT A PRONOUN. One regex, and every branch of it began with "I've"/"you can"/"now
+// <verb>" — so the single most common false success in the capture, the bare word "Done.", walked
+// straight through the guard that exists to catch exactly that. So did "Added it." and the prompt's
+// own worked-example phrasing, "There's an extra coin now". A list rather than one alternation,
+// because these are four different shapes of the same lie and reading them as four is the only way
+// to see which one is missing.
+//
+// KNOWN AND DELIBERATE: "is now" / "can now" also match a reply that merely DESCRIBES the game
+// ("your speed is now 200 — want 300?"), which is a good conversational answer and not a claim.
+// Widening the regex without that being handled would turn good replies into retries, so it is
+// handled where the context exists: routes/ai.js skips the retry when the model set `held`.
+const CLAIMS_A_CHANGE = [
+  // first person, past tense: "I've added a double jump"
+  /\bi(?:'ve| have)? (?:added|changed|updated|set|made|created|implemented|fixed|adjusted|put|swapped|removed)\b/i,
+  // the game described as already different: "now jumps", "now has a counter"
+  /\bnow (?:sprints?|jumps?|runs?|moves?|has|have|shows?|contains?|can|will|appears?)\b/i,
+  /\b(?:will|can|is|are|should) now\b/i,
+  // "There's an extra coin now" — stated as a fact about a game nothing was sent to
+  /\bthere(?:'s|’s| is| are) .{0,60}\bnow\b/i,
+  // a bare past-tense verb with nobody in front of it: "Added it.", "Changed the speed."
+  /^\W*(?:added|changed|updated|set|made|created|implemented|fixed|adjusted|swapped|removed|increased|decreased|bumped)\b/i,
+  // "Done." and the words that stand in for it
+  /^\W*(?:ok(?:ay)?|sure|alright|yep|yes)?\W*(?:all )?done\b/i
+];
 function claimsChangeWithoutOps(reply, ops) {
-  return !Object.keys(ops || {}).length && CLAIMS_A_CHANGE.test(String(reply || ''));
+  if (Object.keys(ops || {}).length) return false;
+  const s = String(reply || '');
+  return CLAIMS_A_CHANGE.some(function (re) { return re.test(s); });
+}
+
+/* ---- the one line the app adds when it holds a change back ----
+   The server used to REPLACE the model's answer with a canned sentence whenever a guard fired
+   twice — so a model that did exactly what the retry asked ("if it cannot be done that way, change
+   nothing and say so plainly") had its explanation thrown away, and an eleven-year-old read "Try
+   asking for it a slightly different way." This is the other half of that fix: the model's words go
+   to the student, and the app appends one short line saying what it held back and why.
+
+   Three shapes because the three detectors hand back three different things: bad-api hits are
+   {name, why, hint} objects, bad-key hits are key names, bad-asset hits are keys the student does
+   not own. Pure, so tools/check-guards.js can assert on the wording. */
+function heldNote(name, hits, owned) {
+  const list = hits || [];
+  if (name === 'bad-api') {
+    if (!list.length) return '';
+    return 'I left your game as it was — the way I tried needs ' + list.map(function (b) {
+      return '“' + b.name + '”, which ' + b.why + ' (' + b.hint + ')';
+    }).join('; and ') + '.';
+  }
+  if (name === 'bad-key') {
+    if (!list.length) return '';
+    return 'I left your game as it was — my change read ' + list.map(function (k) { return 'the ' + k + ' key'; }).join(' and ')
+      + ', which your game never registers, so it would have frozen on the first frame.';
+  }
+  if (name === 'bad-asset') return list.length ? assetApology(list, owned) : '';
+  /* no-ops is the one case with nothing to append to: the model's reply IS the defect, so the
+     route replaces it with this rather than adding to it. */
+  if (name === 'no-ops') {
+    return "I didn't actually change anything — I couldn't work out how to do that one. "
+      + 'Can you tell me a bit more about what you want to happen?';
+  }
+  return '';
 }
 
 
 module.exports = { extractJSON: extractJSON, unwrapDoubleJSON: unwrapDoubleJSON,
   sanitizeHistory: sanitizeHistory, unknownAssetKeys: unknownAssetKeys, assetApology: assetApology,
   badApisIn: badApisIn, badKeysIn: badKeysIn, claimsChangeWithoutOps: claimsChangeWithoutOps,
-  BAD_PHASER_APIS: BAD_PHASER_APIS };
+  heldNote: heldNote, BAD_PHASER_APIS: BAD_PHASER_APIS };

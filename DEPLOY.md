@@ -94,6 +94,13 @@ want preview deployments to work — see the note about redirect URIs at the bot
 | `GRADER_MODEL` | `anthropic:claude-sonnet-5` |
 | `CODER_TOOLS` | `1` |
 | `TUTOR_TOOLS` | `1` |
+| `AI_TOTAL_BUDGET_MS` | `50000` |
+
+`AI_TOTAL_BUDGET_MS` is the ceiling on one student's question, retries included, and it has to sit
+**under** `vercel.json`'s 60s `maxDuration` — otherwise Vercel kills the function before the budget
+can fire, and the request that most needed recording logs nothing at all. The code default is 50000
+now, but it is listed here because running the code default by accident is how it came to be 110000
+in production in the first place.
 
 **The two `_TOOLS` variables are why the app has offline Phaser docs at all.** With them on, the
 coder and the tutor look up the exact Phaser the student is running — 19,000 symbols, on disk — and
