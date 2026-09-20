@@ -543,9 +543,16 @@ if (!quizzes) {
    one" again. Reported rather than failed: the authored position stopped mattering the moment
    the options were shuffled, so failing the build over it would be demanding busywork.
    It fails only if the shuffle is gone, which is the thing actually worth catching. */
-const RENDERER = path.join(__dirname, '..', 'public', 'js', 'widgets.js');
-const shuffles = fs.existsSync(RENDERER)
-  && /seededOrder\(\s*opts0\.length/.test(fs.readFileSync(RENDERER, 'utf8'));
+/* Looks in both files because buildMCQ moved: quiz.js owns it since the Phase 4 split, and this
+   check went red the moment it did — correctly, since from here the shuffle really had vanished
+   from the file it was watching. Reading both means the check survives the next move too, and a
+   renderer that is deleted outright still fails rather than passing on a missing file. */
+const RENDERERS = ['quiz.js', 'widgets.js']
+  .map(function (n) { return path.join(__dirname, '..', 'public', 'js', n); })
+  .filter(function (p) { return fs.existsSync(p); });
+const shuffles = RENDERERS.some(function (p) {
+  return /seededOrder\(\s*opts0\.length/.test(fs.readFileSync(p, 'utf8'));
+});
 const spread = Object.keys(answerAt).length;
 if (!shuffles) {
   console.error('FAIL  buildMCQ no longer shuffles its options, and ' + spread + ' distinct answer '

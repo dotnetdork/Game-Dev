@@ -445,6 +445,13 @@
 <!-- Before widgets.js: buildRunCell reads DEMOS when a cell carries an @demo directive. -->
 <script src="js/demos.js"></script>
 <script src="js/widgets.js"></script>
+<!-- After widgets.js, though nothing forces it: every name lab.js exports is a top-level function
+     or const, and renderChallengeCells in widgets.js only reaches them when a card is clicked —
+     long after both files have run. Kept adjacent because that is where a reader will look for it. -->
+<script src="js/lab.js"></script>
+<!-- Same reasoning as lab.js: renderQuizCells is called by paintLesson2 when a lesson renders,
+     which is long after load. It uses blockHeader and inlineMd from widgets.js. -->
+<script src="js/quiz.js"></script>
 <!-- After widgets.js because a checkpoint's cover is painted by paintLesson2, and before ai.js
      because the board borrows wireChatBox at RUNTIME rather than at load — see wireBoardChatBox. -->
 <script src="js/board.js"></script>
