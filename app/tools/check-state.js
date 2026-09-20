@@ -30,6 +30,20 @@ function makeStore(seed) {
   };
 }
 
+/* project.js was split by Phase 6: `let project`, SCHEMA and the migrations stayed, while
+   DEFAULT_STATE, loadState and `let state` moved to progress.js. Both are evaluated here, and the
+   second is still cut at the activity ledger — everything past that point touches DOM helpers a vm
+   context does not have, and only the storage half is under test.
+   This check failed the moment the split landed, which is exactly right: it reads `state` out of
+   the context and `state` had moved to a file it was not loading. Naming both here is what makes
+   it survive the next move. */
+function loadProjectAndProgress(ctx) {
+  vm.runInContext(fs.readFileSync(path.join(SRC, 'project.js'), 'utf8'), ctx);
+  const prog = fs.readFileSync(path.join(SRC, 'progress.js'), 'utf8');
+  const cut = prog.indexOf('/* ---------- per-lesson activity ledger');
+  vm.runInContext(prog.slice(0, cut > 0 ? cut : prog.length), ctx);
+}
+
 function load(seed) {
   const store = makeStore(seed);
   const sandbox = {
@@ -44,10 +58,7 @@ function load(seed) {
   vm.runInContext(fs.readFileSync(path.join(SRC, 'events.js'), 'utf8'), ctx);
   vm.runInContext(fs.readFileSync(path.join(SRC, 'storage.js'), 'utf8'), ctx);
   vm.runInContext(fs.readFileSync(path.join(SRC, 'starter-code.js'), 'utf8'), ctx);
-  // project.js's tail touches DOM helpers we don't have; only the storage half is under test.
-  const src = fs.readFileSync(path.join(SRC, 'project.js'), 'utf8');
-  const cut = src.indexOf('/* ---------- per-lesson activity ledger');
-  vm.runInContext(src.slice(0, cut > 0 ? cut : src.length), ctx);
+  loadProjectAndProgress(ctx);
   // `let project` / `let state` are lexical bindings, so they are not properties of the context.
   // Pull them out by evaluating an expression inside it.
   /* SCHEMA comes out with them. These assertions are about the plumbing — that a new save is
@@ -196,9 +207,7 @@ console.log('\n--- notes are not code ---');
     vm.runInContext(fs.readFileSync(path.join(SRC, 'events.js'), 'utf8'), ctx);
     vm.runInContext(fs.readFileSync(path.join(SRC, 'storage.js'), 'utf8'), ctx);
     vm.runInContext(fs.readFileSync(path.join(SRC, 'starter-code.js'), 'utf8'), ctx);
-    const src = fs.readFileSync(path.join(SRC, 'project.js'), 'utf8');
-    const cut = src.indexOf('/* ---------- per-lesson activity ledger');
-    vm.runInContext(src.slice(0, cut > 0 ? cut : src.length), ctx);
+    loadProjectAndProgress(ctx);
     return vm.runInContext(expr, ctx);
   };
   check('.js is code', ctxCheck("[isCodeFile('game.js'), isCodeFile('enemy.js')]"), [true, true]);

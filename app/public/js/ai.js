@@ -571,7 +571,7 @@ function maybeAskQuiz(en) {
   if (!changed) return;
   const c = aiContext();
   fetch('/api/ai', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({
-    studentId: studentId, agent: 'quiz',
+    agent: 'quiz',
     message: 'The student just made this change to their game:\n' + changed + '\n\nWhat it was meant to do: ' + (en.why || '') + '\n\nWrite ONE question checking they understood what this change does.',
     lessonTitle: c.lessonTitle, lessonContext: c.lessonContext
   }) })
@@ -598,7 +598,7 @@ function maybeAskQuiz(en) {
 function gradePractice(task, changed) {
   const c = aiContext();
   return fetch('/api/ai', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({
-    studentId: studentId, agent: 'grader',
+    agent: 'grader',
     message: 'Decide whether the student has done the task. Answer with JSON only.',
     taskTitle: task.title || '', taskSteps: task.steps || [],
     changedCode: changed,
@@ -732,7 +732,7 @@ function askTutor(question, context) {
   /* The board travels with a design question and not with any other, because it is only meaningful
      to the coach — and it is the whole board, frame by frame, so the coach can answer "what is
      missing" without asking the student to read it out. */
-  const body = { studentId: studentId, agent: agent, message: question, context: context || '',
+  const body = { agent: agent, message: question, context: context || '',
     code: project.files['game.js'] || '', history: history, lessonTitle: c.lessonTitle,
     where: c.where, files: c.files, gameLog: c.gameLog, gameRan: c.gameRan };
   if (agent === 'design-coach' && typeof boardPayload === 'function') body.board = boardPayload();
@@ -780,7 +780,7 @@ function explainLine(fileName, lineNumber, lineText, snippet) {
   startThinking(pending, 'tutor');
   const c = aiContext(), history = chatHistory('tutor');
   fetch('/api/ai', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({
-    studentId: studentId, agent: 'tutor', skill: 'explain-a-line',
+    agent: 'tutor', skill: 'explain-a-line',
     message: 'What does line ' + lineNumber + ' do?',
     code: project.files['game.js'] || '', history: history, lessonTitle: c.lessonTitle,
     fileName: fileName, lineNumber: String(lineNumber), line: lineText, snippet: snippet,
@@ -804,7 +804,7 @@ function sendAI() {
   // the code lives in the browser; we send it along with the lesson, the other files and the
   // asset keys that exist, the server relays the AI, and we apply the change here
   fetch('/api/ai', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({
-    studentId: studentId, agent: 'coder', message: text, code: project.files['game.js'] || '',
+    agent: 'coder', message: text, code: project.files['game.js'] || '',
     history: history, lessonTitle: c.lessonTitle, lessonContext: c.lessonContext, where: c.where,
     practiceTask: currentPracticeTask,
     aiMode: c.aiMode, ownedAssets: c.ownedAssets, files: c.files,

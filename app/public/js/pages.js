@@ -493,7 +493,8 @@ function renderBoard() {
 }
 
 /* ---------- docs / help ---------- */
-function esc(s) { return String(s == null ? '' : s).replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;').replace(/'/g, '&#39;'); }
+/* esc moved to js/dom.js — it is the escape hatch in project.js's sanitiser and had no business
+   living in the file that renders the Store. */
 /* The twelve hand-written beginner sections that used to be the whole Docs tab lived here. They
    are gone because Docs now serves Phaser’s complete API — twenty thousand symbols generated
    from Phaser’s own source — and a curated dozen sitting above it made the real reference look

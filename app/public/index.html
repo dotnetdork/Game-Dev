@@ -429,6 +429,10 @@
 <script src="vendor/marked/marked.min.js"></script>
 <script src="vendor/dompurify/purify.min.js"></script>
 <script src="assets-manifest.js"></script>
+<!-- First, because everything below assumes $ and esc already exist. esc in particular is the
+     fallback inside project.js's mdToSafeHTML, and it used to live in pages.js — thirteen tags
+     further down. See the note in js/dom.js. -->
+<script src="js/dom.js"></script>
 <script src="js/lazy.js"></script>
 <script src="js/events.js"></script>
 <script src="js/storage.js"></script>
@@ -441,6 +445,9 @@
 <script src="js/starter-code.js"></script>
 <script src="js/highlight.js"></script>
 <script src="js/project.js"></script>
+<!-- Both read `project` and SCHEMA from project.js at call time, so they follow it. -->
+<script src="js/ops.js"></script>
+<script src="js/progress.js"></script>
 <script src="js/course.js"></script>
 <!-- Before widgets.js: buildRunCell reads DEMOS when a cell carries an @demo directive. -->
 <script src="js/demos.js"></script>

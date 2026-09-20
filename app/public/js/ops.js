@@ -1,0 +1,224 @@
+/* ops.js — turning the AI's answer into an edit, and reading code well enough to be careful.
+ *
+ * Moved out of project.js by the Phase 6 split in docs/architecture-audit-2026-09-15.md.
+ *
+ * Everything here exists because a model's reply is a proposal, not a patch. It has to be applied
+ * surgically (adding to create() rather than resending the file), shown as a diff the student can
+ * read, and refused when applying it would silently delete their work — which is what
+ * keepsTopLevelFunctions is for: a model that summarises a file instead of reproducing it
+ * ("// the rest of player.js here") would otherwise wipe every function below that line.
+ *
+ * Reads `project` and configFile() from project.js at call time. Loaded after it.
+ */
+/* ---------- does this code look structurally whole? ----------
+   This used to be `try { new Function(code); return true } catch { return false }`, which reads
+   like the obvious answer and **never worked in the browser at all**.
+
+   The app's own Content Security Policy sets `script-src 'self' 'unsafe-inline'` with no
+   'unsafe-eval' (server.js), and `new Function` is eval. So every call threw EvalError, the catch
+   swallowed it, and validJS returned false for every input it was ever given — including code that
+   was perfectly fine. Two features quietly depended on it:
+     - ai.js:97  marked every proposed AI change as "broken code"
+     - ai.js:311 gated applying a CONFIG-only tweak, so those were never applied
+   Nothing looked broken from the outside, which is why it lasted. It only surfaced when a practice
+   rule started reporting a syntax error in a file that plainly had none.
+
+   So: a scanner instead of an evaluator. It walks the source skipping comments, strings and
+   template literals, and checks that (), [] and {} balance and that no string or block comment is
+   left open. That is not a parser and does not pretend to be — it will not notice `let 1x = 2`.
+   It does catch the errors that actually happen: an unclosed brace, a missing bracket, a quote
+   left open. Those are what a student produces and what a model truncating its output produces.
+
+   Deliberately conservative about what it calls broken, because a false "your game is broken"
+   blocks a student who has done nothing wrong. */
+function validJS(code) {
+  const s = String(code == null ? '' : code);
+  const want = { ')': '(', ']': '[', '}': '{' };
+  const stack = [];
+  let i = 0;
+  while (i < s.length) {
+    const c = s[i], n = s[i + 1];
+    if (c === '/' && n === '/') { const nl = s.indexOf('\n', i); if (nl < 0) break; i = nl + 1; continue; }
+    if (c === '/' && n === '*') { const e = s.indexOf('*/', i + 2); if (e < 0) return false; i = e + 2; continue; }
+    if (c === '"' || c === "'" || c === '`') {
+      const q = c; i++;
+      let closed = false;
+      while (i < s.length) {
+        if (s[i] === '\\') { i += 2; continue; }
+        if (s[i] === q) { closed = true; i++; break; }
+        // A plain quote does not survive a newline; a template literal does.
+        if (q !== '`' && s[i] === '\n') break;
+        i++;
+      }
+      if (!closed) return false;
+      continue;
+    }
+    if (c === '(' || c === '[' || c === '{') { stack.push(c); i++; continue; }
+    if (c === ')' || c === ']' || c === '}') { if (stack.pop() !== want[c]) return false; i++; continue; }
+    i++;
+  }
+  return stack.length === 0;
+}
+
+/* read the CONFIG object's numeric keys (client-side) */
+function parseConfig(code) {
+  const cfg = {}; const m = code.match(/CONFIG\s*=\s*\{([\s\S]*?)\}/);
+  if (m) { const re = /([A-Za-z_$][\w$]*)\s*:\s*(-?[0-9.]+)/g; let mm; while ((mm = re.exec(m[1]))) cfg[mm[1]] = Number(mm[2]); }
+  return cfg;
+}
+
+/* ----- surgical-edit helpers: apply the AI's ops to game.js without a full rewrite ----- */
+
+/* Index of the closing brace of a function's body, or -1 if it can't be found cleanly.
+   Skips strings, template literals and comments — a `{` inside "Coins: {0}" or a commented-out
+   block used to throw the brace count off and splice code into the wrong place. */
+function fnBodyEnd(code, fnName) {
+  const sig = code.search(new RegExp('function\\s+' + fnName.replace(/[^\w$]/g, '') + '\\s*\\('));
+  if (sig < 0) return -1;
+  const open = code.indexOf('{', sig);
+  if (open < 0) return -1;
+  let depth = 0, quote = null;
+  for (let i = open; i < code.length; i++) {
+    const c = code[i], next = code[i + 1];
+    if (quote) {
+      if (c === '\\') { i++; continue; }
+      if (c === quote) quote = null;
+      continue;
+    }
+    if (c === '/' && next === '/') { const nl = code.indexOf('\n', i); if (nl < 0) return -1; i = nl; continue; }
+    if (c === '/' && next === '*') { const end = code.indexOf('*/', i + 2); if (end < 0) return -1; i = end + 1; continue; }
+    if (c === '"' || c === "'" || c === '`') { quote = c; continue; }
+    if (c === '{') depth++;
+    else if (c === '}') { depth--; if (depth === 0) return i; }
+  }
+  return -1;                                   // unbalanced — refuse rather than guess
+}
+function insertIntoFn(code, fnName, snippet) {
+  const end = fnBodyEnd(code, fnName);
+  if (end < 0) return null;                    // caller turns this into "I couldn't make that change"
+  return code.slice(0, end) + '  ' + snippet.replace(/\n/g, '\n  ') + '\n' + code.slice(end);
+}
+
+/* Line diff (LCS) so the student can see what an AI edit would change before accepting it. */
+function lineDiff(before, after) {
+  const A = String(before).split('\n'), B = String(after).split('\n');
+  const n = A.length, m = B.length;
+  if (n * m > 4000000) return null;            // implausibly large; skip the preview
+  const dp = [];
+  for (let i = 0; i <= n; i++) dp.push(new Uint32Array(m + 1));
+  for (let i = n - 1; i >= 0; i--)
+    for (let j = m - 1; j >= 0; j--)
+      dp[i][j] = A[i] === B[j] ? dp[i + 1][j + 1] + 1 : Math.max(dp[i + 1][j], dp[i][j + 1]);
+  const rows = []; let i = 0, j = 0;
+  while (i < n && j < m) {
+    if (A[i] === B[j]) { rows.push({ t: ' ', text: A[i] }); i++; j++; }
+    else if (dp[i + 1][j] >= dp[i][j + 1]) { rows.push({ t: '-', text: A[i] }); i++; }
+    else { rows.push({ t: '+', text: B[j] }); j++; }
+  }
+  while (i < n) rows.push({ t: '-', text: A[i++] });
+  while (j < m) rows.push({ t: '+', text: B[j++] });
+  return rows;
+}
+/* Only the changed parts, with a few lines of context — nobody reads 140 unchanged lines. */
+function diffHunks(rows, context) {
+  const pad = context === undefined ? 2 : context;
+  const keep = rows.map(function () { return false; });
+  rows.forEach(function (r, idx) {
+    if (r.t === ' ') return;
+    for (let k = Math.max(0, idx - pad); k <= Math.min(rows.length - 1, idx + pad); k++) keep[k] = true;
+  });
+  const out = []; let skipped = false;
+  rows.forEach(function (r, idx) {
+    if (keep[idx]) { if (skipped) { out.push({ t: '…', text: '' }); skipped = false; } out.push(r); }
+    else skipped = true;
+  });
+  return out;
+}
+function countChanges(rows) {
+  let added = 0, removed = 0;
+  rows.forEach(function (r) { if (r.t === '+') added++; else if (r.t === '-') removed++; });
+  return { added: added, removed: removed };
+}
+function mergeConfig(code, obj) {
+  const m = code.match(/CONFIG\s*=\s*\{([\s\S]*?)\}/); if (!m) return code;
+  let body = m[1];
+  Object.keys(obj).forEach(function (k) {
+    const re = new RegExp('(\\b' + k + '\\s*:\\s*)(-?[0-9.]+)');
+    if (re.test(body)) body = body.replace(re, '$1' + obj[k]);
+    else { const t = body.replace(/\s+$/, ''); body = t + (t.endsWith(',') || t.endsWith('{') ? '' : ',') + ' ' + k + ': ' + obj[k] + ' '; }
+  });
+  return code.replace(/CONFIG\s*=\s*\{[\s\S]*?\}/, 'CONFIG = {' + body + '}');
+}
+/* Returns the edited code, or null if any op could not be applied cleanly. Refusing beats
+   splicing a snippet into the wrong place and handing the student a broken game. */
+function applyOps(code, ops) {
+  if (typeof ops.replaceFile === 'string' && ops.replaceFile.trim()) return ops.replaceFile;
+  if (Array.isArray(ops.functions)) ops.functions.forEach(function (f) { if (typeof f === 'string' && f.trim()) code += '\n\n' + f.trim() + '\n'; });
+  if (typeof ops.create === 'string' && ops.create.trim()) {
+    code = insertIntoFn(code, 'create', ops.create.trim());
+    if (code === null) return null;
+  }
+  if (typeof ops.update === 'string' && ops.update.trim()) {
+    code = insertIntoFn(code, 'update', ops.update.trim());
+    if (code === null) return null;
+  }
+  return code;
+}
+/* A change the student should read before it lands: anything beyond CONFIG numbers.
+   Tweaking jumpPower is a slider; adding a function is a change to their program. */
+function opsChangeCode(ops) {
+  return ['functions', 'create', 'update', 'newFile', 'editFile', 'replaceFile'].some(function (k) {
+    const v = ops[k];
+    if (k === 'functions') return Array.isArray(v) && v.some(function (f) { return typeof f === 'string' && f.trim(); });
+    if (k === 'newFile' || k === 'editFile') return v && typeof v.code === 'string' && v.code.trim();
+    return typeof v === 'string' && v.trim();
+  });
+}
+
+/* Does a rewritten file still declare everything the old one did? Guards against a model that
+   describes a file instead of reproducing it, which would silently delete working code. */
+function topLevelNames(code) {
+  return (String(code).match(/^(?:function\s+|const\s+|let\s+|var\s+)([A-Za-z_$][\w$]*)/gm) || [])
+    .map(function (d) { return d.split(/\s+/)[1]; });
+}
+function keepsTopLevelFunctions(before, after) {
+  const had = topLevelNames(before), has = topLevelNames(after);
+  return had.every(function (n) { return has.indexOf(n) >= 0; });
+}
+
+/* Every file a set of ops would touch, as {name, before, after}. The game is split across
+   several files now, so a change to how the player moves lands in player.js, not game.js.
+   Returns null if any part could not be applied cleanly. */
+function opsToChanges(ops) {
+  const changes = [];
+  const push = function (name, after) {
+    const before = project.files[name] === undefined ? '' : project.files[name];
+    if (after !== before) changes.push({ name: name, before: before, after: after });
+  };
+  // game.js: the surgical ops
+  const gameOps = {};
+  ['functions', 'create', 'update', 'replaceFile'].forEach(function (k) { if (ops[k] !== undefined) gameOps[k] = ops[k]; });
+  if (Object.keys(gameOps).length) {
+    const after = applyOps(project.files['game.js'] || '', gameOps);
+    if (after === null) return null;
+    push('game.js', after);
+  }
+  // any other existing file, sent back whole
+  if (ops.editFile && typeof ops.editFile.name === 'string' && typeof ops.editFile.code === 'string') {
+    const nm = ops.editFile.name.trim();
+    if (/^[A-Za-z0-9_-]+\.js$/.test(nm) && project.files[nm] !== undefined) {
+      // Rewriting a whole file must not quietly lose what was in it. A model that summarises
+      // the file instead of copying it out ("// the rest of player.js here") would delete the
+      // student's functions and break the game, so refuse rather than show that as a change.
+      if (!keepsTopLevelFunctions(project.files[nm], ops.editFile.code)) return null;
+      push(nm, ops.editFile.code);
+    }
+  }
+  // a brand new file
+  if (ops.newFile && typeof ops.newFile.name === 'string' && typeof ops.newFile.code === 'string') {
+    let nm = ops.newFile.name.trim(); if (!/\.js$/.test(nm)) nm += '.js';
+    if (/^[A-Za-z0-9_-]+\.js$/.test(nm)) push(nm, ops.newFile.code);
+  }
+  return changes;
+}
+

@@ -671,7 +671,6 @@ function labTutorAsk(question) {
   fetch('/api/ai', {
     method: 'POST', headers: { 'Content-Type': 'application/json' },
     body: JSON.stringify({
-      studentId: (typeof studentId !== 'undefined' ? studentId : ''),
       agent: 'lab-tutor', message: question, history: history,
       lab: {
         title: lab.c.title || '',
