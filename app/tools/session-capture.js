@@ -22,7 +22,7 @@
  * Ctrl+C to stop. The file is already written — it is appended as events arrive, not at the end, so
  * killing the terminal loses nothing but the tail.
  */
-const { spawn } = require('child_process');
+const { spawn, spawnSync } = require('child_process');
 const fs = require('fs');
 const path = require('path');
 
@@ -82,6 +82,14 @@ function line(e) {
       return head + C.dim + 'lesson ' + (e.act || '') + ' ' + (e.id || '') + C.off;
     case 'blocked':
       return head + C.yellow + 'locked ' + C.off + (e.id || '') + C.dim + ' (' + (e.why || '') + ')' + C.off;
+    /* One model call, with what it cost. Several of these sit behind a single `ask` — a lookup
+       round each, plus the answer — so a row of them before one ask is the shape of an expensive
+       question. `who` is absent because the usage meter counts calls, not children. */
+    case 'model':
+      return head + C.dim + 'model  ' + (e.agent || '?') + ' ' + String(e.model || '').replace(/^claude-/, '')
+        + '  in ' + e.in + ' out ' + e.out + (e.cost ? '  $' + Number(e.cost).toFixed(4) : '') + C.off;
+    case 'sandbox':
+      return head + C.yellow + 'sandbox' + C.off + ' ' + (e.result || '') + ' — ' + (e.action || '');
     case 'apifail':
       return head + C.red + 'apifail' + C.off + ' ' + e.status + ' ' + (e.url || '');
     case 'open':
@@ -99,6 +107,23 @@ function line(e) {
    versions. Rather than depend on one, this looks in all the plausible places and takes whatever
    carries our prefix. A line that matches nothing is not an error — most of them are Vercel's own
    request records. */
+/* The index of the `}` that closes the `{` at `from`, or -1 if the string ends first. Strings and
+   escapes are tracked because a child's question can contain a brace — "why does {this} break" —
+   and counting braces naively would stop in the middle of their own words. */
+function matchingBrace(s, from) {
+  let depth = 0, inStr = false, esc = false;
+  for (let i = from; i < s.length; i++) {
+    const c = s[i];
+    if (esc) { esc = false; continue; }
+    if (c === '\\') { if (inStr) esc = true; continue; }
+    if (c === '"') { inStr = !inStr; continue; }
+    if (inStr) continue;
+    if (c === '{') depth++;
+    else if (c === '}') { depth--; if (depth === 0) return i; }
+  }
+  return -1;
+}
+
 function stringsIn(obj) {
   const out = [];
   if (!obj || typeof obj !== 'object') return out;
@@ -126,17 +151,31 @@ function eventsFrom(raw) {
   let env = null;
   if (text[0] === '{') { try { env = JSON.parse(text); } catch (e) { env = null; } }
 
-  /* Our own events, wherever they were carried. */
+  /* Our own events, wherever they were carried.
+
+     READ TO THE MATCHING BRACE, NOT TO THE END OF THE LINE. This took each event to the next "\n"
+     on the reasonable assumption that a console.log is a line. Vercel does not preserve that: it
+     batches a function's output into one message and joins it with SPACES, so a busy request
+     arrives as
+
+       [usage] coder … EVT {"ev":"model",…} [usage] coder … EVT {"ev":"ask",…}
+
+     with no newline anywhere. The old scan then took everything after the first `EVT ` to the end
+     of the string, JSON.parse choked on the trailing text, and the event was dropped — silently,
+     in a catch whose comment said "half a line: skip it".
+     It dropped exactly the events worth having. Short ones that happened to sit at the end of a
+     message survived; `ask`, `guard` and `model` — the ones that share a message with the usage
+     line — did not. Found on the day, with a session running. */
   const found = [];
   stringsIn(env).concat(env ? [] : [text]).forEach(function (s) {
     let i = s.indexOf(TAG);
     while (i >= 0) {
-      /* An event is one line; take to the end of the line rather than the end of the string, since
-         several may be batched into one message. */
-      const nl = s.indexOf('\n', i);
-      const slice = (nl < 0 ? s.slice(i + TAG.length) : s.slice(i + TAG.length, nl)).trim();
-      try { found.push(JSON.parse(slice)); } catch (e) { /* half a line: skip it */ }
-      i = nl < 0 ? -1 : s.indexOf(TAG, nl);
+      const start = s.indexOf('{', i + TAG.length);
+      if (start < 0) break;
+      const end = matchingBrace(s, start);
+      if (end < 0) break;                       // truncated by the platform: nothing to salvage
+      try { found.push(JSON.parse(s.slice(start, end + 1))); } catch (e) { /* not ours after all */ }
+      i = s.indexOf(TAG, end);
     }
   });
 
@@ -151,14 +190,51 @@ function eventsFrom(raw) {
   return found;
 }
 
+/* Events already written, so a backfill over a window already captured does not double it up.
+   Keyed on time+kind+who, which is as unique as an event gets and cheap to hold for a session. */
+const seenIds = new Set();
 function handleRaw(raw) {
   eventsFrom(raw).forEach(function (e) {
     if (!e.t) e.t = new Date().toISOString();
+    const id = e.t + '|' + e.ev + '|' + (e.who || '');
+    if (seenIds.has(id)) return;
+    seenIds.add(id);
     if (!lastSeen || e.t > lastSeen) lastSeen = e.t;
     count++;
     sink.write(JSON.stringify(e) + '\n');
     console.log(line(e));
   });
+}
+
+/* ---------- going back for what was missed ----------
+   `node tools/session-capture.js --since 3h` reads HISTORY instead of following, then exits.
+   It exists because of a real morning: the parser was dropping every event that shared a message
+   with another (see eventsFrom), so a session's `ask`, `guard` and `model` events never reached the
+   file — while sitting perfectly intact in Vercel's own logs the whole time. Once the parser was
+   fixed there was no way to go back for them, and the run they described was over.
+   Now there is. It is also the honest answer to a laptop that slept: the events are not lost until
+   the platform's retention drops them. */
+function backfill(since) {
+  const win = String(since).replace(/[^0-9a-zA-Z:.\-]/g, '');
+  console.log(C.bold + 'reading history' + C.off + ' since ' + win + ' — not following.\n');
+  const out = spawnSync('vercel logs --json --environment production --since ' + win + ' -n 5000',
+    { shell: true, cwd: path.join(__dirname, '..', '..'), encoding: 'utf8', maxBuffer: 1 << 28 });
+  /* SORTED BEFORE PRINTING, unlike the live path. Vercel returns history newest-first and batches
+     several events into one entry, so replaying it in arrival order gave a list that jumped about
+     in time — unreadable as a session, which is the one thing a backfill is for. The live stream is
+     already in order and is left alone. */
+  const history = [];
+  (out.stdout || '').split(/\r?\n/).forEach(function (raw) {
+    eventsFrom(raw).forEach(function (e) { history.push(e); });
+  });
+  history.sort(function (a, b) { return String(a.t) < String(b.t) ? -1 : 1; });
+  history.forEach(function (e) { handleRaw(TAG + JSON.stringify(e)); });
+  const err = (out.stderr || '').split(/\r?\n/)
+    .filter(function (s) { return s.trim() && !/waiting|Retrieving|Fetching|Finding|Vercel CLI/.test(s); });
+  if (err.length) console.error(C.dim + err.join('\n') + C.off);
+  console.log('\n' + C.bold + '  ' + count + ' events' + C.off + ' written to ' + OUT);
+  console.log('  read them with:  npm --prefix app run session:report\n');
+  sink.end();
 }
 
 /* ---------- the stream ---------- */
@@ -181,11 +257,18 @@ function start(sinceISO) {
     while ((nl = buf.indexOf('\n')) >= 0) { handleRaw(buf.slice(0, nl)); buf = buf.slice(nl + 1); }
     if (buf.length > 1 << 20) buf = '';        // a line that never ends is a line we cannot use
   });
-  /* The CLI writes its banner and any auth complaint to stderr. Shown, because "not logged in" is
-     the failure everybody hits first and it is invisible otherwise. */
+  /* The CLI writes its banner and any auth complaint to stderr. Worth showing, because "not logged
+     in" is the failure everybody hits first and is otherwise invisible.
+     But it also writes "waiting for new logs..." every few seconds forever, and during a real
+     session that printed thirty times between two events — the live view became a wall of it with
+     the actual events buried inside. A heartbeat that drowns the thing it is a heartbeat for is
+     worse than no heartbeat, so the chatter goes and anything unexpected still gets through. */
+  const NOISE = /^(waiting for new logs|Retrieving project|Fetching|Finding production deployment|Vercel CLI|>|\s*$)/;
   child.stderr.on('data', function (c) {
-    const s = c.toString().trim();
-    if (s && !/^Vercel CLI/.test(s)) console.error(C.dim + s + C.off);
+    c.toString().split(/\r?\n/).forEach(function (s) {
+      const line = s.trim();
+      if (line && !NOISE.test(line)) console.error(C.dim + line + C.off);
+    });
   });
 
   child.on('exit', function (code) {
@@ -212,6 +295,9 @@ function main() {
 
   console.log(C.bold + 'watching ' + C.off + 'production, writing to ' + C.bold + OUT + C.off);
   console.log(C.dim + 'Ctrl+C to stop. Nothing appears here until somebody uses the app.' + C.off);
+  /* --since <window> reads history and stops; no argument follows the live stream. */
+  const arg = process.argv.indexOf('--since');
+  if (arg > 0 && process.argv[arg + 1]) { backfill(process.argv[arg + 1]); return; }
   console.log(C.dim + 'Vercel\'s log pipeline runs a little behind, so expect events a few seconds late.' + C.off + '\n');
   start();
 }

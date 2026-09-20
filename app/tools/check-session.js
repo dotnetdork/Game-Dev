@@ -91,6 +91,33 @@ Object.keys(SHAPES).forEach(function (name) {
     got.length + ' event(s)');
 });
 
+/* THE SHAPE THAT WAS SILENTLY LOSING EVENTS, from a real session on 20 September.
+   Vercel batches a function's output into one message and joins it with SPACES, not newlines — so
+   a busy request arrives with the usage line and several events run together. The scan used to take
+   each event to the next "\n", found none, swallowed the rest of the string and failed to parse it.
+   Short events at the end of a message survived; `ask`, `guard` and `model` did not, which is to
+   say the ones worth capturing were exactly the ones being dropped. */
+const ask = { t: '2026-09-20T20:18:50.017Z', ev: 'ask', who: 'jsausa@tester', agent: 'coder', ops: false };
+const model = { t: '2026-09-20T20:18:50.018Z', ev: 'model', agent: 'coder', cost: 0.017 };
+const squashed = '[usage] coder claude-sonnet-5  in 7633 out 176  $0.0170 '
+  + tel.TAG + JSON.stringify(model) + ' [usage] coder again '
+  + tel.TAG + JSON.stringify(ask);
+const fromSquashed = cap.eventsFrom(JSON.stringify({ timestamp: 1, message: squashed }));
+check('events joined by spaces in one message are all found', fromSquashed.length === 2,
+  fromSquashed.length + ' of 2 — this is how a real session lost its ask and guard events');
+check('...and the right ones, in order',
+  fromSquashed.length === 2 && fromSquashed[0].ev === 'model' && fromSquashed[1].ev === 'coder' === false
+    && fromSquashed[1].ev === 'ask',
+  fromSquashed.map(function (e) { return e.ev; }).join(', '));
+
+/* A question with a brace in it must not end the scan early. */
+const braceInText = { t: '2026-09-20T20:19:00.000Z', ev: 'ask', who: 'a@tester',
+  q: 'why does {this} break, and what about a "quote" or a \\ backslash?' };
+const fromBrace = cap.eventsFrom(JSON.stringify({ timestamp: 1, message: tel.TAG + JSON.stringify(braceInText) + ' trailing noise' }));
+check('a brace or a quote inside a question does not truncate the event',
+  fromBrace.length === 1 && fromBrace[0].q === braceInText.q,
+  fromBrace.length ? 'question intact' : 'lost');
+
 /* Vercel's own request records are most of the stream and must not become events. */
 const plainRequest = JSON.stringify({ timestamp: 1, message: '', requestPath: '/content/glossary.yaml', responseStatusCode: 200, logs: [] });
 check('an ordinary request is not mistaken for an event', cap.eventsFrom(plainRequest).length === 0, 'ignored');
