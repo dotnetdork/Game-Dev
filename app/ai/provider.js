@@ -69,7 +69,13 @@ async function chatOnce(spec, system, msgs, wantJSON, withTools) {
   const provider = spec.provider, model = spec.model;
   if (provider === 'anthropic') {
     if (!ANTHROPIC_KEY) throw new Error('ANTHROPIC_API_KEY not set');
-    const body = { model: model, max_tokens: 4000, system: system, messages: msgs };
+    /* 4000 was not enough headroom for the coder's real answer. An `editFile` sends a whole file
+       back — the route lets each one be 12k characters, which is most of 4000 tokens on its own —
+       and the answer now carries an explanation as well. Over the ceiling the JSON simply stops
+       mid-string, extractJSON returns null, and the student gets "I didn't change anything" for an
+       answer the model actually wrote. Output is billed as used, so the higher ceiling costs
+       nothing on the turns that do not need it. */
+    const body = { model: model, max_tokens: 8000, system: system, messages: msgs };
     if (withTools) body.tools = tools.anthropicSpecs();
     const r = await fetch('https://api.anthropic.com/v1/messages', {
       method: 'POST',

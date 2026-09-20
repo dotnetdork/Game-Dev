@@ -21,7 +21,7 @@ const cleanGrade = require('../ai/grade-check').cleanGrade;
 const { AGENT_TOOLS, resolveModel } = models;
 const { TOTAL_BUDGET_MS, callAI } = provider;
 const { extractJSON, sanitizeHistory, unknownAssetKeys, badApisIn, badKeysIn,
-  claimsChangeWithoutOps, heldNote } = guards;
+  claimsChangeWithoutOps, heldNote, isEmptyAck } = guards;
 
 /* Injected by mount(): auth and store, which this file must not require directly — the rate
    limiter keys on the session and counts in the store, and both belong to the app. */
@@ -357,9 +357,13 @@ function mount(app, deps) {
       if (p) return p;
       const text = String(r || '').trim().replace(/^```[a-z]*\s*/i, '').replace(/\s*```$/, '').trim();
       /* Prose is a real answer — the model talking rather than filling in a form — so it becomes the
-         reply. A blob that starts with `{` and did not parse is a TRUNCATED JSON object: on Ollama
-         the final call runs with format:'json' (provider.js:100), so that is nearly always what a
-         non-parsing answer is, and this branch used to show that blob to a child. */
+         reply. A blob that starts with `{` and did not parse is a TRUNCATED JSON object, and this
+         branch used to show that blob to a child.
+         RECORDED, because the alternative is the failure that has cost two afternoons: it becomes
+         an empty reply, the student gets one honest sentence, and nothing anywhere says the model
+         actually answered and was cut off mid-file. A change carrying a whole 12k file back is not
+         far off the token ceiling, so this is a real outcome and not a theoretical one. */
+      if (text && text[0] === '{') guard('bad-json', text.length + ' chars, unparsable: ' + text.slice(0, 80));
       return { reply: (text && text[0] !== '{') ? text : '' };
     }
     function words(parsed) {
@@ -520,10 +524,18 @@ function mount(app, deps) {
            Order matters: a model still insisting "I've added the dragon!" gets the correction FIRST,
            so the first thing a child reads is that nothing changed. */
         const notes = still.map(function (h) { return heldNote(h.g.name, h.hits, ctx.assets); }).filter(Boolean);
-        const said = words(parsed);
+        /* An acknowledgement is not something the model said. "Done." after a correction would
+           otherwise be printed underneath the sentence explaining that nothing is done. */
+        const said = isEmptyAck(words(parsed)) ? '' : words(parsed);
         let text;
         if (still.some(function (h) { return h.g.name === 'no-ops'; })) {
-          text = heldNote('no-ops');      // its reply IS the defect — this is the one we replace
+          /* THE MODEL'S WORDS SURVIVE THIS ONE TOO, and they did not at first. Replacing them
+             outright assumed a reply with no ops was worthless — but the widened CLAIMS_A_CHANGE
+             also fires on a good conversational answer that merely describes the game ("the
+             counter is now showing 130"), and a student asking a real follow-up was told the
+             assistant could not work out what they meant. The app knows the game did not change;
+             that is all it knows, so that is all it says. */
+          text = said ? heldNote('no-ops-claimed') + '\n\n' + said : heldNote('no-ops');
         } else if (claimsChangeWithoutOps(said, {})) {
           text = notes.concat(said ? [said] : []).join('\n\n');
         } else {

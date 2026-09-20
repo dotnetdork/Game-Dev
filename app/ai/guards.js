@@ -276,17 +276,34 @@ function heldNote(name, hits, owned) {
       + ', which your game never registers, so it would have frozen on the first frame.';
   }
   if (name === 'bad-asset') return list.length ? assetApology(list, owned) : '';
-  /* no-ops is the one case with nothing to append to: the model's reply IS the defect, so the
-     route replaces it with this rather than adding to it. */
+  /* Two no-ops notes, because there are two different situations and one sentence was being used
+     for both — which is how a student asking a perfectly good follow-up ("we capped it but the
+     counter still shows 130+") got told the assistant could not work out what they meant.
+
+     'no-ops' is for a model that said NOTHING usable: there is nothing to pass on, so this is the
+     whole reply. 'no-ops-claimed' is for a model that talked — and its words still go to the
+     student, with this in front of them. The app knows the game did not change; it does not know
+     that the explanation was worthless, and it had no business throwing it away. */
   if (name === 'no-ops') {
     return "I didn't actually change anything — I couldn't work out how to do that one. "
       + 'Can you tell me a bit more about what you want to happen?';
   }
+  if (name === 'no-ops-claimed') {
+    return 'Heads up: nothing in your game actually changed this time — I described a change but did '
+      + 'not send one. Here is what I was saying:';
+  }
   return '';
 }
+
+/* "Done." / "OK" / "Sure" — an acknowledgement carrying no information. The browser has had this
+   list since the first "Done." complaint (saysSomething in js/ai.js); the server needs it for the
+   one decision above, where keeping such a reply means printing a correction followed by the very
+   word that caused it. One fact, two places, and this is the server's copy — keep them together. */
+const EMPTY_ACK = /^(done|ok|okay|sure|yep|yes|here you go|all done|i've made the change|i have made the change)[.!]*$/i;
+function isEmptyAck(s) { return EMPTY_ACK.test(String(s || '').trim()); }
 
 
 module.exports = { extractJSON: extractJSON, unwrapDoubleJSON: unwrapDoubleJSON,
   sanitizeHistory: sanitizeHistory, unknownAssetKeys: unknownAssetKeys, assetApology: assetApology,
   badApisIn: badApisIn, badKeysIn: badKeysIn, claimsChangeWithoutOps: claimsChangeWithoutOps,
-  heldNote: heldNote, BAD_PHASER_APIS: BAD_PHASER_APIS };
+  heldNote: heldNote, isEmptyAck: isEmptyAck, BAD_PHASER_APIS: BAD_PHASER_APIS };

@@ -429,9 +429,16 @@ function addProposal(why, ops, reply) {
     if (changes.length > 1 || c.name !== 'game.js') rows.push({ t: 'h', text: c.name });
     c.rows.forEach(function (r) { rows.push(r); });
   });
+  /* TWO DIFFERENT SENTENCES, AND THEY WERE THE SAME ONE. `why` is the caption over the diff — one
+     line, in the review bar. `explain` is what the model actually told the student about the
+     change, which is the thing a twelve-year-old reads to learn anything from it.
+     Only `why` was kept, so the explanation was thrown away every time a change touched code: a
+     student was shown "Adds fps.target/forceSetTimeOut to the Phaser game config in main.js", and
+     then the comprehension check asked why forceSetTimeOut was needed. Nothing they had been given
+     could answer that. */
   const entry = { who: 'bot', kind: 'proposal', state: 'pending', why: proposalWhy(why, reply, rows), ops: ops,
-    changes: changes, rows: rows };
-  entry.text = entry.why;                  // `text` is what the model sees as its own turn in history
+    explain: saysSomething(reply) ? String(reply).trim() : '', changes: changes, rows: rows };
+  entry.text = entry.explain || entry.why;   // `text` is what the model sees as its own turn in history
   (chats.coder || (chats.coder = [])).push(entry);
   const card = renderProposal(entry); card.__entry = entry;
   aiMsgs.appendChild(card); aiMsgs.scrollTop = aiMsgs.scrollHeight;
@@ -584,7 +591,17 @@ function maybeAskQuiz(en) {
   const c = aiContext();
   fetch('/api/ai', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({
     agent: 'quiz',
-    message: 'The student just made this change to their game:\n' + changed + '\n\nWhat it was meant to do: ' + (en.why || '') + '\n\nWrite ONE question checking they understood what this change does.',
+    /* Both halves, because the question has to be answerable from what the student was actually
+       TOLD. On the caption alone ("adds fps.target/forceSetTimeOut…") the quiz agent wrote a
+       perfectly good question about why forceSetTimeOut was needed — and nothing the student had
+       read mentioned why. The explanation is the material they were taught from; the caption is a
+       label. */
+    message: 'The student just made this change to their game:\n' + changed
+      + '\n\nWhat it was meant to do: ' + (en.why || '')
+      + '\n\nWhat the student was told about it, and the ONLY explanation they have seen:\n'
+      + (en.explain || '(nothing beyond the line above)')
+      + '\n\nWrite ONE question checking they understood what this change does. It must be answerable '
+      + 'from the explanation above — do not ask about anything the student was never told.',
     lessonTitle: c.lessonTitle, lessonContext: c.lessonContext
   }) })
     .then(aiRead).then(function (d) {
@@ -853,8 +870,11 @@ function sendAI() {
       // A change to the code itself is proposed, not applied — the student reads it first.
       if (opsChangeCode(ops)) {
         const en = addProposal(data.why, ops, data.reply);
-        // the card carries the action; this bubble is the sentence explaining it
-        if (en) { setMsg(pending, 'bot', en.why); return; }
+        /* The card carries the action and the review bar carries the one-line caption, so this
+           bubble is the EXPLANATION — what the change does and why it works that way. It used to
+           show `why`, the same line as the bar, which meant the model's explanation was written
+           and never read by anyone. */
+        if (en) { setMsg(pending, 'bot', en.explain || en.why); return; }
         /* No card: opsToChanges could not place the edit. The model's explanation is still the best
            thing the student has, so it is kept and the reason is added to it rather than written
            over the top of it. */

@@ -586,17 +586,27 @@ body[data-tier] .editor.no-dock{--leftw:0px;}
    A .md file opens as the page rather than as its source: a one-sheet is something you read back to
    check it says what you meant, and reading it with the hashes showing is reading the plumbing.
    `.lesson` on the preview borrows the typography students already read lessons in. */
-.editor-wrap{position:absolute;inset:0;}
+/* IN THE FLOW, NOT OVER IT. This was `position:absolute;inset:0`, which covered the whole of
+   #view-code — including the 51px the review bar occupies above it. The bar rendered correctly and
+   was then painted over by the editor, so elementFromPoint at the Apply button returned a
+   CodeMirror token: a student could read their change and had no way to accept it, which is exactly
+   the report from the deployed build on 20 September. The visibility of the bar was fixed first
+   (see loadCode in js/files.js) and that was the wrong half of the problem — it had been visible
+   all along, underneath the code.
+   #view-code is already `display:flex;flex-direction:column`, so the bar and the editor are simply
+   two rows of it now. min-height:0 is what lets the editor shrink inside a flex column rather than
+   pushing the bar off the top. */
+.editor-wrap{position:relative;flex:1;min-height:0;}
 .editor-wrap[hidden]{display:none;}
 /* ---- a build checkpoint as a rail beside the editor (DEV.buildRail) ----
    The whole argument for this shape is that the editor stays visible, so the rail takes width off
    the code rather than covering it: everything that fills the view gets a right inset instead of
    the rail being laid on top. The board overlay is untouched and still exists — see zEl() in
    js/board.js for how one set of functions paints both. */
+/* margin, not `right`: the editor is a flex row now rather than an absolute box, and `right` on a
+   statically positioned element does nothing at all. */
 #view-code.with-rail > .editor-wrap,
-#view-code.with-rail > .doc-preview{right:var(--railw);}
-#view-code.with-rail > .review-bar,
-#view-code.with-rail > .doc-bar{margin-right:var(--railw);}
+#view-code.with-rail > .review-bar{margin-right:var(--railw);}
 /* The chips wrap down the rail instead of scrolling sideways: in a 340px column a horizontal
    scroller hides the objectives that have not happened yet, and seeing what is coming is the point
    of a chain. */
@@ -2238,9 +2248,15 @@ h2 .dc-kind{margin-left:9px;vertical-align:4px;}
 .prop-apply .mdi{font-size:16px;}
 
 /* ---------- reviewing a change in the editor ---------- */
-.review-bar{flex:none;display:flex;align-items:center;gap:10px;padding:9px 12px;background:#1a130a;
+.review-bar{flex:none;display:flex;flex-direction:column;gap:6px;padding:9px 12px;background:#1a130a;
   border-bottom:1px solid var(--brand);color:#f0dcc2;font-size:13px;}
-.review-bar > .mdi{font-size:18px;color:var(--brand);flex:none;}
+.review-bar .rv-top{display:flex;align-items:center;gap:10px;}
+/* The overview, in the student's language, from the model's own `why`. Indented to the title above
+   it and allowed two lines before it clips: this is a sentence, not a log line. */
+.review-bar .rv-why{color:#f0dcc2;opacity:.92;line-height:1.45;padding-left:28px;
+  display:-webkit-box;-webkit-line-clamp:2;-webkit-box-orient:vertical;overflow:hidden;}
+.review-bar .rv-why:empty{display:none;}
+.review-bar .rv-top > .mdi{font-size:18px;color:var(--brand);flex:none;}
 .review-bar .rv-title{font-weight:700;color:var(--brand);flex:none;}
 .review-bar .rv-stat{flex:1;min-width:0;font-family:Consolas,monospace;font-size:12.5px;}
 .review-bar .rv-stat .add{color:#8fe0a0;}

@@ -177,12 +177,19 @@
             </div>
           </div>
           <div class="view" id="view-code" role="tabpanel" tabindex="-1" hidden>
+            <!-- Above the code and below the tabs, which is where the decision belongs: the diff
+                 fills the rest of the view, so anything below it is off the bottom of a change of
+                 any size. The second row is the overview — a student should not have to read a
+                 diff to find out what the change is FOR. -->
             <div class="review-bar" id="reviewBar" hidden>
-              <span class="mdi mdi-file-compare"></span>
-              <span class="rv-title">Suggested change</span>
-              <span class="rv-stat" id="reviewStat"></span>
-              <button class="rv-apply" id="reviewApply"><span class="mdi mdi-check"></span>Apply</button>
-              <button class="rv-skip" id="reviewSkip">No thanks</button>
+              <div class="rv-top">
+                <span class="mdi mdi-file-compare"></span>
+                <span class="rv-title">Suggested change</span>
+                <span class="rv-stat" id="reviewStat"></span>
+                <button class="rv-apply" id="reviewApply"><span class="mdi mdi-check"></span>Apply it</button>
+                <button class="rv-skip" id="reviewSkip">No thanks</button>
+              </div>
+              <div class="rv-why" id="reviewWhy"></div>
             </div>
             <div class="editor-wrap" id="editorWrap">
               <textarea id="codeeditor"></textarea><div class="cm-statusbar" id="cmStatus">Ln 1, Col 1</div>

@@ -162,6 +162,17 @@ check('the bad-asset note names the key and what they do own',
 check('the no-ops note says plainly that nothing changed',
   /didn.t actually change anything/i.test(G.heldNote('no-ops')),
   'the one sentence this file is still allowed to invent');
+/* The two no-ops notes are for two different situations, and using one for both is what told a
+   student asking a good follow-up that the assistant could not work out what they meant. */
+check('a model that DID talk gets a note that leads into its own words',
+  /nothing in your game actually changed/i.test(G.heldNote('no-ops-claimed'))
+    && /here is what I was saying/i.test(G.heldNote('no-ops-claimed')),
+  'the correction comes first; the explanation still reaches the student');
+check('"Done." counts as saying nothing',
+  G.isEmptyAck('Done.') === true && G.isEmptyAck(' OK ') === true,
+  'otherwise a correction is printed above the word that caused it');
+check('a real sentence does not count as an acknowledgement',
+  G.isEmptyAck('The counter reads the loop speed, which is still uncapped.') === false);
 check('an unknown guard name adds nothing at all',
   G.heldNote('something-else', ['x'], OWNED) === '',
   'silence rather than a sentence nobody wrote');

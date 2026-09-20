@@ -123,6 +123,17 @@ function showDiffInEditor(entry) {
   setTimeout(toChange, 0);
   requestAnimationFrame(toChange);
 }
+/* THE CRUMB HAS TO NAME THE FILE ON SCREEN, and while a diff is up that is the file being reviewed
+   rather than the one they last opened. It was set from `currentFile` in three places, so a change
+   to main.js appeared under a heading that said game.js — reported by a tester as the assistant
+   editing the wrong file, when the card, the diff and the edit were all correctly main.js and only
+   the label was wrong. Derived in one place instead, for the same reason the review bar's
+   visibility is derived in loadCode: three copies of a fact is three chances to disagree. */
+function paintCrumb() {
+  const el = $('crumb'); if (!el) return;
+  const names = reviewing ? (reviewing.changes || []).map(function (x) { return x.name; }).join(', ') : '';
+  el.textContent = names || currentFile;
+}
 function startReview(entry) {
   // keep any unsaved hand edits before the preview takes over the editor
   if (!reviewing && !$('view-code').hidden) { project.files[currentFile] = codeEditor.getValue(); saveProject(); }
@@ -131,6 +142,11 @@ function startReview(entry) {
   const names = (entry.changes || []).map(function (x) { return x.name; }).join(', ');
   $('reviewStat').innerHTML = (names ? '<span class="rv-files">' + names + '</span> ' : '')
     + '<b class="add">+' + c.added + '</b> <b class="del">−' + c.removed + '</b>';
+  /* What the change is FOR, above the code. Without it the only account of a change a student has
+     is the diff itself — and the comprehension check that follows an applied change asks about the
+     idea, not the lines. */
+  if ($('reviewWhy')) $('reviewWhy').textContent = entry.why || '';
+  paintCrumb();
   $('reviewBar').hidden = false;
   switchView('code');                                  // switchView -> loadCode(), which renders the diff
 }
@@ -138,6 +154,7 @@ function endReview() {
   if (!reviewing) return;
   reviewing = null;
   $('reviewBar').hidden = true;
+  paintCrumb();                                        // back to the file they were actually in
   codeEditor.setOption('readOnly', false);
   if (codeToolsReady) codeEditor.setOption('lint', LINT_OPTS);   // no addon yet => nothing to turn on
   loadCode();                                          // back to the real file
@@ -222,7 +239,7 @@ function switchView(view) {
     const inp = $('aiText'); if (inp && typeof tutorPrompt === 'function') inp.placeholder = tutorPrompt();
   }
   if (typeof refreshStarters === 'function') refreshStarters();
-  if (view === 'code') { upgradeEditor(); $('crumb').textContent = currentFile; refreshFiles(); loadCode(); setTimeout(function () { codeEditor.refresh(); }, 0); }
+  if (view === 'code') { upgradeEditor(); paintCrumb(); refreshFiles(); loadCode(); setTimeout(function () { codeEditor.refresh(); }, 0); }
   /* Arriving here no longer starts the game and leaving no longer stops it — that is the transport's
      job now (Play/Stop, centred in the view bar). This tab shows the stage; it does not own what is on it.
      The one thing that still follows the tab is sound: a game running behind Learn or Code must be

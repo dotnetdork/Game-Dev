@@ -228,6 +228,25 @@ function run() {
       check('nothing was applied', r.d.ops === null);
       check('one retry, not four', r.calls.length === 2, r.calls.length + ' calls');
 
+      /* ---------- 3b. a real answer that trips the widened check ----------
+         THE REGRESSION THIS PAIR EXISTS FOR. "the counter is now showing 130" is a good answer to a
+         good question, and it matches CLAIMS_A_CHANGE by text alone. The model did not set `held`,
+         so the guard fires and the retry happens — and the reply the student reads must still be
+         the model's, with the app's correction in front of it, not instead of it. */
+      return scenario([
+        '{"reply":"The counter reads scene.game.loop.actualFps, which is now showing 130 because the cap is not applied yet."}',
+        '{"reply":"The counter reads scene.game.loop.actualFps, which is now showing 130 because the cap is not applied yet."}'
+      ], 'we capped the fps but the counter still shows 130');
+    })
+    .then(function (r) {
+      console.log('\n--- a good answer the guard could not tell from a claim ---');
+      check("the model's answer still reaches the student",
+        /counter reads scene\.game\.loop\.actualFps/.test(String(r.d.reply)), String(r.d.reply).slice(-60));
+      check('and the app says plainly that nothing changed',
+        /nothing in your game actually changed/i.test(String(r.d.reply)), String(r.d.reply).slice(0, 60));
+      check('the correction comes first',
+        String(r.d.reply).indexOf('Heads up') === 0, String(r.d.reply).slice(0, 20));
+
       /* ---------- 4. plain prose ----------
          The model answered in English instead of JSON. That is a conversation, not a failure, and
          it must survive intact. */
