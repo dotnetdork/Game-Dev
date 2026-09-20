@@ -35,6 +35,11 @@ function loadDock() {
   };
   sandbox.globalThis = sandbox;
   const ctx = vm.createContext(sandbox);
+  /* console-panel.js first: the buffer, the repeat counting and the cap moved there in Phase 5 so
+     the game console and the lesson bench stop disagreeing about them. This check failed the moment
+     they did, which is the right outcome — it evaluates console-dock.js in isolation and the thing
+     it is testing had gone next door. */
+  vm.runInContext(fs.readFileSync(path.join(SRC, 'console-panel.js'), 'utf8'), ctx);
   vm.runInContext(fs.readFileSync(path.join(SRC, 'console-dock.js'), 'utf8'), ctx);
   return {
     line: (lvl, txt) => vm.runInContext('conLine(' + JSON.stringify(lvl) + ',' + JSON.stringify(txt) + ')', ctx),
@@ -43,7 +48,7 @@ function loadDock() {
     recent: (n) => vm.runInContext('recentGameLog(' + (n === undefined ? '' : n) + ')', ctx),
     ran: () => vm.runInContext('gameHasRun', ctx),
     all: () => vm.runInContext('gameLog', ctx),
-    cap: () => vm.runInContext('GAMELOG_MAX', ctx)
+    cap: () => vm.runInContext('CONSOLE_MAX', ctx)   // one cap for both consoles now, not 60 and 80
   };
 }
 

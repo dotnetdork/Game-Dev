@@ -12,31 +12,37 @@
 
    Identical consecutive lines are counted rather than stored — a console.log in update() fires
    sixty times a second and would otherwise be the entire buffer. */
-const GAMELOG_MAX = 60;
-let gameLog = [];
+/* The buffer is js/console-panel.js, shared with the lesson bench — see the note there for why
+   there were two and what differed. The painting below stays here, because this console and the
+   bench's genuinely behave differently above the log. */
+const gameBuffer = makeLogBuffer({
+  onNew: function (entry) {
+    const body = $('consoleBody'); if (!body) return;
+    const empty = body.querySelector('.cl-empty'); if (empty) empty.remove();
+    const d = document.createElement('div');
+    d.className = consoleLineClass(entry);
+    d.textContent = consoleLineText(entry);
+    body.appendChild(d); body.scrollTop = body.scrollHeight;
+    entry.el = d;
+  },
+  /* A REPEATED LINE NOW SAYS SO. It used to increment a counter nobody ever saw, so a student
+     watching one line of output could not tell whether it had happened once or four hundred times
+     — which, inside a loop, is the thing they are trying to find out. */
+  onRepeat: function (entry) { if (entry.el) entry.el.textContent = consoleLineText(entry); },
+  onEvict: function (entry) { if (entry.el && entry.el.parentNode) entry.el.parentNode.removeChild(entry.el); }
+});
+/* `gameLog` stays a plain array under its old name: ai.js, check-gamelog.js and the telemetry all
+   read it, and it is the same list the buffer is holding rather than a copy. */
+let gameLog = gameBuffer.all();
 let gameHasRun = false;
 function noteGameRun() { gameHasRun = true; }
-/* The last few lines, plus any earlier errors that scrolled out of that window — an error at
-   startup matters more than the sixtieth frame of ordinary logging. */
-function recentGameLog(max) {
-  const n = max || 14;
-  if (gameLog.length <= n) return gameLog.slice();
-  const tail = gameLog.slice(-n);
-  const missedProblems = gameLog.slice(0, -n)
-    .filter(function (l) { return l.level === 'error' || l.level === 'warn'; }).slice(-3);
-  return missedProblems.concat(tail);
-}
+function recentGameLog(max) { return gameBuffer.recent(max); }
 
-function conLine(level, text) {
-  const last = gameLog[gameLog.length - 1];
-  if (last && last.level === level && last.text === text) last.n++;
-  else { gameLog.push({ level: level, text: String(text), n: 1 }); if (gameLog.length > GAMELOG_MAX) gameLog.shift(); }
-  const body = $('consoleBody'); if (!body) return;
-  const empty = body.querySelector('.cl-empty'); if (empty) empty.remove();
-  const d = document.createElement('div'); d.className = 'cl' + (level === 'error' ? ' err' : (level === 'warn' ? ' warn' : ''));
-  d.textContent = text; body.appendChild(d); body.scrollTop = body.scrollHeight;
+function conLine(level, text) { gameBuffer.push(level, text); }
+function conClear() {
+  gameBuffer.clear(); gameLog = gameBuffer.all();
+  const b = $('consoleBody'); if (b) b.innerHTML = '<div class="cl cl-empty">Console output from your game appears here.</div>';
 }
-function conClear() { gameLog = []; const b = $('consoleBody'); if (b) b.innerHTML = '<div class="cl cl-empty">Console output from your game appears here.</div>'; }
 let consoleOpen = true;
 function showConsole(show, open) {
   const c = $('console'); if (!c) return;

@@ -146,15 +146,30 @@ function labDoc(tok, userCode, pw, ph) {
    one console in this app rather than two that behave differently. Identical consecutive lines are
    counted rather than repeated, because a log inside an animation frame fires sixty times a second
    and would otherwise be the entire log. */
-const LAB_LOG_MAX = 80;
-let labLog = [];
+/* The buffer is js/console-panel.js, shared with the game's console — see the note there. This
+   panel keeps its own painting because it has a collapse with a line count and opens itself on any
+   output, where the game's opens only on an error. */
+const labBuffer = makeLogBuffer({
+  onNew: function (entry) {
+    const body = $('labConBody'); if (!body) return;
+    const empty = body.querySelector('.cl-empty'); if (empty) empty.remove();
+    const d = document.createElement('div');
+    d.className = consoleLineClass(entry);
+    d.textContent = consoleLineText(entry);       // whatever the student's code printed
+    body.appendChild(d); body.scrollTop = body.scrollHeight;
+    entry.el = d;
+  },
+  onRepeat: function (entry) { if (entry.el) entry.el.textContent = consoleLineText(entry); },
+  onEvict: function (entry) { if (entry.el && entry.el.parentNode) entry.el.parentNode.removeChild(entry.el); }
+});
+let labLog = labBuffer.all();
 /* Set when the student collapses the log themselves. Output opens the log — printing a value to
    see what it is is the whole technique, and a badge they have to notice and click is not seeing
    it. But once they have deliberately closed it, it stays closed for anything short of an error. */
 let labConsoleShut = false;
 
 function labConsoleClear() {
-  labLog = [];
+  labBuffer.clear(); labLog = labBuffer.all();
   const b = $('labConBody');
   if (b) b.innerHTML = '<div class="cl cl-empty">Anything your code prints appears here.</div>';
   labConsoleCount();
@@ -163,7 +178,7 @@ function labConsoleCount() {
   const el = $('labConCount'); if (!el) return;
   const box = $('labConsole');
   const collapsed = box && box.classList.contains('collapsed');
-  const n = labLog.reduce(function (t, l) { return t + l.n; }, 0);
+  const n = labBuffer.total();
   el.textContent = (collapsed && n) ? n + (n === 1 ? ' line' : ' lines') : '';
 }
 function labConsoleOpen(open) {
@@ -172,24 +187,8 @@ function labConsoleOpen(open) {
   labConsoleCount();
 }
 function labConsoleLine(level, text) {
-  const lvl = ['log', 'warn', 'error'].indexOf(level) >= 0 ? level : 'log';
-  const last = labLog[labLog.length - 1];
-  if (last && last.level === lvl && last.text === text) {
-    last.n++;
-    if (last.el) last.el.textContent = text + '   (' + last.n + '×)';
-  } else {
-    const body = $('labConBody'); if (!body) return;
-    const empty = body.querySelector('.cl-empty'); if (empty) empty.remove();
-    const d = document.createElement('div');
-    d.className = 'cl' + (lvl === 'error' ? ' err' : (lvl === 'warn' ? ' warn' : ''));
-    d.textContent = text;                                  // whatever the student's code printed
-    body.appendChild(d); body.scrollTop = body.scrollHeight;
-    labLog.push({ level: lvl, text: text, n: 1, el: d });
-    if (labLog.length > LAB_LOG_MAX) {
-      const gone = labLog.shift();
-      if (gone.el && gone.el.parentNode) gone.el.parentNode.removeChild(gone.el);
-    }
-  }
+  const entry = labBuffer.push(level, text);
+  const lvl = entry.level;
   // An error always opens the log; ordinary output opens it unless they closed it on purpose.
   if (lvl === 'error' || !labConsoleShut) labConsoleOpen(true);
   labConsoleCount();
