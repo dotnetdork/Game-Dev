@@ -248,16 +248,15 @@ function gameDoc() {
   const scripts = ordered.map(function (n) { return '<' + 'script>\n' + (project.files[n] || '') + '\n<' + '/script>'; }).join('\n')
     + '\n' + errorReporterScript()                                  // must sit between the game files and main.js
     + (typeof project.files['main.js'] === 'string' ? '<' + 'script>\n' + project.files['main.js'] + '\n<' + '/script>' : '');
-  const capture = '<' + 'script>(function(){function f(a){a=[].slice.call(a);if(typeof a[0]==="string"&&/%[csdfoO]/.test(a[0])){var i=1;var o=a[0].replace(/%[csdfoO]/g,function(m){if(m==="%c"){i++;return "";}return String(a[i++]);});return (o+" "+a.slice(i).join(" ")).replace(/\\s+/g," ").trim();}return a.map(String).join(" ");}function s(l,a){try{parent.postMessage({__gamelog:true,level:l,text:f(a)},"*");}catch(e){}}var c=console,lg=c.log.bind(c);c.log=function(){lg.apply(c,arguments);s("log",arguments);};var wn=c.warn.bind(c);c.warn=function(){wn.apply(c,arguments);s("warn",arguments);};var er=c.error.bind(c);c.error=function(){er.apply(c,arguments);s("error",arguments);};window.onerror=function(m,src,ln,col){try{parent.postMessage({__gamelog:true,level:"error",text:f([m]),file:String(src||"").split("/").pop(),line:ln,col:col},"*");}catch(e){}return false;};window.addEventListener("unhandledrejection",function(e){s("error",["Unhandled promise rejection: "+((e&&e.reason&&e.reason.message)||(e&&e.reason)||"?")]);});})();<' + '/script>\n';
-  /* Pause, from outside a sandbox we cannot reach into. Phaser drives its loop with
-     requestAnimationFrame, so wrapping that one function freezes the game without touching the
-     student's code or needing a Phaser API they have not met. Held callbacks are handed back to
-     the real rAF on resume. Same shim the lab uses — see labDoc() in widgets.js. */
-  const pauseShim = '<' + 'script>(function(){var p=false,held=[],raf=window.requestAnimationFrame.bind(window);'
-    + 'window.requestAnimationFrame=function(cb){if(p){held.push(cb);return 0;}return raf(cb);};'
-    + 'window.addEventListener("message",function(e){var d=e&&e.data||{};'
-    + 'if(d.__gamectl==="pause"){p=true;}'
-    + 'else if(d.__gamectl==="resume"){p=false;var q=held;held=[];for(var i=0;i<q.length;i++){raf(q[i]);}}});})();<' + '/script>\n';
+  /* Both of these are built by js/sandbox-shims.js, which the lab uses too — see the note there
+     for why they stopped being two copies. The envelope stays here because it is the one part that
+     is genuinely the game's own: everything the frame says arrives as `__gamelog`, and
+     console-dock.js and the boot watchdog both read that shape. */
+  const capture = sandboxConsoleShim({
+    post: '{__gamelog:true,level:lvl,text:txt}',
+    onError: '{__gamelog:true,level:"error",text:String(msg),file:file,line:line,col:col}'
+  });
+  const pauseShim = sandboxPauseShim('__gamectl');
   /* ---------- the Inspector's sliders, applied to the running game ----------
      Dragging a slider used to rebuild the whole game: the level was thrown away, the score reset,
      the player teleported back to the start. That makes the one thing this panel is for — "pull

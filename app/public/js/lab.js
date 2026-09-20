@@ -63,16 +63,16 @@ let labPendingAdvance = null;   // a lesson that finished while the bench was op
    in a lesson about reading errors — printing a value to see what it actually is IS the technique
    being taught. Every log, warning and error now travels out to the bench's own console.
    Runs before the student's code, so a log on the very first line is caught. */
+/* Built by js/sandbox-shims.js, shared with the game — see the note there.
+   The envelope is the lab's own, and the split between `log` and `err` is load-bearing: a thrown
+   error fails the attempt (labFail) while a console.error is just something the student printed.
+   Folding those together would mean a child debugging with console.error failed their own lab.
+   `tok` scopes every message to one bench, so a lab left running behind another cannot talk to it. */
 function labConsoleShim(tok) {
-  return '<' + 'script>(function(){'
-    + 'function f(a){return [].slice.call(a).map(function(v){'
-    + 'if(typeof v==="string")return v;try{return JSON.stringify(v);}catch(e){return String(v);}'
-    + '}).join(" ");}'
-    + 'function s(l,a){try{parent.postMessage({__cm:true,tok:"' + tok + '",log:{level:l,text:f(a)}},"*");}catch(e){}}'
-    + 'var c=console;["log","info","debug","warn","error"].forEach(function(n){'
-    + 'var o=c[n]?c[n].bind(c):function(){};'
-    + 'c[n]=function(){o.apply(c,arguments);s(n==="warn"?"warn":(n==="error"?"error":"log"),arguments);};});'
-    + '})();<' + '/script>';
+  return sandboxConsoleShim({
+    post: '{__cm:true,tok:"' + tok + '",log:{level:lvl,text:txt}}',
+    onError: '{__cm:true,tok:"' + tok + '",err:String(msg),file:file,line:line,col:col}'
+  });
 }
 
 /* A lab draws in a 300x200 coordinate space — that is the authored contract, every lab uses those
@@ -107,6 +107,7 @@ function labDoc(tok, userCode, pw, ph) {
        keeps the drawing's proportions. */
     + '<canvas id="c" style="width:100%;height:100vh;display:block;object-fit:contain"></canvas>'
     + labConsoleShim(tok)
+    + sandboxPauseShim('__labctl')
     + '<scr' + 'ipt>var __el=document.getElementById("c"),ctx=__el.getContext("2d");'
     + 'var __W=' + LAB_W + ',__H=' + LAB_H + ',__DPR=' + LAB_SCALE + ',__sized=false;'
     /* Only touch the backing store when the size has really changed. Assigning canvas.width WIPES
@@ -132,19 +133,11 @@ function labDoc(tok, userCode, pw, ph) {
     + 'ctx.setTransform(s,0,0,s,(w*__DPR-__W*s)/2,(h*__DPR-__H*s)/2);}'
     + '__fit();window.addEventListener("resize",__fit);window.addEventListener("load",__fit);'
     + 'var canvas={width:' + LAB_W + ',height:' + LAB_H + ',getContext:function(){return ctx;}};'
-    + 'var __w=false;function win(){if(__w)return;__w=true;try{parent.postMessage({__cm:true,tok:"' + tok + '",win:true},"*");}catch(e){}}window.onerror=function(m){try{parent.postMessage({__cm:true,tok:"' + tok + '",err:String(m)},"*");}catch(e){}};'
-    /* Pause, from outside a sandbox we cannot reach into.
-       Every lab animates with requestAnimationFrame, so wrapping that one function is enough to
-       freeze one: while paused the callback is held instead of scheduled, and resuming hands the
-       held callbacks straight back to the real rAF. The student's code is untouched and never
-       knows. A loop built on setInterval would keep running — none of the labs use one, and a
-       half-working pause on the ones that do is still better than no pause at all. */
-    + 'var __paused=false,__held=[],__raf=window.requestAnimationFrame.bind(window);'
-    + 'window.requestAnimationFrame=function(cb){if(__paused){__held.push(cb);return 0;}return __raf(cb);};'
-    + 'window.addEventListener("message",function(e){var d=e&&e.data||{};'
-    + 'if(d.__labctl==="pause"){__paused=true;}'
-    + 'else if(d.__labctl==="resume"){__paused=false;var q=__held;__held=[];'
-    + 'for(var i=0;i<q.length;i++){__raf(q[i]);}}});'
+    /* win() is the lab's own and stays: it is how a student's code says the goal is met.
+       window.onerror is NOT here any more. labConsoleShim above installs one, and this line used to
+       run afterwards and overwrite it — which is how the lab's errors came to carry no file or line
+       number while the game's did. Whichever is installed last wins, so there is now only one. */
+    + 'var __w=false;function win(){if(__w)return;__w=true;try{parent.postMessage({__cm:true,tok:"' + tok + '",win:true},"*");}catch(e){}}'
     + 'try{\n' + safe + '\n}catch(e){window.onerror(e.message);}<\/scr' + 'ipt></body>';
 }
 

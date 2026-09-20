@@ -451,6 +451,10 @@
 <script src="js/course.js"></script>
 <!-- Before widgets.js: buildRunCell reads DEMOS when a cell carries an @demo directive. -->
 <script src="js/demos.js"></script>
+<!-- Above lab.js and game-runner.js, which both build their injected frame shims from it. They
+     only call it when a lab or a game is started, so order is not load-bearing — but a shared file
+     below its users reads like a mistake. -->
+<script src="js/sandbox-shims.js"></script>
 <script src="js/widgets.js"></script>
 <!-- After widgets.js, though nothing forces it: every name lab.js exports is a top-level function
      or const, and renderChallengeCells in widgets.js only reaches them when a card is clicked —
