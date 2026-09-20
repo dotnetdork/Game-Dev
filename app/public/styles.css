@@ -415,6 +415,9 @@ body[data-tier] .editor.no-dock{--leftw:0px;}
    and nobody can aim at it. */
 .setrow{display:flex;flex-direction:column;gap:5px;padding:9px 12px 11px;border-bottom:1px solid #16304e;color:var(--muted);font-size:13px;}
 .setrow.empty{color:var(--dim);font-style:italic;}
+/* What a drag actually does — written by paintSettingsNote() in js/files.js. Quiet on purpose: it
+   is there to be found when a student wonders, not to compete with the sliders above it. */
+.info-note{margin:0;padding:10px 12px 14px;color:var(--muted);font-size:11.5px;line-height:1.55;}
 .set-hd{display:flex;justify-content:space-between;align-items:baseline;gap:8px;}
 .set-name{overflow:hidden;text-overflow:ellipsis;white-space:nowrap;}
 .setrow b,.set-val{color:var(--ink);font-family:Consolas,monospace;}

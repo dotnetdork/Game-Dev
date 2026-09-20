@@ -330,12 +330,52 @@ function loadSettings() {
     row.appendChild(head); row.appendChild(sl);
     box.appendChild(row);
   });
+  paintSettingsNote();
+}
+
+/* What these sliders do, said under them once and always the same. It deliberately does not change
+   with the state of the game: a note that rewords itself is a second thing to read, and the rule it
+   states is true either way. Named after the file so it is clear WHERE the numbers really live. */
+function paintSettingsNote() {
+  const note = $('infoNote'); if (!note) return;
+  note.textContent = 'While your game is running these only tune what you can see — the changes are'
+    + ' not saved, and stopping the game puts them back. To change a number for good, edit it in '
+    + configFile() + '.';
+}
+
+/* ---------- tuning while it runs, versus changing the game ----------
+   These sliders used to do one thing everywhere: write the number into config.js and save. That is
+   right in the Code tab, where the student is editing their game and can see the file change
+   underneath them.
+   It is wrong while the game is RUNNING in front of them. There they are playing — dragging gravity
+   to see what happens — and a silent rewrite of their file is an edit they did not ask for and
+   cannot see. Worse, there is no way back: the number they started from is gone.
+   So while a game is running, a drag reaches the running game and nothing else. Stopping it puts
+   every slider back to what the file says, which is also what the next run will use. Making a
+   change stick is then a deliberate act: type it into config.js, or drag it here with the game
+   stopped. The note under the panel says all of this — see loadSettings. */
+function liveTuning() {
+  return !!($('view-play') && !$('view-play').hidden
+    && typeof isGameRunning === 'function' && isGameRunning());
+}
+/* Which sliders have been dragged away from the file during this run, so stopping the game knows
+   there is something to put back. Cleared by resetLiveTuning(). */
+let liveTuned = {};
+function resetLiveTuning() {
+  if (!Object.keys(liveTuned).length) return;
+  liveTuned = {};
+  if (typeof loadSettings === 'function') loadSettings();   // repaint from the file
 }
 
 /* One number, written into the student's file. Deliberately NOT refreshAfterEdit(): that reloads
    this panel too, which would tear out the slider the student's hand is still on. Everything else
    it does still has to happen. */
 function commitSetting(k, v) {
+  if (liveTuning()) {
+    liveTuned[k] = true;
+    sendConfigLive(k, v);
+    return;                                   // the running game only; the file is untouched
+  }
   const file = configFile(), before = project.files[file] || '';
   const obj = {}; obj[k] = v;
   const after = mergeConfig(before, obj);

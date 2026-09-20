@@ -75,6 +75,10 @@
                  loadSettings(), since an older project keeps CONFIG in game.js. -->
             <div class="info-hd" id="infoHd">Settings</div>
             <div id="infoSettings"></div>
+            <!-- What a drag actually does, which changes depending on whether the game is running.
+                 Written by paintSettingsNote() in js/files.js rather than sitting here as fixed
+                 text, because a note that is only true half the time is worse than none. -->
+            <p class="info-note" id="infoNote"></p>
             <!-- Reset moved to the transport row at the top, beside play/pause/stop, where the other
                  run controls are. A destructive button sitting alone under a panel of tuning sliders
                  was easy to hit by accident and hard to find on purpose. -->

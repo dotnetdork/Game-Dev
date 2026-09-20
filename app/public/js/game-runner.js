@@ -345,6 +345,9 @@ function runGameDoc(sandboxed) {
   gf.removeAttribute('src'); gf.srcdoc = html;
   gameRunning = true; gamePaused = false;
   paintTransport();
+  /* The Inspector's sliders mean something different while a game is running — see liveTuning() in
+     js/files.js. The note under them has to say which. */
+  if (typeof paintSettingsNote === 'function') paintSettingsNote();
 }
 
 /* The sandboxed attempt did not start. Try once more without it before telling a child their game
@@ -353,6 +356,21 @@ function retryWithoutSandbox() {
   if (sandboxRetried || sandboxWorks === false) return false;
   sandboxRetried = true;
   sandboxWorks = false;
+  /* THE ABANDONED ATTEMPT MUST NOT LEAVE ITS ERROR IN THEIR CONSOLE.
+     The sandboxed run fails with "Uncaught ReferenceError: Phaser is not defined" — the library
+     could not be fetched into an opaque-origin frame — and that line was staying on screen after
+     the retry succeeded. So a child whose game was running fine still saw a red error naming
+     something they have never typed, in the panel they are taught to read when their game breaks.
+     It is not their error and it is not even an error any more: the app tried something, it did not
+     work, and it did the other thing. Clearing it is the honest state.
+     conClear() also empties the buffer the AI is given, which is right for the same reason — a
+     tutor asked "why is my game broken" should not be reasoning about an attempt we threw away. */
+  /* Deferred by a tick, because this runs from a `message` handler and console-dock.js has its OWN
+     handler for the same message — registered later, so it writes the error line AFTER this
+     function returns. Clearing synchronously cleared an empty console and the error appeared a
+     moment later anyway. One macrotask is long after every listener for this message and still far
+     shorter than the new frame takes to load and print anything of its own. */
+  if (typeof conClear === 'function') setTimeout(conClear, 0);
   console.warn('[league] the game did not start in a sandboxed frame — re-running it unsandboxed. '
     + 'See the note above startGame in js/game-runner.js.');
   if (typeof logEvent === 'function') logEvent('sandbox', { result: 'failed', action: 'retried-unsandboxed' });
@@ -364,6 +382,12 @@ function stopGame() {
   const f = $('gameFrame'); if (f) { f.removeAttribute('srcdoc'); f.removeAttribute('src'); }
   gameRunning = false; gamePaused = false;
   paintTransport();
+  /* Anything tuned while it was running was never written to the file, so stopping puts the sliders
+     back to what the file says — which is also what the next run will use. resetLiveTuning repaints
+     the panel; paintSettingsNote covers the case where nothing was dragged and only the note needs
+     to change. */
+  if (typeof resetLiveTuning === 'function') resetLiveTuning();
+  if (typeof paintSettingsNote === 'function') paintSettingsNote();
 }
 
 /* ---------- did the game actually start? ----------
