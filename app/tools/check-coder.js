@@ -43,7 +43,12 @@ function check(name, ok, detail) {
 
    Each call records what the SERVER asked for, which is how the round-0 shortcut is proved: a body
    carrying `tools` is the lookup phase, a body carrying `format: 'json'` is the extra final call
-   that the shortcut is supposed to make unnecessary. */
+   that the shortcut is supposed to make unnecessary.
+
+   A scripted answer is either a string (the model's reply) or `{ tool: 'name' }`, which makes the
+   fake ask for a lookup instead of answering — that is how the "ran out of rounds" failure is
+   reproduced without a model. `tool_calls[].function.arguments` is an OBJECT on this path, which is
+   what provider.js reads. */
 let queue = [], calls = [], overran = 0;
 const fake = http.createServer(function (req, res) {
   let raw = '';
@@ -51,13 +56,24 @@ const fake = http.createServer(function (req, res) {
   req.on('end', function () {
     let body = {};
     try { body = JSON.parse(raw || '{}'); } catch (e) { /* recorded as a call either way */ }
-    calls.push({ tools: !!(body.tools && body.tools.length), json: body.format === 'json' });
-    let content = queue.shift();
-    if (content === undefined) { overran++; content = '{"reply":"the fake ran out of scripted answers"}'; }
+    const msgs = body.messages || [];
+    const lastText = JSON.stringify((msgs[msgs.length - 1] || {}).content || '');
+    calls.push({
+      tools: !!(body.tools && body.tools.length),
+      json: body.format === 'json',
+      /* Whether this call was TOLD it was the last one. The fps-counter bug was the absence of
+         exactly this sentence. */
+      toldToAnswer: /no more lookups/i.test(lastText)
+    });
+    let next = queue.shift();
+    if (next === undefined) { overran++; next = '{"reply":"the fake ran out of scripted answers"}'; }
+    const toolCalls = (next && next.tool)
+      ? [{ id: 'c' + calls.length, function: { name: next.tool, arguments: { query: 'anything' } } }]
+      : [];
     res.writeHead(200, { 'content-type': 'application/json' });
     res.end(JSON.stringify({
       model: body.model || 'fake',
-      message: { role: 'assistant', content: content, tool_calls: [] },
+      message: { role: 'assistant', content: toolCalls.length ? '' : next, tool_calls: toolCalls },
       done: true
     }));
   });
@@ -255,7 +271,31 @@ function run() {
       check('the hold is reported', r.d.held === 'question', String(r.d.held));
       check('it did NOT spend a retry', r.calls.length === 1, r.calls.length + ' calls');
 
-      /* ---------- 7. ops with no words ----------
+      /* ---------- 7. it used up every lookup and was still thinking ----------
+         THE ONE A BETA TESTER HIT. Four rounds of tool calls exhaust the loop, so the final call
+         happens because the rounds ran out rather than because the model finished — and it used to
+         carry no sign of being the last word, so the model carried on narrating and the student
+         read "I'll add the FPS counter…" and got no fps counter. */
+      return scenario([
+        { tool: 'search_phaser_docs' }, { tool: 'search_phaser_docs' },
+        { tool: 'read_file' }, { tool: 'search_phaser_docs' },
+        "Good, setOrigin exists on text objects. I'll add the FPS counter using create/update snippets in game.js.",
+        '{"reply":"There is an fps counter in the top right now.","create":"scene.fpsText = scene.add.text(392, 8, \'\', { fontSize: \'12px\' }).setOrigin(1, 0);","update":"scene.fpsText.setText(Math.round(scene.game.loop.actualFps));"}'
+      ], 'can you add an fps counter to the top right of the scene');
+    })
+    .then(function (r) {
+      console.log('\n--- out of lookups, still mid-thought ---');
+      check('the final call is told it IS the final call',
+        r.calls.filter(function (c) { return c.toldToAnswer; }).length >= 1,
+        r.calls.map(function (c, i) { return i + (c.toldToAnswer ? ':told' : ''); }).join(' '));
+      check('the narration does not reach the student',
+        !/I'll add the FPS counter/.test(String(r.d.reply)), String(r.d.reply).slice(0, 70));
+      check('the change actually arrives', !!(r.d.ops && r.d.ops.create && r.d.ops.update),
+        r.d.ops ? Object.keys(r.d.ops).join(',') : 'none');
+      check('a promise with nothing behind it cost exactly one retry', r.calls.length === 6,
+        r.calls.length + ' calls (4 lookups + the answer call + 1 retry)');
+
+      /* ---------- 8. ops with no words ----------
          The browser writes "Changed speed to 300." from the ops themselves, which is better than
          anything the server could say. It used to send "Done." and lose that. */
       return scenario(['{"config":{"speed":300}}'], 'set the speed to 300');

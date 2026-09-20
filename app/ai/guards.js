@@ -236,7 +236,15 @@ const CLAIMS_A_CHANGE = [
   // a bare past-tense verb with nobody in front of it: "Added it.", "Changed the speed."
   /^\W*(?:added|changed|updated|set|made|created|implemented|fixed|adjusted|swapped|removed|increased|decreased|bumped)\b/i,
   // "Done." and the words that stand in for it
-  /^\W*(?:ok(?:ay)?|sure|alright|yep|yes)?\W*(?:all )?done\b/i
+  /^\W*(?:ok(?:ay)?|sure|alright|yep|yes)?\W*(?:all )?done\b/i,
+  /* A PROMISE IS THE SAME DEFECT IN THE FUTURE TENSE, and it is what a model does when it runs out
+     of lookups mid-thought: "I'll add the FPS counter using create/update snippets in game.js."
+     Nothing was sent, so nothing happens, and the student is left waiting for a change that was
+     only ever described. provider.js now tells the model when its lookups are over, which is the
+     real fix; this is the net under it.
+     Intent only — "I can add a counter, want me to?" is a question and stays out, which is why
+     `can` is deliberately absent from the list. */
+  /\b(?:i'?ll|i will|let me|i'?m going to|i am going to|going to)\s+(?:now\s+|just\s+)?(?:add|change|update|set|make|create|put|write|build|fix|give|move|swap)\b/i
 ];
 function claimsChangeWithoutOps(reply, ops) {
   if (Object.keys(ops || {}).length) return false;

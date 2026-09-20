@@ -68,6 +68,14 @@ check('"Changed the speed to 300." is caught',
 check("\"There's an extra coin now\" is caught",
   G.claimsChangeWithoutOps("There's an extra coin now, up on the left platform.", {}) === true,
   'the prompt\'s own worked-example wording, which never mentions "I"');
+/* The one a beta tester actually hit: four tool rounds used up, the model still mid-thought, and
+   what reached the student was a plan rather than a change. */
+check('a promise to make the change is caught',
+  G.claimsChangeWithoutOps("Good, setOrigin exists on text objects. I'll add the FPS counter using create/update snippets in game.js.", {}) === true,
+  'nothing was sent, so nothing happens — the student waits for an edit that never comes');
+check('"let me add" is caught too',
+  G.claimsChangeWithoutOps('Let me add a coin counter for you.', {}) === true,
+  'same promise, different wording');
 /* And the other direction, which is the whole reason the regex could not simply be made greedy:
    the same sentence WITH a change in it is a correct answer, and a question back or an honest
    "I could not" is the conversation this release is trying to make possible. */
@@ -81,6 +89,9 @@ check('an honest "I could not" is allowed',
 check('a question back is allowed',
   G.claimsChangeWithoutOps('Which platform do you mean — the left one or the top one?', {}) === false,
   'asking is not claiming');
+check('offering to make a change is allowed',
+  G.claimsChangeWithoutOps('I can add a coin counter to the top corner — want me to?', {}) === false,
+  '"I can" is an offer awaiting an answer; "I will" is a promise nothing kept');
 
 /* ---------- 2. Phaser APIs that do not exist ---------- */
 const canvasOnGraphics = { create: "const g = scene.add.graphics(); g.bezierCurveTo(1, 2, 3, 4, 5, 6);" };

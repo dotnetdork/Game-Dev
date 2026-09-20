@@ -136,6 +136,43 @@ function toolResultMessage(provider, call, result) {
   return { role: 'tool', tool_call_id: call.id, name: call.name, content: text };
 }
 
+/* ---- the final call has to SAY it is the final call ----
+ *
+ * THE BUG THIS FIXES, IN FULL, BECAUSE IT COST A BETA TESTER AN ANSWER. A student asked Build for
+ * an fps counter. The model spent all four rounds looking things up — actualFps, then TimeStep,
+ * then config.js, then Text.setOrigin — so the loop above ended by RUNNING OUT, not by the model
+ * finishing. The final call then went out with the same conversation and the tools removed, and the
+ * model, still part way through working it out, simply carried on thinking out loud: "Good,
+ * setOrigin exists on text objects. I'll add the FPS counter using create/update snippets." That is
+ * not JSON, so it became the reply, and a twelve-year-old read a sentence about setOrigin and got
+ * no fps counter.
+ *
+ * Nothing in that conversation ever told the model the lookups were over. It had no way to know the
+ * turn it was answering was its last one. So this adds the one sentence that says so.
+ *
+ * Appended to the last message rather than sent as a new one: after a tool round that message is a
+ * user turn carrying tool_result blocks, and Anthropic wants tool results and the text that follows
+ * them in the same turn. When the last message is not a user turn (the model stopped calling tools
+ * on its own), a fresh user turn is correct and is what happens. */
+function answerNow(provider, msgs, wantJSON) {
+  const nudge = 'The tools are switched off for this reply — there are no more lookups. '
+    + (wantJSON
+      ? 'Answer now with the single JSON object your instructions describe, and nothing else. If you '
+        + 'were part way through working something out, finish it and put the change in that object: a '
+        + 'sentence saying what you were going to do is not a change and the student will see nothing.'
+      : 'Answer the student now, in plain language, using what you have already looked up.');
+  const out = msgs.slice();
+  const last = out[out.length - 1];
+  if (last && last.role === 'user') {
+    out[out.length - 1] = Array.isArray(last.content)
+      ? { role: 'user', content: last.content.concat([{ type: 'text', text: nudge }]) }
+      : { role: 'user', content: String(last.content) + '\n\n' + nudge };
+  } else {
+    out.push({ role: 'user', content: nudge });
+  }
+  return out;
+}
+
 /* `onTool` is optional and is called once per tool the model actually invoked, with the call and
    what came back. Hooked here rather than inside tools.runTool because this is the only place that
    knows WHOSE request it is — runTool takes the prompt context, and threading an identity through
@@ -175,7 +212,7 @@ async function callAI(spec, system, user, wantJSON, history, toolCtx, onTool) {
       msgs.push(toolResultMessage(provider, call, result));
     });
   }
-  return (await chatOnce(spec, system, msgs, wantJSON, false)).content;
+  return (await chatOnce(spec, system, answerNow(provider, msgs, wantJSON), wantJSON, false)).content;
 }
 
 module.exports = { chatOnce: chatOnce, callAI: callAI, toolResultMessage: toolResultMessage,
