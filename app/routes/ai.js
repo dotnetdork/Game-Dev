@@ -64,7 +64,7 @@ function mount(app, deps) {
        `seen` is filled in as the request is parsed and read here at send time, which is why it is a
        mutable object rather than arguments. */
     const t0 = Date.now();
-    const seen ={ who: tel.who(auth, req), agent: '', lesson: '', where: '', q: '', tools: [], guards: [] };
+    const seen = { who: tel.who(auth, req), agent: '', lesson: '', where: '', q: '', tools: [], guards: [] };
     const sendJSON = res.json.bind(res);
     res.json = function (body) {
       tel.record('ask', {
@@ -220,6 +220,17 @@ function mount(app, deps) {
     seen.lesson = ctx.lessonTitle || '';
     seen.where = ctx.where || '';
 
+    /* The provider did not answer, on the coder's path. Four places used to say this in four
+       identical lines — the first attempt and one per corrective retry — which is four chances for
+       one of them to drift.
+       The tutor, the coach and the quiz/grader keep their own wording below, and that is not an
+       oversight to tidy away later: "the tutor is not reachable" tells a child which of the two
+       assistants is missing, and the panel they are looking at is the one it names. The audit that
+       prompted this commit called all seven identical; reading them, three were not. */
+    const unreachable = function (e) {
+      return res.status(502).json({ reply: 'The AI service is not reachable right now (' + e.message + ').' });
+    };
+
     // Tier 2: when this agent has tools switched on, it may look things up instead of guessing.
     // ctx already carries the assets, files, game code and lesson this request is about.
     const agentTools = AGENT_TOOLS[agent] ? ctx : null;
@@ -291,88 +302,115 @@ function mount(app, deps) {
     }
     let raw;
     try { raw = await callAI(spec, system, message, true, history, agentTools, onTool); }
-    catch (e) { return res.status(502).json({ reply: 'The AI service is not reachable right now (' + e.message + ').' }); }
+    catch (e) { return unreachable(e); }
     let parsed = extractJSON(raw) || { reply: (raw || '').trim() || 'Done.' };
     let ops = toOps(parsed);
 
-    // Claimed a change but sent nothing that makes one: ask again for the actual fields.
-    if (claimsChangeWithoutOps(parsed.reply, ops)) {
-      guard('no-ops', (parsed.reply || '').slice(0, 200));
-      const retry = message + '\n\nIMPORTANT: your previous answer said you had made a change, but it contained no '
-        + '"config", "functions", "create", "update", "editFile", "newFile" or "replaceFile" field, so NOTHING happened '
-        + 'to the game and the student saw no difference. Send the change for real this time. Remember that logic living '
-        + 'in another file (movement in player.js, coins in coins.js, platforms in world.js) is changed with "editFile", '
-        + 'passing that whole file back with your edit made. If you genuinely cannot do it, say so plainly and ask for '
-        + 'what you need instead of claiming it is done.';
-      try { raw = await callAI(spec, system, retry, true, history, agentTools, onTool); }
-      catch (e) { return res.status(502).json({ reply: 'The AI service is not reachable right now (' + e.message + ').' }); }
-      parsed = extractJSON(raw) || { reply: (raw || '').trim() || '' };
-      ops = toOps(parsed);
-      if (claimsChangeWithoutOps(parsed.reply, ops)) {
-        guard('no-ops', (parsed.reply || '').slice(0, 200), true);
-        return res.json({ reply: "I couldn't work out how to make that change — can you tell me a bit more about what you want to happen?", ops: null });
-      }
-    }
+    /* ---------- the four corrective guards ----------
+       Each one was the same seventeen lines: detect, tell the model what it got wrong, ask once
+       more, detect again, and if it is still wrong leave the game untouched and say something a
+       child can act on. Only the detector, the correction and the apology ever differed, so they
+       are a table of four and one loop rather than four near-copies — which is how the third of
+       them came to re-check against a narrower baseline than it first checked (below).
 
-    // A Phaser API that does not exist: correct it once, then refuse rather than ship a crash.
-    let badApis = badApisIn(ops, gameCode, ctx.files);
-    if (badApis.length) {
-      guard('bad-api', badApis.map(function (b) { return b.name; }).join(', '));
-      const list = badApis.map(function (b) { return '"' + b.name + '" (' + b.why + ' — ' + b.hint + ')'; }).join('; ');
-      const retry = message + '\n\nIMPORTANT: your previous answer used ' + list
-        + '. Redo the change using only APIs that exist, or if it cannot be done that way, change nothing and say so plainly.';
-      try { raw = await callAI(spec, system, retry, true, history, agentTools, onTool); }
-      catch (e) { return res.status(502).json({ reply: 'The AI service is not reachable right now (' + e.message + ').' }); }
-      parsed = extractJSON(raw) || { reply: '' };
-      ops = toOps(parsed);
-      badApis = badApisIn(ops, gameCode, ctx.files);
-      if (badApis.length) {
-        guard('bad-api', badApis.map(function (b) { return b.name; }).join(', '), true);
-        return res.json({ reply: "I couldn't do that without using something Phaser doesn't have, so I left your game alone. Try asking for it a slightly different way.", ops: null });
-      }
-    }
+       ORDER MATTERS AND IS PRESERVED. A guard runs against whatever the guard before it left in
+       `ops`, so a retry provoked by a bad Phaser API is what the keyboard guard then inspects. One
+       request can therefore spend four retries, and only the last failure reaches the student.
 
-    // Reading a key that was never registered crashes on frame one: correct it once, then refuse.
-    let badKeys = badKeysIn(ops, gameCode);
-    if (badKeys.length) {
-      guard('bad-key', badKeys.join(', '));
-      const retry = message + '\n\nIMPORTANT: your previous answer read '
-        + badKeys.map(function (k) { return 'scene.keys.' + k; }).join(' and ')
-        + ', but those keys are never registered, so the game crashes on the first frame. '
-        + 'For SHIFT use scene.cursors.shift.isDown (it already exists). For any other key, add it to the '
-        + "addKeys('W,A,S,D') call in createPlayer first. Send the corrected change.";
-      try { raw = await callAI(spec, system, retry, true, history, agentTools, onTool); }
-      catch (e) { return res.status(502).json({ reply: 'The AI service is not reachable right now (' + e.message + ').' }); }
-      parsed = extractJSON(raw) || { reply: '' };
-      ops = toOps(parsed);
-      badKeys = badKeysIn(ops, gameCode);
-      if (badKeys.length) {
-        guard('bad-key', badKeys.join(', '), true);
-        return res.json({ reply: "I couldn't get that working without breaking your controls, so I left your game alone. Try asking for it a slightly different way.", ops: null });
-      }
-    }
+       `parse` is per-guard because the four fallbacks differ — '' for two of them, 'Done.' for
+       another — and those differences are carried across verbatim rather than tidied into one.
+       They look accidental; changing them is a behaviour change and this is not the commit for
+       it. */
+    const allCode = function () {
+      return gameCode + '\n' + ctx.files.map(function (f) { return f.code; }).join('\n');
+    };
+    const GUARDS = [
+      {
+        name: 'no-ops',
+        find: function () { return claimsChangeWithoutOps(parsed.reply, ops) ? ['claimed a change'] : []; },
+        detail: function () { return (parsed.reply || '').slice(0, 200); },
+        parse: function (r) { return extractJSON(r) || { reply: (r || '').trim() || '' }; },
+        retry: function () {
+          return message + '\n\nIMPORTANT: your previous answer said you had made a change, but it contained no '
+            + '"config", "functions", "create", "update", "editFile", "newFile" or "replaceFile" field, so NOTHING happened '
+            + 'to the game and the student saw no difference. Send the change for real this time. Remember that logic living '
+            + 'in another file (movement in player.js, coins in coins.js, platforms in world.js) is changed with "editFile", '
+            + 'passing that whole file back with your edit made. If you genuinely cannot do it, say so plainly and ask for '
+            + 'what you need instead of claiming it is done.';
+        },
+        giveUp: function () { return "I couldn't work out how to make that change — can you tell me a bit more about what you want to happen?"; }
+      },
+      {
+        // A Phaser API that does not exist: correct it once, then refuse rather than ship a crash.
+        name: 'bad-api',
+        find: function () { return badApisIn(ops, gameCode, ctx.files); },
+        detail: function (hits) { return hits.map(function (b) { return b.name; }).join(', '); },
+        parse: function (r) { return extractJSON(r) || { reply: '' }; },
+        retry: function (hits) {
+          const list = hits.map(function (b) { return '"' + b.name + '" (' + b.why + ' — ' + b.hint + ')'; }).join('; ');
+          return message + '\n\nIMPORTANT: your previous answer used ' + list
+            + '. Redo the change using only APIs that exist, or if it cannot be done that way, change nothing and say so plainly.';
+        },
+        giveUp: function () { return "I couldn't do that without using something Phaser doesn't have, so I left your game alone. Try asking for it a slightly different way."; }
+      },
+      {
+        // Reading a key that was never registered crashes on frame one: correct it once, then refuse.
+        name: 'bad-key',
+        find: function () { return badKeysIn(ops, gameCode); },
+        detail: function (hits) { return hits.join(', '); },
+        parse: function (r) { return extractJSON(r) || { reply: '' }; },
+        retry: function (hits) {
+          return message + '\n\nIMPORTANT: your previous answer read '
+            + hits.map(function (k) { return 'scene.keys.' + k; }).join(' and ')
+            + ', but those keys are never registered, so the game crashes on the first frame. '
+            + 'For SHIFT use scene.cursors.shift.isDown (it already exists). For any other key, add it to the '
+            + "addKeys('W,A,S,D') call in createPlayer first. Send the corrected change.";
+        },
+        giveUp: function () { return "I couldn't get that working without breaking your controls, so I left your game alone. Try asking for it a slightly different way."; }
+      },
+      {
+        /* Asset keys the student does not own. Silently skipped when the browser sent no asset list
+           — there is nothing to check against, and treating "we were not told" as "they own
+           nothing" would refuse every change that touches a sprite.
 
-    // Check the answer instead of trusting it: one corrective retry, then refuse the change.
-    if (ctx.hasAssetList) {
-      // keys defined anywhere in the project count as real, not just those in game.js
-      const allCode = gameCode + '\n' + ctx.files.map(function (f) { return f.code; }).join('\n');
-      let bad = unknownAssetKeys(ops, allCode, ctx.assets, ctx.assetSets);
-      if (bad.length) {
-        guard('bad-asset', bad.join(', '));
-        const retry = message + '\n\nIMPORTANT: your previous answer used the asset key(s) '
-          + bad.map(function (k) { return '"' + k + '"'; }).join(', ')
-          + ', which do not exist and would break the game. '
-          + 'Redo it using ONLY the owned asset keys listed above, or — if this cannot be done with those — '
-          + 'change nothing and reply with only {"reply":"..."} explaining which asset they would need to buy.';
-        try { raw = await callAI(spec, system, retry, true, history, agentTools, onTool); }
-        catch (e) { return res.status(502).json({ reply: 'The AI service is not reachable right now (' + e.message + ').' }); }
-        parsed = extractJSON(raw) || { reply: (raw || '').trim() || 'Done.' };
-        ops = toOps(parsed);
-        bad = unknownAssetKeys(ops, gameCode, ctx.assets, ctx.assetSets);
-        if (bad.length) {
-          guard('bad-asset', bad.join(', '), true);
-          return res.json({ reply: assetApology(bad, ctx.assets), ops: null });
-        }
+           ONE BEHAVIOUR CHANGE IN THIS COMMIT, AND IT IS A BUG FIX. Both checks now use the whole
+           project. The first one always did; the re-check used game.js alone, so a key the model
+           correctly moved into player.js on its second attempt was reported as invented and the
+           child was told to go and buy an asset they already owned. Nothing about the duplicated
+           shape made that visible — the two lines were forty lines apart and differed by one
+           argument. */
+        name: 'bad-asset',
+        when: function () { return !!ctx.hasAssetList; },
+        find: function () { return unknownAssetKeys(ops, allCode(), ctx.assets, ctx.assetSets); },
+        detail: function (hits) { return hits.join(', '); },
+        parse: function (r) { return extractJSON(r) || { reply: (r || '').trim() || 'Done.' }; },
+        retry: function (hits) {
+          return message + '\n\nIMPORTANT: your previous answer used the asset key(s) '
+            + hits.map(function (k) { return '"' + k + '"'; }).join(', ')
+            + ', which do not exist and would break the game. '
+            + 'Redo it using ONLY the owned asset keys listed above, or — if this cannot be done with those — '
+            + 'change nothing and reply with only {"reply":"..."} explaining which asset they would need to buy.';
+        },
+        giveUp: function (hits) { return assetApology(hits, ctx.assets); }
+      }
+    ];
+
+    for (let i = 0; i < GUARDS.length; i++) {
+      const g = GUARDS[i];
+      if (g.when && !g.when()) continue;
+      let hits = g.find();
+      if (!hits.length) continue;
+
+      guard(g.name, g.detail(hits));
+      try { raw = await callAI(spec, system, g.retry(hits), true, history, agentTools, onTool); }
+      catch (e) { return unreachable(e); }
+      parsed = g.parse(raw);
+      ops = toOps(parsed);
+
+      hits = g.find();
+      if (hits.length) {
+        guard(g.name, g.detail(hits), true);
+        return res.json({ reply: g.giveUp(hits), ops: null });
       }
     }
 
