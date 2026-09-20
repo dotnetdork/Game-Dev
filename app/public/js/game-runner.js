@@ -7,13 +7,15 @@
    internet, so it gets an opaque origin and talks to the app over postMessage only — which is how
    the audio control already worked.
 
-   Confirmed working in Chrome: the game runs normally with the frame isolated. (The dev preview
-   pane cannot load ANY subresource into an opaque-origin frame — script, stylesheet or image —
-   which is a fault in that pane, not in the browser. `?sandbox=0` stays as a one-reload way to
-   rule this out if assets ever go missing somewhere new.)
+   WHETHER IT WORKS IS DECIDED AT RUN TIME, NOT WRITTEN DOWN HERE. This comment used to assert it
+   was confirmed working in Chrome; js/dev.js asserted the opposite with measurements. See the note
+   above startGame for how that is resolved and why guessing was the wrong answer. Measured in the
+   Claude browser pane on 20 September: sandboxed run fails with "Phaser is not defined", the retry
+   boots, and the student sees no failure at all.
 
    Longer term the frame should have its own origin (separate port or subdomain) rather than
-   relying on the attribute — that's what would let script-src drop 'unsafe-inline'. */
+   relying on the attribute — that's what would let script-src drop 'unsafe-inline', and it is what
+   would make the retry above unnecessary. */
 function sandboxGame() { return !!DEV.sandboxGame; }
 
 /* Owned Store assets → auto-preloaded into every Phaser scene by key (student just uses the name).
@@ -300,19 +302,63 @@ function gameDoc() {
     + scripts + '\n</body></html>';
 }
 
+/* ---------- the sandbox, and why this retries ----------
+   Whether `sandbox="allow-scripts"` lets the game run has had two contradictory answers written
+   down in this repo for weeks: the header of this file said it was confirmed working in Chrome and
+   that only the dev preview pane failed, while js/dev.js recorded it as KNOWN BROKEN with measured
+   results ("Phaser is not defined"). Both were written after somebody tested; they cannot both be
+   right, and no test in the suite can tell them apart — check-boot.js runs under jsdom, which does
+   not execute iframes at all.
+
+   Rather than guess, the app now finds out for itself, once, at the moment it matters. The first
+   run of a session is sandboxed. If it produces no boot — which is what the failure looks like,
+   because an opaque-origin document that cannot fetch Phaser never starts one — the same document
+   is re-run without the attribute and the answer is remembered for the rest of the session.
+
+   This is deliberately not a silent downgrade of an isolation boundary:
+     - it happens only after a sandboxed attempt has demonstrably failed, where the alternative is a
+       black stage and a child who cannot play the game they just wrote;
+     - the unsandboxed frame is exactly what the app has been serving all along whenever
+       DEV.sandboxGame was off or `?sandbox=0` was used, so the fallback state is the status quo;
+     - it says so in the console, so the answer is observable instead of assumed.
+   The real fix is the one both comments already name: give the game frame its own origin, so it has
+   a real one rather than an opaque one. Until then this makes the ambiguity harmless. */
+let sandboxWorks = null;          // null = not yet known this session
+let sandboxRetried = false;       // one retry per run, never a loop
+let runSandboxed = false;         // was THIS run sandboxed? see the boot handler
+
 function startGame() { // run the project in the Game tab's iframe
   conClear();                                          // this run starts with a clean log, on screen and in the buffer
   if (typeof noteGameRun === 'function') noteGameRun(); // so the AI can tell "printed nothing" from "never ran"
+  sandboxRetried = false;
+  runGameDoc(sandboxGame() && sandboxWorks !== false);
+}
+
+function runGameDoc(sandboxed) {
+  runSandboxed = sandboxed;
   const html = gameDoc();
   fitStage();
-  watchGameBoot();
+  watchGameBoot(sandboxed);
   const gl = $('gameLoading'); if (gl) gl.classList.remove('hidden');
   const gf = $('gameFrame'); gf.onload = function () { const g = $('gameLoading'); if (g) g.classList.add('hidden'); fitStage(); try { gf.contentWindow.focus(); } catch (e) {} if (typeof postGameAudio === 'function') postGameAudio(); };
   // Set per run rather than in the markup, so toggling it takes effect on the next Play.
-  if (sandboxGame()) gf.setAttribute('sandbox', 'allow-scripts'); else gf.removeAttribute('sandbox');
+  if (sandboxed) gf.setAttribute('sandbox', 'allow-scripts'); else gf.removeAttribute('sandbox');
   gf.removeAttribute('src'); gf.srcdoc = html;
   gameRunning = true; gamePaused = false;
   paintTransport();
+}
+
+/* The sandboxed attempt did not start. Try once more without it before telling a child their game
+   is broken, because on this path it is not their game that is broken. */
+function retryWithoutSandbox() {
+  if (sandboxRetried || sandboxWorks === false) return false;
+  sandboxRetried = true;
+  sandboxWorks = false;
+  console.warn('[league] the game did not start in a sandboxed frame — re-running it unsandboxed. '
+    + 'See the note above startGame in js/game-runner.js.');
+  if (typeof logEvent === 'function') logEvent('sandbox', { result: 'failed', action: 'retried-unsandboxed' });
+  runGameDoc(false);
+  return true;
 }
 function stopGame() {
   clearBootWatch(); showGameFailed(false);
@@ -345,7 +391,7 @@ function showGameFailed(on, detail) {
   const d = el.querySelector('.gf-detail');
   if (d) { d.textContent = detail || ''; d.hidden = !detail; }
 }
-function watchGameBoot() {
+function watchGameBoot(sandboxed) {
   clearBootWatch();
   gameBooted = false;
   showGameFailed(false);
@@ -354,17 +400,32 @@ function watchGameBoot() {
      so being wrong here corrects itself. */
   bootWatch = setTimeout(function () {
     bootWatch = null;
-    if (!gameBooted) showGameFailed(true);
+    if (gameBooted) return;
+    if (sandboxed && retryWithoutSandbox()) return;    // not their bug; try the other way first
+    showGameFailed(true);
   }, 4000);
 }
+/* The signature of the sandbox failing rather than the student's code failing. "Phaser is not
+   defined" means the vendored library never loaded, which a syntax error in their own file cannot
+   cause — their scripts come after Phaser's tag. */
+const SANDBOX_FAILURE = /Phaser is not defined/i;
 window.addEventListener('message', function (e) {
   const d = e && e.data; if (!d) return;
-  if (d.__gameboot) { gameBooted = true; clearBootWatch(); showGameFailed(false); return; }
+  /* Only a SANDBOXED run that booted proves the sandbox works. Crediting the unsandboxed retry with
+     the answer would mean starting every subsequent run sandboxed, failing, and paying the retry
+     again — a wasted round trip on every press of Play. */
+  if (d.__gameboot) {
+    gameBooted = true; clearBootWatch();
+    if (runSandboxed) sandboxWorks = true;
+    showGameFailed(false);
+    return;
+  }
   /* An error before the game has booted is the syntax-error case, and there is no point waiting out
      the timer when the browser has already told us what is wrong. Quote it on the stage: the log is
      open by now (console-dock opens it on any game error), but the stage is where they are looking. */
-  if (d.__gamelog && d.level === 'error' && !gameBooted && $('view-play') && !$('view-play').hidden) {
-    showGameFailed(true, String(d.text || '').slice(0, 200));
+  if (d.__gamelog && d.level === 'error' && !gameBooted) {
+    if (SANDBOX_FAILURE.test(String(d.text || '')) && retryWithoutSandbox()) return;
+    if ($('view-play') && !$('view-play').hidden) showGameFailed(true, String(d.text || '').slice(0, 200));
   }
 });
 /* Sizing the stage is CSS's job now (see .stage / .stage-frame in styles.css): the frame is the

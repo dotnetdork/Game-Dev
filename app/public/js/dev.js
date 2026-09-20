@@ -56,27 +56,17 @@ const DEV = {
   /* Every lesson clickable, in any order, without finishing the one before. */
   unlockAll: devHost(),
 
-  /* The game frame runs with an opaque origin so student code cannot reach the app. Leave on.
-     Off only to rule it out if assets ever mysteriously fail to load.
+  /* ASK FOR the game frame to run with an opaque origin, so student code cannot reach the app.
+     Leave on. `?sandbox=0` turns it off for one load if you need to rule it out.
 
-     KNOWN BROKEN, and this is the diagnosis rather than a suspicion. With this on, the game does
-     not run at all: "Phaser is not defined". An opaque-origin document cannot make ANY subresource
-     request back to the app, so neither Phaser nor a single asset arrives. Measured:
-
-       sandbox="allow-scripts"                    Phaser missing
-       sandbox="allow-scripts allow-same-origin"  works
-       no sandbox attribute                       works
-
-     and it is none of the things it looks like: no securitypolicyviolation fires, the CSP already
-     names the origin explicitly beside 'self' (see cspFor in server.js), the responses carry
-     Cross-Origin-Resource-Policy: cross-origin and Access-Control-Allow-Origin: *, and the file
-     serves 200 with credentials omitted. Even a no-cors fetch from inside the frame fails, so it is
-     a hard network block rather than CORS or CSP.
-
-     The real fix is the one the CSP comment already names: serve the game frame from its own
-     origin, which gets it a real origin instead of an opaque one and lets the sandbox stay. Until
-     then this switch is a choice between a sandboxed frame that cannot run and an unsandboxed one
-     that can — so it is left ON deliberately, and `?sandbox=0` is how you run a game today. */
+     Whether the sandbox actually WORKS is no longer decided here, and the long diagnosis that used
+     to sit in this comment has gone with it. It recorded the sandbox as broken ("Phaser is not
+     defined"); the header of js/game-runner.js recorded it as working in Chrome and failing only in
+     a dev preview pane. Both were written after testing, both cannot be right, and no test in the
+     suite can settle it — check-boot.js runs under jsdom, which does not execute iframes.
+     So the app finds out at run time instead: the first run of a session is sandboxed, and if it
+     does not boot, it is re-run without the attribute and the answer is remembered. This switch is
+     the request; game-runner.js owns the outcome, and the full note lives above startGame there. */
   sandboxGame: true
 };
 

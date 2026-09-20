@@ -1944,6 +1944,8 @@ h2 .dc-kind{margin-left:9px;vertical-align:4px;}
 /* two-column body */
 .lb-body{display:grid;grid-template-columns:1fr 300px;gap:22px;align-items:start;}
 .lb-list{display:flex;flex-direction:column;gap:9px;min-width:0;}
+/* The board with nobody on it. Says so, rather than drawing invented classmates to fill the space. */
+.lb-empty{margin:0;padding:22px 18px;border:1px dashed var(--line);border-radius:12px;color:var(--muted);line-height:1.6;}
 .board .empty{color:var(--muted);padding:26px;background:var(--panel);border:1px solid var(--line);border-radius:14px;}
 .lrow{display:flex;align-items:center;gap:14px;background:#122c49;border:1px solid var(--line);border-radius:12px;padding:15px 18px;transition:transform .1s,border-color .12s,box-shadow .12s;}
 .lrow:hover{transform:translateY(-2px);border-color:#3a6da3;box-shadow:0 8px 20px rgba(0,0,0,.3);}

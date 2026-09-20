@@ -170,10 +170,10 @@ async function rateLimited(req) {
    `frame-src blob: data:` is for the game and run-cell frames; `img-src`/`media-src` allow the
    data: URIs that run cells and the lesson widgets still produce. */
 /* Every directive names the origin explicitly as well as `'self'`. A srcdoc document inherits its
-   parent's CSP, and once the game frame is sandboxed (see SANDBOX_GAME in game-runner.js) its own
-   origin is opaque — so in there `'self'` matches nothing and would block Phaser and every asset.
-   Naming the host grants exactly the same server that `'self'` was meant to grant, and costs
-   nothing while the sandbox is still off. */
+   parent's CSP, and when the game frame is sandboxed (see the note above startGame in
+   js/game-runner.js) its own origin is opaque — so in there `'self'` matches nothing and would
+   block Phaser and every asset. Naming the host grants exactly the same server that `'self'` was
+   meant to grant, and costs nothing when the frame is unsandboxed. */
 function cspFor(req) {
   const origin = (req.headers['x-forwarded-proto'] || req.protocol) + '://' + req.headers.host;
   return [
@@ -503,10 +503,14 @@ app.delete('/api/state', async (req, res) => {
 /* ---- what this session has spent ----
    Token counts are the provider's own, from the response to each call; the dollar figure is
    ours, from the price table in ai/usage.js. Counts reset when the server restarts. */
-/* BOTH OF THESE WERE OPEN TO ANYONE WHO KNEW THE URL. What the spend on a paid relay is, and a
-   button that zeroes the record of it, are not things to hand to a class — or to whoever a class
-   forwards the link to. requireAuth already covers /api/*, so the hole was only that these two ran
-   before anything checked; they are ordinary signed-in routes now, like every other endpoint. */
+/* NEITHER OF THESE WAS EVER OPEN, and an earlier version of this comment said they were.
+   `app.use(auth.requireAuth)` above is global and runs before every route in this file; requireAuth
+   401s any path under /api/ without a session. A review reported these two as unauthenticated, the
+   claim was acted on without reading the middleware order, and the "fix" below was committed with a
+   message describing a hole that did not exist.
+   The explicit checks are kept — they cost nothing and they state the requirement at the place a
+   reader looks for it, which matters for the two endpoints that expose what the relay has spent.
+   The comment is corrected because a wrong note about a security property is worse than no note. */
 app.get('/api/usage', (req, res) => {
   if (!auth.currentUser(req)) return res.status(401).json({ error: 'Not signed in.' });
   res.json(usage.summary());
@@ -877,18 +881,24 @@ const cleanGrade = require('./ai/grade-check').cleanGrade;
 const CALL_TIMEOUT_MS = Number(process.env.AI_CALL_TIMEOUT_MS || 45000);
 const TOTAL_BUDGET_MS = Number(process.env.AI_TOTAL_BUDGET_MS || 110000);
 
-/* Set per request by /api/ai. A module-level deadline is safe here only because it is read
-   immediately and never awaited across a request boundary; chatOnce is called from within one
-   request's synchronous chain of awaits. */
-let aiDeadline = 0;
-function budgetLeft() {
-  if (!aiDeadline) return CALL_TIMEOUT_MS;
-  return Math.max(0, aiDeadline - Date.now());
+/* THE DEADLINE BELONGS TO THE REQUEST, NOT TO THE MODULE.
+   It was a module-level `let` for a day, on the reasoning that it is written and read inside one
+   request's unbroken chain of awaits. That reasoning is wrong the moment two students press send at
+   the same time: one warm instance serves both, the second request overwrites the first's deadline,
+   and the first inherits a budget that starts later than its own clock. On a Sunday with three
+   children on one deployment, concurrent requests are the expected case rather than the edge one.
+   So it rides on `spec` — the per-request object resolveModel() already builds fresh every time and
+   already threads through callAI into chatOnce, which is where the signal is needed. A spec with no
+   deadline on it (the boot banner, /api/info) just gets the per-call limit. */
+function budgetLeft(spec) {
+  const deadline = spec && spec.deadline;
+  if (!deadline) return CALL_TIMEOUT_MS;
+  return Math.max(0, deadline - Date.now());
 }
 /* The signal for one provider call: whichever runs out first, this call's own limit or what is left
    of the whole request's budget. */
-function callSignal() {
-  const ms = Math.min(CALL_TIMEOUT_MS, budgetLeft() || CALL_TIMEOUT_MS);
+function callSignal(spec) {
+  const ms = Math.min(CALL_TIMEOUT_MS, budgetLeft(spec) || CALL_TIMEOUT_MS);
   if (ms <= 0) throw new Error('out of time for this question');
   return AbortSignal.timeout(ms);
 }
@@ -905,7 +915,7 @@ async function chatOnce(spec, system, msgs, wantJSON, withTools) {
     const r = await fetch('https://api.anthropic.com/v1/messages', {
       method: 'POST',
       headers: { 'x-api-key': ANTHROPIC_KEY, 'anthropic-version': '2023-06-01', 'content-type': 'application/json' },
-      body: JSON.stringify(body), signal: callSignal()
+      body: JSON.stringify(body), signal: callSignal(spec)
     });
     if (!r.ok) throw new Error('Anthropic HTTP ' + r.status);
     const d = await r.json();
@@ -925,7 +935,7 @@ async function chatOnce(spec, system, msgs, wantJSON, withTools) {
     if (withTools) body.tools = tools.toolSpecs();
     const r = await fetch(OPENROUTER_URL, {
       method: 'POST', headers: { 'Authorization': 'Bearer ' + OPENROUTER_KEY, 'content-type': 'application/json' },
-      body: JSON.stringify(body), signal: callSignal()
+      body: JSON.stringify(body), signal: callSignal(spec)
     });
     if (!r.ok) throw new Error('OpenRouter HTTP ' + r.status);
     const d = await r.json();
@@ -946,8 +956,8 @@ async function chatOnce(spec, system, msgs, wantJSON, withTools) {
   if (wantJSON && !withTools) body.format = 'json';       // Ollama ignores tool calls in strict json mode
   if (withTools) body.tools = tools.toolSpecs();
   if (!OLLAMA_THINK) body.think = false;
-  let r = await fetch(OLLAMA_URL, { method: 'POST', headers: { 'content-type': 'application/json' }, body: JSON.stringify(body), signal: callSignal() });
-  if (!r.ok && body.think === false) { delete body.think; r = await fetch(OLLAMA_URL, { method: 'POST', headers: { 'content-type': 'application/json' }, body: JSON.stringify(body), signal: callSignal() }); }
+  let r = await fetch(OLLAMA_URL, { method: 'POST', headers: { 'content-type': 'application/json' }, body: JSON.stringify(body), signal: callSignal(spec) });
+  if (!r.ok && body.think === false) { delete body.think; r = await fetch(OLLAMA_URL, { method: 'POST', headers: { 'content-type': 'application/json' }, body: JSON.stringify(body), signal: callSignal(spec) }); }
   if (!r.ok) throw new Error('Ollama HTTP ' + r.status);
   const d = await r.json();
   const m = d.message || {};
@@ -1012,11 +1022,7 @@ app.post('/api/ai', async (req, res) => {
      `seen` is filled in as the request is parsed and read here at send time, which is why it is a
      mutable object rather than arguments. */
   const t0 = Date.now();
-  /* The whole-request deadline the provider calls measure themselves against. Set here, at the one
-     door every AI request comes through, so the retry chain cannot outlive it however many times it
-     goes round. */
-  aiDeadline = t0 + TOTAL_BUDGET_MS;
-  const seen = { who: tel.who(auth, req), agent: '', lesson: '', where: '', q: '', tools: [], guards: [] };
+  const seen ={ who: tel.who(auth, req), agent: '', lesson: '', where: '', q: '', tools: [], guards: [] };
   const sendJSON = res.json.bind(res);
   res.json = function (body) {
     tel.record('ask', {
@@ -1063,6 +1069,10 @@ app.post('/api/ai', async (req, res) => {
   let agent = (req.body && req.body.agent) || 'coder';
   if (['coder', 'tutor', 'lab-tutor', 'quiz', 'grader', 'design-coach'].indexOf(agent) < 0) agent = 'coder';   // controller: keep to known agents
   const spec = resolveModel(agent);
+  /* The whole-request deadline every provider call measures itself against, stamped on this
+     request's own spec so the retry chain cannot outlive it however many times it goes round — and
+     so a second student pressing send cannot move it. See budgetLeft. */
+  spec.deadline = t0 + TOTAL_BUDGET_MS;
   /* The agent AFTER that whitelist, not the one the browser asked for — the UI can switch agent
      without the student doing anything (opening Learn while in Build forces Tutor, see
      paintAIModeAvailability in course.js), and an unrecognised name silently becomes the coder. The

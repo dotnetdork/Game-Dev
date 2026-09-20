@@ -8,7 +8,7 @@
     "start": "node server.js",
     "dev": "node --watch server.js",
     "demo:login": "node tools/demo-login.js",
-    "test": "node tools/check-encoding.js && node tools/check-html.js && node tools/check-state.js && node tools/subset-icons.js --check && node tools/check-quiz.js && node tools/check-grade.js && node tools/check-lessons.js && node tools/check-challenges.js && node tools/check-questions.js && node tools/check-assets.js && node tools/check-vocab.js && node tools/check-credits.js && node tools/check-mcp.js && node tools/check-gamelog.js && node tools/check-session.js && node tools/check-boot.js",
+    "test": "node tools/check-encoding.js && node tools/check-html.js && node tools/check-state.js && node tools/subset-icons.js --check && node tools/check-quiz.js && node tools/check-grade.js && node tools/check-lessons.js && node tools/check-challenges.js && node tools/check-questions.js && node tools/check-assets.js && node tools/check-vocab.js && node tools/check-credits.js && node tools/check-mcp.js && node tools/check-gamelog.js && node tools/check-session.js && node tools/check-env.js && node tools/check-boot.js",
     "check:release": "node tools/check-release.js",
     "session:watch": "node tools/session-capture.js",
     "session:report": "node tools/session-report.js",

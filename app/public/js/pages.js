@@ -356,20 +356,15 @@ function publishGame() {
      "+240 XP to pass Ivy" is a target you can reach this afternoon; "3,500 XP behind first" is a
      reason to stop reading the page.
 
-   The roster below is sample data. There is no backend yet, so a board needs someone on it to be
-   worth looking at or testing; swap `sampleBoard` for the real class when there is one to fetch. */
-const sampleBoard = [ // privacy-safe names (first name + last initial), like the Gallery
-  { name: 'Ava R.', xp: 4200, week: 620, cls: true },
-  { name: 'Leo M.', xp: 3850, week: 410, cls: true },
-  { name: 'Ivy L.', xp: 3100, week: 540, cls: true },
-  { name: 'Mia T.', xp: 2600, week: 900, cls: false },
-  { name: 'Eli J.', xp: 2250, week: 480, cls: true },
-  { name: 'Sam K.', xp: 1950, week: 300, cls: true },
-  { name: 'Zoe W.', xp: 1500, week: 260, cls: false },
-  { name: 'Kai P.', xp: 1200, week: 720, cls: false },
-  { name: 'Max D.', xp: 980, week: 390, cls: true },
-  { name: 'Noa B.', xp: 700, week: 150, cls: true }
-];
+   THE ROSTER IS EMPTY, AND IT HAS TO STAY EMPTY UNTIL THERE IS A REAL ONE TO FETCH.
+   It used to hold ten invented children — Ava R., Leo M., Ivy L. — with XP, levels and podium
+   medals, and a real student was inserted among them at their true rank. As sample data for
+   building the page that was reasonable. Shown to an eleven-year-old it stops being sample data and
+   becomes a claim: these are your classmates, this is where you stand against them. The gap the
+   rail prints ("+240 XP to pass Ivy") is then a target invented by the app to motivate a child, and
+   Ivy does not exist.
+   There is no backend, so the honest board is an empty one that says so. See emptyBoard() below. */
+const sampleBoard = [];
 let boardScope = 'class', boardRange = 'week';
 function nfmt(n) { return Number(n).toLocaleString('en-US'); }
 
@@ -391,12 +386,19 @@ function renderBoard() {
   if (boardScope === 'class') pool = pool.filter(function (r) { return r.cls; });
   const val = function (r) { return boardRange === 'week' ? r.week : r.xp; };
   const rows = (hasXp ? pool.concat([me]) : pool.slice()).sort(function (a, b) { return val(b) - val(a); });
-  const max = val(rows[0]) || 1;
+  /* `|| 1` was doing two jobs and only admitted to one: it guarded a zero denominator, and it also
+     happened to stop `rows[0]` being read off an empty array. With a real roster there was always a
+     row 0; with none there is not, and reading `.week` off undefined would take the whole page. */
+  const max = (rows.length ? val(rows[0]) : 0) || 1;
   const myIdx = rows.findIndex(function (r) { return r.you; });
   const myRank = myIdx + 1;
+  /* Ranking needs somebody to be ranked against. Alone on the board, "#1" and a gold medal are a
+     statement about a field of one, and a podium with two empty plinths beside it says there are
+     two other people who did worse. Both are drawn only once there is a field. */
+  const ranked = rows.length > 1;
 
   const podMeta = [{ i: 1, c: 's', lbl: '2nd place' }, { i: 0, c: 'g p1', lbl: '1st place' }, { i: 2, c: 'b', lbl: '3rd place' }];
-  const podium = '<div class="podium">' + podMeta.map(function (m) {
+  const podium = rows.length < 3 ? '' : '<div class="podium">' + podMeta.map(function (m) {
     const r = rows[m.i]; if (!r) return '';
     const lvl = Math.floor(r.xp / 1000) + 1;
     return '<div class="pod ' + m.c + (r.you ? ' you' : '') + '">'
@@ -406,8 +408,11 @@ function renderBoard() {
       + '<div class="pod-xp">' + nfmt(val(r)) + ' XP</div></div>';
   }).join('') + '</div>';
 
-  const list = rows.map(function (r, i) {
-    const medal = i === 0 ? 'g' : (i === 1 ? 's' : (i === 2 ? 'b' : ''));
+  const list = !rows.length
+    ? '<p class="lb-empty">Nobody is on the board yet. Finish a lesson and you will be the first —'
+      + ' this fills up as your class works through the course.</p>'
+    : rows.map(function (r, i) {
+    const medal = !ranked ? '' : (i === 0 ? 'g' : (i === 1 ? 's' : (i === 2 ? 'b' : '')));
     const lvl = Math.floor(r.xp / 1000) + 1;
     const pct = Math.round(val(r) / max * 100);
     return '<div class="lrow' + (r.you ? ' you' : '') + '">'
@@ -426,10 +431,11 @@ function renderBoard() {
     /* The person one place ahead, never the leader. A gap you can close today is a reason to keep
        going; the distance to first place is a reason to close the page. */
     const ahead = myIdx > 0 ? rows[myIdx - 1] : null;
-    const cap = ahead ? '+' + nfmt(val(ahead) - val(me)) + ' XP to pass ' + ahead.name : 'You’re in the lead 🎉';
+    const cap = ahead ? '+' + nfmt(val(ahead) - val(me)) + ' XP to pass ' + ahead.name
+      : (ranked ? 'You’re in the lead 🎉' : 'Nobody else is on the board yet.');
     yourCard = '<div class="card yourcard">'
       + '<div class="yc-h"><span class="lbl">Your rank</span><span class="yc-xp">' + nfmt(val(me)) + ' XP</span></div>'
-      + '<div class="yc-rank">#' + myRank + '</div>'
+      + (ranked ? '<div class="yc-rank">#' + myRank + '</div>' : '')
       + '<div class="yc-sub">Level ' + lvl + ' · ' + nfmt(toNext) + ' XP to Level ' + (lvl + 1) + '</div>'
       + '<div class="prog" role="progressbar" aria-valuenow="' + Math.round(pctL) + '" aria-valuemin="0" aria-valuemax="100"><div style="width:' + pctL + '%"></div></div>'
       + '<div class="prog-cap">' + cap + '</div></div>';
@@ -477,7 +483,7 @@ function renderBoard() {
   const controls = '<div class="board-controls">'
     + seg('bscope', [['class', 'My class'], ['all', 'Everyone']], boardScope)
     + seg('brange', [['week', 'This week'], ['all', 'All-time']], boardRange)
-    + (hasXp ? '<span class="your-rank">Your rank <span class="r">#' + myRank + '</span></span>' : '')
+    + (hasXp && ranked ? '<span class="your-rank">Your rank <span class="r">#' + myRank + '</span></span>' : '')
     + '</div>';
 
   return '<div class="phead"><div><h2><span class="mdi mdi-podium"></span>Leaderboards</h2><p class="sub">'
