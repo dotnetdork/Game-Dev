@@ -1,0 +1,158 @@
+/* ai/provider.js — one turn with a model, and the tool loop around it.
+ *
+ * Moved out of server.js by the Phase 1 split in docs/architecture-audit-2026-09-15.md. Three
+ * providers behind one shape: chatOnce() normalises Anthropic, OpenRouter and Ollama into the same
+ * { content, assistant, toolCalls }, and callAI() runs the lookup rounds on top of it.
+ */
+const usage = require('./usage');
+const tools = require('./tools');
+const models = require('./models');
+
+const { DEFAULT_PROVIDER, OLLAMA_URL, OLLAMA_NUM_CTX, OLLAMA_NUM_PREDICT, OLLAMA_THINK,
+  ANTHROPIC_KEY, OPENROUTER_KEY, OPENROUTER_URL, MAX_TOOL_ROUNDS } = models;
+
+/* NOTHING USED TO BOUND HOW LONG A STUDENT'S QUESTION COULD TAKE, and a tester watched the builder
+   think for five or six minutes and produce nothing.
+   The arithmetic behind that: one answer is up to MAX_TOOL_ROUNDS lookups plus a final call, and the
+   coder can run that whole thing five times over (the first attempt plus one corrective retry per
+   guard). Twenty-five model calls, in sequence, none of them with a deadline — and on a laptop
+   there is no platform timeout to stop it either. Hosted, Vercel kills the function at maxDuration
+   and the handler never resumes, so the request that most needed recording is the one that logs
+   nothing at all.
+   Two deadlines, therefore: one per call, and one for the whole request. Both come back as a normal
+   thrown error, which every caller already turns into "the AI is not reachable right now" — a
+   sentence a child can act on, arriving in seconds instead of never. */
+const CALL_TIMEOUT_MS = Number(process.env.AI_CALL_TIMEOUT_MS || 45000);
+const TOTAL_BUDGET_MS = Number(process.env.AI_TOTAL_BUDGET_MS || 110000);
+
+/* THE DEADLINE BELONGS TO THE REQUEST, NOT TO THE MODULE.
+   It was a module-level `let` for a day, on the reasoning that it is written and read inside one
+   request's unbroken chain of awaits. That reasoning is wrong the moment two students press send at
+   the same time: one warm instance serves both, the second request overwrites the first's deadline,
+   and the first inherits a budget that starts later than its own clock. On a Sunday with three
+   children on one deployment, concurrent requests are the expected case rather than the edge one.
+   So it rides on `spec` — the per-request object resolveModel() already builds fresh every time and
+   already threads through callAI into chatOnce, which is where the signal is needed. A spec with no
+   deadline on it (the boot banner, /api/info) just gets the per-call limit. */
+function budgetLeft(spec) {
+  const deadline = spec && spec.deadline;
+  if (!deadline) return CALL_TIMEOUT_MS;
+  return Math.max(0, deadline - Date.now());
+}
+/* The signal for one provider call: whichever runs out first, this call's own limit or what is left
+   of the whole request's budget. */
+function callSignal(spec) {
+  const ms = Math.min(CALL_TIMEOUT_MS, budgetLeft(spec) || CALL_TIMEOUT_MS);
+  if (ms <= 0) throw new Error('out of time for this question');
+  return AbortSignal.timeout(ms);
+}
+
+/* One turn with the model. Returns { content, assistant, toolCalls } — toolCalls is empty
+   unless tools were offered and the model chose to use one. `msgs` is the running conversation
+   (history, the new message, and any tool traffic already exchanged). */
+async function chatOnce(spec, system, msgs, wantJSON, withTools) {
+  const provider = spec.provider, model = spec.model;
+  if (provider === 'anthropic') {
+    if (!ANTHROPIC_KEY) throw new Error('ANTHROPIC_API_KEY not set');
+    const body = { model: model, max_tokens: 4000, system: system, messages: msgs };
+    if (withTools) body.tools = tools.anthropicSpecs();
+    const r = await fetch('https://api.anthropic.com/v1/messages', {
+      method: 'POST',
+      headers: { 'x-api-key': ANTHROPIC_KEY, 'anthropic-version': '2023-06-01', 'content-type': 'application/json' },
+      body: JSON.stringify(body), signal: callSignal(spec)
+    });
+    if (!r.ok) throw new Error('Anthropic HTTP ' + r.status);
+    const d = await r.json();
+    usage.record(spec.agent || 'unknown', provider, model, d);
+    const blocks = d.content || [];
+    return {
+      content: blocks.filter(function (b) { return b.type === 'text'; }).map(function (b) { return b.text; }).join(''),
+      assistant: { role: 'assistant', content: blocks },
+      toolCalls: blocks.filter(function (b) { return b.type === 'tool_use'; })
+        .map(function (b) { return { id: b.id, name: b.name, args: b.input || {} }; })
+    };
+  }
+  if (provider === 'openrouter') {
+    if (!OPENROUTER_KEY) throw new Error('OPENROUTER_API_KEY not set');
+    const body = { model: model, messages: [{ role: 'system', content: system }].concat(msgs) };
+    if (wantJSON && !withTools) body.response_format = { type: 'json_object' };   // json mode and tools conflict
+    if (withTools) body.tools = tools.toolSpecs();
+    const r = await fetch(OPENROUTER_URL, {
+      method: 'POST', headers: { 'Authorization': 'Bearer ' + OPENROUTER_KEY, 'content-type': 'application/json' },
+      body: JSON.stringify(body), signal: callSignal(spec)
+    });
+    if (!r.ok) throw new Error('OpenRouter HTTP ' + r.status);
+    const d = await r.json();
+    usage.record(spec.agent || 'unknown', provider, model, d);
+    const m = (d.choices && d.choices[0] && d.choices[0].message) || {};
+    return {
+      content: m.content || '',
+      assistant: m,
+      toolCalls: (m.tool_calls || []).map(function (c) {
+        let a = {}; try { a = typeof c.function.arguments === 'string' ? JSON.parse(c.function.arguments || '{}') : (c.function.arguments || {}); } catch (e) {}
+        return { id: c.id, name: c.function.name, args: a };
+      })
+    };
+  }
+  // default: local Ollama
+  const body = { model: model, stream: false, options: { num_ctx: OLLAMA_NUM_CTX, num_predict: OLLAMA_NUM_PREDICT, temperature: 0.3 },
+    messages: [{ role: 'system', content: system }].concat(msgs) };
+  if (wantJSON && !withTools) body.format = 'json';       // Ollama ignores tool calls in strict json mode
+  if (withTools) body.tools = tools.toolSpecs();
+  if (!OLLAMA_THINK) body.think = false;
+  let r = await fetch(OLLAMA_URL, { method: 'POST', headers: { 'content-type': 'application/json' }, body: JSON.stringify(body), signal: callSignal(spec) });
+  if (!r.ok && body.think === false) { delete body.think; r = await fetch(OLLAMA_URL, { method: 'POST', headers: { 'content-type': 'application/json' }, body: JSON.stringify(body), signal: callSignal(spec) }); }
+  if (!r.ok) throw new Error('Ollama HTTP ' + r.status);
+  const d = await r.json();
+  const m = d.message || {};
+  return {
+    content: m.content || d.response || '',
+    assistant: m,
+    toolCalls: (m.tool_calls || []).map(function (c) { return { id: c.id, name: c.function.name, args: c.function.arguments || {} }; })
+  };
+}
+
+/* The message that carries a tool's answer back to the model. */
+function toolResultMessage(provider, call, result) {
+  const text = JSON.stringify(result);
+  if (provider === 'anthropic') {
+    return { role: 'user', content: [{ type: 'tool_result', tool_use_id: call.id, content: text }] };
+  }
+  return { role: 'tool', tool_call_id: call.id, name: call.name, content: text };
+}
+
+/* `onTool` is optional and is called once per tool the model actually invoked, with the call and
+   what came back. Hooked here rather than inside tools.runTool because this is the only place that
+   knows WHOSE request it is — runTool takes the prompt context, and threading an identity through
+   that would mean putting it in an object whose keys get rendered into prompts. This sees exactly
+   what runTool sees, including a model asking for a tool that does not exist: that comes back as
+   `{error}` rather than throwing, so it is invisible everywhere else. */
+async function callAI(spec, system, user, wantJSON, history, toolCtx, onTool) {
+  const provider = spec.provider, model = spec.model;
+  if (!model) throw new Error('No model set for ' + provider + ' — set it in .env');
+  const msgs = (history || []).concat([{ role: 'user', content: user }]);
+
+  if (!toolCtx) return (await chatOnce(spec, system, msgs, wantJSON, false)).content;
+
+  // Two phases, because strict JSON mode and tool calling are mutually exclusive on Ollama:
+  // asking for JSON suppresses tool calls entirely (the model invents a fake tool result
+  // instead). So phase 1 lets it look things up with JSON mode OFF, and phase 2 asks for the
+  // real answer with tools off and JSON back on, with the tool results in the conversation.
+  for (let round = 0; round < MAX_TOOL_ROUNDS; round++) {
+    const turn = await chatOnce(spec, system, msgs, false, true);
+    if (!turn.toolCalls.length) {
+      if (!wantJSON) return turn.content;     // plain-text agent: this is already the answer
+      break;                                  // JSON agent: fall through and ask properly
+    }
+    msgs.push(turn.assistant);
+    turn.toolCalls.forEach(function (call) {
+      const result = tools.runTool(call.name, call.args, toolCtx);
+      if (onTool) { try { onTool(call, result); } catch (e) { /* never break a lookup to log one */ } }
+      msgs.push(toolResultMessage(provider, call, result));
+    });
+  }
+  return (await chatOnce(spec, system, msgs, wantJSON, false)).content;
+}
+
+module.exports = { chatOnce: chatOnce, callAI: callAI, toolResultMessage: toolResultMessage,
+  CALL_TIMEOUT_MS: CALL_TIMEOUT_MS, TOTAL_BUDGET_MS: TOTAL_BUDGET_MS };

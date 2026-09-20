@@ -1,0 +1,225 @@
+/* ai/guards.js — checking the model's answer instead of trusting it.
+ *
+ * Moved out of server.js by the Phase 1 split in docs/architecture-audit-2026-09-15.md. Every
+ * function here is pure: text in, findings out. That is the point — they are the deterministic
+ * half of the AI safety story (Stage 4 Tier 1), they work with any model, and being pure is what
+ * makes them testable without one. See tools/check-guards.js.
+ */
+
+// ---- helpers ----
+function extractJSON(s) {
+  const a = s.indexOf('{'), b = s.lastIndexOf('}');
+  if (a < 0 || b < 0 || b < a) return null;
+  try { return unwrapDoubleJSON(JSON.parse(s.slice(a, b + 1))); } catch (e) { return null; }
+}
+/* After reading tool output a model sometimes answers with its JSON wrapped inside another
+   JSON string, so `reply` arrives holding the whole object as text. Unwrap it once rather
+   than showing a student a blob of JSON. */
+const OP_FIELDS = ['reply', 'why', 'config', 'functions', 'create', 'update', 'newFile', 'editFile', 'replaceFile'];
+function unwrapDoubleJSON(parsed) {
+  if (!parsed || typeof parsed.reply !== 'string' || !/^\s*\{/.test(parsed.reply)) return parsed;
+  try {
+    const inner = JSON.parse(parsed.reply.slice(parsed.reply.indexOf('{'), parsed.reply.lastIndexOf('}') + 1));
+    if (inner && OP_FIELDS.some(function (k) { return inner[k] !== undefined; })) return inner;
+  } catch (e) { /* leave it alone */ }
+  return parsed;
+}
+// The browser sends prior turns so follow-ups like "even faster" or "undo that" make sense.
+// Never trusted as-is: roles, per-message length, turn count and total size are all capped here.
+function sanitizeHistory(raw) {
+  if (!Array.isArray(raw)) return [];
+  const out = []; let budget = 3000;
+  for (let i = raw.length - 1; i >= 0 && out.length < 12; i--) {
+    const m = raw[i]; if (!m) continue;
+    const role = m.role === 'assistant' ? 'assistant' : (m.role === 'user' ? 'user' : null);
+    if (!role) continue;
+    const content = String(m.content == null ? '' : m.content).slice(0, 1000);
+    if (!content.trim()) continue;
+    if (content.length > budget) break;                 // oldest turns fall off first
+    budget -= content.length;
+    out.unshift({ role: role, content: content });
+  }
+  return out;
+}
+
+// What the coder can see besides game.js: the lesson being worked on, the other project
+// files, and the asset keys that actually exist. Without this it guesses, and a guessed
+
+// ---- asset-key validation (Stage 4 Tier 1, pulled forward) ----
+// Telling a 7B model "these are the only keys that exist" is not enough — it still invents
+// them, and a key that was never loaded fails silently and leaves the student with a broken
+// game. So we check its answer instead of trusting it. Deterministic: works with any model.
+//
+// Where the key sits in each call. `add.text(x, y, 'hi')` is deliberately absent — its third
+// argument is text to display, not a key.
+const ASSET_USES = [
+  { re: /\b(?:add|physics\.add|make)\.(?:sprite|image)\s*\(/g, arg: 2 },
+  { re: /\b(?:add|make)\.tileSprite\s*\(/g, arg: 4 },
+  { re: /\.create\s*\(/g, arg: 2 },                       // group.create(x, y, key)
+  { re: /\bsound\.(?:play|add)\s*\(/g, arg: 0 },
+  { re: /\.setTexture\s*\(/g, arg: 0 }
+];
+// A key can also be legitimately created at runtime rather than bought.
+const ASSET_DEFS = [
+  { re: /\bgenerateTexture\s*\(/g, arg: 0 },
+  { re: /\bload\.(?:image|audio|spritesheet|atlas|bitmapFont)\s*\(/g, arg: 0 }
+];
+// Split a call's arguments at top level. Needed because arguments are real expressions —
+// `Math.random() * (HEIGHT - 100)` has parens in it, which no flat regex survives.
+function callArgs(text, open) {
+  let depth = 0, start = open + 1, quote = null; const args = [];
+  for (let i = open; i < text.length; i++) {
+    const c = text[i];
+    if (quote) { if (c === '\\') i++; else if (c === quote) quote = null; continue; }
+    if (c === '"' || c === "'" || c === '`') { quote = c; continue; }
+    if (c === '(' || c === '[' || c === '{') { depth++; continue; }
+    if (c === ')' || c === ']' || c === '}') {
+      depth--;
+      if (depth === 0) { args.push(text.slice(start, i)); return args; }
+      continue;
+    }
+    if (c === ',' && depth === 1) { args.push(text.slice(start, i)); start = i + 1; }
+  }
+  return args;   // unbalanced (truncated reply) — treat as no usable args
+}
+function stringArg(s) { const m = String(s).trim().match(/^(['"])([^'"]*)\1$/); return m ? m[2] : null; }
+function opsCode(ops) {
+  const out = [];
+  ['create', 'update', 'replaceFile'].forEach(function (k) { if (typeof ops[k] === 'string') out.push(ops[k]); });
+  if (Array.isArray(ops.functions)) ops.functions.forEach(function (f) { if (typeof f === 'string') out.push(f); });
+  if (ops.newFile && typeof ops.newFile.code === 'string') out.push(ops.newFile.code);
+  return out.join('\n');
+}
+function matchAll(text, specs) {
+  const found = {};
+  specs.forEach(function (spec) {
+    spec.re.lastIndex = 0; let m;
+    while ((m = spec.re.exec(text))) {
+      const key = stringArg(callArgs(text, m.index + m[0].length - 1)[spec.arg]);
+      if (key) found[key] = true;      // a non-literal (variable) argument is unknowable, so skip it
+    }
+  });
+  return found;
+}
+// Keys the proposed change uses that the student does not own and nothing defines.
+// `sets` are owned bundles as prefix+count: a key inside one of those ranges is owned even though
+// it is not in the (capped) key list, which is what stops a 400-tile set being rejected from 301.
+function unknownAssetKeys(ops, gameCode, owned, sets) {
+  const code = opsCode(ops);
+  if (!code.trim()) return [];
+  const defined = matchAll(gameCode + '\n' + code, ASSET_DEFS);   // existing code counts
+  const ownedSet = {};
+  (owned || []).forEach(function (a) { ownedSet[a.key] = true; });
+  const inSet = function (k) {
+    return (sets || []).some(function (t) {
+      if (k.indexOf(t.prefix) !== 0) return false;
+      /* The tail has to be a number inside the set, so a prefix cannot wave through anything that
+         merely starts with the same letters. */
+      const tail = k.slice(t.prefix.length);
+      return /^\d+$/.test(tail) && parseInt(tail, 10) < t.count;
+    });
+  };
+  return Object.keys(matchAll(code, ASSET_USES))
+    .filter(function (k) { return !ownedSet[k] && !defined[k] && !inSet(k); });
+}
+function assetApology(bad, owned) {
+  const names = bad.map(function (k) { return '"' + k + '"'; }).join(' and ');
+  const have = (owned || []).slice(0, 6).map(function (a) { return a.key; }).join(', ');
+  return 'I wanted to use ' + names + ', but you don’t own ' + (bad.length > 1 ? 'those' : 'that') + ' yet, so I left your game alone. '
+    + (have ? 'You can use: ' + have + '. ' : '')
+    + 'Buy more art and sounds in the Store, or ask me for something using what you have.';
+}
+
+// ---- Phaser APIs that do not exist ----
+// phaser-rules.md tells the model not to use these; it does anyway often enough to matter, and
+// each one either crashes the scene or silently does nothing. Checked, not trusted.
+const BAD_PHASER_APIS = [
+  { re: /\.(cubicCurveTo|bezierCurveTo|quadraticCurveTo|arcTo|arc|ellipse|rect)\s*\(/g,
+    why: 'is an HTML-canvas method and does not exist on Phaser Graphics',
+    hint: 'use fillRect, fillRoundedRect, fillCircle, fillTriangle or beginPath/moveTo/lineTo/closePath/fillPath' },
+  { re: /\bnew\s+Phaser\.Game\s*\(/g, label: 'new Phaser.Game',
+    why: 'creates a second game', hint: 'main.js already starts the game — never create another' },
+  { re: /\binput\.keyboard\.isDown\s*\(/g, label: 'input.keyboard.isDown()',
+    why: 'does not exist', hint: 'read scene.cursors.<key>.isDown, or register the key with addKeys first' },
+  { re: /\bload\.(?:image|audio|spritesheet)\s*\(\s*[^,)]+,\s*['"]https?:/g, label: 'loading a file from a URL',
+    why: 'is not allowed here', hint: 'every picture and sound is already loaded by key — use an owned key' }
+];
+// `arc`/`rect`/`ellipse` are only wrong on a Graphics object; scene.add.rect/ellipse are real.
+const GRAPHICS_ONLY = /^(arc|ellipse|rect)$/;
+function apiHits(code) {
+  const hits = {};
+  BAD_PHASER_APIS.forEach(function (rule) {
+    rule.re.lastIndex = 0; let m;
+    while ((m = rule.re.exec(String(code)))) {
+      if (m[1] && GRAPHICS_ONLY.test(m[1])) {
+        const before = String(code).slice(Math.max(0, m.index - 40), m.index);
+        if (!/graphics|\bg\b|gfx/i.test(before)) continue;      // scene.add.rect(...) is fine
+      }
+      const name = rule.label || m[1] || m[0].trim();
+      hits[name] = hits[name] || { name: name, why: rule.why, hint: rule.hint, n: 0 };
+      hits[name].n++;
+    }
+  });
+  return hits;
+}
+/* Only what this change INTRODUCES. main.js legitimately contains `new Phaser.Game`, so a file
+   sent back whole must not be condemned for what was already in it. */
+function badPhaserApis(proposed, baseline) {
+  const now = apiHits(proposed), was = apiHits(baseline || '');
+  return Object.keys(now).filter(function (k) { return now[k].n > (was[k] ? was[k].n : 0); })
+    .map(function (k) { return now[k]; });
+}
+// Per changed file, so each is compared against its own original.
+function badApisIn(ops, gameCode, ctxFiles) {
+  const out = [];
+  if (ops.editFile && typeof ops.editFile.code === 'string') {
+    const orig = (ctxFiles || []).filter(function (f) { return f.name === ops.editFile.name; })[0];
+    badPhaserApis(ops.editFile.code, orig ? orig.code : '').forEach(function (b) { out.push(b); });
+  }
+  const gameOps = {};
+  ['functions', 'create', 'update', 'replaceFile', 'newFile'].forEach(function (k) { if (ops[k] !== undefined) gameOps[k] = ops[k]; });
+  if (Object.keys(gameOps).length) {
+    badPhaserApis(opsCode(gameOps), ops.replaceFile ? gameCode : '').forEach(function (b) { out.push(b); });
+  }
+  const seen = {};
+  return out.filter(function (b) { if (seen[b.name]) return false; seen[b.name] = 1; return true; });
+}
+
+// ---- keyboard keys must be registered before they are read ----
+// `scene.keys.SHIFT.isDown` when only 'W,A,S,D' were registered throws on the very first frame
+// and freezes the game. The model gets this right about half the time however plainly the rule
+// is written, so it is checked rather than trusted.
+function unregisteredKeys(code) {
+  const registered = {}; let m, re;
+  re = /addKeys\s*\(\s*['"]([^'"]+)['"]/g;
+  while ((m = re.exec(code))) m[1].split(',').forEach(function (k) { registered[k.trim().toUpperCase()] = true; });
+  re = /addKey\s*\(\s*(?:Phaser\.Input\.Keyboard\.KeyCodes\.([A-Za-z_]+)|['"]([^'"]+)['"])/g;
+  while ((m = re.exec(code))) registered[String(m[1] || m[2]).trim().toUpperCase()] = true;
+  const used = {};
+  re = /\bkeys\.([A-Za-z_]\w*)\b/g;
+  while ((m = re.exec(code))) used[m[1].toUpperCase()] = true;
+  return Object.keys(used).filter(function (k) { return !registered[k]; });
+}
+function badKeysIn(ops, gameCode) {
+  const bad = {};
+  if (ops.editFile && typeof ops.editFile.code === 'string') {
+    unregisteredKeys(ops.editFile.code).forEach(function (k) { bad[k] = true; });
+  }
+  const inGame = opsCode(ops).replace(ops.editFile && ops.editFile.code ? ops.editFile.code : '\0', '');
+  if (inGame.trim()) unregisteredKeys(gameCode + '\n' + inGame).forEach(function (k) { bad[k] = true; });
+  return Object.keys(bad);
+}
+
+// ---- "I added it!" with no ops is a lie the student acts on ----
+// A reply is not a change: unless the JSON carries an op field, nothing happens to the game.
+// Small models will happily claim success anyway, so the claim is checked against the ops.
+const CLAIMS_A_CHANGE = /\b(i(?:'ve| have)? (?:added|changed|updated|set|made|created|implemented|fixed|adjusted)|now (?:sprints?|jumps?|runs?|moves?|has|can|will)|will now|you can now|is now)\b/i;
+function claimsChangeWithoutOps(reply, ops) {
+  return !Object.keys(ops || {}).length && CLAIMS_A_CHANGE.test(String(reply || ''));
+}
+
+
+module.exports = { extractJSON: extractJSON, unwrapDoubleJSON: unwrapDoubleJSON,
+  sanitizeHistory: sanitizeHistory, unknownAssetKeys: unknownAssetKeys, assetApology: assetApology,
+  badApisIn: badApisIn, badKeysIn: badKeysIn, claimsChangeWithoutOps: claimsChangeWithoutOps,
+  BAD_PHASER_APIS: BAD_PHASER_APIS };
