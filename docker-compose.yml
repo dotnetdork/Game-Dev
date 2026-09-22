@@ -1,4 +1,5 @@
 # Auto-deployed on push to main — see .github/workflows/deploy.yml
+# Lives at /opt/Game-Dev on the server (matches this repo's name).
 services:
   app:
     build: ./app
