@@ -1,0 +1,26 @@
+services:
+  app:
+    build: ./app
+    restart: unless-stopped
+    env_file:
+      - .env
+
+    # State (per-student saves, when no KV store is configured) lives in app/.data —
+    # back it with a volume so it survives container rebuilds.
+    volumes:
+      - gamedev_state:/usr/src/app/.data
+
+    # These labels set up the domain name in the Caddy proxy
+    labels:
+      caddy: gamedev.apps.jointheleague.org
+      caddy.reverse_proxy: "{{upstreams 3000}}"
+
+    networks: # Must exist to receive traffic from Caddy
+      - caddy
+
+volumes:
+  gamedev_state:
+
+networks:
+  caddy:
+    external: true
