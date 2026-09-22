@@ -12,7 +12,7 @@ services:
 
     # These labels set up the domain name in the Caddy proxy
     labels:
-      caddy: gamedev.apps.jointheleague.org
+      caddy: game-dev.apps.jointheleague.org
       caddy.reverse_proxy: "{{upstreams 3000}}"
 
     networks: # Must exist to receive traffic from Caddy
