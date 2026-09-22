@@ -1,3 +1,4 @@
+# Auto-deployed on push to main — see .github/workflows/deploy.yml
 services:
   app:
     build: ./app
