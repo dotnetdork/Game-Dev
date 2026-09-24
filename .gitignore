@@ -54,3 +54,13 @@ Thumbs.db
 
 # scratch
 *.bak
+
+# Impeccable skill (.claude/skills/impeccable, installed with `npx impeccable install
+# --providers=claude --scope=project`). The skill text is committed so every session — cloud ones
+# included — has /impeccable. Two things it writes are not: the 16MB engine binary, which is
+# per-platform and which the launcher re-downloads (pinned, from GitHub) into ~/.impeccable/bin on
+# first use; and settings.local.json, where the installer puts its edit/Stop detector hook. That file
+# is per-machine by Claude Code's own convention — moving the hook into settings.json would run the
+# detector in every session for everyone, which is a separate decision.
+.claude/skills/impeccable/scripts/bin/
+.claude/settings.local.json
