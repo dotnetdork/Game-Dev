@@ -36,6 +36,20 @@ The first test with live students. It is the first evidence from real users this
 - **The goal: spark the flame in the next generation** of game devs — programmers, animators,
   artists and the rest.
 
+## Revision — a standalone rework (Jay, later the same day)
+
+- **The current app becomes a reference, not the starting point.** The rework is a fresh,
+  standalone wireframe with fresh course content. Reuse what works; don't carry things over by
+  default. "If current is great we end up with the same app, but we won't."
+- **What to keep from the prototype:** not the content, but the overall **structure and layout
+  (until disproven)**, and the **features, ideas and design aspects that work**.
+- **It should mimic a real game engine but operate as a course driven by AI** — an AI that **learns
+  the student and adapts the content** to them.
+- **Audience, sharpened: 10–13 year olds who are new to IT, CS, and computers in general.** Assume
+  nothing — not files, not tabs, not keyboard shortcuts, not right-click.
+- **Features come back one at a time, in the wireframes, as we decide to.** The ledger of what is
+  in, out, or waiting is `features.md`; the wireframes live in `wireframes/`.
+
 ## What happens to the app
 
 - **Strip it down to its core,** then build back, with Impeccable, only the features we decide are

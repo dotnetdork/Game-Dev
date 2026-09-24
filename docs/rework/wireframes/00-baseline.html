@@ -1,0 +1,144 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Baseline Wireframe</title>
+<!--
+  Wireframe 00 — the baseline. Grey boxes only: layout and what is decided, no visual design.
+  This is the empty engine layout kept "until disproven" (../00-direction.md, revision). Every
+  region's CONTENTS are open; a feature appears here only when ../features.md marks it In.
+  The frame is drawn at 1366×768 — the school Chromebook — and scaled to fit whatever screen
+  you open it on, so what you see is what fits on a student's screen.
+-->
+<style>
+  :root {
+    --page: #f4f4f2; --ink: #1d1d1b; --muted: #6b6b66; --line: #9a9a94;
+    --box: #e4e4e0; --box-in: #d2e6d4; --line-in: #3f7a47; --note: #fff8d6;
+  }
+  @media (prefers-color-scheme: dark) {
+    :root:not([data-theme="light"]) {
+      --page: #1b1b1a; --ink: #ecece8; --muted: #a3a39c; --line: #6c6c66;
+      --box: #2a2a28; --box-in: #1f3a24; --line-in: #7cc488; --note: #3a3520;
+    }
+  }
+  * { box-sizing: border-box; }
+  body { margin: 0; background: var(--page); color: var(--ink);
+         font: 15px/1.45 system-ui, -apple-system, "Segoe UI", sans-serif; }
+  header.doc { padding: 16px; max-width: 1366px; margin: 0 auto; }
+  header.doc h1 { font-size: 20px; margin: 0 0 4px; }
+  header.doc p { margin: 0; color: var(--muted); max-width: 70ch; }
+  .legend { display: flex; gap: 16px; flex-wrap: wrap; margin-top: 10px; font-size: 13px; }
+  .legend span { display: inline-flex; align-items: center; gap: 6px; }
+  .sw { width: 14px; height: 14px; border: 2px dashed var(--line); background: var(--box); }
+  .sw.in { border: 2px solid var(--line-in); background: var(--box-in); }
+
+  /* The 1366×768 frame, scaled to the available width by the script at the bottom. */
+  .stagehold { padding: 0 16px 24px; overflow: hidden; }
+  .scaler { transform-origin: top left; }
+  .frame { width: 1366px; height: 768px; background: var(--page); border: 2px solid var(--ink);
+           display: grid; grid-template-rows: 44px 1fr 32px;
+           grid-template-columns: 250px 1fr 380px;
+           grid-template-areas: "top top top" "left view ai" "bottom bottom bottom"; }
+  .r { border: 2px dashed var(--line); background: var(--box); margin: 3px; padding: 10px 12px;
+       display: flex; flex-direction: column; gap: 6px; overflow: hidden; }
+  .r.in { border: 2px solid var(--line-in); background: var(--box-in); }
+  .r h2 { margin: 0; font-size: 14px; letter-spacing: .02em; }
+  .r p { margin: 0; font-size: 13px; color: var(--muted); }
+  .tag { font-size: 11px; font-weight: 700; text-transform: uppercase; letter-spacing: .06em; }
+  .top { grid-area: top; flex-direction: row; align-items: center; gap: 12px; }
+  .left { grid-area: left; } .view { grid-area: view; justify-content: center; align-items: center; text-align: center; }
+  .ai { grid-area: ai; } .bottom { grid-area: bottom; flex-direction: row; align-items: center; gap: 12px; }
+  .top p, .bottom p { white-space: nowrap; }
+  .note { background: var(--note); border: 1px solid var(--line); padding: 8px 10px; font-size: 13px; color: var(--ink); }
+
+  section.doc { max-width: 1366px; margin: 0 auto; padding: 0 16px 32px; }
+  section.doc h2 { font-size: 16px; margin: 16px 0 6px; }
+  section.doc ul { margin: 0; padding-left: 20px; }
+  section.doc li { margin: 3px 0; }
+</style>
+</head>
+<body>
+<header class="doc">
+  <h1>Wireframe 00: the baseline</h1>
+  <p>The engine layout with nothing in it, drawn at 1366×768, the school Chromebook screen. Features
+     go in one at a time as we decide them (<code>docs/rework/features.md</code>).</p>
+  <div class="legend">
+    <span><i class="sw in"></i> Decided</span>
+    <span><i class="sw"></i> Region kept, contents open</span>
+  </div>
+</header>
+
+<div class="stagehold"><div class="scaler" id="scaler"><div class="frame" role="img" aria-label="Wireframe of the baseline layout at 1366 by 768">
+
+  <div class="r top">
+    <span class="tag">Top bar</span>
+    <p>Open: what lives here. The prototype had 7 destinations here; the critique found that too many.</p>
+  </div>
+
+  <div class="r left">
+    <span class="tag">Left panel</span>
+    <h2>Open</h2>
+    <p>The prototype used it for the course outline, the file tree, or the inspector, depending on the tab.</p>
+    <p>Critique: it should mean one thing, always.</p>
+  </div>
+
+  <div class="r view">
+    <span class="tag">Centre viewport</span>
+    <h2>Open</h2>
+    <p>The biggest region. The research says the kid's running game belongs here while they learn.<br>
+       Not decided yet.</p>
+  </div>
+
+  <div class="r ai in">
+    <span class="tag">Right panel: the AI (decided)</span>
+    <h2>One chat that teaches and builds</h2>
+    <p>The focal point of the course. Builder and tutor merged; the tutor's behaviour is the model.</p>
+    <p>It learns the student and adapts the content.</p>
+    <div class="note">Follows from "the AI is the focal point": it should be <b>visible at 1366</b>.
+      In the prototype it hid behind an icon below 1440px wide. (Proposed, confirm.)</div>
+    <p>Open: a named character or a labelled panel; what its first message is.</p>
+  </div>
+
+  <div class="r bottom">
+    <span class="tag">Bottom bar</span>
+    <p>Open: stars, XP and level; save status; nothing at all?</p>
+  </div>
+
+</div></div></div>
+
+<section class="doc">
+  <h2>Rules every screen follows (decided)</h2>
+  <ul>
+    <li><b>Ages 10–13, new to computers.</b> Assume no knowledge of files, tabs, keyboard shortcuts or right-click.</li>
+    <li><b>Feels like a real game engine, runs like a course</b> led by the AI.</li>
+  </ul>
+  <h2>Proposed rules (from the research, confirm)</h2>
+  <ul>
+    <li><b>Fits 1366×768</b> with nothing important hidden behind an icon.</li>
+    <li><b>Nothing needs dragging, resizing or right-click.</b> Trackpads are hard at this age.</li>
+  </ul>
+  <h2>Next decisions</h2>
+  <ul>
+    <li>What goes in the centre viewport (the research says the kid's running game).</li>
+    <li>What the left panel means.</li>
+    <li>How the AI shows up: a named character or a labelled panel.</li>
+  </ul>
+</section>
+
+<script>
+  /* Scale the fixed 1366×768 frame down to the page width so it is always seen whole. */
+  (function () {
+    var s = document.getElementById('scaler');
+    function fit() {
+      var avail = s.parentElement.clientWidth - 32; /* minus the 16px gutters */
+      var k = Math.min(1, avail / 1366);
+      s.style.transform = 'scale(' + k + ')';
+      s.style.height = (768 * k) + 'px';
+      s.style.width = (1366 * k) + 'px';
+    }
+    window.addEventListener('resize', fit); fit();
+  })();
+</script>
+</body>
+</html>
