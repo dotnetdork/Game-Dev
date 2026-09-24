@@ -11,6 +11,24 @@
         ],
         "createdAt": "2026-08-30T21:41:50.211Z",
         "reason": "User confirmed the block stripe: after it replaced a top hairline the user said \"I do like the coloring though\". It delimits quiz/lab/practice blocks (styles.css:1367-1379) and marks where a block stops. The 2px rule on .tip.aside (styles.css:1639) is the footnote convention for a floated margin note. Neither is a card accent tab."
+      },
+      {
+        "rule": "broken-image",
+        "value": "*",
+        "files": [
+          "app/public/styles.css"
+        ],
+        "createdAt": "2026-08-21T19:08:06.505Z",
+        "reason": "false positive: the only <img> in this file is prose inside a CSS comment explaining that an SVG loaded through an img tag cannot fetch external images. No markup in a stylesheet."
+      },
+      {
+        "rule": "broken-image",
+        "value": "*",
+        "files": [
+          "app/tools/check-lessons.js"
+        ],
+        "createdAt": "2026-08-25T15:25:45.220Z",
+        "reason": "false positive: the <img matches are regex literals inside a Node validator (IMG_SRC and checkFigureSizes) used to FIND img tags in lesson markdown and assert their src exists on disk. The file ships no markup. Verified separately that all 70 lesson images and 3 chrome images load."
       }
     ]
   }

@@ -25,7 +25,7 @@ stay server-side.
 | `app/` | the application (below) |
 | `docs/` | human-facing docs: child-privacy brief, curriculum outline |
 | `.ua/` | UA Framework project docs — status, positioning, analysis, specification |
-| `.claude/` | AI working material: [`plans/`](.claude/plans/STAGES.md), `design-reviews/`, launch config |
+| `.claude/` | AI working material: [`plans/`](.claude/plans/STAGES.md), launch config |
 | `.devcontainer/` | GitHub Codespaces setup |
 
 ### Inside `app/`

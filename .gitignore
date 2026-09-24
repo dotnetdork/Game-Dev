@@ -27,6 +27,8 @@ npm-debug.log*
 # CLI was run from, so there is one at the repo root and one under app/. A root-anchored pattern
 # covered only the first, and the second was being held back by .git/info/exclude — which is local
 # to one clone and would not protect anybody else.
+# The two were since merged into the root one (paths relative to the repo root): run Impeccable
+# from the repo root so a second app/.impeccable/ does not grow back.
 **/.impeccable/*
 !**/.impeccable/config.json
 
