@@ -50,6 +50,22 @@ The first test with live students. It is the first evidence from real users this
 - **Features come back one at a time, in the wireframes, as we decide to.** The ledger of what is
   in, out, or waiting is `features.md`; the wireframes live in `wireframes/`.
 
+## Revision — the course is a game (Jay, 2026-09-25)
+
+- **Make the course a fun game that is played, and through playing you learn.**
+- **Choose-your-own-adventure / Skyrim-style conversation options** are how the kid talks to the
+  AI and moves through the course.
+- **It picks up on how the student learns and adapts.** Recorded carefully: matching teaching to a
+  "learning style" label (visual / auditory / hands-on) has not been shown to improve learning
+  (Pashler et al. 2008). So the AI adapts to what the kid *shows* — pace, what they already know,
+  reading ease, interests, try-first vs watch-first — and every idea is shown several ways for
+  everyone.
+- **Decided in the interview:** the world is **a game studio** — the kid is the new developer, the
+  AI is their mentor, the roles are characters who give quests (the concepts), and each quest changes
+  the kid's own game. Choices **branch and rejoin**: order, flavour, examples and characters differ;
+  every kid reaches the core concepts. Replies are **3–4 dialogue options plus "say something
+  else"** (typing).
+
 ## What happens to the app
 
 - **Strip it down to its core,** then build back, with Impeccable, only the features we decide are

@@ -10,6 +10,11 @@ bubbles, as a named character; the left panel is the path, with the game's parts
 too; rewards are a celebration + concept card *and* a small stars/XP bar; the AI adapts pace, words,
 examples and how much it builds.
 
+> **Reframed 2026-09-25:** the course is a game set in **a game studio**. A lesson moment is now a
+> **quest** given by one of the studio's characters (a role — the artist, the level designer…),
+> with the mentor AI alongside. Conversation happens through dialogue options plus "say something
+> else." The five steps still hold inside the quest.
+
 ## 1. Who arrives and why
 A 10–13-year-old, new to computers, in class on a Chromebook (1366×768), who already has their own
 tiny game (invented in the first minute). Job: learn **one** game concept and see it land in *their*

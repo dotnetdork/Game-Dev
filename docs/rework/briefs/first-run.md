@@ -4,6 +4,11 @@
 `/impeccable shape`. Comes before the lesson moment (`lesson-moment.md`). Not yet confirmed; don't
 wireframe until it is.
 
+> **Reframed 2026-09-25:** the course is a game set in **a game studio**. This first run is the
+> game's **opening scene** — the kid arrives as the new developer and meets their mentor (the AI).
+> Replies are Skyrim-style dialogue options plus "say something else." Choices branch and rejoin.
+> The beats below still hold; they now happen as the opening scene of that story.
+
 ## 1. Who arrives and why
 A 10–13-year-old signing in for the first time, possibly new to computers and unsure what this is.
 Mode: Experience — inside a playful conversation, not a form.

@@ -29,6 +29,11 @@ records the reason, so the next person can see why something is there — or isn
 | Discovery questions with reflect-back ("so, like Mario?") instead of asking for labels | **In** | Jay | Shape interview. Applies to games, kinds of fun, and role interest. |
 | A learner card that evolves: picks, noticed comfort, lesson history; the kid and teacher can see and reset it | **In** | Jay | Shape interview. Never real name, birthday, school, location, photos, voice, chat transcripts. |
 | First run lasts ~3–5 minutes | **In** | Jay | Shape interview. |
+| The course is a game: learning happens by playing it | **In** | Jay | Direction, 2026-09-25. |
+| Setting: a game studio — the kid is the new dev, the AI is their mentor, roles are characters who give quests | **In** | Jay | Shape interview. Quests = concepts; each changes the kid's game. |
+| Choices branch and rejoin (order, flavour, examples, characters differ; core concepts shared) | **In** | Jay | Shape interview. Teachable at class scale. |
+| Replies: 3–4 dialogue options + "say something else" (typing) | **In** | Jay, research | Shape interview. Skyrim-style; matches the research against a blank chat box. |
+| Adapts to how the kid learns — from what they show, not a "learning style" label | **In** | Jay | Direction. See the note on learning styles there. |
 | Leaderboards | **Parked** | proto, Jay | "Probably not necessary." |
 | Gallery | **Parked** | proto, Jay | "Not necessary for now." |
 | Code-debugging labs | **Out** | proto, critique | A no-syntax course; the critique found them the lowest point of the app. |
