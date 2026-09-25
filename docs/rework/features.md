@@ -45,6 +45,8 @@ records the reason, so the next person can see why something is there — or isn
 | Launch departments: Design, Engineering, Art (+ Animation/VFX), Audio (+ the Front Desk) | **In** | Jay | Shape interview. QA, Production, Publishing later. |
 | The mentor is openly an AI, and proud of it | **In** | Jay, research | Turns "game AI vs generative AI" into a lesson. |
 | First run: fix one thing in an unfinished game; the pick sets the first department | **In** | Jay | Shape interview. `briefs/first-run.md` v2. |
+| Core loop: do the jobs (shifts as hands-on minigames, incl. fix-it jobs) → grow your game → grow your studio | **In** | Jay | `core-loop.md`. Start with shifts + your game; the studio layer thin at first. |
+| The kid's hands are always busy: plays, notices, decides, tunes, makes, directs, proves | **In** | Jay, research | `core-loop.md`. Tuning/making are direct, no AI call. |
 | Leaderboards | **Parked** | proto, Jay | "Probably not necessary." |
 | Gallery | **Parked** | proto, Jay | "Not necessary for now." |
 | Code-debugging labs | **Out** | proto, critique | A no-syntax course; the critique found them the lowest point of the app. |

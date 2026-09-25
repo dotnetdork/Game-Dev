@@ -19,6 +19,10 @@ examples and how much it builds.
 > price on the quest; the stars bar stays quiet. Each quest should use feel → see → name, with the
 > Unity name shown in an Inspector-style row.
 
+> **Superseded in part (2026-09-25):** the core loop is now "do the jobs, grow your game, grow your
+> studio" (`../core-loop.md`). A quest becomes a **shift** — a hands-on minigame in a department,
+> whose result lands in the kid's game. Revise this brief to the shift model before confirming it.
+
 ## 1. Who arrives and why
 A 10–13-year-old, new to computers, in class on a Chromebook (1366×768), who already has their own
 tiny game (invented in the first minute). Job: learn **one** game concept and see it land in *their*

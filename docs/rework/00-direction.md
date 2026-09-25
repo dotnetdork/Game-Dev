@@ -74,6 +74,15 @@ The first test with live students. It is the first evidence from real users this
 - **Students accidentally learn core concepts of game design that are hard to forget.**
 - **They win and collect prizes they can use for different things.**
 
+## Revision — what the kid does (Jay, 2026-09-25)
+
+- Jay, on wireframe 02: **"What is the student even supposed to do here?"** — the kid mostly tapped
+  options and watched the AI build.
+- **Agreed: do the jobs, grow your game, grow your studio.** Shifts are hands-on minigames where the
+  kid does a department's job (some are broken games to fix); every shift's result lands in the
+  kid's own game; the studio grows across the course. The fun is in the jobs, the kid's game is the
+  proof, the studio is the story. Start with shifts + your game. Full record: `core-loop.md`.
+
 ## What happens to the app
 
 - **Strip it down to its core,** then build back, with Impeccable, only the features we decide are
