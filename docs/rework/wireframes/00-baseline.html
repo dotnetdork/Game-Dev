@@ -19,13 +19,18 @@
   @media (prefers-color-scheme: dark) {
     :root:not([data-theme="light"]) {
       --page: #1b1b1a; --ink: #ecece8; --muted: #a3a39c; --line: #6c6c66;
-      --box: #2a2a28; --box-in: #1f3a24; --line-in: #7cc488; --note: #3a3520;
+      --box: #2a2a28; --box-in: #1f3a24; --line-in: #7cc488; --note: #3a3520; color-scheme: dark;
     }
+  }
+  /* An explicit dark choice (a viewer's theme toggle) wins over a light OS setting. */
+  :root[data-theme="dark"] {
+    --page: #1b1b1a; --ink: #ecece8; --muted: #a3a39c; --line: #6c6c66;
+    --box: #2a2a28; --box-in: #1f3a24; --line-in: #7cc488; --note: #3a3520; color-scheme: dark;
   }
   * { box-sizing: border-box; }
   body { margin: 0; background: var(--page); color: var(--ink);
          font: 15px/1.45 system-ui, -apple-system, "Segoe UI", sans-serif; }
-  header.doc { padding: 16px; max-width: 1366px; margin: 0 auto; }
+  header.doc { padding: 16px; max-width: var(--col, 1398px); margin: 0 auto; }
   header.doc h1 { font-size: 20px; margin: 0 0 4px; }
   header.doc p { margin: 0; color: var(--muted); max-width: 70ch; }
   .legend { display: flex; gap: 16px; flex-wrap: wrap; margin-top: 10px; font-size: 13px; }
@@ -33,9 +38,9 @@
   .sw { width: 14px; height: 14px; border: 2px dashed var(--line); background: var(--box); }
   .sw.in { border: 2px solid var(--line-in); background: var(--box-in); }
 
-  /* The 1366×768 frame, scaled to the available width by the script at the bottom. */
+  /* The 1366×768 frame, scaled to the window by the script at the bottom. */
   .stagehold { padding: 0 16px 24px; overflow: hidden; }
-  .scaler { transform-origin: top left; }
+  .scaler { transform-origin: top left; margin: 0 auto; }
   .frame { width: 1366px; height: 768px; background: var(--page); border: 2px solid var(--ink);
            display: grid; grid-template-rows: 44px 1fr 32px;
            grid-template-columns: 250px 1fr 380px;
@@ -52,7 +57,7 @@
   .top p, .bottom p { white-space: nowrap; }
   .note { background: var(--note); border: 1px solid var(--line); padding: 8px 10px; font-size: 13px; color: var(--ink); }
 
-  section.doc { max-width: 1366px; margin: 0 auto; padding: 0 16px 32px; }
+  section.doc { max-width: var(--col, 1398px); margin: 0 auto; padding: 0 16px 32px; }
   section.doc h2 { font-size: 16px; margin: 16px 0 6px; }
   section.doc ul { margin: 0; padding-left: 20px; }
   section.doc li { margin: 3px 0; }
@@ -127,18 +132,20 @@
 </section>
 
 <script>
-  /* Scale the fixed 1366×768 frame down to the page width so it is always seen whole. */
-  (function () {
-    var s = document.getElementById('scaler');
-    function fit() {
-      var avail = s.parentElement.clientWidth - 32; /* minus the 16px gutters */
-      var k = Math.min(1, avail / 1366);
-      s.style.transform = 'scale(' + k + ')';
-      s.style.height = (768 * k) + 'px';
-      s.style.width = (1366 * k) + 'px';
-    }
-    window.addEventListener('resize', fit); fit();
-  })();
+/* Scale the fixed 1366×768 frame to the window's width and its height (less the header), so the
+   whole frame is on screen at once; fitting to width alone cut the bottom off on a Chromebook. Below
+   half size it stops shrinking and the page scrolls. --col lines the text up with the frame. */
+(function () {
+  var s = document.getElementById('scaler'), doc = document.querySelector('header.doc'), nav = null;
+  function fit() {
+    var chrome = doc.offsetHeight + (nav ? nav.offsetHeight + 10 : 0) + 24;
+    var k = Math.min(1, (s.parentElement.clientWidth - 32) / 1366, (innerHeight - chrome > 150 ? Math.max(0.5, (innerHeight - chrome) / 768) : 1));
+    s.style.transform = 'scale(' + k + ')';
+    s.style.height = (768 * k) + 'px'; s.style.width = (1366 * k) + 'px';
+    document.documentElement.style.setProperty('--col', Math.round(1366 * k + 32) + 'px');
+  }
+  window.addEventListener('resize', fit); window.addEventListener('load', fit); fit(); fit();
+})();
 </script>
 </body>
 </html>

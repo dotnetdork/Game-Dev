@@ -47,6 +47,42 @@
         ],
         "createdAt": "2026-09-25T04:20:18.847Z",
         "reason": "Same Unity-style editor chrome as 02 (Jay pinned 'resemble Unity'): fixed-height toolbar, tab strips, docks and status bar centre their content vertically. Not text crowding an edge."
+      },
+      {
+        "rule": "flat-type-hierarchy",
+        "value": "*",
+        "files": [
+          "docs/rework/wireframes/src/03-shift-silent-coins.template.html"
+        ],
+        "createdAt": "2026-09-25T19:26:28.907Z",
+        "reason": "Claude: raw template has an unfilled {{CSS}} slot, so h1/h2 measure at the 16px default; the built 03-shift-silent-coins.html sets 22px/16px/15px and is not flagged"
+      },
+      {
+        "rule": "cramped-padding",
+        "value": "*",
+        "files": [
+          "docs/rework/wireframes/src/03-shift-silent-coins.template.html"
+        ],
+        "createdAt": "2026-09-25T19:26:29.041Z",
+        "reason": "Claude: flagged element is the Unity dock tab strip (.tabs), where tabs sit flush on the strip by design (DESIGN.md Navigation: docks and tab strips); pre-existing, unchanged this session"
+      },
+      {
+        "rule": "cramped-padding",
+        "value": "*",
+        "files": [
+          "docs/rework/wireframes/src/04-first-day.template.html"
+        ],
+        "createdAt": "2026-09-25T20:56:08.002Z",
+        "reason": "Claude: flagged elements are the editor's fixed Unity strips (toolbar, tab strips, tabs, status bar) that sit flush by design (DESIGN.md Navigation: docks and tab strips); same finding dismissed on 03"
+      },
+      {
+        "rule": "flat-type-hierarchy",
+        "value": "*",
+        "files": [
+          "docs/rework/wireframes/src/04-first-day.template.html"
+        ],
+        "createdAt": "2026-09-25T20:56:53.055Z",
+        "reason": "Claude: raw template has an unfilled {{CSS}} slot, so h1/h2 measure at the 16px default; the built 04-first-day.html sets 22px/16px/15px (same finding dismissed on the 03 template)"
       }
     ]
   }

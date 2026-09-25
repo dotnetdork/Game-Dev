@@ -1,0 +1,498 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>First Day Shift</title>
+<!--
+  Wireframe 04: the first day IS the first shift (../briefs/first-run.md, v3). Replaces wireframes 01
+  and 02 as the first run: in those the kid watched a demo (critique 22/40). Here the kid presses
+  Play on the intern's broken game, finds a problem by playing, fixes it by hand, makes the Play-mode
+  mistake themselves, picks a hero, and plays their own game. Built from this template by build.js;
+  edit here, not the output. Shares base.css with wireframe 03 and borrows its patterns (evidence
+  gates, one setRunning, shuffled answers, the announcer).
+-->
+<style>
+{{CSS}}
+  /* ---------- additions for the first day ---------- */
+  .editor { height: 650px; grid-template-rows: 56px minmax(0, 1fr) 30px 26px; }
+  .gamebody canvas { flex: 1; min-width: 0; width: 100%; height: 100%; display: block; outline: none; background: #111; }
+  .gamebody canvas:focus-visible { box-shadow: inset 0 0 0 3px var(--focus); }
+  .gamebody.playing::after { content: ''; position: absolute; inset: 0; box-shadow: inset 0 0 0 3px var(--accent); pointer-events: none; }
+  .focus-hint { position: absolute; inset: auto 0 18px 0; margin: 0 auto; width: max-content; max-width: 80%;
+                background: rgba(20,20,20,.86); color: #fff; padding: 10px 14px; border-radius: 10px; font-size: 15px; pointer-events: none; }
+  .focus-hint[hidden] { display: none; }
+  .keys { display: inline-flex; gap: 4px; margin: 0 4px; }
+  .key { border: 1px solid #777; border-bottom-width: 3px; border-radius: 5px; padding: 0 7px; font-size: 13px; }
+  .sr { position: absolute; width: 1px; height: 1px; overflow: hidden; clip: rect(0 0 0 0); white-space: nowrap; }
+  .pointer { z-index: 2; }
+  /* the Inspector's Solid switch: a 44px target, the state said in words as well as shown */
+  .switch { display: inline-flex; align-items: center; gap: 10px; min-height: 44px; padding: 0 12px 0 8px; border-radius: 8px;
+            border: 1.5px solid var(--line-soft); background: var(--panel-2); color: var(--ink); font-weight: 600; cursor: pointer; }
+  .switch i { width: 38px; height: 22px; border-radius: 11px; background: #555; position: relative; flex: none; transition: background-color .2s; }
+  .switch i::after { content: ''; position: absolute; top: 3px; left: 3px; width: 16px; height: 16px; border-radius: 50%; background: #ddd; transition: transform .2s cubic-bezier(.16,1,.3,1); }
+  .switch[aria-checked="true"] { border-color: var(--accent); }
+  .switch[aria-checked="true"] i { background: var(--accent); }
+  .switch[aria-checked="true"] i::after { transform: translateX(16px); background: var(--accent-ink); }
+  .inote { color: var(--ink-2); font-size: 14px; padding: 6px 2px; }
+  .transport.ghosted { visibility: hidden; }
+  .branchnote { color: var(--accent); font-weight: 600; }
+</style>
+</head>
+<body>
+<header class="doc">
+  <h1>Your first day is your first shift</h1>
+  <p>Play it for real. Press Play, use the arrow keys and Space, find what’s broken and fix it. Progress only
+     unlocks when you’ve actually done it. The step buttons below are for reviewers and let you skip ahead.</p>
+</header>
+
+{{ICONS}}
+
+<div class="stagehold"><div class="scaler" id="scaler">
+<div class="editor" id="editor" role="region" aria-label="The studio editor on the first day, drawn at 1366 by 650">
+
+  <div class="toolbar">
+    <div class="brand">
+      <img class="wordmark" alt="The League of Amazing Programmers" src="{{LOGO}}">
+      <span class="project reveal closed" id="projName">· <b id="projText">The intern’s game</b></span>
+    </div>
+    <!-- Play only: Pause and Step stay removed until a quest needs them (DESIGN.md, Unity mapping). -->
+    <div class="transport ghosted" id="transport" aria-label="Play controls">
+      <button class="tbtn" id="bPlay"><svg class="i"><use id="bPlayIcon" href="#i-play"/></svg><span>Play</span></button>
+    </div>
+    <div class="tool-right"></div>
+  </div>
+
+  <div class="left">
+    <section class="dock closed" id="dQuest" aria-label="Quest">
+      <div class="tabs"><span class="tab"><svg class="i"><use href="#i-flag"/></svg>Quest</span></div>
+      <div class="dock-body">
+        <div class="quest-dept"><span class="dot"></span><span id="qDept">Engineering department</span></div>
+        <div class="quest-now">Next time: the floaty jump<small>The lead programmer has a job for you</small></div>
+      </div>
+    </section>
+    <section class="dock closed" id="dHier" aria-label="Hierarchy">
+      <div class="tabs"><span class="tab"><svg class="i"><use href="#i-tree"/></svg>Hierarchy <small id="hierOf">the intern’s game</small></span></div>
+      <div class="dock-body"><ul class="tree" id="tree"></ul></div>
+    </section>
+  </div>
+
+  <section class="dock game closed" id="dGame" aria-label="Game">
+    <div class="tabs"><span class="tab"><svg class="i"><use href="#i-pad"/></svg>Game <small id="gameOf">the intern’s game</small></span></div>
+    <div class="gamebody" id="gamebody">
+      <canvas id="cv" tabindex="0" aria-label="The game. Arrow keys move, Space jumps."></canvas>
+      <div class="pointer" id="pointer" hidden><span id="pointerText"></span></div>
+      <div class="focus-hint" id="hint" hidden>Click the game, then <span class="keys"><span class="key">←</span><span class="key">→</span></span> move · <span class="key">Space</span> jump</div>
+    </div>
+  </section>
+
+  <section class="dock right" id="dMentor" aria-label="Conversation">
+    <div class="tabs"><span class="tab"><svg class="i" style="color:var(--accent)"><use href="#i-cube"/></svg><span id="whoTab">Mentor</span></span></div>
+    <div class="who">
+      <div class="face" aria-hidden="true">face<br>TBD</div>
+      <div><strong id="whoName">Mentor</strong><span id="whoRole">The studio’s AI, and proud of it</span></div>
+    </div>
+    <div class="log" id="log"></div>
+    <div class="opts" id="opts"></div>
+    <div class="say"><input id="say" type="text" placeholder="Say something else…" aria-label="Say something else"></div>
+
+    <div class="inspector" id="inspector" aria-label="Inspector" aria-hidden="true" inert>
+      <div class="tabs"><span class="tab"><svg class="i"><use href="#i-sliders"/></svg>Inspector <small id="inspName"></small></span>
+        <button class="x" id="inspClose" aria-label="Close the Inspector"><svg class="i"><use href="#i-x"/></svg></button></div>
+      <div class="dock-body" id="inspBody"></div>
+    </div>
+  </section>
+
+  <div class="proj reveal closed" id="proj">
+    <svg class="i"><use href="#i-cards"/></svg><b>Project</b><span>your cards</span>
+    <span class="chip" id="cardChip">1 card: Play mode</span>
+  </div>
+
+  <p class="sr" id="announce" aria-live="polite"></p>
+  <div class="status">
+    <span id="statusMsg">Welcome to the studio</span>
+    <span class="stars reveal closed" id="stars"><svg class="i"><use href="#i-star"/></svg><span id="starCount">1 star</span></span>
+  </div>
+</div>
+</div></div>
+
+<nav class="nav" aria-label="Steps (for reviewers)">
+  <button id="back">Back</button><span class="track" id="dots"></span><button id="next">Skip ahead</button>
+</nav>
+
+<section class="notes">
+  <div><h2 id="nBeat"></h2><p id="nWhat"></p></div>
+  <div><h2>Why it’s built this way</h2><p id="nGate"></p></div>
+</section>
+
+<script>
+var $ = function (id) { return document.getElementById(id); };
+/* The kid's sign-in name (the tester username today, OAuth later: app/auth.js). No nickname step. */
+var NAME = 'Captain Byte';
+
+/* ---------- the intern's game: grey, silent, one floor tile that is only a picture, lava that does
+   nothing. Drawn on a 320×180 canvas, scaled to fit the Game view. ---------- */
+var cv = $('cv'), ctx = cv.getContext('2d'), W = 320, H = 180;
+var keys = {}, P, coins, running = false;   // running: set only through setRunning()
+var solid = false, coinScale = 1, playScale = null, hero = null, mine = false;
+var GROUND = [[0, 150, 100], [140, 150, 60], [240, 150, 80]], FAKE = [100, 150, 40], LAVA = [200, 164, 40];
+function level() {
+  P = { x: 20, y: 120, vx: 0, vy: 0, w: 12, h: 16, on: false };
+  coins = [{ x: 170, y: 132, got: false }, { x: 290, y: 132, got: false }];
+}
+function onKey(e, down) {
+  if (['ArrowLeft', 'ArrowRight', 'ArrowUp', ' ', 'Spacebar'].indexOf(e.key) >= 0) { e.preventDefault(); keys[e.key] = down; }
+}
+cv.addEventListener('keydown', function (e) { onKey(e, true); });
+cv.addEventListener('keyup', function (e) { onKey(e, false); });
+cv.addEventListener('focus', function () { $('hint').hidden = true; });
+cv.addEventListener('blur', function () { keys = {}; if (running) $('hint').hidden = false; });
+cv.addEventListener('pointerdown', function () { cv.focus(); });
+
+function step() {
+  if (!running) return;
+  P.vx = (keys.ArrowLeft ? -1.6 : 0) + (keys.ArrowRight ? 1.6 : 0);
+  if ((keys[' '] || keys.Spacebar || keys.ArrowUp) && P.on) { P.vy = -4.6; P.on = false; }
+  P.vy += 0.22; P.x = Math.max(0, Math.min(W - P.w, P.x + P.vx)); P.y += P.vy; P.on = false;
+  var floors = GROUND.slice(); if (solid) floors.push(FAKE);
+  floors.push([LAVA[0], LAVA[1], LAVA[2]]);   // the intern's lava is just a floor: touching it does nothing
+  floors.forEach(function (g) {
+    if (P.x + P.w > g[0] && P.x < g[0] + g[2] && P.y + P.h >= g[1] && P.y + P.h - P.vy <= g[1] + 1 && P.vy >= 0) { P.y = g[1] - P.h; P.vy = 0; P.on = true; }
+  });
+  if (P.on && P.y + P.h === LAVA[1] && P.x + P.w > LAVA[0] && P.x < LAVA[0] + LAVA[2]) events('lava');
+  if (P.y > H) { events('fell'); P.x = 20; P.y = 110; P.vy = 0; }
+  if (solid && P.on && P.y + P.h === FAKE[1] && P.x + P.w > FAKE[0] && P.x < FAKE[0] + FAKE[2]) events('crossed');   // standing on the fixed tile, not jumping over it
+  var r = 6 * coinScale;
+  coins.forEach(function (c) {
+    if (!c.got && Math.abs(P.x + 6 - c.x) < 5 + r && Math.abs(P.y + 8 - c.y) < 7 + r) { c.got = true; events('coin'); }
+  });
+}
+function draw() {
+  var bw = $('gamebody').clientWidth, bh = $('gamebody').clientHeight;
+  if (!bw || !bh) return;
+  if (cv.width !== bw || cv.height !== bh) { cv.width = bw; cv.height = bh; }
+  var k = Math.min(bw / W, bh / H), ox = (bw - W * k) / 2, oy = (bh - H * k) / 2;
+  ctx.setTransform(1, 0, 0, 1, 0, 0); ctx.fillStyle = '#111'; ctx.fillRect(0, 0, bw, bh);
+  ctx.setTransform(k, 0, 0, k, ox, oy);
+  ctx.fillStyle = '#9a9a9a'; ctx.fillRect(0, 0, W, H);                      // grey: the Art problem
+  ctx.fillStyle = '#7c7c7c'; ctx.fillRect(LAVA[0], LAVA[1], LAVA[2], H - LAVA[1]);
+  ctx.strokeStyle = '#8a8a8a'; ctx.lineWidth = 2; ctx.beginPath(); ctx.moveTo(LAVA[0], LAVA[1] + 2);
+  for (var x = LAVA[0]; x <= LAVA[0] + LAVA[2]; x += 7) ctx.lineTo(x, LAVA[1] + (x % 14 ? 0 : 4)); ctx.stroke();
+  GROUND.concat([FAKE]).forEach(function (g) { ctx.fillStyle = '#6e6e6e'; ctx.fillRect(g[0], g[1], g[2], 30); ctx.fillStyle = '#858585'; ctx.fillRect(g[0], g[1], g[2], 4); });
+  var r = 6 * coinScale;
+  coins.forEach(function (c) { if (c.got) return; ctx.fillStyle = '#c4c4c4'; ctx.strokeStyle = '#8f8f8f'; ctx.lineWidth = 2;
+    ctx.beginPath(); ctx.arc(c.x, c.y, r, 0, 7); ctx.fill(); ctx.stroke(); });
+  drawHero();
+}
+/* The hero: the intern's grey box until the kid picks one. Their hero is the only colour in a grey
+   level, which is also the Art department's cue for later. */
+function drawHero() {
+  var x = P.x, y = P.y;
+  if (hero === 'cat') { ctx.fillStyle = '#f0a040'; ctx.fillRect(x, y + 4, 12, 12); ctx.beginPath(); ctx.moveTo(x, y + 4); ctx.lineTo(x + 3, y); ctx.lineTo(x + 5, y + 4); ctx.moveTo(x + 7, y + 4); ctx.lineTo(x + 9, y); ctx.lineTo(x + 12, y + 4); ctx.fill();
+    ctx.fillStyle = '#1d2230'; ctx.fillRect(x + 3, y + 7, 2, 2); ctx.fillRect(x + 7, y + 7, 2, 2); }
+  else if (hero === 'robot') { ctx.fillStyle = '#d9dde6'; ctx.fillRect(x, y + 2, 12, 12); ctx.fillStyle = '#1d2230'; ctx.fillRect(x + 2, y + 5, 8, 4);
+    ctx.fillStyle = '#f5820a'; ctx.fillRect(x + 3, y + 6, 2, 2); ctx.fillRect(x + 7, y + 6, 2, 2); ctx.fillStyle = '#aeb4c2'; ctx.fillRect(x + 1, y + 14, 3, 2); ctx.fillRect(x + 8, y + 14, 3, 2); }
+  else if (hero === 'knight') { ctx.fillStyle = '#b8c2d6'; ctx.fillRect(x, y + 3, 12, 13); ctx.fillStyle = '#2b3246'; ctx.fillRect(x + 2, y + 6, 8, 2);
+    ctx.fillStyle = '#e0474c'; ctx.fillRect(x + 4, y, 4, 3); }
+  else if (hero === 'slime') { ctx.fillStyle = '#5fd06a'; ctx.beginPath(); ctx.moveTo(x, y + 16); ctx.quadraticCurveTo(x - 1, y + 3, x + 6, y + 3); ctx.quadraticCurveTo(x + 13, y + 3, x + 12, y + 16); ctx.fill();
+    ctx.fillStyle = '#10301a'; ctx.fillRect(x + 3, y + 8, 2, 2); ctx.fillRect(x + 7, y + 8, 2, 2); }
+  else { ctx.fillStyle = '#4f4f4f'; ctx.fillRect(x, y, P.w, P.h); }
+}
+function loop() { step(); draw(); requestAnimationFrame(loop); }
+
+/* ---------- the conversation, the Hierarchy and the Inspector ---------- */
+var shown = [], clicks = [], spamAt = null;
+function say(lines) {
+  shown = lines; var log = $('log'); log.innerHTML = ''; var prev = null;
+  lines.forEach(function (m) {
+    var d = document.createElement('div'); d.className = 'msg' + (m[0] === 'k' ? ' kid' : m[0] === 'm' ? '' : ' guest');
+    // The speaker's name only when the speaker changes: a second line in a row doesn't repeat it.
+    if (m[0] !== prev) { var f = document.createElement('span'); f.className = 'from';
+      f.textContent = m[0] === 'k' ? NAME : m[0] === 'p' ? 'Lead programmer' : m[0] === 'a' ? 'Art director' : m[0] === 'u' ? 'Sound designer' : m[0] === 'd' ? 'Lead designer' : 'Mentor';
+      d.appendChild(f); }
+    prev = m[0];
+    d.appendChild(document.createTextNode(m[1].replace(/@name/g, NAME)));
+    log.appendChild(d);
+  });
+  requestAnimationFrame(function () { log.scrollTop = log.scrollHeight; });
+}
+/* Shuffled every time: the right answer is never always first. Focus moves to the first answer when
+   it was already in the editor (not the game), and the newest line is read out. */
+function options(list) {
+  var box = $('opts'), wasInEditor = $('editor').contains(document.activeElement) && document.activeElement !== cv;
+  box.innerHTML = ''; list = list.slice();
+  for (var k = list.length - 1; k > 0; k--) { var j = Math.floor(Math.random() * (k + 1)), t = list[k]; list[k] = list[j]; list[j] = t; }
+  var last = $('log').lastElementChild; if (last) announce(last.textContent);
+  list.forEach(function (o) {
+    var b = document.createElement('button'); b.className = 'opt'; b.textContent = o[0];
+    if (o[2]) { var sm = document.createElement('small'); sm.textContent = o[2]; b.appendChild(sm); }
+    b.addEventListener('click', function () { if (spamCheck()) return; o[1](); });
+    box.appendChild(b);
+  });
+  if (wasInEditor && box.firstChild && !running) box.firstChild.focus({ preventScroll: true });
+  // If the Inspector is open, it stops above the answers, however many there now are.
+  if ($('inspector').classList.contains('open')) $('inspector').style.setProperty('--pinned', ($('opts').offsetHeight + document.querySelector('.say').offsetHeight) + 'px');
+}
+function announce(text) { $('announce').textContent = text; }
+function spamCheck() {
+  var t = Date.now(); clicks.push(t); clicks = clicks.filter(function (x) { return t - x < 1800; });
+  if (clicks.length < 3 || spamAt === i || i < 2 || STEPS[i].noSpam) return false;   // not on get-to-know-you: answering fast isn't a problem there
+  spamAt = i; clicks = [];
+  say([['m', "Whoa, speedy! Quick guess first: what happens if a floor is only a picture?"]]);
+  options([['You fall straight through it', function () { render(); }],
+           ['Nothing, it works fine', function () { say([['m', "Try it and see! A picture can't hold you up. Something has to tell the game it's solid."]]); options([['Got it', render]]); }]]);
+  return true;
+}
+var PARTS = [['Level 1', 'the level', null, true], ['Player', 'grey box', 'player'], ['Coin', 'the goal', 'coin'],
+             ['Floor tile', 'looks broken', 'floor'], ['Lava', 'the danger', 'lava']];
+var selected = null;
+function tree(animate) {
+  $('tree').innerHTML = '';
+  PARTS.forEach(function (p, k) {
+    var li = document.createElement('li'); if (!p[3]) li.className = 'child'; if (animate) li.className += ' snap';
+    var b = document.createElement('button'); if (animate) b.style.animationDelay = (k * 0.12) + 's'; b.setAttribute('aria-pressed', String(selected === p[2] && !!p[2]));
+    var note = p[2] === 'player' && hero ? 'your ' + hero : p[2] === 'floor' && solid ? 'solid now' : p[1];
+    b.innerHTML = (p[3] ? '<svg class="i" style="width:14px;margin-right:-4px"><use href="#i-fold"/></svg>' : '') + '<svg class="i"><use href="#i-cube"/></svg>' + p[0] + '<small>' + note + '</small>';
+    b.addEventListener('click', function () { clicks = []; if (p[2]) openPart(p[2], p[0]); });
+    li.appendChild(b); $('tree').appendChild(li);
+  });
+}
+function openPart(id, name) {
+  selected = id; tree();
+  var html = '';
+  if (id === 'floor') html = '<div class="comp"><svg class="i"><use href="#i-fold"/></svg><strong>Box Collider 2D</strong></div>' +
+      '<div class="irow"><label>Solid<small>Unity: collider</small></label><button class="switch" id="swSolid" role="switch" aria-checked="' + solid + '"><i></i><span>' + (solid ? 'On: things stand on it' : 'Off: just a picture') + '</span></button></div>';
+  else if (id === 'coin') html = '<div class="comp"><svg class="i"><use href="#i-fold"/></svg><strong>Transform</strong></div>' +
+      '<div class="irow"><label for="rSize">Size<small>Unity: Scale</small></label><input id="rSize" type="range" min="1" max="3" step="0.1" value="' + coinScale + '"></div>';
+  else html = '<p class="inote">' + (id === 'player' ? 'This is the hero. Nothing to change today.' : 'Lava. It should hurt… but that’s a job for the Design department.') + '</p>';
+  inspector(name, html);
+  if ($('swSolid')) $('swSolid').addEventListener('click', function () { solid = !solid; openPart('floor', 'Floor tile'); events('solid'); });
+  if ($('rSize')) $('rSize').addEventListener('input', function () { coinScale = parseFloat(this.value); events('size'); });
+}
+function inspector(title, html) {
+  var el = $('inspector');
+  if (!title) { el.classList.remove('open'); el.setAttribute('aria-hidden', 'true'); el.inert = true; $('dMentor').classList.remove('inspecting'); selected = null; return; }
+  $('inspName').textContent = title; $('inspBody').innerHTML = html;
+  $('dMentor').classList.add('inspecting');
+  var log = $('log'), vis = [].filter.call(log.children, function (m) { return getComputedStyle(m).display !== 'none'; });
+  var last = vis[vis.length - 1], pin = $('opts').offsetHeight + document.querySelector('.say').offsetHeight;
+  el.style.top = (last ? last.offsetTop + last.offsetHeight + 10 : 34) + 'px'; el.style.setProperty('--pinned', pin + 'px');
+  el.classList.add('open'); el.setAttribute('aria-hidden', 'false'); el.inert = false;
+}
+$('inspClose').addEventListener('click', function () { inspector(null); tree(); });
+document.addEventListener('keydown', function (e) { if (e.key === 'Escape' && $('inspector').classList.contains('open')) { inspector(null); tree(); } });
+
+/* Docks open in story order. A closed dock is inert and hidden from screen readers too, so nothing
+   reads out a panel the kid can't see yet (the v2 critique found the ending read aloud at step 1). */
+function openDock(id, on) { var d = $(id); d.classList.toggle('closed', !on); d.inert = !on; d.setAttribute('aria-hidden', String(!on)); }
+function reveal(id, on) { var d = $(id); d.classList.toggle(id === 'transport' ? 'ghosted' : 'closed', !on); d.inert = !on; }
+function who(kind) {
+  var W = { m: ['Mentor', 'The studio’s AI, and proud of it'], p: ['Lead programmer', 'Engineering department'],
+            a: ['Art director', 'Art department'], u: ['Sound designer', 'Audio department'], d: ['Lead designer', 'Design department'] }[kind];
+  $('whoTab').textContent = W[0]; $('whoName').innerHTML = W[0] + (kind === 'm' ? '' : ' <span style="font-weight:500;color:var(--ink-3)">(name TBD)</span>'); $('whoRole').textContent = W[1];
+}
+function pointAt(text) { if (text) { $('pointer').hidden = false; $('pointerText').textContent = text; } else $('pointer').hidden = true; }
+
+/* ---------- Play mode: one place, and Unity's rule: what changes while playing is undone on Stop ---------- */
+function setRunning(on) {
+  var was = running; running = !!on;
+  if (running && !was) { playScale = coinScale; }
+  if (!running && was && playScale !== null && coinScale !== playScale) { coinScale = playScale; if ($('rSize')) $('rSize').value = coinScale; events('reverted'); }
+  if (!running) playScale = null;
+  $('editor').classList.toggle('playmode', running); $('gamebody').classList.toggle('playing', running);
+  $('bPlay').classList.toggle('on', running); $('bPlay').classList.remove('cue');
+  $('bPlayIcon').setAttribute('href', running ? '#i-stop' : '#i-play'); $('bPlay').querySelector('span').textContent = running ? 'Stop' : 'Play';
+  $('statusMsg').textContent = running ? 'Play mode' : 'Stopped';
+  if (!running) { keys = {}; $('hint').hidden = true; } else { $('hint').hidden = document.activeElement === cv; }
+  events(running ? 'play' : 'stop');
+}
+$('bPlay').addEventListener('click', function () { setRunning(!running); if (running) cv.focus(); });
+
+/* ---------- the day: steps that open only on evidence ---------- */
+var i = 0, found = null, dept = 'eng';
+function events(a) { var s = STEPS[i]; if (s && s.onEvent) s.onEvent(a); }
+function advance() { go(i + 1); }
+function advanceLater(ms) { var at = i; setTimeout(function () { if (i === at) advance(); }, ms); }
+
+var STEPS = [
+  { beat: 'Clock in',
+    enter: function () {
+      say([['m', "Welcome to the studio, @name! I'm the studio's AI."],
+           ['m', 'Our last intern left a game half-finished. Let’s see how bad it is.']]);
+      options([["Let's see it", advance]]); },
+    what: 'An almost empty editor: just the mentor, greeting the kid by their sign-in name. No nickname step, no questions, no tour.',
+    gate: 'The first minute is for doing, so the get-to-know-you questions moved to the end of the day. The name comes from the sign-in (tester username today, OAuth later).' },
+  { beat: 'Press Play',
+    enter: function () {
+      openDock('dGame', true); reveal('transport', true); $('bPlay').classList.add('cue');
+      pointAt('This is the Game view: where games run.');
+      say([['m', 'This is the Game view. Press Play up top to run it.']]); options([]);
+      this.hit = false; var self = this;
+      this.nudge = setTimeout(function () { if (i === 1 && running && !self.hit) say([['m', 'Try walking over that floor on the left. Carefully…']]); }, 25000); },
+    onEvent: function (a) {
+      if (a === 'play') { pointAt(null); say([['m', 'Use the arrow keys and Space. Find what’s broken!']]); }
+      if (a === 'fell' || a === 'coin' || a === 'lava') {
+        if (!this.hit) { found = a; this.hit = true;
+          say([['m', a === 'fell' ? 'Whoa, you fell right through the floor!' : a === 'coin' ? 'You grabbed a coin… and nothing happened. No sound at all.' : 'You walked into the lava and… nothing. It doesn’t even hurt.'],
+               ['m', 'Found one! Keep looking, or press Stop when you’ve seen enough.']]);
+          $('bPlay').classList.add('cue'); } }
+      if (a === 'stop' && this.hit) { clearTimeout(this.nudge); advance(); }
+    },
+    what: 'Play appears where Unity keeps it, and it is the only way on. The kid plays the intern’s grey game with the keyboard and runs into what’s wrong.',
+    gate: 'No button moves on. The kid has to press Play and hit a real problem by playing: fall through the floor, grab a silent coin, or walk into harmless lava. Then Stop.' },
+  { beat: 'What needs fixing first?',
+    enter: function () {
+      pointAt(null);
+      say([['m', 'You’re the new developer. What should we fix first?']]);
+      options([['I fell through the floor', function () { pick('eng'); }, 'Engineering'],
+               ['Grabbing a coin makes no sound', function () { pick('audio'); }, 'Audio'],
+               ['Everything is grey', function () { pick('art'); }, 'Art'],
+               ['Touching the lava does nothing', function () { pick('design'); }, 'Design']]); },
+    what: 'Four problems the kid could see or feel, each a real studio department. Their pick sets their first department and who shows up.',
+    gate: 'Every answer is right here: it’s a choice, not a test. The pick goes on the learner card. This wireframe builds the Engineering branch; the others follow the same pattern.' },
+  { beat: 'Fix it by hand', voice: 'p',
+    enter: function () {
+      openDock('dHier', true); tree(true); $('hierOf').textContent = 'the intern’s game';
+      say([['p', 'Hi @name, I’m the lead programmer. That floor tile is just a picture. Nothing tells the game it’s solid.'],
+           ['p', 'Tap Floor tile in the Hierarchy on the left.']]); options([]); },
+    onEvent: function (a) {
+      if (a === 'solid' && solid) { say([['p', 'Solid is on. Now press Play and walk across it.']]); $('bPlay').classList.add('cue'); }
+      if (a === 'solid' && !solid) say([['p', 'That turned it off again. Turn Solid on, then test it.']]);
+      if (a === 'crossed' && running) { say([['p', 'It holds! You just fixed a bug. That’s my whole job.']]); advanceLater(1800); }
+    },
+    what: 'The Hierarchy opens with the level’s parts. The kid finds the broken tile, opens it in the Inspector, and turns on Solid (Unity’s collider, met here, owned in session 5).',
+    gate: 'Turning Solid on isn’t enough: the kid has to press Play and walk across the tile. A fix only counts once it’s tested.' },
+  { beat: 'The Play-mode mistake', voice: 'p',
+    enter: function () {
+      if (!running) setRunning(true);
+      say([['p', 'One more thing, while it’s running: make the coin bigger.'], ['p', 'Tap Coin in the Hierarchy, then drag Size.']]); options([]);
+      this.grew = false; },
+    onEvent: function (a) {
+      if (a === 'size' && running && coinScale > 1.2 && !this.grew) { this.grew = true; say([['p', 'Bigger! Now press Stop.']]); $('bPlay').classList.add('cue'); }
+      if (a === 'size' && !running) say([['p', 'That one stuck, because the game wasn’t running. Press Play and try it again.']]);
+      if (a === 'reverted' && this.grew) {
+        inspector(null); tree();   // the job's done: close the Inspector so the answers below aren't under it
+        say([['p', 'It changed back! Changes made while the game is playing don’t stick.'], ['p', 'Every developer does that once. Now you know.']]);
+        options([['Ha, got it', advance], ['Why does it do that?', function () {
+          say([['p', 'Play mode is a test run. When you stop, the game goes back to how it was before you pressed Play.']]); options([['Got it', advance]]); }]]);
+      }
+    },
+    what: 'The kid tunes the coin in the Inspector while the game runs, presses Stop, and watches it snap back. The classic beginner mistake, made safely, by the kid.',
+    gate: 'Size has to change during Play and then Stop has to be pressed. In the old first day the mentor made this mistake for the kid; now the kid makes it.' },
+  { beat: 'It’s yours',
+    enter: function () {
+      inspector(null);
+      say([['m', 'This level works now. It’s yours: @name’s Game.'], ['m', 'Every game needs a hero. Pick yours:']]);
+      $('projText').textContent = NAME + '’s Game'; reveal('projName', true);
+      $('gameOf').textContent = 'your game'; $('hierOf').textContent = 'your parts';
+      var h = function (id, line) { return function () { hero = id; tree(); say([['k', line], ['m', 'Great pick. There’s your hero!']]); options([['Let me play it', advance]]); }; };
+      options([['A cat', h('cat', 'The cat!')], ['A robot', h('robot', 'The robot!')], ['A knight', h('knight', 'The knight!')], ['A slime', h('slime', 'The slime!')]]); },
+    what: 'The level the kid fixed becomes their game, named for them. One quick pick: the hero, who replaces the intern’s grey box straight away.',
+    gate: 'The pick visibly lands: the hero appears, the Hierarchy says “your robot”, and the kid’s own words show in the conversation.' },
+  { beat: 'Play your game',
+    enter: function () {
+      level(); this.got = false; if (!running) setRunning(true); cv.focus();
+      say([['m', 'That’s YOUR game, @name. Grab a coin!']]); options([]); },
+    onEvent: function (a) {
+      if (a === 'coin' && !this.got) { this.got = true; reveal('stars', true); reveal('proj', true); $('statusMsg').textContent = 'First star!';
+        say([['m', 'Got it! Your first star, and your first card: Play mode.']]); options([['Nice!', advance]]); }
+    },
+    what: 'The peak: their hero, their keys, their fixed level. The first star and the first concept card arrive for something they did.',
+    gate: 'Only grabbing a coin in their own game finishes it. The day ends on something earned, not on “0 stars”.' },
+  { beat: 'Get to know you', noSpam: true,
+    enter: function () {
+      say([['m', 'Quick one while your game runs: you find a locked door. What do you do?']]);
+      var q2 = function (line, reply) { return function () {
+        say([['k', line], ['m', reply], ['m', 'And which game could you play all day?']]);
+        var r = function (g, rr) { return function () { say([['k', g], ['m', rr]]); options([['That’s me', advance]]); }; };
+        options([['Minecraft', r('Minecraft', 'Building and exploring. I’ll remember that!')], ['Mario', r('Mario', 'Jumping and secrets. I’ll remember that!')],
+                 ['Roblox', r('Roblox', 'Lots of games with friends. I’ll remember that!')], ['Something else', r('Something else', 'Tell me any time in “say something else”.')]]);
+      }; };
+      options([['Hunt for the key', q2('Hunt for the key', 'An explorer!')], ['Smash it', q2('Smash it', 'Action first!')],
+               ['Sneak round the back', q2('Sneak round the back', 'Clever. You like figuring things out.')], ['Get a friend', q2('Get a friend', 'A team player!')]]); },
+    what: 'The two get-to-know-you questions, moved to the end of the day. The kid’s answers show as their own lines.',
+    gate: 'Nothing on screen changes. The answers go on the learner card, so later shifts pick examples and an order that suit this kid.' },
+  { beat: 'What’s next',
+    enter: function () {
+      setRunning(false); openDock('dQuest', true);
+      $('qDept').textContent = { eng: 'Engineering', audio: 'Audio', art: 'Art', design: 'Design' }[dept] + ' department';
+      say([['m', 'That’s your first day, @name. You fixed a real bug.'], ['m', 'Next time the lead programmer has a floaty jump for you…']]);
+      options([['Play the day again', function () { resetAll(); go(0); }]]); },
+    what: 'The Quest panel appears with their first department (from their pick) and a teaser for the next shift. The Project drawer holds one card; the stars bar shows one star.',
+    gate: 'A glimpse of what’s next, not the whole map. Session 2 is the Engineering shift, “The floaty jump”.' }
+];
+/* A non-Engineering pick: that department's head says hello. This wireframe builds only the
+   Engineering branch, so the reviewer is told plainly; the product would run that department's fix. */
+function pick(d) {
+  dept = d;
+  if (d === 'eng') { advance(); return; }
+  var v = { audio: 'u', art: 'a', design: 'd' }[d];
+  who(v);
+  say([[v, { audio: 'Nice ear! Silent coins are my job. Sound makes a game feel alive.', art: 'Nice eye! Colour is my job. It tells players what matters.', design: 'Good catch! Danger that doesn’t hurt isn’t danger. Rules are my job.' }[d]]]);
+  $('nGate').innerHTML = '<span class="branchnote">Reviewer note:</span> the ' + { audio: 'Audio', art: 'Art', design: 'Design' }[d] + ' branch isn’t built in this wireframe. The kid would do that department’s fix here by hand. Continue to see the Engineering branch.';
+  options([['Continue (Engineering branch)', function () { dept = 'eng'; advance(); }]]);
+}
+function resetAll() { solid = false; coinScale = 1; hero = null; found = null; dept = 'eng'; spamAt = null; level(); }
+
+var shownDocks = [
+  [], ['dGame'], ['dGame'], ['dGame', 'dHier'], ['dGame', 'dHier'], ['dGame', 'dHier'], ['dGame', 'dHier'], ['dGame', 'dHier'], ['dGame', 'dHier', 'dQuest']];
+function render() {
+  clicks = [];   // spam is fast tapping within one step; moving on to a new step starts the count again
+  var s = STEPS[i]; inspector(null); who(s.voice || 'm'); pointAt(null);
+  ['dGame', 'dHier', 'dQuest'].forEach(function (d) { openDock(d, shownDocks[i].indexOf(d) >= 0); });
+  reveal('transport', i >= 1); reveal('projName', i >= 5); reveal('stars', i >= 7); reveal('proj', i >= 7);
+  var yours = i >= 5;   // from "It's yours" on, the level is the kid's game, however the step was reached
+  $('projText').textContent = yours ? NAME + '’s Game' : 'The intern’s game';
+  $('gameOf').textContent = yours ? 'your game' : 'the intern’s game'; $('hierOf').textContent = yours ? 'your parts' : 'the intern’s game';
+  if (i >= 3) tree();
+  if (i < 1 || i === 2 || i === 5) { if (running) setRunning(false); }
+  s.enter.call(s);
+  $('nBeat').textContent = 'Step ' + (i + 1) + ' · ' + s.beat; $('nWhat').textContent = s.what; $('nGate').textContent = s.gate;
+  $('back').disabled = i === 0; $('next').disabled = i === STEPS.length - 1;
+  Array.prototype.forEach.call($('dots').children, function (b, k) { if (k === i) b.setAttribute('aria-current', 'step'); else b.removeAttribute('aria-current'); b.classList.toggle('past', k < i); });
+}
+function go(n) { var from = i; i = Math.max(0, Math.min(STEPS.length - 1, n)); if (STEPS[from] && STEPS[from].nudge) clearTimeout(STEPS[from].nudge); render(); }
+
+STEPS.forEach(function (s, k) {
+  var b = document.createElement('button'); b.textContent = String(k + 1); b.setAttribute('aria-label', 'Step ' + (k + 1) + ': ' + s.beat);
+  b.addEventListener('click', function () { go(k); }); $('dots').appendChild(b);
+});
+$('back').addEventListener('click', function () { go(i - 1); });
+/* Skip ahead fills in what the kid would have earned, so a reviewer can reach any step. */
+$('next').addEventListener('click', function () {
+  if (i >= 3) solid = true;
+  if (i >= 5 && !hero) hero = 'robot';
+  go(i + 1);
+});
+$('say').addEventListener('keydown', function (e) {
+  if (e.key !== 'Enter' || !this.value.trim()) return;
+  var v = STEPS[i].voice || 'm', text = this.value.trim().slice(0, 120); this.value = '';
+  var keep = shown.filter(function (m) { return m[0] !== 'k'; }).slice(-1);
+  say(keep.concat([['k', text], [v, $('opts').children.length ? 'Good thought! For now, tap one of the answers below.' : 'Good thought! Keep going: ' + (keep.length ? keep[0][1] : 'the game is waiting.')]]));
+});
+
+/* Scale the 1366×650 frame to the window's width and height (less the header and the step strip), as
+   in wireframe 03. #embed: inside the explainer page, header hidden, width only, height posted up. */
+(function () {
+  var s = $('scaler'), doc = document.querySelector('header.doc'), nav = document.querySelector('.nav');
+  var embed = location.hash === '#embed';
+  if (embed) {
+    document.documentElement.classList.add('embed');
+    var post = function () { parent.postMessage({ wfHeight: Math.ceil(document.body.getBoundingClientRect().height) }, '*'); };
+    if (window.ResizeObserver) new ResizeObserver(post).observe(document.body);
+    window.addEventListener('load', post);
+  }
+  function fit() {
+    if (embed) { var ke = Math.min(1, s.parentElement.clientWidth / 1366);
+      s.style.transform = 'scale(' + ke + ')'; s.style.height = (650 * ke) + 'px'; s.style.width = (1366 * ke) + 'px'; return; }
+    var chrome = doc.offsetHeight + nav.offsetHeight + 12 + 16;
+    var k = Math.min(1, (s.parentElement.clientWidth - 32) / 1366, (innerHeight - chrome > 150 ? Math.max(0.5, (innerHeight - chrome) / 650) : 1));
+    s.style.transform = 'scale(' + k + ')'; s.style.height = (650 * k) + 'px'; s.style.width = (1366 * k) + 'px';
+    document.documentElement.style.setProperty('--col', Math.round(1366 * k + 32) + 'px');
+  }
+  window.addEventListener('resize', fit); window.addEventListener('load', fit); fit(); fit();
+})();
+level(); render(); loop();
+</script>
+</body>
+</html>

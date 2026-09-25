@@ -92,6 +92,8 @@ records the reason, so the next person can see why something is there — or isn
 | A named AI character with a face | research 03, critique | Open: character or labelled panel. |
 | First 60 seconds: their game running, the AI says hi, one tap-able change | research 03, critique | Replaces the missing tour. |
 | Instructor view (who's stuck) | critique | Secondary user. |
+| **Free build: the studio is yours** | Jay, 2026-09-25 | After the kid has got far in the course (or finished it), open-ended time to use the AI and the engine to tweak, adjust, change, add and build whatever they want in their game, with every tool power they've earned. A reward and the course's graduation: the skills from the shifts, used freely. Natural home: around Launch party (session 10) or as an unlock after Beta. Open: whether the director still suggests ideas, and what guards stay on (the checker, cost limits). Not started. |
+| **A hiring interview on first sign-in** | Jay, 2026-09-25 | Before the first day: an interactive scene with a cartoon silhouette interviewer runs a quick mock job interview, as a conversation, so the kid feels hired by the studio. It can gather basic info for the learner card (kinds of fun, favourite games, comfort), and could take over the get-to-know-you questions now at the end of the first day (`briefs/first-run.md` v3, beat 8). Privacy rules apply: no real name, age, school or location (`docs/child-privacy-brief.md`). Not started, by Jay's instruction. |
 
 ## Open questions that block features
 

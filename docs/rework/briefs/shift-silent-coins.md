@@ -29,8 +29,11 @@ Plays (keyboard) · notices · decides · makes (assigns sounds) · tunes (mixer
 and checked by code.
 
 ## Accessibility
-Every sound also shows as a visual pop ("DING!", "BZZT") so a muted classroom or a deaf kid still gets
-the feedback; targets are 44px; keyboard only for playing.
+The shift opens with a sound check; a kid who can't hear goes on anyway. Every sound also shows as a
+visual pop ("DING!", "BZZT") so a muted classroom or a deaf kid still gets the feedback, and the pop
+follows the mix: a sound the music buries shows small and faint, so the mixing lesson reads the same
+with the sound off. Answers are shuffled so the right one is never always first. Targets are 44px;
+keyboard only for playing. (Critique 2026-09-25, `.impeccable/critique/`.)
 
 ## C# peek + tweak, and when it appears
 The kid sees real Unity C# — `using UnityEngine;`, `public class Coin : MonoBehaviour`,

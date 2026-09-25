@@ -21,8 +21,14 @@
     :root:not([data-theme="light"]) {
       --page: #1b1b1a; --ink: #ecece8; --muted: #b0b0a8; --line: #77776f;
       --box: #2a2a28; --ghost: #3a3a37; --new: #86cf93; --newbg: #203b26; --note: #3a3520;
-      --btn: #33332f; --focus: #7fb0ff;
+      --btn: #33332f; --focus: #7fb0ff; color-scheme: dark;
     }
+  }
+  /* An explicit dark choice (a viewer's theme toggle) wins over a light OS setting. */
+  :root[data-theme="dark"] {
+    --page: #1b1b1a; --ink: #ecece8; --muted: #b0b0a8; --line: #77776f;
+    --box: #2a2a28; --ghost: #3a3a37; --new: #86cf93; --newbg: #203b26; --note: #3a3520;
+    --btn: #33332f; --focus: #7fb0ff; color-scheme: dark;
   }
   * { box-sizing: border-box; }
   body { margin: 0; background: var(--page); color: var(--ink);
@@ -30,7 +36,7 @@
   ::selection { background: var(--newbg); }
   button { font: inherit; color: var(--ink); }
   button:focus-visible, input:focus-visible { outline: 3px solid var(--focus); outline-offset: 2px; }
-  header.doc { padding: 16px; max-width: 1366px; margin: 0 auto; }
+  header.doc { padding: 16px; max-width: var(--col, 1398px); margin: 0 auto; }
   header.doc h1 { font-size: 20px; margin: 0 0 4px; }
   header.doc p { margin: 0; color: var(--muted); max-width: 72ch; }
   .legend { display: flex; gap: 16px; flex-wrap: wrap; margin-top: 10px; font-size: 13px; color: var(--muted); }
@@ -40,7 +46,7 @@
   .sw.new { border: 2px solid var(--new); background: var(--newbg); }
 
   .stagehold { padding: 0 16px; overflow: hidden; }
-  .scaler { transform-origin: top left; }
+  .scaler { transform-origin: top left; margin: 0 auto; }
   .frame { width: 1366px; height: 768px; background: var(--page); border: 2px solid var(--ink);
            display: grid; grid-template-rows: 1fr 32px; grid-template-columns: 250px 1fr 400px;
            grid-template-areas: "left view ai" "bottom bottom ai"; position: relative; }
@@ -92,13 +98,13 @@
   .say .note { font-size: 12px; color: var(--muted); align-self: center; }
 
   /* Beat navigation + annotation */
-  .nav { max-width: 1366px; margin: 10px auto 0; padding: 0 16px; display: flex; gap: 8px; align-items: center; flex-wrap: wrap; }
+  .nav { max-width: var(--col, 1398px); margin: 10px auto 0; padding: 0 16px; display: flex; gap: 8px; align-items: center; flex-wrap: wrap; }
   .nav button { border: 2px solid var(--line); background: var(--btn); padding: 6px 14px; border-radius: 6px; cursor: pointer; min-height: 40px; }
   .nav button:disabled { opacity: .45; cursor: default; }
   .dots { display: flex; gap: 6px; flex-wrap: wrap; }
   .dots button { min-width: 40px; }
   .dots button[aria-current="step"] { border-color: var(--ink); font-weight: 700; }
-  section.notes { max-width: 1366px; margin: 0 auto; padding: 12px 16px 32px; display: grid; gap: 14px; grid-template-columns: repeat(auto-fit, minmax(280px, 1fr)); }
+  section.notes { max-width: var(--col, 1398px); margin: 0 auto; padding: 12px 16px 32px; display: grid; gap: 14px; grid-template-columns: repeat(auto-fit, minmax(280px, 1fr)); }
   section.notes div { background: var(--box); padding: 12px 14px; border: 1px solid var(--line); }
   section.notes h2 { font-size: 15px; margin: 0 0 6px; }
   section.notes p, section.notes li { margin: 0 0 4px; max-width: 70ch; }
@@ -338,15 +344,19 @@ $('back').addEventListener('click', function () { go(i - 1); });
 $('next').addEventListener('click', function () { go(i + 1); });
 $('sayInput').addEventListener('keydown', function (e) { if (e.key === 'Enter') { this.value = ''; go(i + 1); } });
 
-/* Scale the fixed 1366x768 frame to the page width so it is always seen whole. */
+/* Scale the fixed 1366x768 frame to the window's width and its height (less the header and the step
+   strip), so the whole frame is on screen at once; fitting to width alone cut the bottom off on a
+   Chromebook. Below half size it stops shrinking and the page scrolls. --col lines the text up with it. */
 (function () {
-  var s = $('scaler');
+  var s = document.getElementById('scaler'), doc = document.querySelector('header.doc'), nav = document.querySelector('.nav');
   function fit() {
-    var k = Math.min(1, (s.parentElement.clientWidth - 32) / 1366);
+    var chrome = doc.offsetHeight + (nav ? nav.offsetHeight + 10 : 0) + 24;
+    var k = Math.min(1, (s.parentElement.clientWidth - 32) / 1366, (innerHeight - chrome > 150 ? Math.max(0.5, (innerHeight - chrome) / 768) : 1));
     s.style.transform = 'scale(' + k + ')';
     s.style.height = (768 * k) + 'px'; s.style.width = (1366 * k) + 'px';
+    document.documentElement.style.setProperty('--col', Math.round(1366 * k + 32) + 'px');
   }
-  window.addEventListener('resize', fit); fit();
+  window.addEventListener('resize', fit); window.addEventListener('load', fit); fit(); fit();
 })();
 render();
 </script>

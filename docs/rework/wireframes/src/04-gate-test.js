@@ -1,0 +1,44 @@
+// Plays wireframe 04 (the first day) in a real browser and checks every gate. Same setup as
+// 03-gate-test.js: PW points at a Playwright install, PW_CHANNEL=msedge uses the installed Edge.
+//   node docs/rework/wireframes/src/04-gate-test.js "/F:/…/docs/rework/wireframes/04-first-day.html" <screenshot folder>
+const { chromium } = require(process.env.PW || "playwright");
+(async () => { const b = await chromium.launch(process.env.PW_CHANNEL ? { channel: process.env.PW_CHANNEL } : {});
+  const p = await b.newPage({ viewport:{width:1366,height:900} }); const errs=[];
+  p.on('pageerror',e=>errs.push(e.message)); await p.emulateMedia({ reducedMotion:'reduce' });
+  await p.goto('file://'+process.argv[2]); const out=process.argv[3];
+  const beat = ()=>p.$eval('#nBeat',e=>e.textContent);
+  const logt = ()=>p.$eval('#log',e=>e.textContent);
+  const opt = async (t)=>{ await p.locator('#opts .opt', { hasText: t }).first().click(); };
+  const row = async (t)=>{ await p.locator('#tree button', { hasText: t }).first().click(); };
+  const tick = async (n)=>{ await p.evaluate(n=>{ for (let k=0;k<n;k++) step(); }, n); };
+  const log=[];
+  log.push('game dock hidden and inert at start: '+await p.$eval('#dGame', e=>e.classList.contains('closed') && e.inert));
+  await opt("Let's see it"); log.push(await beat());
+  log.push('no answers until a problem is found: '+(await p.$$eval('#opts .opt', x=>x.length)===0));
+  await p.click('#bPlay'); log.push('play mode: '+await p.$eval('#bPlay', e=>e.classList.contains('on')));
+  await p.click('#bPlay'); log.push('stop before finding anything stays: '+await beat());
+  await p.click('#bPlay'); await p.evaluate(()=>{ P.x=105; P.y=120; P.vy=0; }); await tick(80);
+  log.push('fell through the floor: '+(await logt()).includes('fell right through'));
+  await p.click('#bPlay'); log.push(await beat());
+  await p.screenshot({path:out+'/pick.png'});
+  await opt('Everything is grey'); log.push('art branch hello: '+(await p.$eval('#whoTab', e=>e.textContent)));
+  await opt('Continue (Engineering'); log.push(await beat());
+  await row('Floor tile'); await p.click('#swSolid'); log.push('solid on: '+await p.evaluate(()=>solid));
+  await p.evaluate(()=>{ P.x=150; P.y=120; P.vy=0; }); await p.click('#bPlay'); await tick(40);
+  log.push('crossing ground past the tile does not count: '+await beat());
+  await p.evaluate(()=>{ P.x=110; P.y=120; P.vy=0; }); await tick(40); await p.waitForTimeout(2200);
+  log.push('after standing on the fixed tile: '+await beat());
+  await p.screenshot({path:out+'/fix.png'});
+  await row('Coin'); await p.$eval('#rSize', e=>{ e.value=2.4; e.dispatchEvent(new Event('input')); });
+  await p.click('#bPlay'); log.push('coin size after Stop: '+await p.evaluate(()=>coinScale)+' | '+(await logt()).includes('changed back'));
+  await opt('Ha, got it'); log.push(await beat());
+  await opt('A knight'); log.push('hero: '+await p.evaluate(()=>hero)+' | echoed: '+(await logt()).includes('The knight!'));
+  await opt('Let me play it'); log.push(await beat());
+  await p.evaluate(()=>{ const c=coins[0]; P.x=c.x-6; P.y=c.y-8; P.vy=0; }); await tick(1);
+  log.push('first star shown: '+await p.$eval('#stars', e=>!e.classList.contains('closed')));
+  await p.screenshot({path:out+'/yours.png'});
+  await opt('Nice!'); await opt('Get a friend'); await opt('Mario'); await opt('That’s me');
+  log.push(await beat()+' | quest open: '+await p.$eval('#dQuest', e=>!e.classList.contains('closed')));
+  console.log(log.join('\n')); console.log('errors', JSON.stringify(errs));
+  const m = await b.newPage({ viewport:{width:390,height:844} }); await m.goto('file://'+process.argv[2]);
+  console.log('mobile sw', await m.evaluate(()=>document.documentElement.scrollWidth)); await b.close(); })();

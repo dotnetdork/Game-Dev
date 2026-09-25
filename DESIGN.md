@@ -147,9 +147,11 @@ components:
 # Design System: Game Dev (the rework)
 
 **Scope and authority.** This file governs the reworked course: everything under `docs/rework/`
-and whatever is built from it. It was recorded from the shipped first-run wireframe,
-`docs/rework/wireframes/02-first-run-engine.html`, whose `:root` block is the normative token
-source; the direction contract is `.impeccable/surfaces/docs-rework-wireframes-02-first-run-engine-html.md`.
+and whatever is built from it. It was recorded from the first-run wireframe
+`docs/rework/wireframes/02-first-run-engine.html` (now superseded by `04-first-day.html`); the
+normative token source is the `:root` block of **`docs/rework/wireframes/src/base.css`**, which every
+current wireframe (03 onward) is built from. The direction contract recorded then is
+`.impeccable/surfaces/docs-rework-wireframes-02-first-run-engine-html.md`.
 **The legacy app's styles (`app/public/styles.css` and the rest of `app/public/`) are not authority.**
 That dark-navy look belongs to the old prototype, kept only as a reference; do not borrow its
 colours, type or components for rework surfaces.
@@ -381,7 +383,7 @@ parts snap in 650ms apart. Under `prefers-reduced-motion` every transition and a
 ## Do's and Don'ts
 
 ### Do:
-- **Do** take every token from the frontmatter; the artifact's `:root` is the source.
+- **Do** take every token from the frontmatter; the `:root` in `docs/rework/wireframes/src/base.css` is the source.
 - **Do** give every dock a tab with its real Unity name and a kid subtitle beside it.
 - **Do** make every control an icon from the one set plus a word, at least 44px.
 - **Do** use League orange for everything Unity paints selection blue, and for nothing decorative.

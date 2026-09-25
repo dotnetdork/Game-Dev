@@ -7,7 +7,12 @@
 <style>
 {{CSS}}
   /* ---------- additions for the shift ---------- */
-  .editor { height: 650px; grid-template-rows: 56px 1fr 118px 26px; }
+  /* The left column runs down beside the sound shelf rather than above it. The Quest checklist and
+     the Hierarchy need ~560px, and with the shelf across the full width they had 448: the middle row
+     stretched to fit them and pushed the shelf, the mentor's options and the status bar out of the
+     frame, where overflow:hidden cut them off. minmax(0, 1fr) stops the row stretching again. */
+  .editor { height: 650px; grid-template-rows: 56px minmax(0, 1fr) 118px 26px;
+            grid-template-areas: "tool tool tool" "left game right" "left proj right" "status status status"; }
   .gamebody canvas { flex: 1; min-width: 0; width: 100%; height: 100%; display: block; outline: none; background: #111; }
   .gamebody canvas:focus-visible { box-shadow: inset 0 0 0 3px var(--focus); }
   .focus-hint { position: absolute; inset: auto 0 18px 0; margin: 0 auto; width: max-content; max-width: 80%;
@@ -19,6 +24,9 @@
          pointer-events: none; animation: popup .9s cubic-bezier(.16,1,.3,1) forwards; }
   @keyframes popup { from { transform: translate(-50%, 0) scale(.6); opacity: 0; } 20% { opacity: 1; transform: translate(-50%, -8px) scale(1.1); }
                      to { transform: translate(-50%, -38px) scale(1); opacity: 0; } }
+  /* a buried sound: no burst, it just drifts up faintly (opacity is set inline from how much gets through) */
+  @keyframes popquiet { from { transform: translate(-50%, 0); } to { transform: translate(-50%, -24px); opacity: 0; } }
+  .sr { position: absolute; width: 1px; height: 1px; overflow: hidden; clip: rect(0 0 0 0); white-space: nowrap; }
 
   /* quest checklist: the evidence the shift needs, always visible */
   .checks { list-style: none; margin: 8px 0 0; padding: 0; display: grid; gap: 4px; }
@@ -34,11 +42,11 @@
   .shelf { grid-area: proj; background: var(--panel); display: flex; flex-direction: column; min-height: 0; border-top: 1px solid var(--line); }
   .shelf .tabs { height: 32px; }
   .shelf-body { display: flex; gap: 8px; padding: 8px 12px; align-items: stretch; flex: 1; }
-  .snd { display: flex; flex-direction: column; justify-content: center; gap: 2px; min-width: 128px; min-height: 60px; padding: 8px 12px;
+  .snd { display: flex; flex-direction: column; justify-content: center; gap: 2px; min-width: 118px; min-height: 60px; padding: 8px 12px;
          border-radius: 8px; border: 1.5px solid var(--line-soft); background: var(--panel-2); cursor: pointer; text-align: left; }
   .snd strong { font-size: 15px; } .snd small { color: var(--ink-2); font-size: 12.5px; }
   .snd[aria-pressed="true"] { border-color: var(--accent); box-shadow: 0 0 0 2px var(--accent); }
-  .shelf-note { align-self: center; color: var(--ink-2); font-size: 13.5px; max-width: 300px; margin-left: auto; }
+  .shelf-note { align-self: center; flex: 1 1 0; min-width: 0; color: var(--ink-2); font-size: 13px; line-height: 1.35; max-width: 300px; margin: 0 0 0 auto; }
   .shelf.locked .shelf-body > * { opacity: .35; pointer-events: none; }
   .shelf.locked .shelf-note { opacity: 1; }
 
@@ -47,7 +55,26 @@
           cursor: pointer; font-weight: 600; text-align: left; padding: 0 12px; }
   .slot.filled { border-style: solid; border-color: var(--accent); color: var(--ink); }
   .meter { height: 10px; border-radius: 5px; background: var(--panel-2); overflow: hidden; margin-top: 4px; }
-  .meter i { display: block; height: 100%; background: var(--accent); transition: width .15s ease-out; }
+  .meter i { display: block; height: 100%; width: 100%; background: var(--accent); transform-origin: left; transition: transform .15s ease-out; }
+
+  /* Play mode: Stop is solid orange (base .tbtn.on) and the game gets the 3px orange ring (DESIGN.md) */
+  .gamebody.playing::after { content: ''; position: absolute; inset: 0; box-shadow: inset 0 0 0 3px var(--accent); pointer-events: none; }
+  /* Hierarchy rows in this shift are a view of the parts, not controls: nothing here is tappable */
+  .tree .trow { display: flex; align-items: center; gap: 8px; min-height: 44px; padding: 0 8px; color: var(--ink); }
+  .tree li.child .trow { padding-left: 34px; }
+  .tree .trow small { margin-left: auto; color: var(--ink-3); font-size: 12px; }
+  /* the prize arriving: a tool in the toolbar, where tools live */
+  .toolchip { display: inline-flex; align-items: center; gap: 7px; height: 36px; padding: 0 12px; border-radius: 6px;
+              background: var(--panel-2); color: var(--ink); font-size: 14px; font-weight: 600; }
+  .toolchip small { font-weight: 500; font-size: 12.5px; color: var(--ink-3); }
+  .toolchip.new { animation: arrive 1.2s cubic-bezier(.16,1,.3,1) both; }
+  @keyframes arrive { from { transform: translateY(-10px) scale(.9); opacity: 0; box-shadow: 0 0 0 3px var(--accent); }
+                      60% { box-shadow: 0 0 0 3px var(--accent); } to { transform: none; opacity: 1; box-shadow: 0 0 0 0 transparent; } }
+  .toolchip[hidden] { display: none; }
+  /* "pick a sound first": the shelf itself asks, where the kid's hand needs to go */
+  .shelf.cue .shelf-body { box-shadow: inset 0 0 0 2px var(--accent); border-radius: 8px; }
+  .milestone-big { display: flex; align-items: center; gap: 10px; font-weight: 700; }
+  .milestone-big .pips i { width: 16px; height: 16px; border-radius: 3px; }
   .meter.music i { background: #8fb3ff; }
 
   /* concept card */
@@ -62,11 +89,14 @@
   .pips i.on { background: var(--accent); }
 
   /* C# peek + tweak: the script docks beside the game, so the kid plays and reads side by side */
-  .code { display: none; flex: none; width: 360px; flex-direction: column; background: #1e1e1e; border-left: 1px solid var(--line); min-height: 0; }
+  .game { display: grid; grid-template-columns: minmax(0, 1fr) auto; grid-template-rows: auto minmax(0, 1fr); }
+  .game > .tabs { grid-column: 1; grid-row: 1; }
+  .game > .gamebody { grid-column: 1; grid-row: 2; }
+  .code { display: none; grid-column: 2; grid-row: 1 / span 2; width: 360px; flex-direction: column; background: #1e1e1e; border-left: 1px solid var(--line); min-height: 0; }
   .code.open { display: flex; }
-  .gamebody.split .focus-hint { right: 360px; max-width: 300px; text-align: center; line-height: 1.8; }
+  .gamebody.split .focus-hint { max-width: 300px; text-align: center; line-height: 1.8; }
   .code .tabs { background: var(--tabbar); }
-  .code pre { margin: 0; padding: 8px 0; flex: 1; overflow: auto; font: 12.5px/1.55 ui-monospace, "Cascadia Mono", Consolas, "DejaVu Sans Mono", monospace; color: var(--ink); }
+  .code pre { margin: 0; padding: 6px 0; flex: 1; overflow: auto; font: 12.5px/1.5 ui-monospace, "Cascadia Mono", Consolas, "DejaVu Sans Mono", monospace; color: var(--ink); }
   .ln { display: block; white-space: pre; padding-right: 10px; }
   .ln .n { display: inline-block; width: 26px; margin-right: 10px; text-align: right; color: #8a8a8a; user-select: none; }
   .ln.hl { background: var(--accent-soft); } .ln.hl .n { color: var(--accent); font-weight: 700; }
@@ -84,7 +114,7 @@
 </head>
 <body>
 <header class="doc">
-  <h1>A shift you can't click through: "The silent coins"</h1>
+  <h1>A shift you can’t click through: “The silent coins”</h1>
   <p>Play it for real: click the game, then use the arrow keys and Space. Progress only unlocks when you've
      actually done the job. The step buttons below are for reviewers and let you skip ahead.</p>
 </header>
@@ -99,12 +129,11 @@
       <img class="wordmark" alt="The League of Amazing Programmers" src="{{LOGO}}">
       <span class="project">· <b>Captain Byte's Game</b></span>
     </div>
+    <!-- Play only: Pause and Step stay removed until a quest needs them (DESIGN.md, Unity mapping). -->
     <div class="transport" aria-label="Play controls">
       <button class="tbtn" id="bPlay"><svg class="i"><use id="bPlayIcon" href="#i-play"/></svg><span>Play</span></button>
-      <button class="tbtn" tabindex="-1"><svg class="i"><use href="#i-pause"/></svg><span>Pause</span></button>
-      <button class="tbtn" tabindex="-1"><svg class="i"><use href="#i-step"/></svg><span>Step</span></button>
     </div>
-    <div class="tool-right"></div>
+    <div class="tool-right"><span class="toolchip" id="toolchip" hidden><svg class="i"><use href="#i-sliders"/></svg>Sound Mixer <small>your new tool</small></span></div>
   </div>
 
   <div class="left">
@@ -127,11 +156,13 @@
     <div class="gamebody" id="gamebody">
       <canvas id="cv" tabindex="0" aria-label="The game. Arrow keys move, Space jumps."></canvas>
       <div class="focus-hint" id="hint" hidden>Click the game, then <span class="keys"><span class="key">←</span><span class="key">→</span></span> move · <span class="key">Space</span> jump</div>
-      <div class="code" id="code" aria-label="Script: Coin.cs">
-        <div class="tabs"><span class="tab"><svg class="i"><use href="#i-code"/></svg><span id="codeName">Coin.cs</span> <small>C#, the programmer's view</small></span></div>
-        <pre id="codeBody"></pre>
-        <div class="code-foot"><p class="console" id="console" aria-live="polite"></p><button class="save" id="save">Save</button></div>
-      </div>
+    </div>
+    <!-- The script is its own dock beside the Game dock, so its tab sits on the same line as Game's,
+         as two docked panels do in Unity. It used to live inside the game area, one tab-height lower. -->
+    <div class="code" id="code" aria-label="Script: Coin.cs">
+      <div class="tabs"><span class="tab"><svg class="i"><use href="#i-code"/></svg><span id="codeName">Coin.cs</span> <small>C#, the programmer's view</small></span></div>
+      <pre id="codeBody"></pre>
+      <div class="code-foot"><p class="console" id="console" aria-live="polite"></p><button class="save" id="save">Save</button></div>
     </div>
   </section>
 
@@ -156,6 +187,7 @@
     <div class="shelf-body" id="shelfBody"></div>
   </section>
 
+  <p class="sr" id="announce" aria-live="polite"></p>
   <div class="status">
     <span id="statusMsg">Shift started</span>
     <span class="milestone"><span>Alpha</span><span class="pips" id="pips"><i></i><i></i><i></i><i></i></span></span>
@@ -164,7 +196,7 @@
 </div></div>
 
 <nav class="nav" aria-label="Steps (for reviewers)">
-  <button id="back">Back</button><span id="dots" style="display:contents"></span><button id="next">Skip ahead</button>
+  <button id="back">Back</button><span class="track" id="dots"></span><button id="next">Skip ahead</button>
 </nav>
 
 <section class="notes">
@@ -183,7 +215,7 @@ function audio() {
   if (AC) return AC;
   try { AC = new (window.AudioContext || window.webkitAudioContext)(); } catch (e) { return null; }
   sfxGain = AC.createGain(); musicGain = AC.createGain();
-  sfxGain.connect(AC.destination); musicGain.connect(AC.destination); applyMix();
+  sfxGain.connect(AC.destination); musicGain.connect(AC.destination); applyMix(); loadSfx();
   return AC;
 }
 function applyMix() { if (!AC) return; sfxGain.gain.value = mix.sfx; musicGain.gain.value = musicOn ? mix.music * 0.35 : 0; }
@@ -194,11 +226,31 @@ function tone(type, f0, f1, dur, vol, dest) {
   g.gain.setValueAtTime(vol, t); g.gain.exponentialRampToValueAtTime(0.001, t + dur);
   o.connect(g); g.connect(dest || sfxGain); o.start(t); o.stop(t + dur + 0.02);
 }
+/* Real sounds: Kenney CC0 files, inlined as base64 by build.js (its SFX slot), decoded once the first time
+   audio starts. If a file can't be decoded, the synthesised version below plays instead, so the shift
+   never goes silent because of a codec. Pitch is playbackRate, which is what Unity's pitch does too. */
+var SFX_DATA = {{SFX}}, buffers = {};
+function loadSfx() {
+  Object.keys(SFX_DATA).forEach(function (id) {
+    if (buffers[id] !== undefined) return; buffers[id] = null;
+    try {
+      var bin = atob(SFX_DATA[id]), bytes = new Uint8Array(bin.length);
+      for (var k = 0; k < bin.length; k++) bytes[k] = bin.charCodeAt(k);
+      AC.decodeAudioData(bytes.buffer, function (b) { buffers[id] = b; }, function () {});
+    } catch (e) {}
+  });
+}
+function playSfx(id, p, synth) {
+  var a = audio(); if (!a) return;
+  if (!buffers[id]) { synth(p || 1); return; }
+  var src = a.createBufferSource(); src.buffer = buffers[id]; src.playbackRate.value = p || 1;
+  src.connect(sfxGain); src.start();
+}
 var SOUNDS = {
-  ding:  { label: 'Sparkly ding', note: 'bright, happy', pop: 'DING!', mood: 'good', play: function (p) { p = p || 1; tone('sine', 988 * p, 0, .09, .5); setTimeout(function () { tone('sine', 1319 * p, 0, .16, .5); }, 80); } },
-  boing: { label: 'Springy boing', note: 'bouncy, up', pop: 'BOING!', mood: 'move', play: function (p) { p = p || 1; tone('sine', 260 * p, 720 * p, .2, .45); } },
-  thud:  { label: 'Heavy thud', note: 'low, bump', pop: 'THUD', mood: 'bad', play: function (p) { p = p || 1; tone('triangle', 130 * p, 55 * p, .2, .7); } },
-  buzz:  { label: 'Angry buzz', note: 'harsh, wrong', pop: 'BZZT', mood: 'bad', play: function (p) { p = p || 1; tone('square', 150 * p, 0, .22, .25); } }
+  ding:  { label: 'Sparkly ding', note: 'bright, happy', pop: 'DING!', mood: 'good', play: function (p) { playSfx('ding', p, function (p) { tone('sine', 988 * p, 0, .09, .5); setTimeout(function () { tone('sine', 1319 * p, 0, .16, .5); }, 80); }); } },
+  boing: { label: 'Springy boing', note: 'bouncy, up', pop: 'BOING!', mood: 'move', play: function (p) { playSfx('boing', p, function (p) { tone('sine', 260 * p, 720 * p, .2, .45); }); } },
+  thud:  { label: 'Heavy thud', note: 'low, bump', pop: 'THUD', mood: 'bad', play: function (p) { playSfx('thud', p, function (p) { tone('triangle', 130 * p, 55 * p, .2, .7); }); } },
+  buzz:  { label: 'Angry buzz', note: 'harsh, wrong', pop: 'BZZT', mood: 'bad', play: function (p) { playSfx('buzz', p, function (p) { tone('square', 150 * p, 0, .22, .25); }); } }
 };
 var musicOn = false, beat = 0;
 function startMusic() {
@@ -210,7 +262,7 @@ function stopMusic() { clearInterval(musicTimer); musicTimer = null; musicOn = f
 
 /* ---------- the little game (keyboard-playable) ---------- */
 var cv = $('cv'), ctx = cv.getContext('2d'), W = 320, H = 180;
-var keys = {}, P, coins, jumpedOnce = false, theme = 'customer', running = false;
+var keys = {}, P, coins, jumpedOnce = false, theme = 'customer', running = false;   // set only through setRunning()
 var assign = { coin: null, jump: null, hurt: null };
 function level() {
   P = { x: 30, y: 120, vx: 0, vy: 0, w: 12, h: 16, on: false };
@@ -229,12 +281,23 @@ cv.addEventListener('pointerdown', function () { cv.focus(); });
 
 function fire(action) {
   var s = assign[action] && SOUNDS[assign[action]], p = action === 'coin' ? pitch : 1;
-  if (s) { s.play(p); pop(s.pop + (p > 1.05 ? ' ↑' : p < 0.95 ? ' ↓' : '')); }
+  if (s) { s.play(p); pop(s.pop + (p > 1.05 ? ' ↑' : p < 0.95 ? ' ↓' : ''), heard()); }
+  if (action === 'coin') announce('Coin grabbed. ' + coins.filter(function (c) { return !c.got; }).length + ' left.');
   events(action, !!s);
 }
-function pop(text) {
+/* How much of a sound effect gets through the music, 0.25–1. The pop is the sound made visible for a
+   muted room or a deaf kid, so it has to tell the same story the speakers do: a sound the music buries
+   shows as a small, faint pop. Before this, a full-size "DING!" appeared at the very moment the sound
+   designer said nobody could hear it. */
+function heard() {
+  if (!musicOn) return 1;
+  return Math.max(0.25, Math.min(1, (mix.sfx - mix.music + 0.3) / 0.45));
+}
+function pop(text, vis) {
   var r = cv.getBoundingClientRect(), gb = $('gamebody').getBoundingClientRect();
   var k = r.width / W, el = document.createElement('div'); el.className = 'pop'; el.textContent = text;
+  vis = vis === undefined ? 1 : vis;
+  if (vis < 1) { el.style.fontSize = Math.round(20 * (0.55 + 0.45 * vis)) + 'px'; el.style.opacity = vis; el.style.animationName = 'popquiet'; }
   el.style.left = Math.min(r.right - gb.left - 44, r.left - gb.left + (P.x + 6) * k) + 'px'; el.style.top = (r.top - gb.top + (P.y - 10) * k) + 'px';
   $('gamebody').appendChild(el); setTimeout(function () { el.remove(); }, 950);
 }
@@ -296,37 +359,54 @@ function setChecks() {
 function tree(of) {
   var rows = of === 'yours' ? [['Level 1', 'the level', 1], ['Player', 'your robot'], ['Coin', 'the goal'], ['Lava', 'the danger']]
                             : [['Coin Game', 'customer’s level', 1], ['Player', 'blue box'], ['Coin', 'the goal'], ['Lava', 'the danger']];
-  $('tree').innerHTML = rows.map(function (r) { return '<li class="' + (r[2] ? '' : 'child') + '"><button aria-pressed="false" tabindex="-1">' +
-    (r[2] ? '<svg class="i" style="width:14px;margin-right:-4px"><use href="#i-fold"/></svg>' : '') + '<svg class="i"><use href="#i-cube"/></svg>' + r[0] + '<small>' + r[1] + '</small></button></li>'; }).join('');
+  /* Plain rows, not buttons: nothing in this shift happens by picking a part, and rows that looked
+     tappable but did nothing were a critique finding. */
+  $('tree').innerHTML = rows.map(function (r) { return '<li class="' + (r[2] ? '' : 'child') + '"><span class="trow">' +
+    (r[2] ? '<svg class="i" style="width:14px;margin-right:-4px"><use href="#i-fold"/></svg>' : '') + '<svg class="i"><use href="#i-cube"/></svg>' + r[0] + '<small>' + r[1] + '</small></span></li>'; }).join('');
 }
+var shown = [];   // the lines on screen now, so a reply can be added under them without wiping them
 function say(lines) {
-  var log = $('log'); log.innerHTML = '';
+  shown = lines; var log = $('log'); log.innerHTML = ''; var prev = null;
   lines.forEach(function (m) {
     var d = document.createElement('div'); d.className = 'msg' + (m[0] === 'k' ? ' kid' : m[0] === 'm' ? ' guest' : '');
-    var f = document.createElement('span'); f.className = 'from';
-    f.textContent = m[0] === 'k' ? NAME : m[0] === 'm' ? 'Mentor' : m[0] === 'p' ? 'Programmer' : 'Sound designer'; d.appendChild(f);
+    // The speaker's name only when the speaker changes: a second line in a row doesn't repeat it.
+    if (m[0] !== prev) { var f = document.createElement('span'); f.className = 'from';
+      f.textContent = m[0] === 'k' ? NAME : m[0] === 'm' ? 'Mentor' : m[0] === 'p' ? 'Programmer' : 'Sound designer'; d.appendChild(f); }
+    prev = m[0];
     var txt = m[1].replace(/@name/g, NAME);
     if (m[2] === 'html') { var w = document.createElement('div'); w.innerHTML = txt; d.appendChild(w); } else d.appendChild(document.createTextNode(txt));
     log.appendChild(d);
   });
+  // The newest line is the one that matters; after the options below have laid out, keep it in view.
+  requestAnimationFrame(function () { log.scrollTop = log.scrollHeight; });
 }
+/* Answers are shuffled every time they're shown. Every question used to list the right answer first,
+   so tapping the top option every time got a kid through without reading. The newest line is also
+   read out, and when focus was already in the editor (not the game) it moves to the first answer, so
+   a keyboard or screen-reader user isn't left behind on a control that no longer matters. */
 function options(list) {
-  var box = $('opts'); box.innerHTML = '';
+  var box = $('opts'), wasInEditor = $('editor').contains(document.activeElement) && document.activeElement !== cv;
+  box.innerHTML = ''; list = list.slice();
+  for (var k = list.length - 1; k > 0; k--) { var j = Math.floor(Math.random() * (k + 1)), t = list[k]; list[k] = list[j]; list[j] = t; }
+  var last = $('log').lastElementChild; if (last) announce(last.textContent);
   list.forEach(function (o) {
     var b = document.createElement('button'); b.className = 'opt'; b.textContent = o[0];
     if (o[2]) { var sm = document.createElement('small'); sm.textContent = o[2]; b.appendChild(sm); }
     b.addEventListener('click', function () { if (spamCheck()) return; o[1](); });
     box.appendChild(b);
   });
+  if (wasInEditor && box.firstChild && !running) box.firstChild.focus({ preventScroll: true });
 }
+function announce(text) { $('announce').textContent = text; }
 /* Three option clicks inside 1.8 s = clicking without reading. Stop and ask for a prediction. */
 function spamCheck() {
   var t = Date.now(); clicks.push(t); clicks = clicks.filter(function (x) { return t - x < 1800; });
-  if (clicks.length < 3 || spamAt === i) return false;
+  if (clicks.length < 3 || spamAt === i || i === 0) return false;   // step 1 is a sound check, not a question
   spamAt = i; clicks = [];
-  say([['m', "Whoa, speedy! Quick guess before we go on: what happens to a game when grabbing a coin makes no sound at all?"]]);
+  var v = STEPS[i].voice || 's';   // whoever is talking in this step asks, not a new voice
+  say([[v, "Whoa, speedy! Quick guess before we go on: what happens to a game when grabbing a coin makes no sound at all?"]]);
   options([["It feels dead, like nothing happened", function () { render(); }],
-           ["It gets faster", function () { say([['m', "Not quite. Nothing changes except the game stops answering you. That's what feels dead."]]); options([['Got it', render]]); }]]);
+           ["It gets faster", function () { say([[v, "Not quite. Nothing changes except the game stops answering you. That's what feels dead."]]); options([['Got it', render]]); }]]);
   return true;
 }
 function inspector(title, html) {
@@ -340,12 +420,14 @@ function inspector(title, html) {
 }
 var picked = null;
 function shelf(on) {
-  $('shelf').classList.toggle('locked', !on);
+  if (!on) picked = null;   // a locked shelf keeps no orange selection ring
+  $('shelf').classList.toggle('locked', !on); $('shelf').classList.remove('cue');
   $('shelfBody').innerHTML = Object.keys(SOUNDS).map(function (id) {
     var s = SOUNDS[id]; return '<button class="snd" data-id="' + id + '" aria-pressed="' + (picked === id) + '"><strong>' + s.label + '</strong><small>' + s.note + '</small></button>';
   }).join('') + '<p class="shelf-note">' + (on ? 'Tap a sound to hear it and pick it up. Then tap a slot in the Inspector.' : 'Your sounds live here. They unlock when you need them.') + '</p>';
   Array.prototype.forEach.call($('shelfBody').querySelectorAll('.snd'), function (b) {
-    b.addEventListener('click', function () { clicks = []; picked = b.dataset.id; SOUNDS[picked].play(); shelf(true); });
+    b.addEventListener('click', function () { clicks = []; picked = b.dataset.id; SOUNDS[picked].play(); shelf(true);
+      $('statusMsg').textContent = 'Picked: ' + SOUNDS[picked].label; });
   });
 }
 function slotsHtml() {
@@ -355,13 +437,15 @@ function slotsHtml() {
       (v ? SOUNDS[v].label : 'Empty: tap to put a sound here') + '</button></div>';
   }
   return '<div class="comp"><svg class="i"><use href="#i-fold"/></svg><strong>Audio Source</strong></div>' +
-    row('coin', 'When you grab a coin', 'Unity: AudioSource.Play') + row('jump', 'When you jump', 'plays on jump') + row('hurt', 'When you fall in lava', 'plays on hurt');
+    row('coin', 'When you grab a coin', 'Unity: AudioClip') + row('jump', 'When you jump', 'Unity: AudioClip') + row('hurt', 'When you fall in lava', 'Unity: AudioClip');
 }
 function wireSlots() {
   Array.prototype.forEach.call($('inspBody').querySelectorAll('.slot'), function (b) {
     b.addEventListener('click', function () {
       clicks = [];   // hands-on work, not mindless clicking
-      if (!picked) { $('statusMsg').textContent = 'Pick a sound from the Project shelf first'; return; }
+      /* Nothing picked yet: the shelf lights up where the kid's hand needs to go, rather than an
+         error in the status bar at the far corner of the screen. */
+      if (!picked) { $('shelf').classList.add('cue'); $('statusMsg').textContent = 'Pick a sound from the shelf first'; return; }
       assign[b.dataset.slot] = picked; SOUNDS[picked].play(); inspector('Coin Game', slotsHtml()); wireSlots(); STEPS[i].onEvent('assign');
     });
   });
@@ -372,7 +456,7 @@ function mixerHtml() {
     '<div class="irow"><label for="mSfx">Sound effects<small>Unity: SFX group</small></label><div><input id="mSfx" type="range" min="0" max="100" value="' + Math.round(mix.sfx * 100) + '"><div class="meter"><i id="lvSfx"></i></div></div></div>';
 }
 function wireMixer() {
-  function upd() { $('lvMusic').style.width = (mix.music * 100) + '%'; $('lvSfx').style.width = (mix.sfx * 100) + '%'; applyMix(); STEPS[i].onEvent('mix'); }
+  function upd() { $('lvMusic').style.transform = 'scaleX(' + mix.music + ')'; $('lvSfx').style.transform = 'scaleX(' + mix.sfx + ')'; applyMix(); STEPS[i].onEvent('mix'); }
   $('mMusic').addEventListener('input', function () { mix.music = this.value / 100; upd(); });
   $('mSfx').addEventListener('input', function () { mix.sfx = this.value / 100; upd(); });
   upd();
@@ -413,37 +497,67 @@ function saveCode() {
   if (STEPS[i].onEvent) STEPS[i].onEvent('save');
 }
 $('save').addEventListener('click', function () { clicks = []; saveCode(); });
+/* Who is talking: the panel header follows the voice of the step (sound designer, programmer, or the
+   mentor for the kid's own game), so the tab never names someone other than the speaker. */
 function who(kind) {
-  var p = kind === 'p';
-  $('whoTab').textContent = p ? 'Programmer' : 'Sound designer';
-  $('whoName').innerHTML = (p ? 'Programmer' : 'Sound designer') + ' <span style="font-weight:500;color:var(--ink-3)">(name TBD)</span>';
-  $('whoRole').textContent = p ? 'Engineering department, dropping by' : 'Audio department';
+  var W = { s: ['Sound designer', 'Audio department'], p: ['Programmer', 'Engineering department, dropping by'],
+            m: ['Mentor', 'The studio’s AI, and proud of it'] }[kind] || ['Sound designer', 'Audio department'];
+  $('whoTab').textContent = W[0];
+  $('whoName').innerHTML = W[0] + ' <span style="font-weight:500;color:var(--ink-3)">(name TBD)</span>';
+  $('whoRole').textContent = W[1];
 }
 function audibleCoin() { return mix.sfx >= mix.music + 0.15; }
+/* The one place the game starts and stops, so the toolbar can never disagree with the game: Play turns
+   into a solid orange Stop, the chrome takes the Play-mode tint, and the game gets its orange ring. */
+function setRunning(on) {
+  running = !!on;
+  $('editor').classList.toggle('playmode', running); $('gamebody').classList.toggle('playing', running);
+  $('bPlay').classList.toggle('on', running); $('bPlayIcon').setAttribute('href', running ? '#i-stop' : '#i-play');
+  $('bPlay').querySelector('span').textContent = running ? 'Stop' : 'Play';
+  $('statusMsg').textContent = running ? 'Play mode' : 'Stopped';
+  if (!running) { keys = {}; $('hint').hidden = true; } else $('hint').hidden = document.activeElement === cv;
+}
+/* Play is real: on the ticket it starts the job, anywhere else it runs or stops the game. */
+$('bPlay').addEventListener('click', function () {
+  if (i === 0) { advance(); return; }
+  setRunning(!running); if (running) cv.focus();
+});
 function setGame(which) {
-  theme = which; level(); running = true; tree(which);
+  theme = which; level(); setRunning(true); tree(which);
   $('gameOf').textContent = which === 'yours' ? NAME + "'s game" : "customer's game";
   $('hierOf').textContent = which === 'yours' ? 'your parts' : "customer's game";
   $('hint').hidden = document.activeElement === cv;
 }
 function advance() { go(i + 1); }
+/* Move on after a pause, but only if the kid (or a reviewer's step button) hasn't already gone elsewhere. */
+function advanceLater(ms) { var at = i; setTimeout(function () { if (i === at) advance(); }, ms); }
 
 var STEPS = [
   { beat: 'The ticket', check: 'play',
-    enter: function () { setGame('customer'); running = false; $('hint').hidden = true; shelf(false);
-      say([['s', "Hey @name! A customer says their coin game feels dead. Can you play it and tell me what's wrong?"]]);
-      options([["Let's play it", advance]]); },
-    what: 'The sound designer brings a real problem from a customer.',
-    gate: 'Nothing to gate yet: this is the hook.' },
+    /* A sound check first. This is an Audio shift in a room of Chromebooks that are often muted, and
+       the original app mutes game sound by default (app/public/js/game-runner.js:468). A kid who can't
+       hear still goes on: the pops on the game show every sound and how loud it is. */
+    enter: function () { setGame('customer'); setRunning(false); $('hint').hidden = true; shelf(false);
+      var ticket = function (lines) {
+        say(lines.concat([['s', "Now, the job: a customer says their coin game feels dead. Can you play it and tell me what's wrong?"]]));
+        options([["Let's play it", advance]]); };
+      say([['s', "Hey @name! I'm the sound designer. First, a sound check: tap the button to hear a ding."]]);
+      options([['Play the test sound', function () {
+        SOUNDS.ding.play(); pop('DING!', 1);
+        say([['s', 'Did you hear that?']]);
+        options([['Yes, I heard it', function () { ticket([['s', 'Great, your sound works.']]); }],
+                 ["No, I can't hear anything", function () { ticket([['s', 'Put headphones on or turn the volume up if you can. Until then, watch the words that pop up on the game: they show every sound, and how loud it is.']]); }]]);
+      }]]); },
+    what: 'A sound check, then the sound designer brings a real problem from a customer. Pressing Play also starts the job.',
+    gate: 'Nothing to gate yet: this is the hook. A kid who can’t hear goes on anyway, with the pops as their sound.' },
   { beat: 'Play it', check: 'play',
-    enter: function () { running = true; level(); got = 0; $('hint').hidden = false; $('statusMsg').textContent = 'Play mode';
-      $('editor').classList.add('playmode'); $('bPlayIcon').setAttribute('href', '#i-stop'); $('bPlay').querySelector('span').textContent = 'Stop';
+    enter: function () { setRunning(true); level(); got = 0; $('hint').hidden = false;
       say([['s', 'Click the game, then use the arrow keys and Space. Grab both coins.']]); options([]); },
-    onEvent: function (a) { if (a === 'coin' && got >= 2) { done.play = true; setChecks(); setTimeout(advance, 500); } },
+    onEvent: function (a) { if (a === 'coin' && got >= 2) { done.play = true; setChecks(); advanceLater(500); } },
     what: 'The kid plays the customer’s game with the keyboard. Grabbing a coin makes no sound and nothing happens.',
     gate: 'There is no button. The only way on is to actually grab both coins in the game.' },
   { beat: 'Spot what’s wrong', check: 'spot',
-    enter: function () { $('editor').classList.remove('playmode'); $('bPlayIcon').setAttribute('href', '#i-play'); $('bPlay').querySelector('span').textContent = 'Play';
+    enter: function () { setRunning(false);
       say([['s', 'So, what felt off?']]);
       options([['Nothing happened when I grabbed a coin', function () { done.spot = true; setChecks();
                   say([['s', "Exactly! You did something and the game didn't answer. Let's fix that."]]); options([['How?', advance]]); }],
@@ -451,8 +565,8 @@ var STEPS = [
     what: 'The kid names the problem, in their own terms, before anyone names the concept.',
     gate: 'A wrong answer doesn’t move on. It sends the kid back to play once more and watch closely.' },
   { beat: 'Give each action a sound', check: 'sounds',
-    enter: function () { running = true; level(); shelf(true); this.okBad = false; this.tried = null;
-      say([['s', 'Every action should answer the player. Pick a sound from the shelf below, then drop it into a slot.']]);
+    enter: function () { setRunning(true); level(); shelf(true); this.okBad = false; this.tried = null;
+      say([['s', 'Every action should answer the player. Tap a sound on the shelf below, then tap a slot to put it there.']]);
       options([]); inspector('Coin Game', slotsHtml()); wireSlots(); },
     onEvent: function (a) {
       if (a !== 'assign' || !(assign.coin && assign.jump && assign.hurt)) return;
@@ -472,25 +586,30 @@ var STEPS = [
       say([['s', 'Now play it. Grab a coin and jump, and listen.']]); options([]); this.tried = { coin: false, jump: false };
     },
     onPlay: function (a, aud) { if (!done.sounds || !this.tried) return; if (aud && (a === 'coin' || a === 'jump')) this.tried[a] = true;
-      if (this.tried.coin && this.tried.jump) { this.tried = null; setTimeout(advance, 500); } },
+      /* Hold the first success: a line of praise, then a pause long enough to enjoy it. It used to move
+         on after half a second, stepping on the kid's first "DING!". */
+      if (this.tried.coin && this.tried.jump) { this.tried = null;
+        say([['s', 'Hear that? Now the game answers you every time you do something.']]); advanceLater(1800); } },
     what: 'The kid picks sounds from the Project window and places them in the Inspector, the same way Unity works.',
     gate: 'The kid has to fill all three slots. A "hurt" sound on the coin gets challenged: it has a real consequence, and the kid decides.' },
   { beat: 'Mix it so it can be heard', check: 'mix',
-    enter: function () { startMusic(); coins.forEach(function (c) { c.got = false; }); running = true; shelf(false);
+    enter: function () { startMusic(); coins.forEach(function (c) { c.got = false; }); setRunning(true); shelf(false);
       say([['s', 'Players have music on. Grab a coin and listen: can you still hear it?'],
            ['s', 'If the music is drowning it out, turn the music down or the sound effects up.']]);
       options([]); inspector('Audio Mixer', mixerHtml()); wireMixer(); this.heard = false; },
     onEvent: function (a, aud) {
       if (a === 'mix') { $('statusMsg').textContent = audibleCoin() ? 'Sound effects are louder than the music' : 'The music is drowning out the sound effects'; }
       if (a === 'coin' && !done.mix) {   // once: a second coin inside the 400 ms would advance twice
-        if (!audibleCoin()) { say([['s', "Did you hear it? Neither did the players. The music's burying it."]]); options([]); coins.forEach(function (c) { c.got = false; }); return; }
-        done.mix = true; setChecks(); inspector(null); stopMusic(); setTimeout(advance, 400);
+        if (!audibleCoin()) { say([['s', "Did you hear it? Neither did the players. The music's burying it."],
+                                   ['s', 'Turn the music down or the sound effects up, then grab a coin again.']]); options([]); coins.forEach(function (c) { c.got = false; }); return; }
+        done.mix = true; setChecks(); inspector(null);
+        say([['s', 'Now it cuts right through the music. That’s mixing!']]); var at = i; setTimeout(function () { if (i === at) { stopMusic(); advance(); } }, 1800);
       }
     },
     what: 'Music plays over the game. The kid tunes a real mixer until the coin cuts through, then proves it by grabbing a coin.',
     gate: 'A slider target: grabbing a coin while the music is louder doesn’t count. The kid has to mix, then play.' },
-  { beat: 'Peek and tweak the code', check: 'code',
-    enter: function () { who('p'); running = true; coins.forEach(function (c) { c.got = false; }); hlLine = 0; code(true);
+  { beat: 'Peek and tweak the code', check: 'code', voice: 'p',
+    enter: function () { who('p'); setRunning(true); coins.forEach(function (c) { c.got = false; }); hlLine = 0; code(true);
       $('console').textContent = 'Console: no errors'; this.found = false; this.heard = null;
       say([['p', "Hi @name, I'm a programmer. This is your coin fix the way I see it: real C#, the language Unity uses."],
            ['p', 'Which line plays the coin sound?']]);
@@ -502,7 +621,8 @@ var STEPS = [
       if (!ok) { say([['p', why], ['p', 'Which line plays the coin sound?']]); return; }
       this.found = true; hlLine = 13; code(true); $('console').textContent = 'Console: no errors';
       say([['p', 'Yes! PlayOneShot plays it once. coinSound is the ' + (assign.coin ? SOUNDS[assign.coin].label : 'sound') + ' you put in the Inspector slot: same thing, two views.'],
-           ['p', 'Now change pitch on line 8 to make the coin sound higher. Save, then grab a coin.']]);
+           ['p', 'Now make the coin sound higher: change pitch on line 8 to a bigger number.'],
+           ['p', 'Then press Save, and grab a coin to hear it.']]);
       options([]);
     },
     onEvent: function (a) {
@@ -510,33 +630,42 @@ var STEPS = [
       if (a !== 'coin' || !this.found) return;
       if (pitch === 1) { say([['p', 'Sounds the same, right? pitch is still 1.0. Change the number, then press Save.']]); coins.forEach(function (c) { c.got = false; }); return; }
       if (pitch < 1) { say([['p', 'Did that sound lower? Numbers under 1 go lower. Try one bigger than 1.']]); coins.forEach(function (c) { c.got = false; }); return; }
-      done.code = true; setChecks(); running = false;
+      done.code = true; setChecks(); setRunning(false);
       say([['p', 'Higher! You just changed a game by editing real C#. That’s my whole job.']]);
       options([['Back to the sound designer', advance]]);
     },
     what: 'A programmer drops by (meet the roles) and shows the real Unity C# behind the fix. The kid finds the line that plays the sound, then edits one value, saves, and hears the change in the game. In the course this starts mid-course in Engineering shifts (see curriculum-map.md); it is shown in this early shift so it can be judged.',
     gate: 'The kid must pick the right line (wrong picks explain and ask again), then save a pitch above 1 and grab a coin. Not a number, or out of range, gets a Console error and changes nothing. A lower pitch is heard and explained, and doesn’t count.' },
   { beat: 'Name it', check: 'yours',
-    enter: function () { running = false;
+    /* The card keeps one engine's names. Godot and Unreal rows put about eight new terms in front of a
+       kid who is still learning Unity's; they can come back as an extra later. The prize arrives on
+       screen, in the toolbar where tools live, instead of only being promised. */
+    enter: function () { setRunning(false);
       say([['s', 'That’s it! Game makers call this feedback.'],
-           ['s', '<div class="card"><b>Feedback</b><p>When you do something, the game answers you.</p><dl><dt>Unity</dt><dd>Audio Source, Audio Mixer</dd><dt>Godot</dt><dd>AudioStreamPlayer, Audio Buses</dd><dt>Unreal</dt><dd>Sound Cue, Submix</dd><dt>C#</dt><dd><code>source.PlayOneShot(coinSound);</code></dd></dl></div>', 'html'],
-           ['s', 'And here’s a surprise: I’m giving you my Sound Mixer tool to keep.']]);
+           ['s', '<div class="card"><b>Feedback</b><p>When you do something, the game answers you.</p><dl><dt>Unity</dt><dd>Audio Source, Audio Mixer</dd><dt>C#</dt><dd><code>source.PlayOneShot(coinSound);</code></dd></dl></div>', 'html'],
+           ['s', 'And here’s a surprise: my Sound Mixer tool is yours to keep. Look up in your toolbar!']]);
+      var chip = $('toolchip'); chip.hidden = false; chip.classList.remove('new'); void chip.offsetWidth; chip.classList.add('new');
+      $('statusMsg').textContent = 'New tool: Sound Mixer';
       options([['Put it in my game', advance]]); },
-    what: 'The concept is named only after the kid has felt it and fixed it. The card carries the real names from all three engines.',
+    what: 'The concept is named only after the kid has felt it and fixed it. The card carries the real Unity names; the Sound Mixer tool arrives in the toolbar.',
     gate: 'The card only exists because the kid earned it. The prize is a surprise, not a price.' },
-  { beat: 'Put it in your game', check: 'yours',
+  { beat: 'Put it in your game', check: 'yours', voice: 'm',
     enter: function () { setGame('yours'); coins.forEach(function (c) { c.got = false; });
       say([['m', 'Your turn, @name. Your game gets the same sounds. Grab a coin in YOUR game.']]); options([]); },
-    onEvent: function (a, aud) { if (a === 'coin' && aud) { done.yours = true; setChecks(); running = false;
-      say([['m', 'Hear that? Your game answers you now. Alpha: 1 of 4 departments done!']]); options([['Done for today', advance]]); } },
+    onEvent: function (a, aud) { if (a === 'coin' && aud) { done.yours = true; setChecks(); setRunning(false);
+      say([['m', 'Hear that? Your game answers you now.'],
+           ['m', '<div class="milestone-big">Alpha milestone <span class="pips"><i class="on"></i><i></i><i></i><i></i></span></div>1 of 4 departments done. Audio is finished!', 'html']]);
+      options([['Done for today', advance]]); } },
     what: 'The fix lands in the kid’s own game, and they prove it by playing.',
     gate: 'Only grabbing a coin in their own game, and hearing it, finishes the shift.' },
   { beat: 'Later: it comes back', check: null,
-    enter: function () { running = false; inspector(null); shelf(false);
+    enter: function () { setRunning(false); inspector(null); shelf(false);
       say([['s', 'Three shifts later…'],
            ['s', 'QA found a bug in your game: jumping makes no sound. Which sound fits a jump?']]);
-      options([['Springy boing', function () { say([['s', "Yes! A jump goes up, so the sound goes up too. Feedback that matches the action."]]); options([]); }, 'bouncy, up'],
-               ['Angry buzz', function () { say([['s', "Hmm, a buzz says \"wrong!\" Your player didn't do anything wrong by jumping. Try another."]]); }, 'harsh, wrong'],
+      /* No hint text under the options: "bouncy, up" and "harsh, wrong" gave the answer away. */
+      options([['Springy boing', function () { say([['s', "Yes! A jump goes up, so the sound goes up too. Feedback that matches the action."]]);
+                  options([['Play the shift again', function () { go(0); }]]); }],
+               ['Angry buzz', function () { say([['s', "Hmm, a buzz says \"wrong!\" Your player didn't do anything wrong by jumping. Try another."]]); }],
                ['No sound is fine', function () { say([['s', "Remember the customer's game? No answer feels dead. Pick one that fits a jump."]]); }]]); },
     what: 'The idea returns weeks later as a decision in a new situation. Code scores the choice, and the director uses it to decide whether to re-teach.',
     gate: 'Wrong answers get explained and asked again. The result updates the skill tracker; it never moves the kid forward by itself.' }
@@ -547,11 +676,14 @@ function wrongSpot() {
 }
 
 function render() {
-  var s = STEPS[i]; inspector(null); code(false); who('s'); s.enter.call(s); setChecks();
+  clicks = [];   // spam is fast tapping within one step; moving on to a new step starts the count again
+  var s = STEPS[i]; inspector(null); code(false); who(s.voice || 's'); shelf(false);   // each step unlocks what it needs
+  $('toolchip').hidden = i < 6; $('toolchip').classList.remove('new');   // the Sound Mixer is earned at step 7
+  s.enter.call(s); setChecks();
   if (!running) $('hint').hidden = true;
   $('nBeat').textContent = 'Step ' + (i + 1) + ' · ' + s.beat; $('nWhat').textContent = s.what; $('nGate').textContent = s.gate;
   $('back').disabled = i === 0; $('next').disabled = i === STEPS.length - 1;
-  Array.prototype.forEach.call($('dots').children, function (b, k) { if (k === i) b.setAttribute('aria-current', 'step'); else b.removeAttribute('aria-current'); });
+  Array.prototype.forEach.call($('dots').children, function (b, k) { if (k === i) b.setAttribute('aria-current', 'step'); else b.removeAttribute('aria-current'); b.classList.toggle('past', k < i); });
 }
 function go(n) { stopMusic(); i = Math.max(0, Math.min(STEPS.length - 1, n)); render(); }
 
@@ -567,13 +699,41 @@ $('next').addEventListener('click', function () {
   if (!assign.coin) { assign = { coin: 'ding', jump: 'boing', hurt: 'thud' }; } if (i >= 3) mix = { music: 0.4, sfx: 0.8 };
   go(i + 1);
 });
-$('say').addEventListener('keydown', function (e) { if (e.key === 'Enter') { this.value = ''; } });
+/* "Say something else" answers instead of swallowing what was typed. This shift needs no AI call, so
+   the reply is written here: it hears the kid and points back to what to do. With the AI wired in,
+   this is where the character would answer for real. */
+$('say').addEventListener('keydown', function (e) {
+  if (e.key !== 'Enter' || !this.value.trim()) return;
+  var v = STEPS[i].voice || 's', text = this.value.trim().slice(0, 120); this.value = '';
+  var keep = shown.filter(function (m) { return m[0] !== 'k'; }).slice(-1);
+  say(keep.concat([['k', text], [v, $('opts').children.length ? 'Good thought! For now, tap one of the answers below.' : 'Good thought! Keep going: ' + (keep.length ? keep[0][1] : 'the game is waiting.')]]));
+});
 
+/* Scale the 1366×650 frame to fit the window's width and its height, less the header and the step
+   strip, so the whole editor and the steps are on screen at once. Fitting to width alone cut the
+   bottom off on a Chromebook, whose window is about as tall as the frame. Below half size it stops
+   shrinking and the page scrolls. --col lines the header, steps and notes up with the frame. */
+/* #embed: shown inside the rework's explainer page. The page gives the heading, so ours hides; the
+   frame fits the width only; and the page is told our height so its frame grows to fit us, with no
+   scrollbar of its own. */
 (function () {
-  var s = $('scaler');
-  function fit() { var k = Math.min(1, (s.parentElement.clientWidth - 32) / 1366);
-    s.style.transform = 'scale(' + k + ')'; s.style.height = (650 * k) + 'px'; s.style.width = (1366 * k) + 'px'; }
-  window.addEventListener('resize', fit); fit();
+  var s = $('scaler'), doc = document.querySelector('header.doc'), nav = document.querySelector('.nav');
+  var embed = location.hash === '#embed';
+  if (embed) {
+    document.documentElement.classList.add('embed');
+    var post = function () { parent.postMessage({ wfHeight: Math.ceil(document.body.getBoundingClientRect().height) }, '*'); };
+    if (window.ResizeObserver) new ResizeObserver(post).observe(document.body);
+    window.addEventListener('load', post);
+  }
+  function fit() {
+    if (embed) { var ke = Math.min(1, s.parentElement.clientWidth / 1366);
+      s.style.transform = 'scale(' + ke + ')'; s.style.height = (650 * ke) + 'px'; s.style.width = (1366 * ke) + 'px'; return; }
+    var chrome = doc.offsetHeight + nav.offsetHeight + 12 + 16;
+    var k = Math.min(1, (s.parentElement.clientWidth - 32) / 1366, (innerHeight - chrome > 150 ? Math.max(0.5, (innerHeight - chrome) / 650) : 1));
+    s.style.transform = 'scale(' + k + ')'; s.style.height = (650 * k) + 'px'; s.style.width = (1366 * k) + 'px';
+    document.documentElement.style.setProperty('--col', Math.round(1366 * k + 32) + 'px');
+  }
+  window.addEventListener('resize', fit); window.addEventListener('load', fit); fit(); fit();   // twice: the header rewraps at the new column width
 })();
 level(); render(); loop();
 </script>
