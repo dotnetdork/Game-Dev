@@ -15,6 +15,10 @@ examples and how much it builds.
 > with the mentor AI alongside. Conversation happens through dialogue options plus "say something
 > else." The five steps still hold inside the quest.
 
+> **Updated after research round 2:** prizes are *surprises* for concept-bearing moments, not a
+> price on the quest; the stars bar stays quiet. Each quest should use feel → see → name, with the
+> Unity name shown in an Inspector-style row.
+
 ## 1. Who arrives and why
 A 10–13-year-old, new to computers, in class on a Chromebook (1366×768), who already has their own
 tiny game (invented in the first minute). Job: learn **one** game concept and see it land in *their*

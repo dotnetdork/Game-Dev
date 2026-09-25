@@ -38,6 +38,10 @@ records the reason, so the next person can see why something is there — or isn
 | Old concepts come back inside new quests (spaced recall) | **In** | research, Jay | "Hard to forget." `course-engine.md`. |
 | The kid sees a glimpse of the plan (what's next + a teaser), not the whole map | **In** | Jay | Interview. |
 | Prizes used for: new tool powers · studio unlocks · desk & avatar cosmetics | **In** | Jay | Interview. Art/sound for their game was not chosen as a prize. |
+| Three layers of terms: ~25–30 owned · ~30 familiar · the rest extra | **In** | research, Jay | Round-2 decision. "Familiar" is enough for "oh, that's the Inspector." |
+| Prizes are surprises for concept-bearing moments (mostly tool powers); stars are a quiet bar, never a price on a quest | **In** | research, Jay | Round-2 decision; replaces "stars/XP tick up" at each quest. |
+| Skill tracking starts simple (Leitner boxes: new / learning / solid / strong); refit after a pilot | **In** | research, Jay | Round-2 decision. |
+| Launch with the Front Desk + 3–4 departments; the rest unlock later | **In** | research, Jay | Round-2 decision. Which departments: open. |
 | Leaderboards | **Parked** | proto, Jay | "Probably not necessary." |
 | Gallery | **Parked** | proto, Jay | "Not necessary for now." |
 | Code-debugging labs | **Out** | proto, critique | A no-syntax course; the critique found them the lowest point of the app. |

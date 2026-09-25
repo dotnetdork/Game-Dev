@@ -108,6 +108,9 @@ told otherwise.
 4. **How much at launch.** Nine departments is the full studio. **Proposed:** launch with the Front
    Desk + three or four departments; the rest unlock later.
 
+**Decided by Jay (2026-09-25):** all four as proposed — three layers of terms; surprise prizes
+with a quiet stars bar; simple skill tracking first; the Front Desk + 3–4 departments at launch.
+
 ## Next (agreed order)
 
 1. Jay decides the four points above.
