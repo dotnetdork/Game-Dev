@@ -1,0 +1,354 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>First Run Wireframe</title>
+<!--
+  Wireframe 01: the first run, "Your first day at the studio" (../briefs/first-run.md, v2).
+  Grey boxes only: layout, flow and words, no visual design. Click through the beats with the
+  options in the mentor's panel or with Back / Next under the frame. Regions that have not been
+  revealed yet are drawn as faint outlines, so you can see the engine build itself around the kid.
+  Frame is 1366x768 (the school Chromebook), scaled to fit. Same drawing rules as 00-baseline.html.
+-->
+<style>
+  :root {
+    --page: #f4f4f2; --ink: #1d1d1b; --muted: #5f5f5a; --line: #8d8d86;
+    --box: #e4e4e0; --ghost: #c9c9c3; --new: #2f6f3a; --newbg: #d6eadb; --note: #fff6cc;
+    --btn: #ffffff; --focus: #1f5fbf;
+  }
+  @media (prefers-color-scheme: dark) {
+    :root:not([data-theme="light"]) {
+      --page: #1b1b1a; --ink: #ecece8; --muted: #b0b0a8; --line: #77776f;
+      --box: #2a2a28; --ghost: #3a3a37; --new: #86cf93; --newbg: #203b26; --note: #3a3520;
+      --btn: #33332f; --focus: #7fb0ff;
+    }
+  }
+  * { box-sizing: border-box; }
+  body { margin: 0; background: var(--page); color: var(--ink);
+         font: 15px/1.45 system-ui, -apple-system, "Segoe UI", sans-serif; }
+  ::selection { background: var(--newbg); }
+  button { font: inherit; color: var(--ink); }
+  button:focus-visible, input:focus-visible { outline: 3px solid var(--focus); outline-offset: 2px; }
+  header.doc { padding: 16px; max-width: 1366px; margin: 0 auto; }
+  header.doc h1 { font-size: 20px; margin: 0 0 4px; }
+  header.doc p { margin: 0; color: var(--muted); max-width: 72ch; }
+  .legend { display: flex; gap: 16px; flex-wrap: wrap; margin-top: 10px; font-size: 13px; color: var(--muted); }
+  .legend span { display: inline-flex; align-items: center; gap: 6px; }
+  .sw { width: 14px; height: 14px; border: 2px dashed var(--line); background: var(--box); }
+  .sw.ghost { border: 1px dotted var(--ghost); background: transparent; }
+  .sw.new { border: 2px solid var(--new); background: var(--newbg); }
+
+  .stagehold { padding: 0 16px; overflow: hidden; }
+  .scaler { transform-origin: top left; }
+  .frame { width: 1366px; height: 768px; background: var(--page); border: 2px solid var(--ink);
+           display: grid; grid-template-rows: 1fr 32px; grid-template-columns: 250px 1fr 400px;
+           grid-template-areas: "left view ai" "bottom bottom ai"; position: relative; }
+  .r { margin: 4px; padding: 12px 14px; border: 2px dashed var(--line); background: var(--box);
+       display: flex; flex-direction: column; gap: 8px; overflow: hidden; transition: opacity .25s ease-out; }
+  .r.hidden { border: 1px dotted var(--ghost); background: transparent; }
+  .r.hidden > * { visibility: hidden; }
+  .r.hidden::after { content: attr(data-ghost); color: var(--ghost); font-size: 12px; margin: auto; }
+  .r.new { border: 2px solid var(--new); background: var(--newbg); }
+  .tag { font-size: 11px; font-weight: 700; letter-spacing: .06em; text-transform: uppercase; color: var(--muted); }
+  .left { grid-area: left; } .bottom { grid-area: bottom; flex-direction: row; align-items: center; gap: 14px; padding: 4px 14px; }
+  .view { grid-area: view; padding: 10px; }
+  .ai { grid-area: ai; }
+
+  /* Viewport internals */
+  .toolbar { display: flex; gap: 8px; align-items: center; min-height: 36px; }
+  .toolbar .ctl { border: 2px solid var(--line); background: var(--btn); padding: 4px 14px; border-radius: 4px; font-weight: 600; }
+  .toolbar.hidden { visibility: hidden; }
+  .toolbar.new .ctl { border-color: var(--new); }
+  .game { flex: 1; border: 2px solid var(--line); background: var(--page); display: flex; align-items: center;
+          justify-content: center; text-align: center; padding: 20px; position: relative; }
+  .game h3 { margin: 0 0 6px; font-size: 18px; } .game p { margin: 0; color: var(--muted); max-width: 46ch; }
+  .game.playing { border-style: solid; border-width: 4px; }
+  .pointer { position: absolute; top: 14px; right: 14px; max-width: 260px; background: var(--note); border: 1px solid var(--line);
+             padding: 8px 10px; font-size: 13px; text-align: left; border-radius: 6px; }
+  .pointer b { display: block; font-size: 11px; letter-spacing: .05em; text-transform: uppercase; color: var(--muted); }
+  .parts { display: flex; gap: 8px; min-height: 58px; align-items: stretch; }
+  .parts.hidden { visibility: hidden; }
+  .part { flex: 0 0 auto; min-width: 92px; border: 2px dashed var(--line); background: var(--box); padding: 6px 10px; font-size: 13px; }
+  .parts.new .part { border: 2px solid var(--new); background: var(--newbg); }
+  .part small { display: block; color: var(--muted); font-size: 11px; }
+
+  /* Mentor panel */
+  .who { display: flex; gap: 10px; align-items: center; }
+  .face { width: 52px; height: 52px; border: 2px solid var(--line); border-radius: 50%; display: grid; place-items: center;
+          font-size: 11px; color: var(--muted); text-align: center; line-height: 1.1; flex: none; }
+  .who strong { display: block; } .who span { font-size: 12px; color: var(--muted); }
+  .log { flex: 1; overflow: auto; display: flex; flex-direction: column; gap: 8px; padding-right: 4px; }
+  .msg { background: var(--btn); border: 1px solid var(--line); padding: 8px 10px; border-radius: 8px; max-width: 92%; }
+  .msg.kid { align-self: flex-end; background: var(--box); }
+  .msg.guest { border-style: dashed; }
+  .msg .from { display: block; font-size: 11px; color: var(--muted); font-weight: 700; }
+  .opts { display: grid; gap: 6px; }
+  .opt { text-align: left; border: 2px solid var(--line); background: var(--btn); padding: 9px 12px; border-radius: 6px; cursor: pointer; min-height: 44px; }
+  .opt:hover { border-color: var(--ink); }
+  .opt small { color: var(--muted); }
+  .say { display: flex; gap: 6px; }
+  .say input { flex: 1; min-height: 40px; padding: 6px 10px; border: 2px solid var(--line); background: var(--btn); color: var(--ink); border-radius: 6px; font: inherit; }
+  .say .note { font-size: 12px; color: var(--muted); align-self: center; }
+
+  /* Beat navigation + annotation */
+  .nav { max-width: 1366px; margin: 10px auto 0; padding: 0 16px; display: flex; gap: 8px; align-items: center; flex-wrap: wrap; }
+  .nav button { border: 2px solid var(--line); background: var(--btn); padding: 6px 14px; border-radius: 6px; cursor: pointer; min-height: 40px; }
+  .nav button:disabled { opacity: .45; cursor: default; }
+  .dots { display: flex; gap: 6px; flex-wrap: wrap; }
+  .dots button { min-width: 40px; }
+  .dots button[aria-current="step"] { border-color: var(--ink); font-weight: 700; }
+  section.notes { max-width: 1366px; margin: 0 auto; padding: 12px 16px 32px; display: grid; gap: 14px; grid-template-columns: repeat(auto-fit, minmax(280px, 1fr)); }
+  section.notes div { background: var(--box); padding: 12px 14px; border: 1px solid var(--line); }
+  section.notes h2 { font-size: 15px; margin: 0 0 6px; }
+  section.notes p, section.notes li { margin: 0 0 4px; max-width: 70ch; }
+  section.notes ul { margin: 0; padding-left: 18px; }
+</style>
+</head>
+<body>
+<header class="doc">
+  <h1>Wireframe 01: your first day at the studio</h1>
+  <p>The first run, click-through. Pick the mentor's options, or use Back and Next. Watch the engine
+     build itself around the kid, one piece per beat. Grey boxes only: no visual design yet.</p>
+  <div class="legend">
+    <span><i class="sw new"></i> New this beat</span>
+    <span><i class="sw"></i> Already revealed</span>
+    <span><i class="sw ghost"></i> Not revealed yet</span>
+  </div>
+</header>
+
+<div class="stagehold"><div class="scaler" id="scaler"><div class="frame" id="frame" role="region" aria-label="Wireframe at 1366 by 768">
+
+  <div class="r left" id="r-path" data-ghost="the path (later)">
+    <span class="tag">The path</span>
+    <strong id="pathDept">Art department</strong>
+    <p style="margin:0;font-size:13px;color:var(--muted)">Your first quest:</p>
+    <div class="part" style="border-style:solid">Meet the art director</div>
+    <div class="part">Next: a surprise</div>
+    <p style="margin:0;font-size:12px;color:var(--muted)">Only the current department shows. The rest of the studio unlocks as you go.</p>
+  </div>
+
+  <div class="r view" id="r-view" data-ghost="the viewport (appears at beat 3)">
+    <div class="toolbar hidden" id="toolbar">
+      <span class="tag">Play controls</span>
+      <span class="ctl" id="playBtn">Play</span><span class="ctl">Stop</span>
+    </div>
+    <div class="game" id="game">
+      <div class="pointer" id="pointer" hidden><b>Mentor points here</b><span id="pointerText"></span></div>
+      <div><h3 id="gameTitle"></h3><p id="gameText"></p></div>
+    </div>
+    <div class="parts hidden" id="parts">
+      <span class="tag" style="align-self:center">Parts (Hierarchy)</span>
+      <div class="part">Player<small>your hero</small></div>
+      <div class="part">Coin<small>the goal</small></div>
+      <div class="part">Lava<small>the danger</small></div>
+      <div class="part">Ground<small>the level</small></div>
+    </div>
+  </div>
+
+  <div class="r ai new" id="r-ai">
+    <span class="tag">The mentor (studio AI)</span>
+    <div class="who"><div class="face">face<br>TBD</div>
+      <div><strong>Mentor (name TBD)</strong><span>Openly an AI, and proud of it</span></div></div>
+    <div class="log" id="log" aria-live="polite"></div>
+    <div class="opts" id="opts"></div>
+    <div class="say" id="say">
+      <input type="text" id="sayInput" aria-label="Say something else" placeholder="Say something else…">
+      <span class="note">or type</span>
+    </div>
+  </div>
+
+  <div class="r bottom" id="r-stars" data-ghost="stars bar (last)">
+    <span class="tag">Stars</span><span style="font-size:13px;color:var(--muted)">A quiet bar. Never a price on a quest. Prizes arrive as surprises.</span>
+  </div>
+
+</div></div></div>
+
+<nav class="nav" aria-label="Beats">
+  <button id="back">Back</button>
+  <div class="dots" id="dots"></div>
+  <button id="next">Next</button>
+</nav>
+
+<section class="notes">
+  <div><h2 id="nBeat"></h2><p id="nWhat"></p></div>
+  <div><h2>Revealed this beat</h2><p id="nNew"></p></div>
+  <div><h2>Why (brief and research)</h2><p id="nWhy"></p></div>
+  <div><h2>Other states</h2><p id="nStates"></p></div>
+</section>
+
+<script>
+/* Each step is one screen of the flow. `show` lists the regions revealed so far; `fresh` marks the
+   ones new on this step (drawn green). `opts` advance to the next step when clicked, so the flow
+   can be walked like a kid would. Words are placeholders in the mentor's voice, not final copy. */
+var STEPS = [
+  { beat: '1 · Arrive', show: ['ai'], fresh: ['ai'],
+    say: [['mentor', "Welcome to the studio! I'm the studio's AI. What should everyone call you?"]],
+    opts: ['Pixel Fox', 'Captain Byte', 'Nova'], kid: 'Captain Byte',
+    game: null,
+    what: 'A nearly empty screen: just the mentor and one sentence. The kid types a nickname, or taps a generated one.',
+    why: 'No forms, no tour. The kid is having a conversation, not filling in a sign-up. Never ask for a real name.',
+    states: 'Slow typer: the generated names are the main path. Returning kid: skips to "welcome back" at their desk.' },
+  { beat: '2 · Two situation questions', show: ['ai'], fresh: [],
+    say: [['mentor', 'Hi, @name! Quick one: you find a locked door. What do you do?']],
+    opts: ['Hunt for the key', 'Smash it', 'Sneak round the back', 'Get a friend'], kid: 'Sneak round the back',
+    game: null,
+    what: 'Situations instead of labels. The pick tells the mentor what kind of fun this kid likes (explore, action, cleverness, together).',
+    why: 'Discovery, not labels (Jay): kids don\'t know the word "genre", but they know what they\'d do.',
+    states: 'Picks nothing: after a pause the mentor suggests one. Typed answer: accepted and reflected back.' },
+  { beat: '2 · …and a reflect-back', show: ['ai'], fresh: [],
+    say: [['mentor', "What's a game you could play all day? What's the best bit?"],
+          ['kid', 'building houses and exploring caves'],
+          ['mentor', 'Building and exploring… so, like Minecraft?']],
+    opts: ['Yes!', 'Not quite'], kid: 'Yes!',
+    game: null,
+    what: 'An open question, then the mentor reflects back what it heard for the kid to confirm.',
+    why: 'The reflect-back shows the mentor listens, and confirms the learner card with the kid rather than guessing.',
+    states: '"Not quite": the mentor asks one more way ("What\'s the best bit, then?").' },
+  { beat: '3 · The unfinished game', show: ['ai', 'view'], fresh: ['view'],
+    say: [['mentor', 'Our last intern left this game half-finished. What should we fix first?']],
+    opts: ['Colours', 'Sound', 'The rule', 'The bug'], kid: 'Colours',
+    optNotes: ['→ Art', '→ Audio', '→ Design', '→ Engineering'],
+    game: { t: 'The unfinished game', p: 'Grey boxes, no sound, a boring rule, and you fall through the floor.' },
+    pointer: 'This is the viewport: where the game lives.',
+    what: 'The viewport appears with a tiny broken game. Four fixes, one per launch department.',
+    why: 'Fix one thing, and the pick sets the path (Jay). It\'s the first real signal of what the kid loves: role interest shown by action, never asked.',
+    states: 'Each option leads to its own version of the next beat and a different department head.' },
+  { beat: '3 · …and it transforms', show: ['ai', 'view'], fresh: [],
+    say: [['mentor', 'Look at that!'],
+          ['guest', 'Nice eye, @name. Colour tells players what matters. Come see me soon!', 'Art director (pops in)']],
+    opts: ['Thanks!', 'What else is broken?'], kid: 'Thanks!',
+    game: { t: 'The same game, now in colour', p: 'The kid\'s pick transformed it. The coin glows, the lava looks dangerous.' },
+    what: 'The kid watches their choice change the game, and the head of that department pops in to say hi.',
+    why: 'Feel it first: the idea (colour as information) is felt before it is named. The kid meets their first department head.',
+    states: 'A different pick: a different transformation and a different head (sound designer, lead designer, lead programmer).' },
+  { beat: '4 · Press Play', show: ['ai', 'view'], fresh: ['toolbar'],
+    say: [['mentor', 'Press Play, then try changing the coin while it runs. Then press Stop.'],
+          ['kid', '(changes the coin, presses Stop)'],
+          ['mentor', 'Whoa, it changed back! Every developer does that once. Changes made while playing don\'t stick.']],
+    opts: ['Haha, got it', 'Wait, why?'], kid: 'Haha, got it',
+    game: { t: 'Play mode', p: 'The game runs. The kid\'s change vanishes on Stop.' },
+    pointer: 'Play and Stop: every real engine has these.',
+    what: 'Play and Stop appear. The mentor lets the classic beginner trap happen safely, on day one.',
+    why: 'Research: "changes made in Play mode vanish" is one of the ten biggest confusions. Better learned as a joke here than as lost work later.',
+    states: '"Wait, why?": one sentence on edit vs play. Kid doesn\'t press Stop: the mentor nudges after a pause.' },
+  { beat: '5 · Now YOUR game', show: ['ai', 'view'], fresh: [],
+    say: [['mentor', "Your turn. Let's make YOUR game. Pick a hero:"]],
+    opts: ['A cat', 'A robot', 'A knight', 'A slime'], kid: 'A robot',
+    optNotes: ['', '', '', ''],
+    game: { t: 'Hero · Action · Goal · Danger', p: 'Four quick picks with reflect-backs: hero, what you do (jump / dodge / collect / shoot), a goal, a danger.' },
+    what: 'Four dialogue picks build the recipe for their first game. Shown here: the first of the four.',
+    why: 'The kid invents their game in minute one (decided). Choices keep it moving for new-to-computers kids; typing is there for confident ones.',
+    states: 'Typed idea ("a dragon who bakes"): the mentor reflects it back and maps it to what it can build.' },
+  { beat: '6 · Building', show: ['ai', 'view'], fresh: ['parts'],
+    say: [['mentor', 'Building your game: a robot who jumps, grabs coins and dodges lava…'],
+          ['mentor', 'See the list under the game? That\'s your Hierarchy. Every real engine has one.']],
+    opts: ['Can I play?'], kid: 'Can I play?',
+    game: { t: 'Your game is assembling…', p: 'Pieces appear as the mentor names them. No spinner: the building is the show.' },
+    pointer: 'Your parts: the engine\'s Hierarchy.',
+    what: 'The game builds while the mentor narrates what it\'s using from the kid\'s picks. The parts list fills in.',
+    why: 'Feel, see, name: the kid sees their parts, then hears the real engine word. Research: the "Hierarchy / Outliner / Scene dock" is a panel kids should recognise later.',
+    states: 'AI unavailable: a scripted starter game built from the same picks.' },
+  { beat: '7 · Play it', show: ['ai', 'view'], fresh: [], playing: true,
+    say: [['mentor', "That's YOUR game, @name. Go on, play it!"]],
+    opts: ['That was awesome', 'Can I change something?'], kid: 'That was awesome',
+    game: { t: 'YOUR game, running', p: 'Their robot, their keys, their coins. This is the peak of the first day.' },
+    what: 'The kid plays their own game. Hands on keys before the five-minute mark.',
+    why: 'Success criterion of the brief. The peak moment is the kid\'s own game responding to them.',
+    states: '"Can I change something?": the mentor says "that\'s exactly what the studio is for" and moves to the next beat.' },
+  { beat: '8 · What\'s next', show: ['ai', 'view', 'path', 'stars'], fresh: ['path', 'stars'],
+    say: [['mentor', 'Want to make it even better? The art director can\'t wait to meet you…']],
+    opts: ['Let\'s go!'], kid: null,
+    game: { t: 'YOUR game', p: 'Still here, always in the middle.' },
+    what: 'The path appears with the kid\'s first department (from their fix pick), plus a glimpse of what\'s coming. The quiet stars bar appears last.',
+    why: 'A glimpse of the plan, not the whole map (decided). The pick from beat 3 decides the department.',
+    states: 'Learner card now holds: kinds of fun, favourite games, first-game recipe, first department, comfort signals. Kid and teacher can see and reset it.' }
+];
+
+var i = 0;
+var $ = function (id) { return document.getElementById(id); };
+
+function region(id, on, fresh) {
+  var el = $(id);
+  el.classList.toggle('hidden', !on);
+  el.classList.toggle('new', !!(on && fresh));
+}
+
+function render() {
+  var s = STEPS[i];
+  var has = function (k) { return s.show.indexOf(k) >= 0; };
+  var isNew = function (k) { return s.fresh.indexOf(k) >= 0; };
+  region('r-ai', true, isNew('ai'));
+  region('r-view', has('view'), isNew('view'));
+  region('r-path', has('path'), isNew('path'));
+  region('r-stars', has('stars'), isNew('stars'));
+  var tb = $('toolbar'); var toolbarOn = i >= 5;
+  tb.classList.toggle('hidden', !toolbarOn); tb.classList.toggle('new', isNew('toolbar'));
+  var pa = $('parts'); var partsOn = i >= 7;
+  pa.classList.toggle('hidden', !partsOn); pa.classList.toggle('new', isNew('parts'));
+
+  var g = $('game');
+  g.classList.toggle('playing', !!s.playing);
+  $('gameTitle').textContent = s.game ? s.game.t : '';
+  $('gameText').textContent = s.game ? s.game.p : '';
+  var ptr = $('pointer');
+  if (s.pointer) { ptr.hidden = false; $('pointerText').textContent = s.pointer; } else { ptr.hidden = true; }
+
+  var log = $('log'); log.innerHTML = '';
+  s.say.forEach(function (m) {
+    var d = document.createElement('div');
+    d.className = 'msg' + (m[0] === 'kid' ? ' kid' : m[0] === 'guest' ? ' guest' : '');
+    var from = document.createElement('span'); from.className = 'from';
+    from.textContent = m[0] === 'kid' ? 'Kid' : m[0] === 'guest' ? m[2] : 'Mentor';
+    d.appendChild(from);
+    d.appendChild(document.createTextNode(m[1].replace(/@name/g, 'Captain Byte')));
+    log.appendChild(d);
+  });
+  var opts = $('opts'); opts.innerHTML = '';
+  s.opts.forEach(function (o, k) {
+    var b = document.createElement('button'); b.className = 'opt';
+    b.textContent = o;
+    if (s.optNotes && s.optNotes[k]) { var sm = document.createElement('small'); sm.textContent = '  ' + s.optNotes[k]; b.appendChild(sm); }
+    b.addEventListener('click', function () { go(i + 1); });
+    opts.appendChild(b);
+  });
+
+  $('nBeat').textContent = 'Beat ' + s.beat;
+  $('nWhat').textContent = s.what;
+  var names = { ai: 'the mentor panel', view: 'the viewport', toolbar: 'Play / Stop', parts: 'the parts list (Hierarchy)', path: 'the path', stars: 'the stars bar' };
+  $('nNew').textContent = s.fresh.length ? s.fresh.map(function (k) { return names[k]; }).join(', ') : 'Nothing new: the same pieces stay put.';
+  $('nWhy').textContent = s.why;
+  $('nStates').textContent = s.states;
+
+  $('back').disabled = i === 0; $('next').disabled = i === STEPS.length - 1;
+  Array.prototype.forEach.call($('dots').children, function (b, k) {
+    if (k === i) b.setAttribute('aria-current', 'step'); else b.removeAttribute('aria-current');
+  });
+}
+
+function go(n) { i = Math.max(0, Math.min(STEPS.length - 1, n)); render(); }
+
+STEPS.forEach(function (s, k) {
+  var b = document.createElement('button'); b.textContent = String(k + 1);
+  b.setAttribute('aria-label', 'Step ' + (k + 1) + ': ' + s.beat);
+  b.addEventListener('click', function () { go(k); });
+  $('dots').appendChild(b);
+});
+$('back').addEventListener('click', function () { go(i - 1); });
+$('next').addEventListener('click', function () { go(i + 1); });
+$('sayInput').addEventListener('keydown', function (e) { if (e.key === 'Enter') { this.value = ''; go(i + 1); } });
+
+/* Scale the fixed 1366x768 frame to the page width so it is always seen whole. */
+(function () {
+  var s = $('scaler');
+  function fit() {
+    var k = Math.min(1, (s.parentElement.clientWidth - 32) / 1366);
+    s.style.transform = 'scale(' + k + ')';
+    s.style.height = (768 * k) + 'px'; s.style.width = (1366 * k) + 'px';
+  }
+  window.addEventListener('resize', fit); fit();
+})();
+render();
+</script>
+</body>
+</html>

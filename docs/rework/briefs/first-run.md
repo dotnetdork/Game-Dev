@@ -1,6 +1,6 @@
 # Brief: the first run — "Your first day at the studio"
 
-**Status: v2, 2026-09-25 — awaiting Jay's confirmation.** Shaped with `/impeccable shape`. v1 was
+**Status: v2, confirmed by Jay 2026-09-25 — wireframe: `../wireframes/01-first-run.html`.** Shaped with `/impeccable shape`. v1 was
 "really close"; v2 folds in the studio reframe, research round 2 (`../02-research-round-2.md`) and
 three decisions: launch departments are **Design, Engineering, Art (+ Animation/VFX), Audio**; the
 "unfinished game" beat is **fix one thing, and the pick sets the path**; the mentor is **openly an
