@@ -38,3 +38,7 @@ FORM: user-pinned "resemble Unity, strip or repurpose unused tools" — #2 on my
 overriding the degraded roll; seed key 4c443f9e.
 
 FINISH: unreviewed and undocumented is unfinished; this build ends with the finish review, the verdict, DESIGN.md, and every shipping raster carrying its provenance
+
+## Rasters
+
+- The League wordmark in the toolbar: `app/public/img/wordmark.png` (existing League brand asset, not generated), embedded as a data URI so the file renders on its own.
