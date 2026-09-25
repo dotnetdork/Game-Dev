@@ -8,9 +8,9 @@ spam-click through? Wireframe: `../wireframes/03-shift-silent-coins.html`. World
 A customer's game "feels dead." The sound designer (character TBD) hands the kid the ticket. The kid
 plays it, notices nothing answers when you grab a coin, gives each action a sound, mixes it so it can
 be heard, peeks at the C# a programmer would write for it and tweaks one value, and puts the fix
-into their own game. **Concepts:** feedback (owned), sound effects and the
-audio mixer (familiar; Unity: AudioSource, Audio Mixer); a C# script, a public
-variable shown in the Inspector, and saving to rebuild (familiar).
+into their own game. **Concepts** (session 4 in `../curriculum-map.md`): feedback†,
+sound effect, audio mixer and event, all owned (Unity: AudioSource, Audio Mixer). The C# step
+introduces script and variable, which the map places in session 5.
 
 ## What makes it click-proof
 
@@ -38,9 +38,10 @@ The kid sees real Unity C# — `using UnityEngine;`, `public class Coin : MonoBe
 the app reads the number back out of line 8 and applies it to the game, rejecting anything it can't
 use (see `00-direction.md`, "C#, peek and tweak"). The comment above `coinSound` names the sound the
 kid put in the Inspector slot: the same thing in two views, which is how Unity really works (public
-fields appear in the Inspector). **In the course, peek + tweak starts mid-course** (see
-`../curriculum-map.md`); this early shift carries it so the wireframe can be judged. Before then the
-step is skipped and the shift runs without it.
+fields appear in the Inspector). **In the course, peek + tweak starts in session 5**
+(`../curriculum-map.md` §4): the programmer's first visit opens `Coin.cs`, the script behind this
+very fix, a week later. The wireframe carries the step here so it can be judged; in session 4 the
+shift runs without it, and the Feedback card has no C# row.
 
 ## Not decided here
 The characters' names and looks; the real sound set and art style; how many sounds a shelf offers.

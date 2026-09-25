@@ -63,7 +63,7 @@ records the reason, so the next person can see why something is there — or isn
 | Lessons | proto | Fresh content; format undecided (see "the lesson moment" below). |
 | Design board (sticky notes in regions) | proto | Critique rated it the best fit for the new direction. |
 | Live-tuning sliders (speed, jump, gravity) — the old Inspector | proto | Critique: the best "feel it in my game" affordance. |
-| Code view / file tree / console | proto | Open: hidden in a no-syntax version, a "peek", or Level 2? |
+| Code view / file tree / console | proto | Answered by C# peek + tweak: a script pane beside the game with a one-line Console, from session 5 (`wireframes/03`, `curriculum-map.md` §4). No file tree. |
 | Store — one asset size/style | proto, Jay | "More on that later." |
 | Stars / XP / level in the bottom bar | proto | Open: research says rewards distract mid-lesson; critique counts the bar as part of the layout. |
 | Badges | proto | |
