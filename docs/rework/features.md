@@ -47,6 +47,7 @@ records the reason, so the next person can see why something is there — or isn
 | First run: fix one thing in an unfinished game; the pick sets the first department | **In** | Jay | Shape interview. `briefs/first-run.md` v2. |
 | Core loop: do the jobs (shifts as hands-on minigames, incl. fix-it jobs) → grow your game → grow your studio | **In** | Jay | `core-loop.md`. Start with shifts + your game; the studio layer thin at first. |
 | The kid's hands are always busy: plays, notices, decides, tunes, makes, directs, proves | **In** | Jay, research | `core-loop.md`. Tuning/making are direct, no AI call. |
+| C# — peek (see the real code behind a change) + tweak (edit values, feel it), from mid-course | **In** | Jay | Arrange/write optional for keen kids. A Unity-flavoured C# subset translated to the game; no compiler. |
 | Leaderboards | **Parked** | proto, Jay | "Probably not necessary." |
 | Gallery | **Parked** | proto, Jay | "Not necessary for now." |
 | Code-debugging labs | **Out** | proto, critique | A no-syntax course; the critique found them the lowest point of the app. |

@@ -83,6 +83,17 @@ The first test with live students. It is the first evidence from real users this
   kid's own game; the studio grows across the course. The fun is in the jobs, the kid's game is the
   proof, the studio is the story. Start with shifts + your game. Full record: `core-loop.md`.
 
+## Revision — C#, peek and tweak (Jay, 2026-09-25)
+
+- Jay asked whether the course can teach C#. **Decided: peek + tweak.** From mid-course, kids see the
+  real C# behind changes to their game ("peek") and edit values in it and feel the result ("tweak").
+  Arranging lines (Parsons puzzles) and writing short lines stay optional, for keen kids. C# arrives
+  as the programmer's job inside Engineering shifts — short, tied to the kid's game — never as
+  reading lessons. This replaces "no code for the time being."
+- **How:** real C# syntax for a small, Unity-flavoured set (values, `if`, a handful of calls such as
+  `PlayOneShot`), translated by the app into the game underneath. A real C# compiler in the browser
+  or on the server is not practical here (size, school filters, the dependency cap, hosting).
+
 ## What happens to the app
 
 - **Strip it down to its core,** then build back, with Impeccable, only the features we decide are

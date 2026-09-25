@@ -1,3 +1,7 @@
+> **Update (2026-09-25):** Jay decided C# is in — **peek + tweak** from mid-course (see
+> `00-direction.md`). Engineering shifts show the real C# behind a change and let kids edit values;
+> this map's "no code" assumptions and the transfer table need revising to match.
+
 # Curriculum map — the course inside the quests
 
 **Status: draft for Jay, 2026-09-25.** Answers "how does this teach when there is no course?" The

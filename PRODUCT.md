@@ -35,7 +35,8 @@ game to show). The client is the League (Jed Stumpf, Eric Busboom).
 **A game-concepts course that is itself a game.** The kid is the new developer at a game studio.
 Studio characters — each a real game-industry role — give quests; each quest teaches one game
 concept by having the kid feel it, name it, and build it into **their own game** by directing the
-AI. No syntax or code is taught in this version.
+AI. **C# is met as the programmer's job:** from mid-course kids see the real C# behind a change and
+tweak values in it (a Unity-flavoured subset); writing code is optional, for keen kids.
 
 Success: kids have so much fun they don't notice they're learning, and the concepts stick — so that
 later, in a Unity, Godot or Unreal course or on the way to a games career, they think "oh, that's
