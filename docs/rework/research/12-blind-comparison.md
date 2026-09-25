@@ -53,3 +53,5 @@ substance beats the new template's.** Wireframe 02 was a click-through, so its "
 play, real edits, gates that need evidence), but it has not been through a blind comparison. The fair
 next test is **wireframe 03 against an old lesson's practice task**, same tasks, reviewers on
 separate accounts — and, in the end, kids.
+
+**Done:** round 2 is `13-blind-comparison-shift.md`.
