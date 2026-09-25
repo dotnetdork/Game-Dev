@@ -38,6 +38,15 @@
         ],
         "createdAt": "2026-09-25T01:40:04.660Z",
         "reason": "Jay pinned the direction 'resemble Unity': fixed-height toolbar, tab strips, project drawer and status bar centre their content vertically, and docks butt together with 1px gaps, as editor chrome does. Not text crowding an edge."
+      },
+      {
+        "rule": "cramped-padding",
+        "value": "*",
+        "files": [
+          "docs/rework/wireframes/03-shift-silent-coins.html"
+        ],
+        "createdAt": "2026-09-25T04:20:18.847Z",
+        "reason": "Same Unity-style editor chrome as 02 (Jay pinned 'resemble Unity'): fixed-height toolbar, tab strips, docks and status bar centre their content vertically. Not text crowding an edge."
       }
     ]
   }
