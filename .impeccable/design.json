@@ -1,0 +1,523 @@
+{
+  "schemaVersion": 2,
+  "generatedAt": "2026-09-25T01:51:59+00:00",
+  "title": "Design System: Game Dev (the rework)",
+  "extensions": {
+    "colorMeta": {
+      "accent": {
+        "role": "primary",
+        "displayName": "League Orange",
+        "tonalRamp": [
+          "oklch(15% 0.17 55)",
+          "oklch(27% 0.17 55)",
+          "oklch(39% 0.17 55)",
+          "oklch(51% 0.17 55)",
+          "oklch(63% 0.17 55)",
+          "oklch(74% 0.17 55)",
+          "oklch(85% 0.17 55)",
+          "oklch(95% 0.17 55)"
+        ],
+        "canonical": "oklch(72.6% 0.176 55)"
+      },
+      "accent-ink": {
+        "role": "primary",
+        "displayName": "Orange Ink",
+        "tonalRamp": [
+          "oklch(15% 0.17 55)",
+          "oklch(27% 0.17 55)",
+          "oklch(39% 0.17 55)",
+          "oklch(51% 0.17 55)",
+          "oklch(63% 0.17 55)",
+          "oklch(74% 0.17 55)",
+          "oklch(85% 0.17 55)",
+          "oklch(95% 0.17 55)"
+        ]
+      },
+      "accent-soft": {
+        "role": "primary",
+        "displayName": "Orange Wash",
+        "tonalRamp": [
+          "oklch(15% 0.17 55)",
+          "oklch(27% 0.17 55)",
+          "oklch(39% 0.17 55)",
+          "oklch(51% 0.17 55)",
+          "oklch(63% 0.17 55)",
+          "oklch(74% 0.17 55)",
+          "oklch(85% 0.17 55)",
+          "oklch(95% 0.17 55)"
+        ]
+      },
+      "ground": {
+        "role": "neutral",
+        "displayName": "Editor Charcoal",
+        "tonalRamp": [
+          "#1a1a1a",
+          "#393939",
+          "#575757",
+          "#767676",
+          "#949494",
+          "#b3b3b3",
+          "#d1d1d1",
+          "#f0f0f0"
+        ]
+      },
+      "panel": {
+        "role": "neutral",
+        "displayName": "Dock Graphite",
+        "tonalRamp": [
+          "#1a1a1a",
+          "#393939",
+          "#575757",
+          "#767676",
+          "#949494",
+          "#b3b3b3",
+          "#d1d1d1",
+          "#f0f0f0"
+        ]
+      },
+      "panel-2": {
+        "role": "neutral",
+        "displayName": "Raised Graphite",
+        "tonalRamp": [
+          "#1a1a1a",
+          "#393939",
+          "#575757",
+          "#767676",
+          "#949494",
+          "#b3b3b3",
+          "#d1d1d1",
+          "#f0f0f0"
+        ]
+      },
+      "tabbar": {
+        "role": "neutral",
+        "displayName": "Tab-Strip Black",
+        "tonalRamp": [
+          "#1a1a1a",
+          "#393939",
+          "#575757",
+          "#767676",
+          "#949494",
+          "#b3b3b3",
+          "#d1d1d1",
+          "#f0f0f0"
+        ]
+      },
+      "line": {
+        "role": "neutral",
+        "displayName": "Hairline",
+        "tonalRamp": [
+          "#1a1a1a",
+          "#393939",
+          "#575757",
+          "#767676",
+          "#949494",
+          "#b3b3b3",
+          "#d1d1d1",
+          "#f0f0f0"
+        ]
+      },
+      "line-soft": {
+        "role": "neutral",
+        "displayName": "Soft Hairline",
+        "tonalRamp": [
+          "#1a1a1a",
+          "#393939",
+          "#575757",
+          "#767676",
+          "#949494",
+          "#b3b3b3",
+          "#d1d1d1",
+          "#f0f0f0"
+        ]
+      },
+      "closed-outline": {
+        "role": "neutral",
+        "displayName": "Closed Outline",
+        "tonalRamp": [
+          "#1a1a1a",
+          "#393939",
+          "#575757",
+          "#767676",
+          "#949494",
+          "#b3b3b3",
+          "#d1d1d1",
+          "#f0f0f0"
+        ]
+      },
+      "ink": {
+        "role": "neutral",
+        "displayName": "Editor Ink",
+        "tonalRamp": [
+          "#1a1a1a",
+          "#393939",
+          "#575757",
+          "#767676",
+          "#949494",
+          "#b3b3b3",
+          "#d1d1d1",
+          "#f0f0f0"
+        ]
+      },
+      "ink-2": {
+        "role": "neutral",
+        "displayName": "Secondary Ink",
+        "tonalRamp": [
+          "#1a1a1a",
+          "#393939",
+          "#575757",
+          "#767676",
+          "#949494",
+          "#b3b3b3",
+          "#d1d1d1",
+          "#f0f0f0"
+        ]
+      },
+      "ink-3": {
+        "role": "neutral",
+        "displayName": "Quiet Ink",
+        "tonalRamp": [
+          "#1a1a1a",
+          "#393939",
+          "#575757",
+          "#767676",
+          "#949494",
+          "#b3b3b3",
+          "#d1d1d1",
+          "#f0f0f0"
+        ]
+      },
+      "focus": {
+        "role": "neutral",
+        "displayName": "Focus White",
+        "tonalRamp": [
+          "#1a1a1a",
+          "#393939",
+          "#575757",
+          "#767676",
+          "#949494",
+          "#b3b3b3",
+          "#d1d1d1",
+          "#f0f0f0"
+        ]
+      },
+      "playmode-tint": {
+        "role": "contextual",
+        "displayName": "Play-Mode Umber",
+        "tonalRamp": [
+          "oklch(15% 0.035 65)",
+          "oklch(27% 0.035 65)",
+          "oklch(39% 0.035 65)",
+          "oklch(51% 0.035 65)",
+          "oklch(63% 0.035 65)",
+          "oklch(74% 0.035 65)",
+          "oklch(85% 0.035 65)",
+          "oklch(95% 0.035 65)"
+        ]
+      },
+      "game-backdrop": {
+        "role": "contextual",
+        "displayName": "Game Well",
+        "tonalRamp": [
+          "#1a1a1a",
+          "#393939",
+          "#575757",
+          "#767676",
+          "#949494",
+          "#b3b3b3",
+          "#d1d1d1",
+          "#f0f0f0"
+        ]
+      },
+      "kid-bubble": {
+        "role": "contextual",
+        "displayName": "Kid Bubble",
+        "tonalRamp": [
+          "oklch(15% 0.035 70)",
+          "oklch(27% 0.035 70)",
+          "oklch(39% 0.035 70)",
+          "oklch(51% 0.035 70)",
+          "oklch(63% 0.035 70)",
+          "oklch(74% 0.035 70)",
+          "oklch(85% 0.035 70)",
+          "oklch(95% 0.035 70)"
+        ]
+      },
+      "guest-bubble": {
+        "role": "contextual",
+        "displayName": "Guest Bubble",
+        "tonalRamp": [
+          "oklch(15% 0.03 250)",
+          "oklch(27% 0.03 250)",
+          "oklch(39% 0.03 250)",
+          "oklch(51% 0.03 250)",
+          "oklch(63% 0.03 250)",
+          "oklch(74% 0.03 250)",
+          "oklch(85% 0.03 250)",
+          "oklch(95% 0.03 250)"
+        ]
+      },
+      "callout-paper": {
+        "role": "contextual",
+        "displayName": "Callout Paper",
+        "tonalRamp": [
+          "oklch(15% 0.02 85)",
+          "oklch(27% 0.02 85)",
+          "oklch(39% 0.02 85)",
+          "oklch(51% 0.02 85)",
+          "oklch(63% 0.02 85)",
+          "oklch(74% 0.02 85)",
+          "oklch(85% 0.02 85)",
+          "oklch(95% 0.02 85)"
+        ]
+      },
+      "callout-ink": {
+        "role": "contextual",
+        "displayName": "Callout Ink",
+        "tonalRamp": [
+          "oklch(15% 0.02 85)",
+          "oklch(27% 0.02 85)",
+          "oklch(39% 0.02 85)",
+          "oklch(51% 0.02 85)",
+          "oklch(63% 0.02 85)",
+          "oklch(74% 0.02 85)",
+          "oklch(85% 0.02 85)",
+          "oklch(95% 0.02 85)"
+        ]
+      }
+    },
+    "typographyMeta": {
+      "body": {
+        "displayName": "Body",
+        "purpose": "The editor's base size: hierarchy rows, the say field."
+      },
+      "message": {
+        "displayName": "Message",
+        "purpose": "Mentor and character lines. Never smaller than body."
+      },
+      "title": {
+        "displayName": "Title",
+        "purpose": "Dock tab names, transport and dialogue-option words, the Inspector component name."
+      },
+      "label": {
+        "displayName": "Label",
+        "purpose": "Kid subtitles on tabs, department labels on options, chips, the status bar."
+      },
+      "caption": {
+        "displayName": "Caption",
+        "purpose": "Speaker name above each message; hierarchy row notes."
+      },
+      "stats": {
+        "displayName": "Stats",
+        "purpose": "The frame-counter overlay on the game, and nothing else."
+      }
+    },
+    "shadows": [
+      {
+        "name": "inspector-lift",
+        "value": "0 -10px 24px rgba(0,0,0,.35)",
+        "purpose": "The Inspector as it slides over the mentor's dock."
+      },
+      {
+        "name": "callout-lift",
+        "value": "0 6px 18px rgba(0,0,0,.35)",
+        "purpose": "The pointer bubble over the game."
+      },
+      {
+        "name": "play-ring",
+        "value": "inset 0 0 0 3px #f5820a",
+        "purpose": "Round the game while it runs."
+      },
+      {
+        "name": "play-cue",
+        "value": "0 0 0 2px #f5820a",
+        "purpose": "Round the Play/Stop button when pressing it is the next step."
+      },
+      {
+        "name": "closed-outline",
+        "value": "inset 0 0 0 1px #3a3a3a",
+        "purpose": "A dock not yet revealed."
+      }
+    ],
+    "motion": [
+      {
+        "name": "ease-reveal",
+        "value": "cubic-bezier(.16,1,.3,1)",
+        "purpose": "All dock reveals, the Inspector slide and the part snap."
+      },
+      {
+        "name": "duration-reveal",
+        "value": "450ms",
+        "purpose": "Dock and bar fade-ins."
+      },
+      {
+        "name": "duration-inspector",
+        "value": "400ms",
+        "purpose": "Inspector slide-in from the right."
+      },
+      {
+        "name": "duration-snap",
+        "value": "600ms",
+        "purpose": "A Hierarchy part snapping in with the orange wash."
+      },
+      {
+        "name": "cadence-build",
+        "value": "650ms",
+        "purpose": "Interval between parts snapping in while the game builds."
+      },
+      {
+        "name": "reduced-motion",
+        "value": "none",
+        "purpose": "Under prefers-reduced-motion every transition and animation is off."
+      }
+    ],
+    "breakpoints": [
+      {
+        "name": "design-frame",
+        "value": "1366px",
+        "note": "Fixed 1366x768 editor, scaled down whole below this width; no reflow."
+      }
+    ],
+    "scope": {
+      "governs": "docs/rework/ and surfaces built from it",
+      "notAuthority": "app/public/ legacy styles (old prototype, reference only)",
+      "tokenSource": "docs/rework/wireframes/02-first-run-engine.html :root"
+    }
+  },
+  "components": [
+    {
+      "name": "Transport Button",
+      "kind": "button",
+      "refersTo": "transport-button",
+      "description": "Play / Pause / Step, centred in the toolbar: icon plus word, 44px.",
+      "html": "<div class=\"ds-transport\"><button class=\"ds-tbtn\"><svg class=\"ds-i\" viewBox=\"0 0 24 24\"><path d=\"M8 5.5v13l10.5-6.5z\"/></svg><span>Play</span></button><button class=\"ds-tbtn\"><svg class=\"ds-i\" viewBox=\"0 0 24 24\"><path d=\"M8.5 5.5v13M15.5 5.5v13\"/></svg><span>Pause</span></button></div>",
+      "css": ".ds-i{width:18px;height:18px;fill:none;stroke:currentColor;stroke-width:1.75;stroke-linecap:round;stroke-linejoin:round;flex:none;}.ds-transport{display:inline-flex;gap:2px;background:#232323;padding:3px;border-radius:7px;}.ds-tbtn{font:15px/1.45 system-ui,-apple-system,\"Segoe UI\",Roboto,sans-serif;display:inline-flex;align-items:center;gap:6px;height:44px;padding:0 14px;border:0;background:#414141;border-radius:5px;color:#b4b4b4;cursor:pointer;}.ds-tbtn span{font-size:14px;font-weight:600;}.ds-tbtn:hover{color:#e8e8e8;}.ds-tbtn:focus-visible{outline:2px solid var(--focus,#fff);outline-offset:2px;}"
+    },
+    {
+      "name": "Transport Button, Playing",
+      "kind": "button",
+      "refersTo": "transport-button-active",
+      "description": "Play turns into Stop in solid League orange while the game runs.",
+      "html": "<button class=\"ds-tbtn-on\"><svg class=\"ds-i\" viewBox=\"0 0 24 24\"><rect x=\"6.5\" y=\"6.5\" width=\"11\" height=\"11\" rx=\"1.5\"/></svg><span>Stop</span></button>",
+      "css": ".ds-i{width:18px;height:18px;fill:none;stroke:currentColor;stroke-width:1.75;stroke-linecap:round;stroke-linejoin:round;flex:none;}.ds-tbtn-on{font:15px/1.45 system-ui,-apple-system,\"Segoe UI\",Roboto,sans-serif;display:inline-flex;align-items:center;gap:6px;height:44px;padding:0 14px;border:0;background:#f5820a;color:#1a1206;border-radius:5px;cursor:pointer;}.ds-tbtn-on span{font-size:14px;font-weight:600;}.ds-tbtn-on:focus-visible{outline:2px solid var(--focus,#fff);outline-offset:2px;}"
+    },
+    {
+      "name": "Dialogue Option",
+      "kind": "button",
+      "refersTo": "dialogue-option",
+      "description": "The kid's primary action: an orange-outlined answer under the mentor's latest line.",
+      "html": "<div class=\"ds-opts\"><button class=\"ds-opt\">Colours<small>Art</small></button><button class=\"ds-opt\">Sound<small>Audio</small></button></div>",
+      "css": ".ds-opts{display:grid;gap:6px;background:#383838;padding:8px 12px;width:340px;}.ds-opt{font:15px/1.45 system-ui,-apple-system,\"Segoe UI\",Roboto,sans-serif;display:flex;align-items:center;justify-content:space-between;gap:10px;min-height:44px;padding:8px 12px;background:transparent;border:1.5px solid #f5820a;border-radius:8px;text-align:left;cursor:pointer;color:#e8e8e8;font-weight:600;transition:background .2s;}.ds-opt small{font-weight:500;color:#b0b0b0;font-size:12.5px;}.ds-opt:hover{background:rgba(245,130,10,.16);}.ds-opt:focus-visible{outline:2px solid var(--focus,#fff);outline-offset:2px;}"
+    },
+    {
+      "name": "Say Field",
+      "kind": "input",
+      "refersTo": "say-field",
+      "description": "'Say something else' — always optional; options mean typing is never required.",
+      "html": "<div class=\"ds-say\"><input class=\"ds-say-in\" type=\"text\" placeholder=\"Say something else…\" aria-label=\"Say something else\"></div>",
+      "css": ".ds-say{background:#383838;padding:4px 12px 12px;width:340px;}.ds-say-in{width:100%;min-height:44px;border-radius:8px;border:1px solid #444;background:#232323;color:#e8e8e8;padding:0 12px;font:14px system-ui,-apple-system,\"Segoe UI\",Roboto,sans-serif;}.ds-say-in::placeholder{color:#b0b0b0;}.ds-say-in:focus-visible{outline:2px solid #fff;outline-offset:2px;}"
+    },
+    {
+      "name": "Dock Tab Strip",
+      "kind": "nav",
+      "refersTo": "dock-tab",
+      "description": "Every dock's header: icon, real Unity panel name, kid subtitle.",
+      "html": "<div class=\"ds-dock\"><div class=\"ds-tabs\"><span class=\"ds-tab\"><svg class=\"ds-i\" viewBox=\"0 0 24 24\"><path d=\"M5 5h6M8 5v14M8 11h6M8 17h6M15 9h4v4h-4zM15 15h4v4h-4z\"/></svg>Hierarchy <small>your parts</small></span></div><div class=\"ds-body\">…</div></div>",
+      "css": ".ds-i{width:18px;height:18px;fill:none;stroke:currentColor;stroke-width:1.75;stroke-linecap:round;stroke-linejoin:round;flex:none;}.ds-dock{font:15px/1.45 system-ui,-apple-system,\"Segoe UI\",Roboto,sans-serif;background:#383838;color:#e8e8e8;width:264px;}.ds-tabs{background:#282828;display:flex;align-items:flex-end;height:34px;padding:0 6px;}.ds-tab{display:inline-flex;align-items:center;gap:7px;height:30px;padding:0 12px;background:#383838;border-radius:6px 6px 0 0;font-size:14px;font-weight:600;}.ds-tab small{font-weight:500;color:#b0b0b0;font-size:12.5px;}.ds-body{padding:10px 12px;color:#b0b0b0;}"
+    },
+    {
+      "name": "Hierarchy Row",
+      "kind": "custom",
+      "refersTo": "hierarchy-row",
+      "description": "A part of the kid's game; selected turns solid orange and opens the Inspector.",
+      "html": "<ul class=\"ds-tree\"><li><button class=\"ds-row\"><svg class=\"ds-i\" viewBox=\"0 0 24 24\"><path d=\"M12 3l8 4.5v9L12 21l-8-4.5v-9zM12 12l8-4.5M12 12v9M12 12L4 7.5\"/></svg>Level 1<small>the level</small></button></li><li class=\"ds-child\"><button class=\"ds-row\" aria-pressed=\"true\"><svg class=\"ds-i\" viewBox=\"0 0 24 24\"><path d=\"M12 3l8 4.5v9L12 21l-8-4.5v-9zM12 12l8-4.5M12 12v9M12 12L4 7.5\"/></svg>Player<small>your robot</small></button></li><li class=\"ds-child\"><button class=\"ds-row\" aria-pressed=\"false\"><svg class=\"ds-i\" viewBox=\"0 0 24 24\"><path d=\"M12 3l8 4.5v9L12 21l-8-4.5v-9zM12 12l8-4.5M12 12v9M12 12L4 7.5\"/></svg>Coin<small>the goal</small></button></li></ul>",
+      "css": ".ds-i{width:18px;height:18px;fill:none;stroke:currentColor;stroke-width:1.75;stroke-linecap:round;stroke-linejoin:round;flex:none;}.ds-tree{list-style:none;margin:0;padding:10px 12px;background:#383838;width:264px;}.ds-row{font:15px/1.45 system-ui,-apple-system,\"Segoe UI\",Roboto,sans-serif;width:100%;display:flex;align-items:center;gap:8px;min-height:44px;padding:0 8px;border:0;background:transparent;border-radius:4px;text-align:left;color:#e8e8e8;cursor:pointer;}.ds-child .ds-row{padding-left:34px;}.ds-row:hover{background:#414141;}.ds-row small{margin-left:auto;color:#b0b0b0;font-size:12px;}.ds-row[aria-pressed=\"true\"]{background:#f5820a;color:#1a1206;}.ds-row[aria-pressed=\"true\"] small{color:#1a1206;}.ds-row:focus-visible{outline:2px solid var(--focus,#fff);outline-offset:2px;}"
+    },
+    {
+      "name": "Mentor Messages",
+      "kind": "custom",
+      "refersTo": "message-mentor",
+      "description": "The mentor, a visiting character and the kid, each with a speaker caption.",
+      "html": "<div class=\"ds-log\"><div class=\"ds-msg\"><span class=\"ds-from\">Mentor</span>Look at that!</div><div class=\"ds-msg ds-guest\"><span class=\"ds-from\">Art director</span>Nice eye. Colour tells players what matters.</div><div class=\"ds-msg ds-kid\"><span class=\"ds-from\">Captain Byte</span>building houses and exploring caves</div></div>",
+      "css": ".ds-log{font:15px/1.45 system-ui,-apple-system,\"Segoe UI\",Roboto,sans-serif;display:flex;flex-direction:column;gap:8px;padding:8px 12px;background:#383838;color:#e8e8e8;width:340px;}.ds-msg{max-width:94%;padding:9px 12px;border-radius:12px;background:#414141;font-size:15px;line-height:1.4;}.ds-from{display:block;font-size:12px;font-weight:700;color:#b0b0b0;margin-bottom:2px;}.ds-kid{align-self:flex-end;background:#4a3b2a;}.ds-guest{background:#33404f;}"
+    },
+    {
+      "name": "Inspector Slider Row",
+      "kind": "input",
+      "description": "Kid field name over its real Unity property; 44px hit area, orange thumb.",
+      "html": "<div class=\"ds-irow\"><label for=\"ds-speed\">Speed<small>Unity: moveSpeed</small></label><input id=\"ds-speed\" type=\"range\" min=\"0\" max=\"10\" value=\"6\"></div>",
+      "css": ".ds-irow{font:15px/1.45 system-ui,-apple-system,\"Segoe UI\",Roboto,sans-serif;display:grid;grid-template-columns:1fr 1.3fr;align-items:center;gap:10px;min-height:48px;font-size:14px;background:#383838;padding:0 12px;width:340px;}.ds-irow label{color:#b4b4b4;}.ds-irow label small{display:block;color:#b0b0b0;font-size:12px;}.ds-irow input{-webkit-appearance:none;appearance:none;width:100%;height:44px;background:transparent;cursor:pointer;}.ds-irow input::-webkit-slider-runnable-track{height:6px;border-radius:3px;background:#414141;}.ds-irow input::-webkit-slider-thumb{-webkit-appearance:none;width:22px;height:22px;margin-top:-8px;border-radius:50%;background:#f5820a;border:2px solid #1a1206;}.ds-irow input::-moz-range-track{height:6px;border-radius:3px;background:#414141;}.ds-irow input::-moz-range-thumb{width:22px;height:22px;border-radius:50%;background:#f5820a;border:2px solid #1a1206;}.ds-irow input:focus-visible{outline:2px solid #fff;outline-offset:2px;}"
+    },
+    {
+      "name": "Chip",
+      "kind": "chip",
+      "refersTo": "chip",
+      "description": "Counts in the Project drawer.",
+      "html": "<span class=\"ds-chip\">no cards yet</span>",
+      "css": ".ds-chip{background:#414141;border-radius:4px;padding:2px 8px;color:#b4b4b4;font:500 12.5px system-ui,-apple-system,\"Segoe UI\",Roboto,sans-serif;}"
+    }
+  ],
+  "narrative": {
+    "northStar": "The Real Engine, Cut Down",
+    "overview": "The kid sits at a real Unity editor in its dark skin: charcoal ground, graphite docks butting together on hairlines, tab strips carrying Unity's own panel names. Then everything a first-timer would not use is taken away or turned to the course's purpose, and what stays is drawn at kid size: 15px body type, 44px targets, and every control an icon with a word. It refuses both the candy kid-app layout and the full adult editor dump. It should read as a studio workstation, not a toy and not a worksheet.\n\nThe chrome is deliberately colourless so that two things carry the eye: League orange, which takes over every job Unity gives its selection blue, and the kid's game, which is the only saturated, many-coloured thing on screen. The editor builds itself around the kid: docks not yet revealed sit as faint outlines where they will open, and they fade in as the story reaches them.\n\nDensity is editor density with kid-sized parts: fixed-height bars, tight 6–12px gaps, content centred in its strip. One thing speaks at a time: the mentor's latest line, with its options directly under it.",
+    "keyCharacteristics": [
+      "Unity dark-skin greys with a single accent, League orange, in Unity's selection-blue role.",
+      "Real Unity panel names on every dock tab, with a quiet kid subtitle beside them.",
+      "System UI type at kid sizes; icon plus word on every control; 44px minimum targets.",
+      "One authored inline-SVG icon set at a single stroke weight.",
+      "The kid's game is the brightest, most colourful thing on screen.",
+      "Play mode tints the chrome warm and rings the game in orange.",
+      "Unrevealed docks are faint outlines, not missing space."
+    ],
+    "rules": [
+      {
+        "name": "The One Accent Rule",
+        "body": "Orange is the only chrome hue. Anything Unity would paint selection blue",
+        "section": "colors"
+      },
+      {
+        "name": "The Brightest Thing Rule",
+        "body": "The kid's game is the only saturated, many-coloured thing on screen.",
+        "section": "colors"
+      },
+      {
+        "name": "The Kid Size Rule",
+        "body": "Body and messages are 15px; nothing a kid must read is under 12px.",
+        "section": "typography"
+      },
+      {
+        "name": "The Real Word First Rule",
+        "body": "The real Unity word is the name (Title, weight 600); the kid's",
+        "section": "typography"
+      },
+      {
+        "name": "The Builds Around You Rule",
+        "body": "Docks open in story order. Until then a dock is a faint outline",
+        "section": "layout"
+      },
+      {
+        "name": "The Tonal Stack Rule",
+        "body": "Docks never cast shadows; they sit flat in their grid and read by tone.",
+        "section": "elevation"
+      }
+    ],
+    "dos": [
+      "Do take every token from the frontmatter; the artifact's `:root` is the source.",
+      "Do give every dock a tab with its real Unity name and a kid subtitle beside it.",
+      "Do make every control an icon from the one set plus a word, at least 44px.",
+      "Do use League orange for everything Unity paints selection blue, and for nothing decorative.",
+      "Do keep the kid's game the most colourful thing on screen; chrome stays grey.",
+      "Do show unrevealed docks as a 1px closed outline in their final place.",
+      "Do tint the chrome and ring the game in orange while Play mode is on.",
+      "Do keep the mentor's latest line and its options visible when the Inspector opens."
+    ],
+    "donts": [
+      "Don't take colours, type or components from the legacy `app/public/` styles; they are not authority for the rework.",
+      "Don't add a second accent hue to the chrome, or Unity's selection blue.",
+      "Don't set text a kid must read below 12px, or messages below 15px.",
+      "Don't use icon-only controls, icon fonts, emoji or a second icon set.",
+      "Don't show a removed Unity tool (Scene tab, Console, transform tools, account and layout menus) until a quest needs it.",
+      "Don't give docks shadows; only overlays lift."
+    ]
+  }
+}

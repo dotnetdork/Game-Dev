@@ -34,6 +34,9 @@ npm-debug.log*
 # Surface briefs hold each screen's direction contract, which later sessions reload before editing
 # that screen, so they are project decisions like config.json, not scratch.
 !**/.impeccable/surfaces/
+# design.json is DESIGN.md's machine-readable sidecar (tokens, component snippets) — the design
+# system, not scratch.
+!**/.impeccable/design.json
 
 # per-student saves, when the file backend is in use (`npm start` on a laptop). Hosted, these live
 # in a KV store instead — see app/store.js. This is somebody's actual work, not build output, so it
