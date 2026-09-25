@@ -34,6 +34,10 @@ records the reason, so the next person can see why something is there — or isn
 | Choices branch and rejoin (order, flavour, examples, characters differ; core concepts shared) | **In** | Jay | Shape interview. Teachable at class scale. |
 | Replies: 3–4 dialogue options + "say something else" (typing) | **In** | Jay, research | Shape interview. Skyrim-style; matches the research against a blank chat box. |
 | Adapts to how the kid learns — from what they show, not a "learning style" label | **In** | Jay | Direction. See the note on learning styles there. |
+| The AI is the course: concept web + quest outlines (people) · director (plans 2–3 quests ahead) · character agents | **In** | Jay | `course-engine.md`. People write the web and outlines; the AI improvises inside them. |
+| Old concepts come back inside new quests (spaced recall) | **In** | research, Jay | "Hard to forget." `course-engine.md`. |
+| The kid sees a glimpse of the plan (what's next + a teaser), not the whole map | **In** | Jay | Interview. |
+| Prizes used for: new tool powers · studio unlocks · desk & avatar cosmetics | **In** | Jay | Interview. Art/sound for their game was not chosen as a prize. |
 | Leaderboards | **Parked** | proto, Jay | "Probably not necessary." |
 | Gallery | **Parked** | proto, Jay | "Not necessary for now." |
 | Code-debugging labs | **Out** | proto, critique | A no-syntax course; the critique found them the lowest point of the app. |
