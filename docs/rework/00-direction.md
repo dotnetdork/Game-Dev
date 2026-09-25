@@ -94,6 +94,11 @@ The first test with live students. It is the first evidence from real users this
    layout, then build).
 3. **Rebuild** feature by feature with Impeccable.
 
+**Order agreed 2026-09-25:** finish the research round (industry concepts, pedagogy, agent
+architecture, AI cost/originality) → synthesise it → continue the Impeccable plan (confirm the
+first-run and quest briefs with `/impeccable shape`, then wireframes) → a brief comparison with the
+prior app (what the rework keeps, changes and drops, and why).
+
 ## Still open
 
 - What "the core" is, exactly: which surfaces survive the strip-down.
