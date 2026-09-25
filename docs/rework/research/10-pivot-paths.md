@@ -7,6 +7,12 @@ the 9 code-structure lessons (`content/course.yaml`: the `phaser` module's 5 + `
 CodeMirror loads at boot, `ui.js:37` `TIER_WIDE = 1440`. The old app's typed-message telemetry was
 temporary and intentional for a test session (Jay) — not counted as a defect.
 
+> **Jay's corrections (2026-09-25):** (1) the project uses git and is in active development, not
+> production, so nothing is ever "down" during a transition — that risk, listed for path 2 below,
+> does not apply; (2) no building until the wireframes are worked out; (3) the week estimates are
+> too cautious — the code is days, not months; the real long poles are authoring content and testing
+> with kids. Read the effort figures below as relative, not as a schedule.
+
 ## Recommendation
 
 **Pursue the pivot, staged, as path 3: a new front end that reuses the old backend and the old

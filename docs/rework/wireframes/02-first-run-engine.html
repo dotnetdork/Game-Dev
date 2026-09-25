@@ -49,7 +49,7 @@
   .stagehold { padding: 0 16px; overflow: hidden; }
   .scaler { transform-origin: top left; }
   .editor {
-    width: 1366px; height: 768px; background: var(--ground); color: var(--ink);
+    width: 1366px; height: 650px; background: var(--ground); color: var(--ink);
     display: grid; grid-template-rows: 56px 1fr 30px 26px;
     grid-template-columns: 264px 1fr 388px;
     grid-template-areas: "tool tool tool" "left game right" "proj proj right" "status status status";
@@ -147,6 +147,7 @@
   .opt { display: flex; align-items: center; justify-content: space-between; gap: 10px; min-height: 44px; padding: 8px 12px;
          background: transparent; border: 1.5px solid var(--accent); border-radius: 8px; text-align: left; cursor: pointer; color: var(--ink); font-weight: 600; }
   .opt:hover { background: var(--accent-soft); }
+  .opt:hover small { color: var(--ink); }
   .opt small { font-weight: 500; color: var(--ink-3); font-size: 12.5px; }
   .say { display: flex; gap: 6px; padding: 4px 12px 12px; }
   .say input { flex: 1; min-height: 44px; border-radius: 8px; border: 1px solid var(--line-soft); background: var(--ground);
@@ -224,7 +225,7 @@
 </svg>
 
 <div class="stagehold"><div class="scaler" id="scaler">
-<div class="editor" id="editor" role="region" aria-label="The studio editor, drawn at 1366 by 768">
+<div class="editor" id="editor" role="region" aria-label="The studio editor, drawn at 1366 by 650, the usable part of a Chromebook screen">
 
   <div class="toolbar">
     <div class="brand">
@@ -276,7 +277,7 @@
     <div class="opts" id="opts"></div>
     <div class="say"><input id="say" type="text" placeholder="Say something else…" aria-label="Say something else"></div>
 
-    <div class="inspector" id="inspector" aria-label="Inspector" aria-hidden="true">
+    <div class="inspector" id="inspector" aria-label="Inspector" aria-hidden="true" inert>
       <div class="tabs"><span class="tab"><svg class="i"><use href="#i-sliders"/></svg>Inspector <small id="inspName">Player</small></span>
         <button class="x" id="inspClose" aria-label="Close the Inspector"><svg class="i"><use href="#i-x"/></svg></button></div>
       <div class="dock-body" id="inspBody"></div>
@@ -457,10 +458,10 @@ function openInspector(p, btn) {
   $('dMentor').classList.add('inspecting');
   var last = $('log').lastElementChild;
   $('inspector').style.top = (last ? last.offsetTop + last.offsetHeight + 10 : 34) + 'px';
-  $('inspector').classList.add('open'); $('inspector').setAttribute('aria-hidden', 'false');
+  $('inspector').classList.add('open'); $('inspector').setAttribute('aria-hidden', 'false'); $('inspector').inert = false;
 }
 function closeInspector() {
-  $('inspector').classList.remove('open'); $('inspector').setAttribute('aria-hidden', 'true');
+  $('inspector').classList.remove('open'); $('inspector').setAttribute('aria-hidden', 'true'); $('inspector').inert = true;
   $('dMentor').classList.remove('inspecting');
   Array.prototype.forEach.call($('tree').querySelectorAll('button'), function (x) { x.setAttribute('aria-pressed', 'false'); });
 }
@@ -552,12 +553,12 @@ $('inspClose').addEventListener('click', closeInspector);
 $('bPlay').addEventListener('click', function () { if (STEPS[i].advance) go(i + 1); });
 $('say').addEventListener('keydown', function (e) { if (e.key === 'Enter' && this.value.trim()) { this.value = ''; go(i + 1); } });
 
-/* Scale the fixed 1366×768 editor to the page width so it is always seen whole. */
+/* Scale the fixed 1366×650 editor (a 1366×768 Chromebook screen minus Chrome's tabs, bar and shelf) to the page width so it is always seen whole. */
 (function () {
   var s = $('scaler');
   function fit() {
     var k = Math.min(1, (s.parentElement.clientWidth - 32) / 1366);
-    s.style.transform = 'scale(' + k + ')'; s.style.height = (768 * k) + 'px'; s.style.width = (1366 * k) + 'px';
+    s.style.transform = 'scale(' + k + ')'; s.style.height = (650 * k) + 'px'; s.style.width = (1366 * k) + 'px';
   }
   window.addEventListener('resize', fit); fit();
 })();
