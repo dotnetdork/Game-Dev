@@ -17,6 +17,14 @@ records the reason, so the next person can see why something is there — or isn
 | The AI as the focal point — one chat that teaches *and* builds | **In** | Jay | Direction. The tutor's behaviour is the model; builder and tutor merge. |
 | An AI that learns the student and adapts the content | **In** | Jay | Direction (revision). Needs its own design — see open questions. |
 | Designed for 10–13, new to computers | **In** | Jay | Direction (revision). A rule for every screen, not a feature. |
+| The kid invents their game in minute one (tap questions → the AI builds a tiny game) | **In** | research, Jay | Shape interview, 2026-09-25. |
+| Ideas are felt in the kid's own game; a separate practice game only as a backup | **In** | research, Jay | Shape interview ("Way B"). Keeps course and building connected. |
+| The AI: panel as its home + one-sentence pointer bubbles, as a named character | **In** | research, Jay | Shape interview. Name and face still open. |
+| Left panel = the kid's path (current unit only) | **In** | critique, Jay | Shape interview. Jay: the game's parts should appear somewhere too. |
+| The game's parts shown as an engine-style list (proposed: a row of part cards under the game) | **Waiting** | Jay | Where exactly is proposed in `briefs/lesson-moment.md`. |
+| Rewards: celebration + collectible concept card **and** a small stars/XP bar | **In** | Jay | Shape interview ("both"). The bar stays still mid-lesson, animates at the celebration. |
+| The AI adapts pace, words, examples, and how much it builds | **In** | Jay | Shape interview. How each shows on screen is open. |
+| A fun get-to-know-you opening (AI bubbles, matching pictures, picking favourite games, characters, mechanics) | **In** | Jay | Shape interview. Being shaped next (first run). |
 | Leaderboards | **Parked** | proto, Jay | "Probably not necessary." |
 | Gallery | **Parked** | proto, Jay | "Not necessary for now." |
 | Code-debugging labs | **Out** | proto, critique | A no-syntax course; the critique found them the lowest point of the app. |
