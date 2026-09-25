@@ -25,6 +25,10 @@ records the reason, so the next person can see why something is there — or isn
 | Rewards: celebration + collectible concept card **and** a small stars/XP bar | **In** | Jay | Shape interview ("both"). The bar stays still mid-lesson, animates at the celebration. |
 | The AI adapts pace, words, examples, and how much it builds | **In** | Jay | Shape interview. How each shows on screen is open. |
 | A fun get-to-know-you opening (AI bubbles, matching pictures, picking favourite games, characters, mechanics) | **In** | Jay | Shape interview. Being shaped next (first run). |
+| The engine builds itself around the kid during the first run | **In** | Jay | Shape interview (first run). Replaces the missing tour. |
+| Discovery questions with reflect-back ("so, like Mario?") instead of asking for labels | **In** | Jay | Shape interview. Applies to games, kinds of fun, and role interest. |
+| A learner card that evolves: picks, noticed comfort, lesson history; the kid and teacher can see and reset it | **In** | Jay | Shape interview. Never real name, birthday, school, location, photos, voice, chat transcripts. |
+| First run lasts ~3–5 minutes | **In** | Jay | Shape interview. |
 | Leaderboards | **Parked** | proto, Jay | "Probably not necessary." |
 | Gallery | **Parked** | proto, Jay | "Not necessary for now." |
 | Code-debugging labs | **Out** | proto, critique | A no-syntax course; the critique found them the lowest point of the app. |
