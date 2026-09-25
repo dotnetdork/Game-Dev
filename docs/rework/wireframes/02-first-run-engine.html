@@ -69,6 +69,9 @@
           background: var(--panel-2); border-radius: 5px; color: var(--ink-2); cursor: default; }
   .tbtn span { font-size: 14px; font-weight: 600; }
   .tbtn.on { background: var(--accent); color: var(--accent-ink); }
+  #bPlay { cursor: pointer; }
+  #bPlay.cue { box-shadow: 0 0 0 2px var(--accent); }
+  .transport .tbtn:not(#bPlay) { cursor: default; }
   .transport.ghosted { opacity: 0; transform: translateY(-6px); }
   .tool-right { justify-self: end; color: var(--ink-3); font-size: 13px; }
 
@@ -155,14 +158,18 @@
                border-top: 1px solid var(--line); box-shadow: 0 -10px 24px rgba(0,0,0,.35);
                transform: translateX(104%); transition: transform .4s cubic-bezier(.16,1,.3,1); display: flex; flex-direction: column; }
   .inspector.open { transform: none; }
+  .right.inspecting .msg:not(:last-child) { display: none; }
   .inspector .tabs { justify-content: space-between; align-items: center; }
   .x { border: 0; background: transparent; color: var(--ink-2); min-height: 44px; min-width: 44px; border-radius: 4px; cursor: pointer; }
   .x:hover { background: var(--panel-2); }
   .irow { display: grid; grid-template-columns: 1fr 1.3fr; align-items: center; gap: 10px; min-height: 48px; font-size: 14px; }
   .irow label { color: var(--ink-2); }
   .irow label small { display: block; color: var(--ink-3); font-size: 11.5px; }
-  .irow input[type=range] { width: 100%; height: 44px; accent-color: var(--accent); cursor: pointer; }
-  .irow input[type=range]::-webkit-slider-thumb { width: 22px; height: 22px; }
+  .irow input[type=range] { -webkit-appearance: none; appearance: none; width: 100%; height: 44px; background: transparent; cursor: pointer; }
+  .irow input[type=range]::-webkit-slider-runnable-track { height: 6px; border-radius: 3px; background: var(--panel-2); }
+  .irow input[type=range]::-webkit-slider-thumb { -webkit-appearance: none; width: 22px; height: 22px; margin-top: -8px; border-radius: 50%; background: var(--accent); border: 2px solid var(--accent-ink); }
+  .irow input[type=range]::-moz-range-track { height: 6px; border-radius: 3px; background: var(--panel-2); }
+  .irow input[type=range]::-moz-range-thumb { width: 22px; height: 22px; border-radius: 50%; background: var(--accent); border: 2px solid var(--accent-ink); }
   .comp { display: flex; align-items: center; gap: 6px; min-height: 36px; margin: -4px -2px 4px; padding: 0 4px; border-bottom: 1px solid var(--line-soft); font-size: 14px; }
 
   /* Project drawer (repurposed: your cards) + status bar */
@@ -225,7 +232,7 @@
       <span class="project reveal closed" id="projName">· <b>Captain Byte's Game</b></span>
     </div>
     <div class="transport ghosted" id="transport" aria-label="Play controls">
-      <button class="tbtn" id="bPlay" tabindex="-1"><svg class="i"><use id="bPlayIcon" href="#i-play"/></svg><span>Play</span></button>
+      <button class="tbtn" id="bPlay"><svg class="i"><use id="bPlayIcon" href="#i-play"/></svg><span>Play</span></button>
       <button class="tbtn" tabindex="-1"><svg class="i"><use href="#i-pause"/></svg><span>Pause</span></button>
       <button class="tbtn" tabindex="-1"><svg class="i"><use href="#i-step"/></svg><span>Step</span></button>
     </div>
@@ -369,11 +376,16 @@ var STEPS = [
     opts: [['Thanks!'], ['What else is broken?']],
     what: "The kid's pick transforms the game, and the art director pops in to say hi.",
     unity: 'Unchanged.' },
-  { beat: '4 · Press Play', open: ['game', 'transport'], scene: 'colour-changed', playing: true, fps: true,
-    say: [['m', "Press Play! Now, while it runs, make the coin purple."]],
-    opts: [['Done. Now press Stop']], pointer: 'The orange edge means the game is running.', status: 'Play mode',
-    what: 'Play, Pause and Step appear, centred at the top, exactly where Unity keeps them. The kid changes the coin while the game runs.',
-    unity: "Real Unity: the centred Play / Pause / Step buttons, and the editor tinting while in Play mode. The frame counter is Unity's Stats overlay, cut down to one number." },
+  { beat: '4 · Press Play', open: ['game', 'transport'], scene: 'colour', advance: 'play',
+    say: [['m', 'See the Play button up top? Press it to run your game.']],
+    opts: [], status: 'Ready to play',
+    what: 'Play, Pause and Step appear, centred at the top, exactly where Unity keeps them. The kid presses the real Play button to go on.',
+    unity: 'Real Unity: the centred Play / Pause / Step buttons.' },
+  { beat: '4 · Playing', open: ['game', 'transport'], scene: 'colour-changed', playing: true, fps: true, advance: 'stop',
+    say: [['m', "It's running! While it plays, I turned the coin purple. Now press Stop and watch the coin."]],
+    opts: [], pointer: 'The orange edge means the game is running.', status: 'Play mode',
+    what: 'The game runs, the editor tints, and the coin is changed while it plays. The kid presses the real Stop button to go on.',
+    unity: "Real Unity: the editor tints while in Play mode. The frame counter is Unity's Stats overlay, cut down to one number." },
   { beat: '4 · …and Stop', open: ['game', 'transport'], scene: 'colour',
     say: [['m', "It changed back! Every developer does that once. Changes made while playing don't stick."]],
     opts: [['Haha, got it'], ['Wait, why?']], status: 'Stopped: changes made during Play were undone',
@@ -442,10 +454,14 @@ function openInspector(p, btn) {
   });
   var pin = $('opts').offsetHeight + document.querySelector('.say').offsetHeight;
   $('inspector').style.setProperty('--pinned', pin + 'px');
+  $('dMentor').classList.add('inspecting');
+  var last = $('log').lastElementChild;
+  $('inspector').style.top = (last ? last.offsetTop + last.offsetHeight + 10 : 34) + 'px';
   $('inspector').classList.add('open'); $('inspector').setAttribute('aria-hidden', 'false');
 }
 function closeInspector() {
   $('inspector').classList.remove('open'); $('inspector').setAttribute('aria-hidden', 'true');
+  $('dMentor').classList.remove('inspecting');
   Array.prototype.forEach.call($('tree').querySelectorAll('button'), function (x) { x.setAttribute('aria-pressed', 'false'); });
 }
 
@@ -471,13 +487,14 @@ function render() {
   setOpen('dGame', has('game')); setOpen('dHier', has('hier')); setOpen('dQuest', has('quest'));
   $('transport').classList.toggle('ghosted', !has('transport'));
   ['proj', 'stars', 'projName'].forEach(function (id) {
-    var on = id === 'projName' ? i >= 7 : has('proj');
+    var on = id === 'projName' ? i >= 8 : has('proj');
     $(id).classList.toggle('closed', !on);
   });
   $('bPlay').classList.toggle('on', !!s.playing);
   $('bPlay').querySelector('span').textContent = s.playing ? 'Stop' : 'Play';
   $('bPlayIcon').setAttribute('href', s.playing ? '#i-stop' : '#i-play');
   $('editor').classList.toggle('playmode', !!s.playing);
+  $('bPlay').classList.toggle('cue', !!s.advance);
   $('screen').classList.toggle('playing', !!s.playing);
   $('fps').hidden = !s.fps;
   $('cardChip').textContent = s.cards ? s.cards + ' new card: Play mode' : 'no cards yet';
@@ -532,6 +549,7 @@ STEPS.forEach(function (s, k) {
 $('back').addEventListener('click', function () { go(i - 1); });
 $('next').addEventListener('click', function () { go(i + 1); });
 $('inspClose').addEventListener('click', closeInspector);
+$('bPlay').addEventListener('click', function () { if (STEPS[i].advance) go(i + 1); });
 $('say').addEventListener('keydown', function (e) { if (e.key === 'Enter' && this.value.trim()) { this.value = ''; go(i + 1); } });
 
 /* Scale the fixed 1366×768 editor to the page width so it is always seen whole. */
