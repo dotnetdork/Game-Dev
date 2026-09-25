@@ -42,6 +42,9 @@ records the reason, so the next person can see why something is there — or isn
 | Prizes are surprises for concept-bearing moments (mostly tool powers); stars are a quiet bar, never a price on a quest | **In** | research, Jay | Round-2 decision; replaces "stars/XP tick up" at each quest. |
 | Skill tracking starts simple (Leitner boxes: new / learning / solid / strong); refit after a pilot | **In** | research, Jay | Round-2 decision. |
 | Launch with the Front Desk + 3–4 departments; the rest unlock later | **In** | research, Jay | Round-2 decision. Which departments: open. |
+| Launch departments: Design, Engineering, Art (+ Animation/VFX), Audio (+ the Front Desk) | **In** | Jay | Shape interview. QA, Production, Publishing later. |
+| The mentor is openly an AI, and proud of it | **In** | Jay, research | Turns "game AI vs generative AI" into a lesson. |
+| First run: fix one thing in an unfinished game; the pick sets the first department | **In** | Jay | Shape interview. `briefs/first-run.md` v2. |
 | Leaderboards | **Parked** | proto, Jay | "Probably not necessary." |
 | Gallery | **Parked** | proto, Jay | "Not necessary for now." |
 | Code-debugging labs | **Out** | proto, critique | A no-syntax course; the critique found them the lowest point of the app. |
