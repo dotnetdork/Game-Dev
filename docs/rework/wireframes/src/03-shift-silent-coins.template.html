@@ -1,0 +1,581 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Silent Coins Shift</title>
+<style>
+{{CSS}}
+  /* ---------- additions for the shift ---------- */
+  .editor { height: 650px; grid-template-rows: 56px 1fr 118px 26px; }
+  .gamebody canvas { flex: 1; min-width: 0; width: 100%; height: 100%; display: block; outline: none; background: #111; }
+  .gamebody canvas:focus-visible { box-shadow: inset 0 0 0 3px var(--focus); }
+  .focus-hint { position: absolute; inset: auto 0 18px 0; margin: 0 auto; width: max-content; max-width: 80%;
+                background: rgba(20,20,20,.86); color: #fff; padding: 10px 14px; border-radius: 10px; font-size: 15px; pointer-events: none; }
+  .focus-hint[hidden] { display: none; }
+  .keys { display: inline-flex; gap: 4px; margin: 0 4px; }
+  .key { border: 1px solid #777; border-bottom-width: 3px; border-radius: 5px; padding: 0 7px; font-size: 13px; }
+  .pop { position: absolute; font-weight: 800; font-size: 20px; color: #fff; text-shadow: 0 2px 0 #000, 0 0 8px rgba(0,0,0,.6);
+         pointer-events: none; animation: popup .9s cubic-bezier(.16,1,.3,1) forwards; }
+  @keyframes popup { from { transform: translate(-50%, 0) scale(.6); opacity: 0; } 20% { opacity: 1; transform: translate(-50%, -8px) scale(1.1); }
+                     to { transform: translate(-50%, -38px) scale(1); opacity: 0; } }
+
+  /* quest checklist: the evidence the shift needs, always visible */
+  .checks { list-style: none; margin: 8px 0 0; padding: 0; display: grid; gap: 4px; }
+  .checks li { display: flex; align-items: center; gap: 8px; min-height: 30px; font-size: 14px; color: var(--ink-2); }
+  .checks li .box { width: 20px; height: 20px; border-radius: 5px; border: 1.5px solid var(--ink-3); display: grid; place-items: center; flex: none; }
+  .checks li.done { color: var(--ink); }
+  .checks li.done .box { background: var(--accent); border-color: var(--accent); color: var(--accent-ink); }
+  .checks li.now { color: var(--ink); font-weight: 600; }
+  .checks li.now .box { border-color: var(--accent); }
+  .checks .box svg { width: 14px; height: 14px; }
+
+  /* Project drawer, expanded: the sound shelf (Unity keeps sounds in the Project window) */
+  .shelf { grid-area: proj; background: var(--panel); display: flex; flex-direction: column; min-height: 0; border-top: 1px solid var(--line); }
+  .shelf .tabs { height: 32px; }
+  .shelf-body { display: flex; gap: 8px; padding: 8px 12px; align-items: stretch; flex: 1; }
+  .snd { display: flex; flex-direction: column; justify-content: center; gap: 2px; min-width: 128px; min-height: 60px; padding: 8px 12px;
+         border-radius: 8px; border: 1.5px solid var(--line-soft); background: var(--panel-2); cursor: pointer; text-align: left; }
+  .snd strong { font-size: 15px; } .snd small { color: var(--ink-2); font-size: 12.5px; }
+  .snd[aria-pressed="true"] { border-color: var(--accent); box-shadow: 0 0 0 2px var(--accent); }
+  .shelf-note { align-self: center; color: var(--ink-2); font-size: 13.5px; max-width: 300px; margin-left: auto; }
+  .shelf.locked .shelf-body > * { opacity: .35; pointer-events: none; }
+  .shelf.locked .shelf-note { opacity: 1; }
+
+  /* Inspector rows for this shift */
+  .slot { min-height: 44px; min-width: 150px; border-radius: 8px; border: 1.5px dashed var(--ink-3); background: transparent; color: var(--ink-2);
+          cursor: pointer; font-weight: 600; text-align: left; padding: 0 12px; }
+  .slot.filled { border-style: solid; border-color: var(--accent); color: var(--ink); }
+  .meter { height: 10px; border-radius: 5px; background: var(--panel-2); overflow: hidden; margin-top: 4px; }
+  .meter i { display: block; height: 100%; background: var(--accent); transition: width .15s ease-out; }
+  .meter.music i { background: #8fb3ff; }
+
+  /* concept card */
+  .card { margin: 4px 0 2px; border-radius: 10px; background: #2f2a24; border: 1.5px solid var(--accent); padding: 12px 14px; }
+  .card b { display: block; font-size: 16px; color: var(--ink); }
+  .card p { margin: 4px 0 8px; font-size: 14.5px; color: var(--ink); }
+  .card dl { display: grid; grid-template-columns: auto 1fr; gap: 2px 10px; margin: 0; font-size: 13px; }
+  .card dt { color: var(--ink-2); } .card dd { margin: 0; color: var(--ink); }
+  .card code { font: 12px ui-monospace, "Cascadia Mono", Consolas, "DejaVu Sans Mono", monospace; }
+  .milestone { display: inline-flex; align-items: center; gap: 6px; }
+  .pips { display: inline-flex; gap: 3px; } .pips i { width: 10px; height: 10px; border-radius: 2px; background: var(--panel-2); }
+  .pips i.on { background: var(--accent); }
+
+  /* C# peek + tweak: the script docks beside the game, so the kid plays and reads side by side */
+  .code { display: none; flex: none; width: 360px; flex-direction: column; background: #1e1e1e; border-left: 1px solid var(--line); min-height: 0; }
+  .code.open { display: flex; }
+  .gamebody.split .focus-hint { right: 360px; max-width: 300px; text-align: center; line-height: 1.8; }
+  .code .tabs { background: var(--tabbar); }
+  .code pre { margin: 0; padding: 8px 0; flex: 1; overflow: auto; font: 12.5px/1.55 ui-monospace, "Cascadia Mono", Consolas, "DejaVu Sans Mono", monospace; color: var(--ink); }
+  .ln { display: block; white-space: pre; padding-right: 10px; }
+  .ln .n { display: inline-block; width: 26px; margin-right: 10px; text-align: right; color: #8a8a8a; user-select: none; }
+  .ln.hl { background: var(--accent-soft); } .ln.hl .n { color: var(--accent); font-weight: 700; }
+  .ln .kw { color: #9cb8e0; } .ln .cm { color: #8a8a8a; font-style: italic; }
+  .tw { font: inherit; color: var(--ink); background: var(--ground); width: 6ch; height: 44px; padding: 0 6px; margin: 0 2px;
+        border: 1.5px solid var(--accent); border-radius: 6px; text-align: center; }
+  .code-foot { display: flex; align-items: center; gap: 10px; min-height: 58px; padding: 6px 10px; border-top: 1px solid var(--line-soft); background: var(--panel); }
+  .console { flex: 1; font-size: 13px; color: var(--ink-2); line-height: 1.35; }
+  .console b { color: var(--ink); }
+  .console.err { color: var(--ink); } .console.err::before { content: "⚠ "; color: var(--accent); font-weight: 700; }
+  .save { min-height: 44px; padding: 0 14px; border-radius: 8px; border: 1.5px solid var(--accent); background: transparent; color: var(--ink); font-weight: 600; cursor: pointer; }
+  .save:hover { background: var(--accent-soft); }
+  .unsaved::after { content: " ●"; color: var(--accent); }
+</style>
+</head>
+<body>
+<header class="doc">
+  <h1>A shift you can't click through: "The silent coins"</h1>
+  <p>Play it for real: click the game, then use the arrow keys and Space. Progress only unlocks when you've
+     actually done the job. The step buttons below are for reviewers and let you skip ahead.</p>
+</header>
+
+{{ICONS}}
+
+<div class="stagehold"><div class="scaler" id="scaler">
+<div class="editor" id="editor" role="region" aria-label="The studio editor during an Audio shift, drawn at 1366 by 650">
+
+  <div class="toolbar">
+    <div class="brand">
+      <img class="wordmark" alt="The League of Amazing Programmers" src="{{LOGO}}">
+      <span class="project">· <b>Captain Byte's Game</b></span>
+    </div>
+    <div class="transport" aria-label="Play controls">
+      <button class="tbtn" id="bPlay"><svg class="i"><use id="bPlayIcon" href="#i-play"/></svg><span>Play</span></button>
+      <button class="tbtn" tabindex="-1"><svg class="i"><use href="#i-pause"/></svg><span>Pause</span></button>
+      <button class="tbtn" tabindex="-1"><svg class="i"><use href="#i-step"/></svg><span>Step</span></button>
+    </div>
+    <div class="tool-right"></div>
+  </div>
+
+  <div class="left">
+    <section class="dock" aria-label="Quest">
+      <div class="tabs"><span class="tab"><svg class="i"><use href="#i-flag"/></svg>Quest</span></div>
+      <div class="dock-body">
+        <div class="quest-dept"><span class="dot"></span>Audio department</div>
+        <div class="quest-now">The silent coins</div>
+        <ul class="checks" id="checks"></ul>
+      </div>
+    </section>
+    <section class="dock" aria-label="Hierarchy">
+      <div class="tabs"><span class="tab"><svg class="i"><use href="#i-tree"/></svg>Hierarchy <small id="hierOf">customer's game</small></span></div>
+      <div class="dock-body"><ul class="tree" id="tree"></ul></div>
+    </section>
+  </div>
+
+  <section class="dock game" aria-label="Game">
+    <div class="tabs"><span class="tab"><svg class="i"><use href="#i-pad"/></svg>Game <small id="gameOf">customer's game</small></span></div>
+    <div class="gamebody" id="gamebody">
+      <canvas id="cv" tabindex="0" aria-label="The game. Arrow keys move, Space jumps."></canvas>
+      <div class="focus-hint" id="hint" hidden>Click the game, then <span class="keys"><span class="key">←</span><span class="key">→</span></span> move · <span class="key">Space</span> jump</div>
+      <div class="code" id="code" aria-label="Script: Coin.cs">
+        <div class="tabs"><span class="tab"><svg class="i"><use href="#i-code"/></svg><span id="codeName">Coin.cs</span> <small>C#, the programmer's view</small></span></div>
+        <pre id="codeBody"></pre>
+        <div class="code-foot"><p class="console" id="console" aria-live="polite"></p><button class="save" id="save">Save</button></div>
+      </div>
+    </div>
+  </section>
+
+  <section class="dock right" id="dMentor" aria-label="Conversation">
+    <div class="tabs"><span class="tab"><svg class="i" style="color:var(--accent)"><use href="#i-cube"/></svg><span id="whoTab">Sound designer</span></span></div>
+    <div class="who">
+      <div class="face" aria-hidden="true">face<br>TBD</div>
+      <div><strong id="whoName">Sound designer <span style="font-weight:500;color:var(--ink-3)">(name TBD)</span></strong><span id="whoRole">Audio department</span></div>
+    </div>
+    <div class="log" id="log" aria-live="polite"></div>
+    <div class="opts" id="opts"></div>
+    <div class="say"><input id="say" type="text" placeholder="Say something else…" aria-label="Say something else"></div>
+
+    <div class="inspector" id="inspector" aria-label="Inspector" aria-hidden="true" inert>
+      <div class="tabs"><span class="tab"><svg class="i"><use href="#i-sliders"/></svg>Inspector <small id="inspName"></small></span></div>
+      <div class="dock-body" id="inspBody"></div>
+    </div>
+  </section>
+
+  <section class="shelf locked" id="shelf" aria-label="Project: sounds">
+    <div class="tabs"><span class="tab"><svg class="i"><use href="#i-cards"/></svg>Project <small>sounds</small></span></div>
+    <div class="shelf-body" id="shelfBody"></div>
+  </section>
+
+  <div class="status">
+    <span id="statusMsg">Shift started</span>
+    <span class="milestone"><span>Alpha</span><span class="pips" id="pips"><i></i><i></i><i></i><i></i></span></span>
+  </div>
+</div>
+</div></div>
+
+<nav class="nav" aria-label="Steps (for reviewers)">
+  <button id="back">Back</button><span id="dots" style="display:contents"></span><button id="next">Skip ahead</button>
+</nav>
+
+<section class="notes">
+  <div><h2 id="nBeat"></h2><p id="nWhat"></p></div>
+  <div><h2>Why you can't click through this step</h2><p id="nGate"></p></div>
+</section>
+
+<script>
+var $ = function (id) { return document.getElementById(id); };
+var NAME = 'Captain Byte';
+
+/* ---------- sound: synthesised, so the prototype needs no audio files ---------- */
+var AC = null, sfxGain, musicGain, musicTimer = null;
+var mix = { music: 0.8, sfx: 0.25 };      // starts with the coin buried under the music
+function audio() {
+  if (AC) return AC;
+  try { AC = new (window.AudioContext || window.webkitAudioContext)(); } catch (e) { return null; }
+  sfxGain = AC.createGain(); musicGain = AC.createGain();
+  sfxGain.connect(AC.destination); musicGain.connect(AC.destination); applyMix();
+  return AC;
+}
+function applyMix() { if (!AC) return; sfxGain.gain.value = mix.sfx; musicGain.gain.value = musicOn ? mix.music * 0.35 : 0; }
+function tone(type, f0, f1, dur, vol, dest) {
+  var a = audio(); if (!a) return;
+  var o = a.createOscillator(), g = a.createGain(), t = a.currentTime;
+  o.type = type; o.frequency.setValueAtTime(f0, t); if (f1) o.frequency.exponentialRampToValueAtTime(f1, t + dur);
+  g.gain.setValueAtTime(vol, t); g.gain.exponentialRampToValueAtTime(0.001, t + dur);
+  o.connect(g); g.connect(dest || sfxGain); o.start(t); o.stop(t + dur + 0.02);
+}
+var SOUNDS = {
+  ding:  { label: 'Sparkly ding', note: 'bright, happy', pop: 'DING!', mood: 'good', play: function (p) { p = p || 1; tone('sine', 988 * p, 0, .09, .5); setTimeout(function () { tone('sine', 1319 * p, 0, .16, .5); }, 80); } },
+  boing: { label: 'Springy boing', note: 'bouncy, up', pop: 'BOING!', mood: 'move', play: function (p) { p = p || 1; tone('sine', 260 * p, 720 * p, .2, .45); } },
+  thud:  { label: 'Heavy thud', note: 'low, bump', pop: 'THUD', mood: 'bad', play: function (p) { p = p || 1; tone('triangle', 130 * p, 55 * p, .2, .7); } },
+  buzz:  { label: 'Angry buzz', note: 'harsh, wrong', pop: 'BZZT', mood: 'bad', play: function (p) { p = p || 1; tone('square', 150 * p, 0, .22, .25); } }
+};
+var musicOn = false, beat = 0;
+function startMusic() {
+  if (musicTimer) return; musicOn = true; applyMix();
+  var notes = [110, 110, 146.8, 130.8];
+  musicTimer = setInterval(function () { tone('triangle', notes[beat++ % 4], 0, .22, .5, musicGain); }, 280);
+}
+function stopMusic() { clearInterval(musicTimer); musicTimer = null; musicOn = false; applyMix(); }
+
+/* ---------- the little game (keyboard-playable) ---------- */
+var cv = $('cv'), ctx = cv.getContext('2d'), W = 320, H = 180;
+var keys = {}, P, coins, jumpedOnce = false, theme = 'customer', running = false;
+var assign = { coin: null, jump: null, hurt: null };
+function level() {
+  P = { x: 30, y: 120, vx: 0, vy: 0, w: 12, h: 16, on: false };
+  coins = theme === 'customer' ? [{ x: 170, y: 104, got: false }, { x: 262, y: 136, got: false }]
+                               : [{ x: 216, y: 94, got: false }, { x: 290, y: 136, got: false }];
+}
+var ground = [[0, 150, 118], [168, 150, 152]], ledge = [196, 116, 60];
+function onKey(e, down) {
+  if (['ArrowLeft', 'ArrowRight', 'ArrowUp', ' ', 'Spacebar'].indexOf(e.key) >= 0) { e.preventDefault(); keys[e.key] = down; }
+}
+cv.addEventListener('keydown', function (e) { onKey(e, true); });
+cv.addEventListener('keyup', function (e) { onKey(e, false); });
+cv.addEventListener('focus', function () { audio(); if (AC && AC.state === 'suspended') AC.resume(); $('hint').hidden = true; });
+cv.addEventListener('blur', function () { keys = {}; if (running) $('hint').hidden = false; });
+cv.addEventListener('pointerdown', function () { cv.focus(); });
+
+function fire(action) {
+  var s = assign[action] && SOUNDS[assign[action]], p = action === 'coin' ? pitch : 1;
+  if (s) { s.play(p); pop(s.pop + (p > 1.05 ? ' ↑' : p < 0.95 ? ' ↓' : '')); }
+  events(action, !!s);
+}
+function pop(text) {
+  var r = cv.getBoundingClientRect(), gb = $('gamebody').getBoundingClientRect();
+  var k = r.width / W, el = document.createElement('div'); el.className = 'pop'; el.textContent = text;
+  el.style.left = Math.min(r.right - gb.left - 44, r.left - gb.left + (P.x + 6) * k) + 'px'; el.style.top = (r.top - gb.top + (P.y - 10) * k) + 'px';
+  $('gamebody').appendChild(el); setTimeout(function () { el.remove(); }, 950);
+}
+function step() {
+  if (!running) return;
+  var sp = 1.6; P.vx = (keys.ArrowLeft ? -sp : 0) + (keys.ArrowRight ? sp : 0);
+  if ((keys[' '] || keys.Spacebar || keys.ArrowUp) && P.on) { P.vy = -4.6; P.on = false; jumpedOnce = true; fire('jump'); }
+  P.vy += 0.22; P.x = Math.max(0, Math.min(W - P.w, P.x + P.vx)); P.y += P.vy; P.on = false;
+  ground.concat([[ledge[0], ledge[1], ledge[2]]]).forEach(function (g) {
+    if (P.x + P.w > g[0] && P.x < g[0] + g[2] && P.y + P.h >= g[1] && P.y + P.h - P.vy <= g[1] + 1 && P.vy >= 0) { P.y = g[1] - P.h; P.vy = 0; P.on = true; }
+  });
+  if (P.y > H) { fire('hurt'); P.x = 30; P.y = 110; P.vy = 0; }
+  coins.forEach(function (c) {
+    if (!c.got && Math.abs(P.x + 6 - c.x) < 11 && Math.abs(P.y + 8 - c.y) < 13) { c.got = true; fire('coin'); }
+  });
+}
+function draw() {
+  var bw = $('gamebody').clientWidth, bh = $('gamebody').clientHeight;
+  if (cv.width !== bw || cv.height !== bh) { cv.width = bw; cv.height = bh; }
+  var k = Math.min(bw / W, bh / H), ox = (bw - W * k) / 2, oy = (bh - H * k) / 2;
+  ctx.setTransform(1, 0, 0, 1, 0, 0); ctx.fillStyle = '#111'; ctx.fillRect(0, 0, bw, bh);
+  ctx.setTransform(k, 0, 0, k, ox, oy);
+  var cust = theme === 'customer';
+  var sky = ctx.createLinearGradient(0, 0, 0, H);
+  sky.addColorStop(0, cust ? '#6fc3ff' : '#2a1f5c'); sky.addColorStop(1, cust ? '#c8ecff' : '#7a4fb8');
+  ctx.fillStyle = sky; ctx.fillRect(0, 0, W, H);
+  if (!cust) { ctx.fillStyle = '#ffe7a8'; ctx.beginPath(); ctx.arc(272, 34, 13, 0, 7); ctx.fill(); }
+  ctx.fillStyle = cust ? '#ff5a1f' : '#ff4d2e'; ctx.fillRect(118, 160, 50, 20);
+  ground.forEach(function (g) { ctx.fillStyle = cust ? '#5aa845' : '#39456a'; ctx.fillRect(g[0], g[1], g[2], 30);
+    ctx.fillStyle = cust ? '#7fd65f' : '#8fd0ff'; ctx.fillRect(g[0], g[1], g[2], 5); });
+  ctx.fillStyle = cust ? '#8a5a33' : '#8fd0ff'; ctx.fillRect(ledge[0], ledge[1], ledge[2], 8);
+  coins.forEach(function (c) { if (c.got) return; ctx.fillStyle = '#ffd23f'; ctx.strokeStyle = '#e8a300'; ctx.lineWidth = 2;
+    ctx.beginPath(); ctx.arc(c.x, c.y, 6, 0, 7); ctx.fill(); ctx.stroke(); });
+  if (cust) { ctx.fillStyle = '#3b6fe0'; ctx.fillRect(P.x, P.y, P.w, P.h); }
+  else { ctx.fillStyle = '#d9dde6'; ctx.fillRect(P.x, P.y + 2, P.w, P.h - 4); ctx.fillStyle = '#1d2230'; ctx.fillRect(P.x + 2, P.y + 5, 8, 4);
+         ctx.fillStyle = '#f5820a'; ctx.fillRect(P.x + 3, P.y + 6, 2, 2); ctx.fillRect(P.x + 7, P.y + 6, 2, 2); }
+}
+function loop() { step(); draw(); requestAnimationFrame(loop); }
+
+/* ---------- the shift: steps with gates that only open on evidence ---------- */
+var CHECKS = [['play', 'Play the game'], ['spot', 'Spot what’s wrong'], ['sounds', 'Give each action a sound'],
+              ['mix', 'Mix it so it can be heard'], ['code', 'Tweak it in the code'], ['yours', 'Put it in your game']];
+var done = {}, got = 0, i = 0, gateOpen = false, clicks = [], spamAt = null;
+
+function events(action, audible) {
+  var s = STEPS[i]; clicks = [];   // playing is not mindless clicking
+  if (action === 'coin') got = coins.filter(function (c) { return c.got; }).length;
+  if (s.onPlay) s.onPlay(action, audible);
+  if (s.onEvent) s.onEvent(action, audible);
+}
+function setChecks() {
+  var now = STEPS[i].check;
+  $('checks').innerHTML = CHECKS.map(function (c) {
+    var cls = done[c[0]] ? 'done' : (c[0] === now ? 'now' : '');
+    return '<li class="' + cls + '"><span class="box">' + (done[c[0]] ? '<svg class="i"><use href="#i-check"/></svg>' : '') + '</span>' + c[1] + '</li>';
+  }).join('');
+  var pips = $('pips').children; for (var k = 0; k < 4; k++) pips[k].classList.toggle('on', k < (done.yours ? 1 : 0));
+}
+function tree(of) {
+  var rows = of === 'yours' ? [['Level 1', 'the level', 1], ['Player', 'your robot'], ['Coin', 'the goal'], ['Lava', 'the danger']]
+                            : [['Coin Game', 'customer’s level', 1], ['Player', 'blue box'], ['Coin', 'the goal'], ['Lava', 'the danger']];
+  $('tree').innerHTML = rows.map(function (r) { return '<li class="' + (r[2] ? '' : 'child') + '"><button aria-pressed="false" tabindex="-1">' +
+    (r[2] ? '<svg class="i" style="width:14px;margin-right:-4px"><use href="#i-fold"/></svg>' : '') + '<svg class="i"><use href="#i-cube"/></svg>' + r[0] + '<small>' + r[1] + '</small></button></li>'; }).join('');
+}
+function say(lines) {
+  var log = $('log'); log.innerHTML = '';
+  lines.forEach(function (m) {
+    var d = document.createElement('div'); d.className = 'msg' + (m[0] === 'k' ? ' kid' : m[0] === 'm' ? ' guest' : '');
+    var f = document.createElement('span'); f.className = 'from';
+    f.textContent = m[0] === 'k' ? NAME : m[0] === 'm' ? 'Mentor' : m[0] === 'p' ? 'Programmer' : 'Sound designer'; d.appendChild(f);
+    var txt = m[1].replace(/@name/g, NAME);
+    if (m[2] === 'html') { var w = document.createElement('div'); w.innerHTML = txt; d.appendChild(w); } else d.appendChild(document.createTextNode(txt));
+    log.appendChild(d);
+  });
+}
+function options(list) {
+  var box = $('opts'); box.innerHTML = '';
+  list.forEach(function (o) {
+    var b = document.createElement('button'); b.className = 'opt'; b.textContent = o[0];
+    if (o[2]) { var sm = document.createElement('small'); sm.textContent = o[2]; b.appendChild(sm); }
+    b.addEventListener('click', function () { if (spamCheck()) return; o[1](); });
+    box.appendChild(b);
+  });
+}
+/* Three option clicks inside 1.8 s = clicking without reading. Stop and ask for a prediction. */
+function spamCheck() {
+  var t = Date.now(); clicks.push(t); clicks = clicks.filter(function (x) { return t - x < 1800; });
+  if (clicks.length < 3 || spamAt === i) return false;
+  spamAt = i; clicks = [];
+  say([['m', "Whoa, speedy! Quick guess before we go on: what happens to a game when grabbing a coin makes no sound at all?"]]);
+  options([["It feels dead, like nothing happened", function () { render(); }],
+           ["It gets faster", function () { say([['m', "Not quite. Nothing changes except the game stops answering you. That's what feels dead."]]); options([['Got it', render]]); }]]);
+  return true;
+}
+function inspector(title, html) {
+  var el = $('inspector');
+  if (!title) { el.classList.remove('open'); el.setAttribute('aria-hidden', 'true'); el.inert = true; $('dMentor').classList.remove('inspecting'); return; }
+  $('inspName').textContent = title; $('inspBody').innerHTML = html;
+  $('dMentor').classList.add('inspecting');
+  var last = $('log').lastElementChild, pin = $('opts').offsetHeight + document.querySelector('.say').offsetHeight;
+  el.style.top = (last ? last.offsetTop + last.offsetHeight + 10 : 34) + 'px'; el.style.setProperty('--pinned', pin + 'px');
+  el.classList.add('open'); el.setAttribute('aria-hidden', 'false'); el.inert = false;
+}
+var picked = null;
+function shelf(on) {
+  $('shelf').classList.toggle('locked', !on);
+  $('shelfBody').innerHTML = Object.keys(SOUNDS).map(function (id) {
+    var s = SOUNDS[id]; return '<button class="snd" data-id="' + id + '" aria-pressed="' + (picked === id) + '"><strong>' + s.label + '</strong><small>' + s.note + '</small></button>';
+  }).join('') + '<p class="shelf-note">' + (on ? 'Tap a sound to hear it and pick it up. Then tap a slot in the Inspector.' : 'Your sounds live here. They unlock when you need them.') + '</p>';
+  Array.prototype.forEach.call($('shelfBody').querySelectorAll('.snd'), function (b) {
+    b.addEventListener('click', function () { clicks = []; picked = b.dataset.id; SOUNDS[picked].play(); shelf(true); });
+  });
+}
+function slotsHtml() {
+  function row(k, label, why) {
+    var v = assign[k];
+    return '<div class="irow"><label>' + label + '<small>' + why + '</small></label><button class="slot' + (v ? ' filled' : '') + '" data-slot="' + k + '">' +
+      (v ? SOUNDS[v].label : 'Empty: tap to put a sound here') + '</button></div>';
+  }
+  return '<div class="comp"><svg class="i"><use href="#i-fold"/></svg><strong>Audio Source</strong></div>' +
+    row('coin', 'When you grab a coin', 'Unity: AudioSource.Play') + row('jump', 'When you jump', 'plays on jump') + row('hurt', 'When you fall in lava', 'plays on hurt');
+}
+function wireSlots() {
+  Array.prototype.forEach.call($('inspBody').querySelectorAll('.slot'), function (b) {
+    b.addEventListener('click', function () {
+      clicks = [];   // hands-on work, not mindless clicking
+      if (!picked) { $('statusMsg').textContent = 'Pick a sound from the Project shelf first'; return; }
+      assign[b.dataset.slot] = picked; SOUNDS[picked].play(); inspector('Coin Game', slotsHtml()); wireSlots(); STEPS[i].onEvent('assign');
+    });
+  });
+}
+function mixerHtml() {
+  return '<div class="comp"><svg class="i"><use href="#i-fold"/></svg><strong>Audio Mixer</strong></div>' +
+    '<div class="irow"><label for="mMusic">Music<small>Unity: Music group</small></label><div><input id="mMusic" type="range" min="0" max="100" value="' + Math.round(mix.music * 100) + '"><div class="meter music"><i id="lvMusic"></i></div></div></div>' +
+    '<div class="irow"><label for="mSfx">Sound effects<small>Unity: SFX group</small></label><div><input id="mSfx" type="range" min="0" max="100" value="' + Math.round(mix.sfx * 100) + '"><div class="meter"><i id="lvSfx"></i></div></div></div>';
+}
+function wireMixer() {
+  function upd() { $('lvMusic').style.width = (mix.music * 100) + '%'; $('lvSfx').style.width = (mix.sfx * 100) + '%'; applyMix(); STEPS[i].onEvent('mix'); }
+  $('mMusic').addEventListener('input', function () { mix.music = this.value / 100; upd(); });
+  $('mSfx').addEventListener('input', function () { mix.sfx = this.value / 100; upd(); });
+  upd();
+}
+/* ---------- C# peek + tweak ----------
+   The kid reads real Unity C# and edits one value in it. Nothing is compiled: the app reads the
+   value back out of the line and applies it to the game underneath (docs/rework/00-direction.md,
+   "C#, peek and tweak"). A value it can't use is rejected with a Console message, never repaired. */
+var pitch = 1, pitchSaved = '1.0', hlLine = 0;
+function codeHtml() {
+  var snd = assign.coin ? SOUNDS[assign.coin].label : 'none yet';
+  var L = [
+    '<span class="kw">using</span> UnityEngine;', '',
+    '<span class="kw">public class</span> Coin : MonoBehaviour', '{',
+    '  <span class="kw">public</span> AudioSource source;',
+    '  <span class="cm">// your Inspector slot: ' + snd + '</span>',
+    '  <span class="kw">public</span> AudioClip coinSound;',
+    '  <span class="kw">public float</span> pitch = <input class="tw" id="tw" value="' + pitchSaved + '" aria-label="pitch value" spellcheck="false" autocomplete="off">f;', '',
+    '  <span class="kw">void</span> OnTriggerEnter2D(Collider2D other)', '  {',
+    '    source.pitch = pitch;', '    source.PlayOneShot(coinSound);', '  }', '}'];
+  return L.map(function (t, k) { return '<span class="ln' + (k + 1 === hlLine ? ' hl' : '') + '"><span class="n">' + (k + 1) + '</span>' + t + '</span>'; }).join('');
+}
+function code(on) {
+  $('code').classList.toggle('open', !!on); $('gamebody').classList.toggle('split', !!on);
+  if (!on) return;
+  $('codeBody').innerHTML = codeHtml(); $('codeName').classList.remove('unsaved');
+  $('tw').addEventListener('input', function () { clicks = []; $('codeName').classList.add('unsaved'); });
+  $('tw').addEventListener('keydown', function (e) { if (e.key === 'Enter') saveCode(); });
+}
+function saveCode() {
+  var raw = $('tw').value.trim().replace(/f$/i, ''), c = $('console');
+  c.classList.remove('err');
+  if (!/^\d+(\.\d+)?$/.test(raw)) { c.classList.add('err'); c.innerHTML = '<b>Coin.cs line 8:</b> “' + $('tw').value.replace(/[<>&"]/g, '') + '” isn’t a number. <b>pitch</b> needs one, like 1.5'; return; }
+  var v = parseFloat(raw);
+  if (v < 0.5 || v > 2) { c.classList.add('err'); c.innerHTML = '<b>Coin.cs line 8:</b> ' + raw + ' is too far for this sound. Try between 0.5 and 2'; return; }
+  pitch = v; pitchSaved = raw.indexOf('.') < 0 ? raw + '.0' : raw; $('tw').value = pitchSaved; $('codeName').classList.remove('unsaved');
+  c.innerHTML = 'Saved. Unity rebuilt the game: <b>pitch = ' + pitchSaved + 'f</b>'; $('statusMsg').textContent = 'Compiled Coin.cs';
+  if (STEPS[i].onEvent) STEPS[i].onEvent('save');
+}
+$('save').addEventListener('click', function () { clicks = []; saveCode(); });
+function who(kind) {
+  var p = kind === 'p';
+  $('whoTab').textContent = p ? 'Programmer' : 'Sound designer';
+  $('whoName').innerHTML = (p ? 'Programmer' : 'Sound designer') + ' <span style="font-weight:500;color:var(--ink-3)">(name TBD)</span>';
+  $('whoRole').textContent = p ? 'Engineering department, dropping by' : 'Audio department';
+}
+function audibleCoin() { return mix.sfx >= mix.music + 0.15; }
+function setGame(which) {
+  theme = which; level(); running = true; tree(which);
+  $('gameOf').textContent = which === 'yours' ? NAME + "'s game" : "customer's game";
+  $('hierOf').textContent = which === 'yours' ? 'your parts' : "customer's game";
+  $('hint').hidden = document.activeElement === cv;
+}
+function advance() { go(i + 1); }
+
+var STEPS = [
+  { beat: 'The ticket', check: 'play',
+    enter: function () { setGame('customer'); running = false; $('hint').hidden = true; shelf(false);
+      say([['s', "Hey @name! A customer says their coin game feels dead. Can you play it and tell me what's wrong?"]]);
+      options([["Let's play it", advance]]); },
+    what: 'The sound designer brings a real problem from a customer.',
+    gate: 'Nothing to gate yet: this is the hook.' },
+  { beat: 'Play it', check: 'play',
+    enter: function () { running = true; level(); got = 0; $('hint').hidden = false; $('statusMsg').textContent = 'Play mode';
+      $('editor').classList.add('playmode'); $('bPlayIcon').setAttribute('href', '#i-stop'); $('bPlay').querySelector('span').textContent = 'Stop';
+      say([['s', 'Click the game, then use the arrow keys and Space. Grab both coins.']]); options([]); },
+    onEvent: function (a) { if (a === 'coin' && got >= 2) { done.play = true; setChecks(); setTimeout(advance, 500); } },
+    what: 'The kid plays the customer’s game with the keyboard. Grabbing a coin makes no sound and nothing happens.',
+    gate: 'There is no button. The only way on is to actually grab both coins in the game.' },
+  { beat: 'Spot what’s wrong', check: 'spot',
+    enter: function () { $('editor').classList.remove('playmode'); $('bPlayIcon').setAttribute('href', '#i-play'); $('bPlay').querySelector('span').textContent = 'Play';
+      say([['s', 'So, what felt off?']]);
+      options([['Nothing happened when I grabbed a coin', function () { done.spot = true; setChecks();
+                  say([['s', "Exactly! You did something and the game didn't answer. Let's fix that."]]); options([['How?', advance]]); }],
+               ['The player is too slow', wrongSpot], ['The colours are boring', wrongSpot]]); },
+    what: 'The kid names the problem, in their own terms, before anyone names the concept.',
+    gate: 'A wrong answer doesn’t move on. It sends the kid back to play once more and watch closely.' },
+  { beat: 'Give each action a sound', check: 'sounds',
+    enter: function () { running = true; level(); shelf(true); this.okBad = false; this.tried = null;
+      say([['s', 'Every action should answer the player. Pick a sound from the shelf below, then drop it into a slot.']]);
+      options([]); inspector('Coin Game', slotsHtml()); wireSlots(); },
+    onEvent: function (a) {
+      if (a !== 'assign' || !(assign.coin && assign.jump && assign.hurt)) return;
+      /* Every good or neutral action is challenged if it sounds like failure, not only the coin:
+         a blind reviewer put the buzz on the jump and nothing said a word, while the later return
+         question marks that exact choice wrong. The lava slot is allowed to sound bad. */
+      var off = SOUNDS[assign.coin].mood === 'bad' ? 'coin' : SOUNDS[assign.jump].mood === 'bad' ? 'jump' : null;
+      if (off && !this.okBad) {
+        say([['s', off === 'coin' ? 'Hmm. Grabbing a coin now sounds like getting hurt. Is that what you want players to feel?'
+                                  : 'Hmm. Jumping now sounds like something went wrong. Is that what you want players to feel?']]);
+        var self = this;
+        options([['Oops, let me change it', function () { say([['s', off === 'coin' ? 'Pick a happier sound for the coin.' : 'Pick a sound that fits jumping up.']]); options([]); inspector('Coin Game', slotsHtml()); wireSlots(); }],
+                 ["Yes, it's a spooky game", function () { self.okBad = true; STEPS[i].onEvent('assign'); }]]);
+        inspector(null); return;
+      }
+      done.sounds = true; setChecks(); inspector(null); level();
+      say([['s', 'Now play it. Grab a coin and jump, and listen.']]); options([]); this.tried = { coin: false, jump: false };
+    },
+    onPlay: function (a, aud) { if (!done.sounds || !this.tried) return; if (aud && (a === 'coin' || a === 'jump')) this.tried[a] = true;
+      if (this.tried.coin && this.tried.jump) { this.tried = null; setTimeout(advance, 500); } },
+    what: 'The kid picks sounds from the Project window and places them in the Inspector, the same way Unity works.',
+    gate: 'The kid has to fill all three slots. A "hurt" sound on the coin gets challenged: it has a real consequence, and the kid decides.' },
+  { beat: 'Mix it so it can be heard', check: 'mix',
+    enter: function () { startMusic(); coins.forEach(function (c) { c.got = false; }); running = true; shelf(false);
+      say([['s', 'Players have music on. Grab a coin and listen: can you still hear it?'],
+           ['s', 'If the music is drowning it out, turn the music down or the sound effects up.']]);
+      options([]); inspector('Audio Mixer', mixerHtml()); wireMixer(); this.heard = false; },
+    onEvent: function (a, aud) {
+      if (a === 'mix') { $('statusMsg').textContent = audibleCoin() ? 'Sound effects are louder than the music' : 'The music is drowning out the sound effects'; }
+      if (a === 'coin' && !done.mix) {   // once: a second coin inside the 400 ms would advance twice
+        if (!audibleCoin()) { say([['s', "Did you hear it? Neither did the players. The music's burying it."]]); options([]); coins.forEach(function (c) { c.got = false; }); return; }
+        done.mix = true; setChecks(); inspector(null); stopMusic(); setTimeout(advance, 400);
+      }
+    },
+    what: 'Music plays over the game. The kid tunes a real mixer until the coin cuts through, then proves it by grabbing a coin.',
+    gate: 'A slider target: grabbing a coin while the music is louder doesn’t count. The kid has to mix, then play.' },
+  { beat: 'Peek and tweak the code', check: 'code',
+    enter: function () { who('p'); running = true; coins.forEach(function (c) { c.got = false; }); hlLine = 0; code(true);
+      $('console').textContent = 'Console: no errors'; this.found = false; this.heard = null;
+      say([['p', "Hi @name, I'm a programmer. This is your coin fix the way I see it: real C#, the language Unity uses."],
+           ['p', 'Which line plays the coin sound?']]);
+      var self = this;
+      options([['source.PlayOneShot(coinSound);', function () { self.find(true); }],
+               ['public float pitch = 1.0f;', function () { self.find(false, 'That line only holds a number. It doesn’t play anything. Look for the word “Play”.'); }],
+               ['public class Coin : MonoBehaviour', function () { self.find(false, 'That’s the name of the whole script. Look inside it for the word “Play”.'); }]]); },
+    find: function (ok, why) {
+      if (!ok) { say([['p', why], ['p', 'Which line plays the coin sound?']]); return; }
+      this.found = true; hlLine = 13; code(true); $('console').textContent = 'Console: no errors';
+      say([['p', 'Yes! PlayOneShot plays it once. coinSound is the ' + (assign.coin ? SOUNDS[assign.coin].label : 'sound') + ' you put in the Inspector slot: same thing, two views.'],
+           ['p', 'Now change pitch on line 8 to make the coin sound higher. Save, then grab a coin.']]);
+      options([]);
+    },
+    onEvent: function (a) {
+      if (a === 'save' && !this.found) { say([['p', 'Nice edit! First, find the line that plays the sound.']]); return; }
+      if (a !== 'coin' || !this.found) return;
+      if (pitch === 1) { say([['p', 'Sounds the same, right? pitch is still 1.0. Change the number, then press Save.']]); coins.forEach(function (c) { c.got = false; }); return; }
+      if (pitch < 1) { say([['p', 'Did that sound lower? Numbers under 1 go lower. Try one bigger than 1.']]); coins.forEach(function (c) { c.got = false; }); return; }
+      done.code = true; setChecks(); running = false;
+      say([['p', 'Higher! You just changed a game by editing real C#. That’s my whole job.']]);
+      options([['Back to the sound designer', advance]]);
+    },
+    what: 'A programmer drops by (meet the roles) and shows the real Unity C# behind the fix. The kid finds the line that plays the sound, then edits one value, saves, and hears the change in the game. In the course this starts mid-course in Engineering shifts (see curriculum-map.md); it is shown in this early shift so it can be judged.',
+    gate: 'The kid must pick the right line (wrong picks explain and ask again), then save a pitch above 1 and grab a coin. Not a number, or out of range, gets a Console error and changes nothing. A lower pitch is heard and explained, and doesn’t count.' },
+  { beat: 'Name it', check: 'yours',
+    enter: function () { running = false;
+      say([['s', 'That’s it! Game makers call this feedback.'],
+           ['s', '<div class="card"><b>Feedback</b><p>When you do something, the game answers you.</p><dl><dt>Unity</dt><dd>Audio Source, Audio Mixer</dd><dt>Godot</dt><dd>AudioStreamPlayer, Audio Buses</dd><dt>Unreal</dt><dd>Sound Cue, Submix</dd><dt>C#</dt><dd><code>source.PlayOneShot(coinSound);</code></dd></dl></div>', 'html'],
+           ['s', 'And here’s a surprise: I’m giving you my Sound Mixer tool to keep.']]);
+      options([['Put it in my game', advance]]); },
+    what: 'The concept is named only after the kid has felt it and fixed it. The card carries the real names from all three engines.',
+    gate: 'The card only exists because the kid earned it. The prize is a surprise, not a price.' },
+  { beat: 'Put it in your game', check: 'yours',
+    enter: function () { setGame('yours'); coins.forEach(function (c) { c.got = false; });
+      say([['m', 'Your turn, @name. Your game gets the same sounds. Grab a coin in YOUR game.']]); options([]); },
+    onEvent: function (a, aud) { if (a === 'coin' && aud) { done.yours = true; setChecks(); running = false;
+      say([['m', 'Hear that? Your game answers you now. Alpha: 1 of 4 departments done!']]); options([['Done for today', advance]]); } },
+    what: 'The fix lands in the kid’s own game, and they prove it by playing.',
+    gate: 'Only grabbing a coin in their own game, and hearing it, finishes the shift.' },
+  { beat: 'Later: it comes back', check: null,
+    enter: function () { running = false; inspector(null); shelf(false);
+      say([['s', 'Three shifts later…'],
+           ['s', 'QA found a bug in your game: jumping makes no sound. Which sound fits a jump?']]);
+      options([['Springy boing', function () { say([['s', "Yes! A jump goes up, so the sound goes up too. Feedback that matches the action."]]); options([]); }, 'bouncy, up'],
+               ['Angry buzz', function () { say([['s', "Hmm, a buzz says \"wrong!\" Your player didn't do anything wrong by jumping. Try another."]]); }, 'harsh, wrong'],
+               ['No sound is fine', function () { say([['s', "Remember the customer's game? No answer feels dead. Pick one that fits a jump."]]); }]]); },
+    what: 'The idea returns weeks later as a decision in a new situation. Code scores the choice, and the director uses it to decide whether to re-teach.',
+    gate: 'Wrong answers get explained and asked again. The result updates the skill tracker; it never moves the kid forward by itself.' }
+];
+function wrongSpot() {
+  say([['s', "Maybe! But play once more, grab a coin, and pay attention to what happens right when you get it."]]);
+  options([["OK, I'll play again", function () { go(1); }]]);
+}
+
+function render() {
+  var s = STEPS[i]; inspector(null); code(false); who('s'); s.enter.call(s); setChecks();
+  if (!running) $('hint').hidden = true;
+  $('nBeat').textContent = 'Step ' + (i + 1) + ' · ' + s.beat; $('nWhat').textContent = s.what; $('nGate').textContent = s.gate;
+  $('back').disabled = i === 0; $('next').disabled = i === STEPS.length - 1;
+  Array.prototype.forEach.call($('dots').children, function (b, k) { if (k === i) b.setAttribute('aria-current', 'step'); else b.removeAttribute('aria-current'); });
+}
+function go(n) { stopMusic(); i = Math.max(0, Math.min(STEPS.length - 1, n)); render(); }
+
+STEPS.forEach(function (s, k) {
+  var b = document.createElement('button'); b.textContent = String(k + 1); b.setAttribute('aria-label', 'Step ' + (k + 1) + ': ' + s.beat);
+  b.addEventListener('click', function () { go(k); }); $('dots').appendChild(b);
+});
+$('back').addEventListener('click', function () { go(i - 1); });
+$('next').addEventListener('click', function () {
+  var finishes = [null, 'play', 'spot', 'sounds', 'mix', 'code', null, 'yours', null];
+  finishes.slice(0, i + 1).forEach(function (c) { if (c) done[c] = true; });
+  if (i >= 5 && pitch === 1) { pitch = 1.5; pitchSaved = '1.5'; }
+  if (!assign.coin) { assign = { coin: 'ding', jump: 'boing', hurt: 'thud' }; } if (i >= 3) mix = { music: 0.4, sfx: 0.8 };
+  go(i + 1);
+});
+$('say').addEventListener('keydown', function (e) { if (e.key === 'Enter') { this.value = ''; } });
+
+(function () {
+  var s = $('scaler');
+  function fit() { var k = Math.min(1, (s.parentElement.clientWidth - 32) / 1366);
+    s.style.transform = 'scale(' + k + ')'; s.style.height = (650 * k) + 'px'; s.style.width = (1366 * k) + 'px'; }
+  window.addEventListener('resize', fit); fit();
+})();
+level(); render(); loop();
+</script>
+</body>
+</html>
