@@ -66,6 +66,14 @@ The first test with live students. It is the first evidence from real users this
   every kid reaches the core concepts. Replies are **3–4 dialogue options plus "say something
   else"** (typing).
 
+## Revision — the AI is the course (Jay, 2026-09-25)
+
+- **The AI / tutor itself is essentially the course.** It has a general idea of where the course is
+  going and is **always steps ahead of the student**.
+- **An array of agents and subjects forms an interconnected web that powers the whole course.**
+- **Students accidentally learn core concepts of game design that are hard to forget.**
+- **They win and collect prizes they can use for different things.**
+
 ## What happens to the app
 
 - **Strip it down to its core,** then build back, with Impeccable, only the features we decide are
