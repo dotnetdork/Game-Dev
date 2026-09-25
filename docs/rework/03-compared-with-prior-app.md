@@ -48,7 +48,7 @@ is `PRODUCT.md`, `course-engine.md`, `briefs/` and `wireframes/02-first-run-engi
 
 ## Also found along the way (prior app, still true today)
 
-- Every typed message is logged with who sent it (`app/routes/ai.js:91-99`) — worth reviewing
-  against the privacy brief regardless of the rework.
+- Typed messages are logged with who sent them (`app/routes/ai.js:91-99`). Jay (2026-09-25): this logging was temporary and intentional, for a testing session.
+  Worth making an explicit on/off switch so it can't outlive a test.
 - Cost waste: an 8,000-token output cap for every agent, the whole game sent on every request, and
   cost tracking that mis-prices cached tokens (`research/08-ai-cost-and-originality.md`).

@@ -280,10 +280,11 @@ probabilities with forgetting. A decision for the build: start with Leitner boxe
   **concern detector** (self-harm, abuse, bullying) that answers with a kind scripted "talk to a
   grown-up you trust" line and logs a category, never text. **[ask]** The follow-up is League
   safeguarding policy.
-- **✔ A finding about the current app:** `routes/ai.js:91-99` records the kid's typed message
-  (`q`) together with who sent it, and `telemetry.js` writes it with `console.log` to the host's
-  logs. The rework's studio routes should log option ids and free-text length/category only; the
-  existing path should be reviewed against the privacy brief's retention policy. **[ask]**
+- **✔ The current app's test telemetry:** `routes/ai.js:91-99` records the kid's typed message
+  (`q`) together with who sent it, and `telemetry.js` writes it to the host's logs. **Jay
+  (2026-09-25): this was temporary and intentional, for a testing session** — not an oversight. For
+  the rework's normal running, the studio routes log option ids and free-text length/category only;
+  any future test session that needs typed text should be an explicit, time-boxed switch.
 - Prefer zero-retention provider settings **[uncertain per provider]**. Consent for an adaptive card
   **[ask counsel]** — keep it minimal (closed tags, no inferred traits beyond comfort and pace) and
   resettable.
@@ -323,7 +324,7 @@ Pilot between P2 and P3 to measure latency and cost per kid-hour.
 3. **Cost dominated by the builder.** Mixed models, trimmed files, a class spend ceiling.
 4. **Authoring load** — scripted spines for ~30 quests is real work (and the safety net).
 5. **Card sync** last-write-wins — needs a merge rule.
-6. **Privacy/legal** — the card is a profile of a minor; telemetry logs typed text today;
+6. **Privacy/legal** — the card is a profile of a minor; test-session telemetry must stay switched off in normal running;
    safeguarding flow needs a policy. **[ask]**
 7. **New client scripts** change the script order — ask-first per `CLAUDE.md`.
 8. **Evaluating understanding without code** — rules prove the game changed, not that the kid

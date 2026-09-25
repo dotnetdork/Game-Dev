@@ -57,8 +57,8 @@ code* were checked by hand (✔ below).
 - **Old concepts are smuggled back as game decisions** ("which moment happens most in your game?
   That one needs a sound"), scored by code. **Powers are builder skills:** buying the particle maker
   teaches the AI a new trick.
-- ✔ **A privacy finding in today's app:** every typed message is logged with who sent it
-  (`app/routes/ai.js:91-99`, `app/telemetry.js`). The rework logs option ids only.
+- ✔ **Today's app logs typed messages with who sent them** (`app/routes/ai.js:91-99`,
+  `app/telemetry.js`). Jay (2026-09-25): this logging was temporary and intentional, for a testing session. The rework logs option ids only in normal running.
 
 ## What it costs (08)
 
