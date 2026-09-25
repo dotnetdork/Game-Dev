@@ -31,6 +31,9 @@ npm-debug.log*
 # from the repo root so a second app/.impeccable/ does not grow back.
 **/.impeccable/*
 !**/.impeccable/config.json
+# Surface briefs hold each screen's direction contract, which later sessions reload before editing
+# that screen, so they are project decisions like config.json, not scratch.
+!**/.impeccable/surfaces/
 
 # per-student saves, when the file backend is in use (`npm start` on a laptop). Hosted, these live
 # in a KV store instead — see app/store.js. This is somebody's actual work, not build output, so it

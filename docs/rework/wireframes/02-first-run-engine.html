@@ -1,0 +1,534 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>First Run, Engine Style</title>
+<style>
+  /* ---------- tokens ---------- */
+  :root {
+    --ground: #1e1e1e;      /* editor ground, behind docks */
+    --panel: #2b2b2b;       /* dock body */
+    --panel-2: #323232;     /* raised rows, inputs */
+    --tabbar: #232323;      /* dock tab strip */
+    --tab: #3a3a3a;         /* active tab */
+    --line: #121212;        /* hairline between docks */
+    --line-soft: #444;
+    --ink: #e8e8e8;
+    --ink-2: #b4b4b4;
+    --ink-3: #a8a8a8;
+    --accent: #f5820a;      /* League orange: Unity's selection blue, repurposed */
+    --accent-ink: #1a1206;
+    --accent-soft: rgba(245, 130, 10, .16);
+    --focus: #ffffff;
+    --page: #161616;
+    --doc-ink: #e8e8e8;
+    --doc-muted: #a9a9a9;
+    --radius: 5px;
+  }
+  /* The editor is dark in every theme, as Unity's is; only the page around it follows the reader. */
+  @media (prefers-color-scheme: light) {
+    :root:not([data-theme="dark"]) { --page: #ecebe8; --doc-ink: #1d1d1b; --doc-muted: #55554f; }
+  }
+  :root[data-theme="light"] { --page: #ecebe8; --doc-ink: #1d1d1b; --doc-muted: #55554f; }
+
+  * { box-sizing: border-box; }
+  html, body { margin: 0; background: var(--page); color: var(--doc-ink);
+    font: 15px/1.45 system-ui, -apple-system, "Segoe UI", Roboto, sans-serif; }
+  ::selection { background: var(--accent); color: var(--accent-ink); }
+  button { font: inherit; color: inherit; }
+  :focus-visible { outline: 2px solid var(--focus); outline-offset: 2px; }
+  svg.i { width: 18px; height: 18px; fill: none; stroke: currentColor; stroke-width: 1.75;
+          stroke-linecap: round; stroke-linejoin: round; flex: none; }
+
+  header.doc { max-width: 1366px; margin: 0 auto; padding: 18px 16px 12px; }
+  header.doc h1 { margin: 0 0 4px; font-size: 21px; letter-spacing: -.01em; }
+  header.doc p { margin: 0; color: var(--doc-muted); max-width: 72ch; }
+
+  /* ---------- the 1366×768 frame, scaled to fit ---------- */
+  .stagehold { padding: 0 16px; overflow: hidden; }
+  .scaler { transform-origin: top left; }
+  .editor {
+    width: 1366px; height: 768px; background: var(--ground); color: var(--ink);
+    display: grid; grid-template-rows: 46px 1fr 30px 26px;
+    grid-template-columns: 264px 1fr 388px;
+    grid-template-areas: "tool tool tool" "left game right" "proj proj right" "status status status";
+    gap: 1px; border-radius: 8px; overflow: hidden; box-shadow: 0 18px 50px rgba(0,0,0,.35);
+    font-size: 15px; position: relative;
+  }
+
+  /* toolbar */
+  .toolbar { grid-area: tool; background: var(--tabbar); display: grid; grid-template-columns: 1fr auto 1fr;
+             align-items: center; padding: 0 12px; border-bottom: 1px solid var(--line); }
+  .brand { display: flex; align-items: center; gap: 10px; min-width: 0; }
+  .wordmark { font-weight: 800; letter-spacing: -.02em; color: var(--accent); font-size: 16px; }
+  .wordmark small { display: block; font-size: 8.5px; letter-spacing: .02em; font-weight: 600; color: var(--ink-3); margin-top: -2px; }
+  .project { color: var(--ink-2); font-size: 14px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+  .project b { color: var(--ink); font-weight: 600; }
+  .transport { display: flex; gap: 2px; background: var(--ground); padding: 3px; border-radius: 7px; }
+  .tbtn { display: inline-flex; align-items: center; gap: 6px; height: 34px; padding: 0 14px; border: 0;
+          background: var(--panel-2); border-radius: 5px; color: var(--ink-2); cursor: default; }
+  .tbtn span { font-size: 14px; font-weight: 600; }
+  .tbtn.on { background: var(--accent); color: var(--accent-ink); }
+  .transport.ghosted { opacity: 0; transform: translateY(-6px); }
+  .tool-right { justify-self: end; color: var(--ink-3); font-size: 13px; }
+
+  /* docks */
+  .dock { background: var(--panel); display: flex; flex-direction: column; min-height: 0;
+          transition: opacity .45s cubic-bezier(.16,1,.3,1), transform .45s cubic-bezier(.16,1,.3,1); }
+  .dock.closed { opacity: 0; transform: translateY(10px); pointer-events: none; }
+  .tabs { background: var(--tabbar); display: flex; align-items: flex-end; height: 34px; padding: 0 6px; flex: none; }
+  .tab { display: inline-flex; align-items: center; gap: 7px; height: 30px; padding: 0 12px; background: var(--tab);
+         border-radius: 6px 6px 0 0; font-size: 14px; font-weight: 600; color: var(--ink); }
+  .tab small { font-weight: 500; color: var(--ink-3); font-size: 12.5px; }
+  .dock-body { padding: 10px 12px; min-height: 0; overflow: auto; }
+
+  .left { grid-area: left; display: grid; grid-template-rows: auto 1fr; gap: 0; background: var(--ground); }
+  .left .dock + .dock { border-top: 1px solid var(--line); }
+  .left .dock { min-height: 0; }
+
+  /* Quest panel (added) */
+  .quest-dept { display: flex; align-items: center; gap: 8px; font-weight: 700; }
+  .dot { width: 9px; height: 9px; border-radius: 50%; background: var(--accent); flex: none; }
+  .quest-now { margin-top: 8px; padding: 9px 10px; background: var(--panel-2); border-radius: var(--radius); font-size: 14px; }
+  .quest-now small { display: block; color: var(--ink-3); font-size: 12px; }
+  .quest-next { margin-top: 6px; color: var(--ink-3); font-size: 13px; padding: 0 2px; }
+
+  /* Hierarchy */
+  .tree { list-style: none; margin: 0; padding: 0; }
+  .tree li button { width: 100%; display: flex; align-items: center; gap: 8px; min-height: 36px; padding: 0 8px;
+                    border: 0; background: transparent; border-radius: 4px; text-align: left; color: var(--ink); cursor: pointer; }
+  .tree li button:hover { background: var(--panel-2); }
+  .tree li.child button { padding-left: 28px; }
+  .tree li button[aria-pressed="true"] { background: var(--accent); color: var(--accent-ink); }
+  .tree li button small { margin-left: auto; color: var(--ink-3); font-size: 12px; }
+  .tree li button[aria-pressed="true"] small { color: var(--accent-ink); }
+  .tree li.snap button { animation: snap .6s cubic-bezier(.16,1,.3,1) both; }
+  @keyframes snap { from { transform: translateX(-14px); opacity: 0; background: var(--accent-soft); }
+                    60% { background: var(--accent-soft); } to { transform: none; opacity: 1; } }
+  .empty-note { color: var(--ink-3); font-size: 13px; padding: 4px 2px; }
+
+  /* Game view */
+  .game { grid-area: game; }
+  .gamebody { flex: 1; display: grid; place-items: center; background: #111; padding: 14px; position: relative; min-height: 0; }
+  .screen { width: 100%; max-width: 660px; aspect-ratio: 16 / 9; position: relative; border-radius: 3px; overflow: hidden;
+            box-shadow: 0 0 0 1px #000; transition: box-shadow .3s ease-out; }
+  .screen.playing { box-shadow: 0 0 0 3px var(--accent); }
+  .screen svg { display: block; width: 100%; height: 100%; }
+  .pointer { position: absolute; left: 50%; bottom: 16px; transform: translateX(-50%); max-width: 78%;
+             background: #fbf6ea; color: #1d1a12; border-radius: 10px; padding: 8px 12px; font-size: 14px;
+             box-shadow: 0 6px 18px rgba(0,0,0,.35); display: flex; gap: 8px; align-items: center; }
+  .pointer b { color: #9a4c00; font-size: 12px; text-transform: uppercase; letter-spacing: .04em; flex: none; }
+  .pointer[hidden] { display: none; }
+  .game-empty { color: var(--ink-3); font-size: 14px; text-align: center; }
+  .fps { position: absolute; top: 8px; right: 10px; font: 600 12px/1 ui-monospace, "SFMono-Regular", Menlo, monospace;
+         color: #fff; background: rgba(0,0,0,.45); padding: 4px 6px; border-radius: 4px; }
+  .fps[hidden] { display: none; }
+
+  /* Mentor dock (Unity's Inspector slot) */
+  .right { grid-area: right; position: relative; overflow: hidden; }
+  .who { display: flex; gap: 10px; align-items: center; padding: 12px 12px 8px; }
+  .who strong { display: block; font-size: 15px; }
+  .who span { font-size: 12.5px; color: var(--ink-3); }
+  .face { width: 46px; height: 46px; flex: none; }
+  .log { flex: 1; overflow: auto; padding: 4px 12px 8px; display: flex; flex-direction: column; gap: 8px; min-height: 0; }
+  .msg { max-width: 94%; padding: 9px 12px; border-radius: 12px; background: var(--panel-2); font-size: 15px; line-height: 1.4; }
+  .msg .from { display: block; font-size: 12px; font-weight: 700; color: var(--ink-3); margin-bottom: 2px; }
+  .msg.kid { align-self: flex-end; background: #3d3226; }
+  .msg.guest { background: #273241; }
+  .opts { display: grid; gap: 6px; padding: 8px 12px 6px; }
+  .opt { display: flex; align-items: center; justify-content: space-between; gap: 10px; min-height: 44px; padding: 8px 12px;
+         background: transparent; border: 1.5px solid var(--accent); border-radius: 8px; text-align: left; cursor: pointer; color: var(--ink); font-weight: 600; }
+  .opt:hover { background: var(--accent-soft); }
+  .opt small { font-weight: 500; color: var(--ink-3); font-size: 12.5px; }
+  .say { display: flex; gap: 6px; padding: 4px 12px 12px; }
+  .say input { flex: 1; min-height: 40px; border-radius: 8px; border: 1px solid var(--line-soft); background: var(--ground);
+               color: var(--ink); padding: 0 12px; font: inherit; font-size: 14px; }
+  .say input::placeholder { color: var(--ink-3); }
+
+  /* Inspector: slides over the mentor's lower half when a part is selected */
+  .inspector { position: absolute; left: 0; right: 0; bottom: 0; height: 52%; background: var(--panel);
+               border-top: 1px solid var(--line); box-shadow: 0 -10px 24px rgba(0,0,0,.35);
+               transform: translateY(102%); transition: transform .4s cubic-bezier(.16,1,.3,1); display: flex; flex-direction: column; }
+  .inspector.open { transform: none; }
+  .inspector .tabs { justify-content: space-between; align-items: center; }
+  .x { border: 0; background: transparent; color: var(--ink-2); min-height: 32px; min-width: 32px; border-radius: 4px; cursor: pointer; }
+  .x:hover { background: var(--panel-2); }
+  .irow { display: grid; grid-template-columns: 1fr 1.3fr; align-items: center; gap: 10px; min-height: 40px; font-size: 14px; }
+  .irow label { color: var(--ink-2); }
+  .irow label small { display: block; color: var(--ink-3); font-size: 11.5px; }
+  .irow input[type=range] { width: 100%; accent-color: var(--accent); }
+  .inote { color: var(--ink-3); font-size: 12.5px; margin: 6px 0 0; }
+
+  /* Project drawer (repurposed: your cards) + status bar */
+  .proj { grid-area: proj; background: var(--tabbar); display: flex; align-items: center; gap: 10px; padding: 0 10px; font-size: 13.5px; color: var(--ink-2); }
+  .proj b { color: var(--ink); }
+  .chip { background: var(--panel-2); border-radius: 4px; padding: 2px 8px; color: var(--ink-2); font-size: 12.5px; }
+  .status { grid-area: status; background: var(--tabbar); display: flex; align-items: center; justify-content: space-between;
+            padding: 0 12px; font-size: 12.5px; color: var(--ink-3); border-top: 1px solid var(--line); }
+  .stars { display: inline-flex; align-items: center; gap: 6px; }
+  .stars svg { width: 14px; height: 14px; stroke: var(--accent); }
+  .reveal { transition: opacity .45s cubic-bezier(.16,1,.3,1); }
+  .reveal.closed { opacity: 0; }
+
+  @media (prefers-reduced-motion: reduce) { *, *::before, *::after { transition: none !important; animation: none !important; } }
+
+  /* ---------- beat controls + notes (outside the product) ---------- */
+  .nav { max-width: 1366px; margin: 12px auto 0; padding: 0 16px; display: flex; gap: 8px; flex-wrap: wrap; align-items: center; }
+  .nav button { min-height: 40px; min-width: 40px; padding: 0 12px; border-radius: 6px; border: 1px solid #555;
+                background: transparent; color: var(--doc-ink); cursor: pointer; }
+  .nav button:disabled { opacity: .4; cursor: default; }
+  .nav button[aria-current="step"] { border-color: var(--accent); color: var(--accent); font-weight: 700; }
+  .notes { max-width: 1366px; margin: 0 auto; padding: 14px 16px 36px; display: grid; gap: 18px;
+           grid-template-columns: repeat(auto-fit, minmax(280px, 1fr)); }
+  .notes h2 { margin: 0 0 4px; font-size: 15px; }
+  .notes p { margin: 0; color: var(--doc-muted); max-width: 64ch; }
+</style>
+</head>
+<body>
+<header class="doc">
+  <h1>Your first day at the studio, engine style</h1>
+  <p>The first run in the chosen look: Unity's editor, cut down for a first-timer. Tap the mentor's
+     options to play it through, or use the step buttons. Try tapping a part in the Hierarchy once it appears.</p>
+</header>
+
+<svg width="0" height="0" style="position:absolute" aria-hidden="true">
+  <symbol id="i-play" viewBox="0 0 24 24"><path d="M8 5.5v13l10.5-6.5z"/></symbol>
+  <symbol id="i-pause" viewBox="0 0 24 24"><path d="M8.5 5.5v13M15.5 5.5v13"/></symbol>
+  <symbol id="i-step" viewBox="0 0 24 24"><path d="M6 5.5v13l9-6.5zM18 5.5v13"/></symbol>
+  <symbol id="i-tree" viewBox="0 0 24 24"><path d="M5 5h6M8 5v14M8 11h6M8 17h6M15 9h4v4h-4zM15 15h4v4h-4z"/></symbol>
+  <symbol id="i-pad" viewBox="0 0 24 24"><path d="M7 8h10a4 4 0 0 1 4 4v1a3 3 0 0 1-5.4 1.8L14.6 14H9.4l-1 .8A3 3 0 0 1 3 13v-1a4 4 0 0 1 4-4zM8 10.5v3M6.5 12h3M16 11.2h.01M17.8 12.8h.01"/></symbol>
+  <symbol id="i-flag" viewBox="0 0 24 24"><path d="M6 20V4M6 4h10l-2 4 2 4H6"/></symbol>
+  <symbol id="i-cube" viewBox="0 0 24 24"><path d="M12 3l8 4.5v9L12 21l-8-4.5v-9zM12 12l8-4.5M12 12v9M12 12L4 7.5"/></symbol>
+  <symbol id="i-sliders" viewBox="0 0 24 24"><path d="M5 7h9M18 7h1M5 17h3M12 17h7M16 5v4M10 15v4"/></symbol>
+  <symbol id="i-cards" viewBox="0 0 24 24"><path d="M8 4h9a2 2 0 0 1 2 2v11M5 7h9a2 2 0 0 1 2 2v9a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V9a2 2 0 0 1 2-2z"/></symbol>
+  <symbol id="i-star" viewBox="0 0 24 24"><path d="M12 3.5l2.6 5.3 5.9.9-4.3 4.1 1 5.8L12 16.9l-5.2 2.7 1-5.8-4.3-4.1 5.9-.9z"/></symbol>
+  <symbol id="i-x" viewBox="0 0 24 24"><path d="M6 6l12 12M18 6L6 18"/></symbol>
+  <symbol id="i-check" viewBox="0 0 24 24"><path d="M5 12.5l4.5 4.5L19 7.5"/></symbol>
+</svg>
+
+<div class="stagehold"><div class="scaler" id="scaler">
+<div class="editor" id="editor" role="region" aria-label="The studio editor, drawn at 1366 by 768">
+
+  <div class="toolbar">
+    <div class="brand">
+      <span class="wordmark">The LEAGUE<small>of Amazing Programmers</small></span>
+      <span class="project reveal closed" id="projName">· <b>Captain Byte's Game</b></span>
+    </div>
+    <div class="transport ghosted" id="transport" aria-label="Play controls">
+      <button class="tbtn" id="bPlay" tabindex="-1"><svg class="i"><use href="#i-play"/></svg><span>Play</span></button>
+      <button class="tbtn" tabindex="-1" aria-label="Pause"><svg class="i"><use href="#i-pause"/></svg></button>
+      <button class="tbtn" tabindex="-1" aria-label="Step one frame"><svg class="i"><use href="#i-step"/></svg></button>
+    </div>
+    <div class="tool-right reveal closed" id="saved">Saved</div>
+  </div>
+
+  <div class="left">
+    <section class="dock closed" id="dQuest" aria-label="Quest">
+      <div class="tabs"><span class="tab"><svg class="i"><use href="#i-flag"/></svg>Quest</span></div>
+      <div class="dock-body">
+        <div class="quest-dept"><span class="dot"></span><span id="qDept">Art department</span></div>
+        <div class="quest-now"><small>Up next</small>Meet the art director</div>
+        <div class="quest-next">Then: something's waiting in Audio…</div>
+      </div>
+    </section>
+    <section class="dock closed" id="dHier" aria-label="Hierarchy">
+      <div class="tabs"><span class="tab"><svg class="i"><use href="#i-tree"/></svg>Hierarchy <small>your parts</small></span></div>
+      <div class="dock-body"><ul class="tree" id="tree"></ul><p class="empty-note" id="treeEmpty">Parts appear here as your game is built.</p></div>
+    </section>
+  </div>
+
+  <section class="dock game closed" id="dGame" aria-label="Game">
+    <div class="tabs"><span class="tab"><svg class="i"><use href="#i-pad"/></svg>Game</span></div>
+    <div class="gamebody">
+      <div class="screen" id="screen">
+        <svg id="scene" viewBox="0 0 320 180" role="img" aria-label="The game"></svg>
+        <span class="fps" id="fps" hidden>60 FPS</span>
+        <div class="pointer" id="pointer" hidden><b>Look</b><span id="pointerText"></span></div>
+      </div>
+    </div>
+  </section>
+
+  <section class="dock right" id="dMentor" aria-label="Mentor">
+    <div class="tabs"><span class="tab">
+      <svg class="i" style="color:var(--accent)"><use href="#i-cube"/></svg>Mentor <small>studio AI</small></span></div>
+    <div class="who">
+      <svg class="face" viewBox="0 0 48 48" aria-hidden="true">
+        <rect x="6" y="10" width="36" height="30" rx="9" fill="#3a3a3a" stroke="#f5820a" stroke-width="2"/>
+        <circle cx="18" cy="24" r="3.5" fill="#f5820a"/><circle cx="30" cy="24" r="3.5" fill="#f5820a"/>
+        <path d="M18 32q6 4 12 0" stroke="#e8e8e8" stroke-width="2" fill="none" stroke-linecap="round"/>
+        <path d="M24 10V5" stroke="#f5820a" stroke-width="2" stroke-linecap="round"/><circle cx="24" cy="4" r="2" fill="#f5820a"/>
+      </svg>
+      <div><strong>Mentor <span style="font-weight:500;color:var(--ink-3)">(name TBD)</span></strong><span>The studio's AI, and proud of it</span></div>
+    </div>
+    <div class="log" id="log" aria-live="polite"></div>
+    <div class="opts" id="opts"></div>
+    <div class="say"><input id="say" type="text" placeholder="Say something else…" aria-label="Say something else"></div>
+
+    <div class="inspector" id="inspector" aria-label="Inspector" aria-hidden="true">
+      <div class="tabs"><span class="tab"><svg class="i"><use href="#i-sliders"/></svg>Inspector <small id="inspName">Player</small></span>
+        <button class="x" id="inspClose" aria-label="Close the Inspector"><svg class="i"><use href="#i-x"/></svg></button></div>
+      <div class="dock-body" id="inspBody"></div>
+    </div>
+  </section>
+
+  <div class="proj reveal closed" id="proj">
+    <svg class="i"><use href="#i-cards"/></svg><b>Project</b><span>your cards</span>
+    <span class="chip" id="cardChip">0 cards</span>
+  </div>
+
+  <div class="status">
+    <span id="statusMsg">Welcome to the studio</span>
+    <span class="stars reveal closed" id="stars"><svg class="i"><use href="#i-star"/></svg>0 stars</span>
+  </div>
+</div>
+</div></div>
+
+<nav class="nav" aria-label="Steps">
+  <button id="back">Back</button><span id="dots" style="display:contents"></span><button id="next">Next</button>
+</nav>
+
+<section class="notes">
+  <div><h2 id="nBeat"></h2><p id="nWhat"></p></div>
+  <div><h2>Real Unity, or changed?</h2><p id="nUnity"></p></div>
+</section>
+
+<script>
+/* ---------- the tiny game, drawn in SVG ----------
+   Three looks of the same little level: grey (the intern's unfinished game), colour (after the
+   kid's first fix), and the kid's own game (robot hero, coins, lava). */
+var SCENES = {
+  grey: '<rect width="320" height="180" fill="#9a9a9a"/>' +
+        '<rect x="0" y="150" width="120" height="30" fill="#6e6e6e"/><rect x="170" y="150" width="150" height="30" fill="#6e6e6e"/>' +
+        '<rect x="120" y="165" width="50" height="15" fill="#7c7c7c"/>' +
+        '<rect x="200" y="112" width="60" height="10" fill="#6e6e6e"/>' +
+        '<rect x="40" y="128" width="16" height="22" fill="#4f4f4f"/>' +
+        '<circle cx="230" cy="98" r="7" fill="#b9b9b9"/>',
+  colour: '<defs><linearGradient id="sky" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="#6fc3ff"/><stop offset="1" stop-color="#c8ecff"/></linearGradient></defs>' +
+        '<rect width="320" height="180" fill="url(#sky)"/>' +
+        '<rect x="0" y="150" width="120" height="30" fill="#5aa845"/><rect x="0" y="150" width="120" height="6" fill="#7fd65f"/>' +
+        '<rect x="170" y="150" width="150" height="30" fill="#5aa845"/><rect x="170" y="150" width="150" height="6" fill="#7fd65f"/>' +
+        '<rect x="120" y="163" width="50" height="17" fill="#ff5a1f"/><path d="M120 165q6-5 12 0t13 0 13 0 12 0" stroke="#ffc23d" stroke-width="3" fill="none"/>' +
+        '<rect x="200" y="112" width="60" height="10" rx="2" fill="#8a5a33"/>' +
+        '<rect x="40" y="128" width="16" height="22" rx="3" fill="#3b6fe0"/>' +
+        '<circle cx="230" cy="98" r="7" fill="#ffd23f" stroke="#e8a300" stroke-width="2"/>',
+  yours: '<defs><linearGradient id="sky2" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="#2a1f5c"/><stop offset="1" stop-color="#7a4fb8"/></linearGradient></defs>' +
+        '<rect width="320" height="180" fill="url(#sky2)"/>' +
+        '<circle cx="270" cy="34" r="14" fill="#ffe7a8"/>' +
+        '<g class="p-ground"><rect x="0" y="150" width="110" height="30" fill="#39456a"/><rect x="0" y="150" width="110" height="5" fill="#8fd0ff"/>' +
+        '<rect x="165" y="150" width="155" height="30" fill="#39456a"/><rect x="165" y="150" width="155" height="5" fill="#8fd0ff"/>' +
+        '<rect x="190" y="108" width="54" height="9" rx="2" fill="#8fd0ff"/></g>' +
+        '<g class="p-lava"><rect x="110" y="162" width="55" height="18" fill="#ff4d2e"/><path d="M110 164q7-6 14 0t13 0 14 0 14 0" stroke="#ffcf3a" stroke-width="3" fill="none"/></g>' +
+        '<g class="p-coin"><circle cx="216" cy="94" r="7" fill="#ffd23f" stroke="#e8a300" stroke-width="2"/><circle cx="286" cy="136" r="7" fill="#ffd23f" stroke="#e8a300" stroke-width="2"/></g>' +
+        '<g class="p-player" id="robot"><rect x="38" y="124" width="22" height="20" rx="5" fill="#d9dde6"/><rect x="42" y="129" width="14" height="7" rx="2" fill="#1d2230"/>' +
+        '<circle cx="46" cy="132.5" r="1.8" fill="#f5820a"/><circle cx="52" cy="132.5" r="1.8" fill="#f5820a"/>' +
+        '<rect x="41" y="144" width="5" height="6" fill="#aeb4c2"/><rect x="52" y="144" width="5" height="6" fill="#aeb4c2"/>' +
+        '<path d="M49 124v-5" stroke="#d9dde6" stroke-width="2"/><circle cx="49" cy="118" r="2" fill="#f5820a"/></g>'
+};
+
+/* The parts the kid's game is made of, in the order they snap in while it builds. */
+var PARTS = [
+  { id: 'Level 1', note: 'the level', root: true },
+  { id: 'Player', note: 'your robot', cls: 'p-player',
+    insp: [['Speed', 'Unity: moveSpeed', 6], ['Jump height', 'Unity: jumpForce', 5]] },
+  { id: 'Coin', note: 'the goal', cls: 'p-coin', insp: [['Worth', 'Unity: points', 3], ['Spin speed', 'Unity: rotationSpeed', 4]] },
+  { id: 'Lava', note: 'the danger', cls: 'p-lava', insp: [['Bubbling', 'Unity: waveSpeed', 5]] },
+  { id: 'Ground', note: 'floor & ledges', cls: 'p-ground', insp: [['Bounciness', 'Unity: bounciness', 0]] }
+];
+
+/* One entry per step. `open` lists the docks revealed so far. */
+var STEPS = [
+  { beat: '1 · Arrive', open: [], scene: null,
+    say: [['m', "Welcome to the studio! I'm the studio's AI. What should everyone call you?"]],
+    opts: [['Pixel Fox'], ['Captain Byte'], ['Nova']], status: 'Welcome to the studio',
+    what: 'A nearly empty editor: just the mentor. Every other dock is still closed.',
+    unity: 'The mentor sits where Unity puts the Inspector: the right-hand dock. The play controls are hidden until the kid needs them.' },
+  { beat: '2 · A situation', open: [], scene: null,
+    say: [['m', 'Hi, @name! Quick one: you find a locked door. What do you do?']],
+    opts: [['Hunt for the key'], ['Smash it'], ['Sneak round the back'], ['Get a friend']],
+    what: 'Situations instead of labels. The pick tells the mentor what kind of fun this kid likes.',
+    unity: 'Nothing engine-y yet on purpose: the first minute is a conversation, not a tour.' },
+  { beat: '2 · A reflect-back', open: [], scene: null,
+    say: [['m', "What's a game you could play all day?"], ['k', 'building houses and exploring caves'], ['m', 'Building and exploring… so, like Minecraft?']],
+    opts: [['Yes!'], ['Not quite']],
+    what: 'An open question, then the mentor says back what it heard, for the kid to confirm.',
+    unity: 'Unchanged.' },
+  { beat: '3 · The unfinished game', open: ['game'], scene: 'grey',
+    say: [['m', 'Our last intern left this game half-finished. What should we fix first?']],
+    opts: [['Colours', 'Art'], ['Sound', 'Audio'], ['The rule', 'Design'], ['The bug', 'Engineering']],
+    pointer: "This is the Game view: where your game lives.", status: 'Game view opened',
+    what: 'The Game dock opens with a grey, broken little game. Each fix leads to a department.',
+    unity: 'Unity shows Scene and Game as two tabs. Here only Game is kept; the Scene tab (for arranging levels) is removed until a later quest needs it.' },
+  { beat: '3 · It transforms', open: ['game'], scene: 'colour',
+    say: [['m', 'Look at that!'], ['g', 'Nice eye, @name. Colour tells players what matters. Come see me soon!', 'Art director']],
+    opts: [['Thanks!'], ['What else is broken?']],
+    what: "The kid's pick transforms the game, and the art director pops in to say hi.",
+    unity: 'Unchanged.' },
+  { beat: '4 · Press Play', open: ['game', 'transport'], scene: 'colour', playing: true, fps: true,
+    say: [['m', 'Press Play, then change the coin while it runs. Now press Stop.'], ['k', '(changes the coin, presses Stop)'],
+          ['m', "It changed back! Every developer does that once. Changes made while playing don't stick."]],
+    opts: [['Haha, got it'], ['Wait, why?']], pointer: 'Play mode: the orange edge means the game is running.', status: 'Play mode',
+    what: 'Play, Pause and Step appear, centred at the top, exactly where Unity keeps them. The mentor lets the classic beginner mistake happen safely.',
+    unity: "Real Unity: the centred Play / Pause / Step buttons, and tinting the editor during Play mode. The frame counter is Unity's Stats overlay, cut down to one number: frames per second." },
+  { beat: '5 · Now YOUR game', open: ['game', 'transport'], scene: 'colour',
+    say: [['m', "Your turn. Let's make YOUR game. Pick a hero:"]],
+    opts: [['A cat'], ['A robot'], ['A knight'], ['A slime']],
+    what: 'Four quick picks (hero, action, goal, danger) make the recipe for their game. Shown: the first.',
+    unity: 'Unchanged.' },
+  { beat: '6 · Building', open: ['game', 'transport', 'hier'], scene: 'building', build: true,
+    say: [['m', 'Building your game: a robot who jumps, grabs coins and dodges lava…'],
+          ['m', "See the list on the left? That's your Hierarchy. Every real engine has one. Tap a part!"]],
+    opts: [['Can I play?']], status: 'Building your game…',
+    what: 'Parts snap into the Hierarchy one by one while the game assembles. Tapping a part opens its Inspector.',
+    unity: "Real Unity: the Hierarchy lists every part of the level, indented under it. The Inspector slides in over the mentor's lower half only when a part is picked, so beginners aren't shown a wall of settings." },
+  { beat: '7 · Play it', open: ['game', 'transport', 'hier'], scene: 'yours', playing: true, fps: true,
+    say: [['m', "That's YOUR game, @name. Go on, play it!"]],
+    opts: [['That was awesome'], ['Can I change something?']], status: 'Play mode',
+    what: 'The kid plays their own game. Hands on keys before the five-minute mark.',
+    unity: 'Unchanged.' },
+  { beat: "8 · What's next", open: ['game', 'transport', 'hier', 'quest', 'proj'], scene: 'yours',
+    say: [['m', "Want to make it even better? The art director can't wait to meet you…"]],
+    opts: [["Let's go!"]], cards: 1, status: 'Saved',
+    what: 'The Quest panel appears above the Hierarchy with their first department. The Project drawer and the quiet stars bar appear last.',
+    unity: "Added: the Quest panel (Unity has nothing like it). Repurposed: Unity's Project window becomes 'your cards', and the status bar holds quiet stars. Removed: Console, the move/rotate/scale tools, and the account and layout menus." }
+];
+
+var i = 0, built = 0, buildTimer = null;
+var $ = function (id) { return document.getElementById(id); };
+var NAME = 'Captain Byte';
+
+function setOpen(id, on) { $(id).classList.toggle('closed', !on); }
+
+function renderTree(n, animateFrom) {
+  var tree = $('tree'); tree.innerHTML = '';
+  $('treeEmpty').hidden = n > 0;
+  PARTS.slice(0, n).forEach(function (p, k) {
+    var li = document.createElement('li');
+    if (!p.root) li.className = 'child';
+    if (animateFrom !== undefined && k >= animateFrom) li.className += ' snap';
+    var b = document.createElement('button');
+    b.setAttribute('aria-pressed', 'false');
+    b.innerHTML = '<svg class="i"><use href="#i-cube"/></svg>' + p.id + '<small>' + p.note + '</small>';
+    if (p.insp) b.addEventListener('click', function () { openInspector(p, b); });
+    li.appendChild(b); tree.appendChild(li);
+  });
+}
+
+function openInspector(p, btn) {
+  Array.prototype.forEach.call($('tree').querySelectorAll('button'), function (x) { x.setAttribute('aria-pressed', 'false'); });
+  btn.setAttribute('aria-pressed', 'true');
+  $('inspName').textContent = p.id;
+  var body = $('inspBody'); body.innerHTML = '';
+  p.insp.forEach(function (r) {
+    var row = document.createElement('div'); row.className = 'irow';
+    var idn = 'r-' + p.id + '-' + r[0].replace(/\s/g, '');
+    row.innerHTML = '<label for="' + idn + '">' + r[0] + '<small>' + r[1] + '</small></label>' +
+      '<input id="' + idn + '" type="range" min="0" max="10" value="' + r[2] + '">';
+    body.appendChild(row);
+  });
+  var note = document.createElement('p'); note.className = 'inote';
+  note.textContent = 'These are the same settings a Unity Inspector shows, with kid names on top.';
+  body.appendChild(note);
+  $('inspector').classList.add('open'); $('inspector').setAttribute('aria-hidden', 'false');
+}
+function closeInspector() {
+  $('inspector').classList.remove('open'); $('inspector').setAttribute('aria-hidden', 'true');
+  Array.prototype.forEach.call($('tree').querySelectorAll('button'), function (x) { x.setAttribute('aria-pressed', 'false'); });
+}
+
+function drawScene(which, partsShown) {
+  var svg = $('scene');
+  if (!which) { svg.innerHTML = ''; return; }
+  if (which === 'building') {
+    svg.innerHTML = SCENES.yours;
+    PARTS.forEach(function (p, k) {
+      if (!p.cls) return;
+      var g = svg.querySelector('.' + p.cls);
+      if (g) g.style.opacity = k < partsShown ? 1 : 0;
+    });
+    return;
+  }
+  svg.innerHTML = SCENES[which];
+}
+
+function render() {
+  var s = STEPS[i];
+  clearInterval(buildTimer); closeInspector();
+  var has = function (k) { return s.open.indexOf(k) >= 0; };
+  setOpen('dGame', has('game')); setOpen('dHier', has('hier')); setOpen('dQuest', has('quest'));
+  $('transport').classList.toggle('ghosted', !has('transport'));
+  ['proj', 'stars', 'saved', 'projName'].forEach(function (id) {
+    var on = id === 'projName' ? i >= 6 : has('proj');
+    $(id).classList.toggle('closed', !on);
+  });
+  $('bPlay').classList.toggle('on', !!s.playing);
+  $('bPlay').querySelector('span').textContent = s.playing ? 'Stop' : 'Play';
+  $('screen').classList.toggle('playing', !!s.playing);
+  $('fps').hidden = !s.fps;
+  $('cardChip').textContent = (s.cards || 0) + (s.cards === 1 ? ' card · Feedback' : ' cards');
+  if (s.status) $('statusMsg').textContent = s.status;
+
+  if (s.build) {
+    built = 1; renderTree(1, 0); drawScene('building', 1);
+    buildTimer = setInterval(function () {
+      if (built >= PARTS.length) { clearInterval(buildTimer); return; }
+      built++; renderTree(built, built - 1); drawScene('building', built);
+    }, 650);
+  } else {
+    renderTree(has('hier') ? PARTS.length : 0); drawScene(s.scene);
+  }
+
+  var p = $('pointer');
+  if (s.pointer) { p.hidden = false; $('pointerText').textContent = s.pointer; } else p.hidden = true;
+
+  var log = $('log'); log.innerHTML = '';
+  s.say.forEach(function (m) {
+    var d = document.createElement('div');
+    d.className = 'msg' + (m[0] === 'k' ? ' kid' : m[0] === 'g' ? ' guest' : '');
+    d.innerHTML = '<span class="from"></span>';
+    d.firstChild.textContent = m[0] === 'k' ? NAME : m[0] === 'g' ? m[2] : 'Mentor';
+    d.appendChild(document.createTextNode(m[1].replace(/@name/g, NAME)));
+    log.appendChild(d);
+  });
+  var opts = $('opts'); opts.innerHTML = '';
+  s.opts.forEach(function (o) {
+    var b = document.createElement('button'); b.className = 'opt';
+    b.textContent = o[0];
+    if (o[1]) { var sm = document.createElement('small'); sm.textContent = o[1]; b.appendChild(sm); }
+    b.addEventListener('click', function () { go(i + 1); });
+    opts.appendChild(b);
+  });
+
+  $('nBeat').textContent = 'Step ' + (i + 1) + ' · ' + s.beat.replace(/^\d+ · /, '');
+  $('nWhat').textContent = s.what; $('nUnity').textContent = s.unity;
+  $('back').disabled = i === 0; $('next').disabled = i === STEPS.length - 1;
+  Array.prototype.forEach.call($('dots').children, function (b, k) {
+    if (k === i) b.setAttribute('aria-current', 'step'); else b.removeAttribute('aria-current');
+  });
+}
+function go(n) { i = Math.max(0, Math.min(STEPS.length - 1, n)); render(); }
+
+STEPS.forEach(function (s, k) {
+  var b = document.createElement('button'); b.textContent = String(k + 1);
+  b.setAttribute('aria-label', 'Step ' + (k + 1) + ': ' + s.beat);
+  b.addEventListener('click', function () { go(k); });
+  $('dots').appendChild(b);
+});
+$('back').addEventListener('click', function () { go(i - 1); });
+$('next').addEventListener('click', function () { go(i + 1); });
+$('inspClose').addEventListener('click', closeInspector);
+$('say').addEventListener('keydown', function (e) { if (e.key === 'Enter' && this.value.trim()) { this.value = ''; go(i + 1); } });
+
+/* Scale the fixed 1366×768 editor to the page width so it is always seen whole. */
+(function () {
+  var s = $('scaler');
+  function fit() {
+    var k = Math.min(1, (s.parentElement.clientWidth - 32) / 1366);
+    s.style.transform = 'scale(' + k + ')'; s.style.height = (768 * k) + 'px'; s.style.width = (1366 * k) + 'px';
+  }
+  window.addEventListener('resize', fit); fit();
+})();
+render();
+</script>
+</body>
+</html>
