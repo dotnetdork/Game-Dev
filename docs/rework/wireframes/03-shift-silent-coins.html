@@ -666,10 +666,15 @@ var STEPS = [
       options([]); inspector('Coin Game', slotsHtml()); wireSlots(); },
     onEvent: function (a) {
       if (a !== 'assign' || !(assign.coin && assign.jump && assign.hurt)) return;
-      if (SOUNDS[assign.coin].mood === 'bad' && !this.okBad) {
-        say([['s', 'Hmm. Grabbing a coin now sounds like getting hurt. Is that what you want players to feel?']]);
+      /* Every good or neutral action is challenged if it sounds like failure, not only the coin:
+         a blind reviewer put the buzz on the jump and nothing said a word, while the later return
+         question marks that exact choice wrong. The lava slot is allowed to sound bad. */
+      var off = SOUNDS[assign.coin].mood === 'bad' ? 'coin' : SOUNDS[assign.jump].mood === 'bad' ? 'jump' : null;
+      if (off && !this.okBad) {
+        say([['s', off === 'coin' ? 'Hmm. Grabbing a coin now sounds like getting hurt. Is that what you want players to feel?'
+                                  : 'Hmm. Jumping now sounds like something went wrong. Is that what you want players to feel?']]);
         var self = this;
-        options([['Oops, let me change it', function () { say([['s', 'Pick a happier sound for the coin.']]); options([]); inspector('Coin Game', slotsHtml()); wireSlots(); }],
+        options([['Oops, let me change it', function () { say([['s', off === 'coin' ? 'Pick a happier sound for the coin.' : 'Pick a sound that fits jumping up.']]); options([]); inspector('Coin Game', slotsHtml()); wireSlots(); }],
                  ["Yes, it's a spooky game", function () { self.okBad = true; STEPS[i].onEvent('assign'); }]]);
         inspector(null); return;
       }
