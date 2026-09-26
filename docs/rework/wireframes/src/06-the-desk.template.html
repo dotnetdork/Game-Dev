@@ -15,9 +15,7 @@
   /* ---------- additions for the desk ---------- */
   .editor { height: 650px; grid-template-rows: 56px minmax(0, 1fr) 132px 26px;
             grid-template-areas: "tool tool tool" "left game right" "left proj right" "status status status"; }
-  .sr { position: absolute; width: 1px; height: 1px; overflow: hidden; clip: rect(0 0 0 0); white-space: nowrap; }
-  .gamebody canvas { flex: 1; min-width: 0; width: 100%; height: 100%; display: block; background: #111; }
-  .editor > .pointer { z-index: 5; }   /* placed by pointAt(), just above the tab it names */
+
   /* the studio dock: a milestone track and the departments, in the Quest dock's place */
   .studio h2 { margin: 4px 0 6px; font-size: 12.5px; font-weight: 700; color: var(--ink-3); letter-spacing: .04em; text-transform: uppercase; }
   .track2 { list-style: none; margin: 0 0 12px; padding: 0; display: grid; gap: 2px; }
@@ -46,13 +44,13 @@
   .ccard small { color: var(--ink-3); font-size: 12px; }
   .ccard.tool { border-color: var(--accent); }
   .ccard.fresh { box-shadow: 0 0 0 2px var(--accent); }
-  .ccard[aria-pressed="true"] { border-color: var(--accent); background: #3a3027; }
-  .lvl { display: flex; gap: 3px; } .lvl i { width: 14px; height: 5px; border-radius: 2px; background: #555; } .lvl i.on { background: var(--accent); }
+  .ccard[aria-pressed="true"] { border-color: var(--accent); background: var(--card-warm-on); }
+  .lvl { display: flex; gap: 3px; } .lvl i { width: 14px; height: 5px; border-radius: 2px; background: var(--track-off); } .lvl i.on { background: var(--accent); }
   .cardback b { display: block; font-size: 16px; margin-bottom: 4px; }
   .cardback p { margin: 0 0 8px; font-size: 14.5px; }
   .cardback dl { display: grid; grid-template-columns: auto 1fr; gap: 3px 10px; margin: 0; font-size: 13.5px; }
   .cardback dt { color: var(--ink-2); } .cardback dd { margin: 0; }
-  .branchnote { color: var(--accent); font-weight: 600; }
+
 </style>
 </head>
 <body>
@@ -210,17 +208,14 @@ function options(list) {
   if (!list.noShuffle) for (var k = list.length - 1; k > 0; k--) { var j = Math.floor(Math.random() * (k + 1)), t = list[k]; list[k] = list[j]; list[j] = t; }
   list.forEach(function (o) { var b = document.createElement('button'); b.className = 'opt'; b.textContent = o[0]; b.addEventListener('click', function () { o[1](); }); box.appendChild(b); });
   if (wasInEditor && box.firstChild) box.firstChild.focus({ preventScroll: true });
-  if ($('inspector').classList.contains('open')) $('inspector').style.setProperty('--pinned', ($('opts').offsetHeight + document.querySelector('.say').offsetHeight) + 'px');
 }
 function announce(t) { $('announce').textContent = t; }
 function inspector(title, html) {
   var el = $('inspector');
   if (!title) { el.classList.remove('open'); el.setAttribute('aria-hidden', 'true'); el.inert = true; $('dMentor').classList.remove('inspecting'); return; }
   $('inspName').textContent = title; $('inspBody').innerHTML = html; $('dMentor').classList.add('inspecting');
-  var log = $('log'), vis = [].filter.call(log.children, function (m) { return getComputedStyle(m).display !== 'none'; });
-  var last = vis[vis.length - 1], pin = $('opts').offsetHeight + document.querySelector('.say').offsetHeight;
-  el.style.top = (last ? last.offsetTop + last.offsetHeight + 10 : 34) + 'px'; el.style.setProperty('--pinned', pin + 'px');
   el.classList.add('open'); el.setAttribute('aria-hidden', 'false'); el.inert = false;
+  requestAnimationFrame(function () { var lg = $('log'); lg.scrollTop = lg.scrollHeight; });   // the Inspector docks below the conversation; keep its newest line in view
 }
 $('inspClose').addEventListener('click', function () { inspector(null); });
 document.addEventListener('keydown', function (e) { if (e.key === 'Escape') inspector(null); });

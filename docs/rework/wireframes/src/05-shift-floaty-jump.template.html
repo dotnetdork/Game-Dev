@@ -15,39 +15,18 @@
 {{CSS}}
   /* ---------- additions for the shift ---------- */
   .editor { height: 650px; grid-template-rows: 56px minmax(0, 1fr) 30px 26px; }
-  .gamebody canvas { flex: 1; min-width: 0; width: 100%; height: 100%; display: block; outline: none; background: #111; }
-  .gamebody canvas:focus-visible { box-shadow: inset 0 0 0 3px var(--focus); }
-  .gamebody.playing::after { content: ''; position: absolute; inset: 0; box-shadow: inset 0 0 0 3px var(--accent); pointer-events: none; }
-  .focus-hint { position: absolute; inset: auto 0 18px 0; margin: 0 auto; width: max-content; max-width: 80%;
-                background: rgba(20,20,20,.86); color: #fff; padding: 10px 14px; border-radius: 10px; font-size: 15px; pointer-events: none; }
-  .focus-hint[hidden] { display: none; }
-  .keys { display: inline-flex; gap: 4px; margin: 0 4px; }
-  .key { border: 1px solid #777; border-bottom-width: 3px; border-radius: 5px; padding: 0 7px; font-size: 13px; }
-  .sr { position: absolute; width: 1px; height: 1px; overflow: hidden; clip: rect(0 0 0 0); white-space: nowrap; }
+
   /* quest checklist, as in wireframe 03 */
-  .checks { list-style: none; margin: 8px 0 0; padding: 0; display: grid; gap: 4px; }
-  .checks li { display: flex; align-items: center; gap: 8px; min-height: 30px; font-size: 14px; color: var(--ink-2); }
-  .checks li .box { width: 20px; height: 20px; border-radius: 5px; border: 1.5px solid var(--ink-3); display: grid; place-items: center; flex: none; }
-  .checks li.done { color: var(--ink); }
-  .checks li.done .box { background: var(--accent); border-color: var(--accent); color: var(--accent-ink); }
-  .checks li.now { color: var(--ink); font-weight: 600; }
-  .checks li.now .box { border-color: var(--accent); }
-  .checks .box svg { width: 14px; height: 14px; }
+
   /* a slider row that shows its number, so the value is read as well as seen */
   .irow output { font: 600 13px ui-monospace, "Cascadia Mono", Consolas, monospace; color: var(--ink); min-width: 3ch; text-align: right; }
   .slide { display: flex; align-items: center; gap: 10px; }
-  .tree .trow { display: flex; align-items: center; gap: 8px; min-height: 44px; padding: 0 8px; color: var(--ink); }
-  .tree .trow small { margin-left: auto; color: var(--ink-3); font-size: 12px; }
+
   .feelchip { display: inline-block; margin-top: 4px; padding: 2px 10px; border-radius: 999px; background: var(--accent-soft); color: var(--ink); font-weight: 600; }
   /* two components, two sliders: rows at the 44px target (not 48) so both fit without scrolling */
   .inspector .irow { min-height: 44px; }
   .inspector .comp { min-height: 32px; margin-bottom: 2px; }
-  .inote { color: var(--ink-2); font-size: 14px; padding: 6px 2px; }
-  .card { margin: 4px 0 2px; border-radius: 10px; background: #2f2a24; border: 1.5px solid var(--accent); padding: 12px 14px; }
-  .card b { display: block; font-size: 16px; color: var(--ink); }
-  .card p { margin: 4px 0 8px; font-size: 14.5px; color: var(--ink); }
-  .card dl { display: grid; grid-template-columns: auto 1fr; gap: 2px 10px; margin: 0; font-size: 13px; }
-  .card dt { color: var(--ink-2); } .card dd { margin: 0; color: var(--ink); }
+
 </style>
 </head>
 <body>
@@ -238,7 +217,11 @@ function drawHero() {
   ctx.fillStyle = '#f5820a'; ctx.fillRect(x + 3, y + 6, 2, 2); ctx.fillRect(x + 7, y + 6, 2, 2); ctx.fillStyle = '#aeb4c2'; ctx.fillRect(x + 1, y + 14, 3, 2); ctx.fillRect(x + 8, y + 14, 3, 2);
 }
 var showArc = false;
-function loop() { step(); draw(); requestAnimationFrame(loop); }
+/* Full speed only while the game runs. Stopped, it redraws about 10 times a second (enough for a
+   slider or a colour change to show at once), and not at all while the page is hidden. It used to
+   draw 60 times a second whatever was happening, three times over on the explainer page. */
+var frameNo = 0;
+function loop() { frameNo++; step(); if (!document.hidden && (running || frameNo % 6 === 0)) draw(); requestAnimationFrame(loop); }
 
 /* ---------- conversation, Hierarchy, Inspector ---------- */
 var shown = [], clicks = [], spamAt = null;
@@ -264,7 +247,6 @@ function options(list) {
     b.addEventListener('click', function () { if (spamCheck()) return; o[1](); }); box.appendChild(b);
   });
   if (wasInEditor && box.firstChild && !running) box.firstChild.focus({ preventScroll: true });
-  if ($('inspector').classList.contains('open')) $('inspector').style.setProperty('--pinned', ($('opts').offsetHeight + document.querySelector('.say').offsetHeight) + 'px');
 }
 function announce(text) { $('announce').textContent = text; }
 function spamCheck() {
@@ -319,10 +301,8 @@ function inspector(title, html) {
   var el = $('inspector');
   if (!title) { el.classList.remove('open'); el.setAttribute('aria-hidden', 'true'); el.inert = true; $('dMentor').classList.remove('inspecting'); if (selected) { selected = null; tree(); } return; }
   $('inspName').textContent = title; $('inspBody').innerHTML = html; $('dMentor').classList.add('inspecting');
-  var log = $('log'), vis = [].filter.call(log.children, function (m) { return getComputedStyle(m).display !== 'none'; });
-  var last = vis[vis.length - 1], pin = $('opts').offsetHeight + document.querySelector('.say').offsetHeight;
-  el.style.top = (last ? last.offsetTop + last.offsetHeight + 10 : 34) + 'px'; el.style.setProperty('--pinned', pin + 'px');
   el.classList.add('open'); el.setAttribute('aria-hidden', 'false'); el.inert = false;
+  requestAnimationFrame(function () { var lg = $('log'); lg.scrollTop = lg.scrollHeight; });   // the Inspector docks below the conversation; keep its newest line in view
 }
 $('inspClose').addEventListener('click', function () { inspector(null); tree(); });
 document.addEventListener('keydown', function (e) { if (e.key === 'Escape' && $('inspector').classList.contains('open')) { inspector(null); tree(); } });

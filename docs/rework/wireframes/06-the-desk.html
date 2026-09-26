@@ -33,13 +33,25 @@
     --doc-muted: #a6a6a6;
     --doc-line: #2a2a2a;
     --radius: 5px;
-    --col: 1398px;          /* the scaled frame's width plus gutters; the script at the bottom sets it */
+    --col: 1398px;
+    /* DESIGN.md colours that were written as raw values in the rules below */
+    --game-backdrop: #111111;   /* behind the game, darker than any dock */
+    --playmode-tint: #3a2c1c;   /* chrome while the game runs */
+    --closed-outline: #3a3a3a;  /* a dock not yet revealed */
+    --callout-paper: #fbf6ea; --callout-ink: #1d1a12;   /* the pointer bubble */
+    --kid-bubble: #4a3b2a; --guest-bubble: #33404f;
+    /* added by the shifts and the desk (recorded in DESIGN.md) */
+    --card-warm: #2f2a24;       /* a concept card in the conversation */
+    --card-warm-on: #3a3027;    /* a picked card in the Project drawer */
+    --code-ground: #1e1e1e; --code-keyword: #9cb8e0;   /* the C# script pane */
+    --meter-music: #8fb3ff;     /* the music meter: the one non-orange level, so music and effects read apart */
+    --track-off: #555555;       /* the empty part of a switch or a level bar */          /* the scaled frame's width plus gutters; the script at the bottom sets it */
   }
   /* The page is dark in every theme, as the editor is. A light page (the old light-theme override)
      made the editor look like a picture pasted on paper, and it was asked to go. */
 
   * { box-sizing: border-box; }
-  html { color-scheme: dark; scrollbar-color: #3a3a3a var(--page); }
+  html { color-scheme: dark; scrollbar-color: var(--closed-outline) var(--page); }
   html, body { margin: 0; background: var(--page); color: var(--doc-ink);
     font: 15px/1.45 system-ui, -apple-system, "Segoe UI", Roboto, sans-serif; }
   ::selection { background: var(--accent); color: var(--accent-ink); }
@@ -90,12 +102,12 @@
   .tool-right { justify-self: end; color: var(--ink-3); font-size: 13px; }
 
   /* Play mode: Unity tints the editor chrome while the game runs */
-  .editor.playmode .toolbar, .editor.playmode .tabs, .editor.playmode .status, .editor.playmode .proj { background: #3a2c1c; }
+  .editor.playmode .toolbar, .editor.playmode .tabs, .editor.playmode .status, .editor.playmode .proj { background: var(--playmode-tint); }
 
   /* docks */
   .dock { background: var(--panel); display: flex; flex-direction: column; min-height: 0;
           transition: opacity .45s cubic-bezier(.16,1,.3,1), transform .45s cubic-bezier(.16,1,.3,1); }
-  .dock.closed { background: transparent; box-shadow: inset 0 0 0 1px #3a3a3a; pointer-events: none; }
+  .dock.closed { background: transparent; box-shadow: inset 0 0 0 1px var(--closed-outline); pointer-events: none; }
   .dock.closed > * { opacity: 0; }
   .dock > * { transition: opacity .45s cubic-bezier(.16,1,.3,1); }
   .tabs { background: var(--tabbar); display: flex; align-items: flex-end; height: 34px; padding: 0 6px; flex: none; }
@@ -131,15 +143,15 @@
 
   /* Game view */
   .game { grid-area: game; }
-  .gamebody { flex: 1; display: flex; background: #111; position: relative; min-height: 0; }
+  .gamebody { flex: 1; display: flex; background: var(--game-backdrop); position: relative; min-height: 0; }
   .screen { flex: 1; position: relative; overflow: hidden;
             box-shadow: inset 0 0 0 0 transparent; transition: box-shadow .3s ease-out; }
   .screen.playing { box-shadow: inset 0 0 0 3px var(--accent); }
   .screen svg { display: block; width: 100%; height: 100%; }
   .pointer { position: absolute; left: 24px; top: 18px; max-width: 70%;
-             background: #fbf6ea; color: #1d1a12; border-radius: 10px; padding: 8px 12px; font-size: 14px;
+             background: var(--callout-paper); color: var(--callout-ink); border-radius: 10px; padding: 8px 12px; font-size: 14px;
              box-shadow: 0 6px 18px rgba(0,0,0,.35); }
-  .pointer::after { content: ''; position: absolute; left: 28px; bottom: -8px; width: 16px; height: 16px; background: #fbf6ea; transform: rotate(45deg); border-radius: 2px; }
+  .pointer::after { content: ''; position: absolute; left: 28px; bottom: -8px; width: 16px; height: 16px; background: var(--callout-paper); transform: rotate(45deg); border-radius: 2px; }
   .pointer[hidden] { display: none; }
   .game-empty { color: var(--ink-3); font-size: 14px; text-align: center; }
   .fps { position: absolute; top: 8px; right: 10px; font: 600 12px/1 ui-monospace, "SFMono-Regular", Menlo, monospace;
@@ -155,8 +167,8 @@
   .log { flex: 1; overflow: auto; padding: 4px 12px 8px; display: flex; flex-direction: column; gap: 8px; min-height: 0; }
   .msg { max-width: 94%; padding: 9px 12px; border-radius: 12px; background: var(--panel-2); font-size: 15px; line-height: 1.4; }
   .msg .from { display: block; font-size: 12px; font-weight: 700; color: var(--ink-3); margin-bottom: 2px; }
-  .msg.kid { align-self: flex-end; background: #4a3b2a; }
-  .msg.guest { background: #33404f; }
+  .msg.kid { align-self: flex-end; background: var(--kid-bubble); }
+  .msg.guest { background: var(--guest-bubble); }
   .opts { display: grid; gap: 6px; padding: 8px 12px 6px; }
   .opt { display: flex; align-items: center; justify-content: space-between; gap: 10px; min-height: 44px; padding: 8px 12px;
          background: transparent; border: 1.5px solid var(--accent); border-radius: 8px; text-align: left; cursor: pointer; color: var(--ink); font-weight: 600; }
@@ -168,14 +180,18 @@
                color: var(--ink); padding: 0 12px; font: inherit; font-size: 14px; }
   .say input::placeholder { color: var(--ink-3); }
 
-  /* Inspector: slides over the mentor's lower half when a part is selected */
-  .inspector { position: absolute; left: 0; right: 0; top: 34px; bottom: var(--pinned, 180px); background: var(--panel);
-               border-top: 1px solid var(--line); box-shadow: 0 -10px 24px rgba(0,0,0,.35);
-               transform: translateX(104%); transition: transform .4s cubic-bezier(.16,1,.3,1); display: flex; flex-direction: column; }
-  .inspector.open { transform: none; }
-  /* The Inspector covers the older lines but never the last two: a step's instruction is often the
-     line before the newest, and hiding it left the kid with a failure line that said nothing to do. */
-  .right.inspecting .msg:not(:nth-last-child(-n+2)) { display: none; }
+  /* Inspector: docks INTO the panel, between the conversation and the answers, when a part is picked.
+     It used to be laid over the panel from wherever the last line happened to end, which could cover
+     the conversation (Jay, 2026-09-25). Now the conversation shrinks to make room and keeps its newest
+     lines scrolled into view (the scripts scroll it after opening); nothing is ever underneath it.
+     Order: tabs, who, conversation, Inspector, answers, say field. */
+  .right > .tabs, .right > .who { order: 0; } .right > .log { order: 1; min-height: 72px; }
+  .right > .inspector { order: 2; } .right > .opts { order: 3; } .right > .say { order: 4; }
+  .inspector { display: none; flex: 0 1 auto; max-height: 62%; min-height: 0; flex-direction: column; background: var(--panel);
+               border-top: 1px solid var(--line); box-shadow: 0 -10px 24px rgba(0,0,0,.35); }
+  .inspector.open { display: flex; animation: inspIn .4s cubic-bezier(.16,1,.3,1); }
+  .inspector .dock-body { overflow: auto; }
+  @keyframes inspIn { from { transform: translateX(104%); } to { transform: none; } }
   .inspector .tabs { justify-content: space-between; align-items: center; }
   .x { border: 0; background: transparent; color: var(--ink-2); min-height: 44px; min-width: 44px; border-radius: 4px; cursor: pointer; }
   .x:hover { background: var(--panel-2); }
@@ -199,8 +215,51 @@
   .stars svg { width: 14px; height: 14px; stroke: var(--accent); }
   .reveal { transition: opacity .45s cubic-bezier(.16,1,.3,1); }
   .reveal.closed { opacity: 0; }
-  .proj.reveal.closed { opacity: 1; background: transparent; box-shadow: inset 0 0 0 1px #3a3a3a; }
+  .proj.reveal.closed { opacity: 1; background: transparent; box-shadow: inset 0 0 0 1px var(--closed-outline); }
   .proj.reveal.closed > * { opacity: 0; }
+
+  /* ---------- shared editor components (extracted 2026-09-25: these were copied into 2–4 wireframes) ---------- */
+  .sr { position: absolute; width: 1px; height: 1px; overflow: hidden; clip: rect(0 0 0 0); white-space: nowrap; }
+  /* the game canvas, its focus ring, and the orange Play-mode ring round it */
+  .gamebody canvas { flex: 1; min-width: 0; width: 100%; height: 100%; display: block; outline: none; background: var(--game-backdrop); }
+  .gamebody canvas:focus-visible { box-shadow: inset 0 0 0 3px var(--focus); }
+  .gamebody.playing::after { content: ''; position: absolute; inset: 0; box-shadow: inset 0 0 0 3px var(--accent); pointer-events: none; }
+  /* the key hint over the game */
+  .focus-hint { position: absolute; inset: auto 0 18px 0; margin: 0 auto; width: max-content; max-width: 80%;
+                background: rgba(20,20,20,.86); color: #fff; padding: 10px 14px; border-radius: 10px; font-size: 15px; pointer-events: none; }
+  .focus-hint[hidden] { display: none; }
+  .keys { display: inline-flex; gap: 4px; margin: 0 4px; }
+  .key { border: 1px solid #777; border-bottom-width: 3px; border-radius: 5px; padding: 0 7px; font-size: 13px; }
+  /* a sound made visible: the pop over the game */
+  .pop { position: absolute; font-weight: 800; font-size: 20px; color: #fff; text-shadow: 0 2px 0 #000, 0 0 8px rgba(0,0,0,.6);
+         pointer-events: none; transform: translate(-50%, 0); animation: popup .9s cubic-bezier(.16,1,.3,1) forwards; }
+  @keyframes popup { from { transform: translate(-50%, 0) scale(.6); opacity: 0; } 20% { opacity: 1; transform: translate(-50%, -8px) scale(1.1); }
+                     to { transform: translate(-50%, -38px) scale(1); opacity: 0; } }
+  /* the pointer bubble, placed by pointAt() just above the tab it names */
+  .editor > .pointer { z-index: 5; }
+  /* the Quest checklist: ticked only on evidence */
+  .checks { list-style: none; margin: 8px 0 0; padding: 0; display: grid; gap: 4px; }
+  .checks li { display: flex; align-items: center; gap: 8px; min-height: 30px; font-size: 14px; color: var(--ink-2); }
+  .checks li .box { width: 20px; height: 20px; border-radius: 5px; border: 1.5px solid var(--ink-3); display: grid; place-items: center; flex: none; }
+  .checks li.done { color: var(--ink); }
+  .checks li.done .box { background: var(--accent); border-color: var(--accent); color: var(--accent-ink); }
+  .checks li.now { color: var(--ink); font-weight: 600; }
+  .checks li.now .box { border-color: var(--accent); }
+  .checks .box svg { width: 14px; height: 14px; }
+  /* a concept card, as it arrives in the conversation */
+  .card { margin: 4px 0 2px; border-radius: 10px; background: var(--card-warm); border: 1.5px solid var(--accent); padding: 12px 14px; }
+  .card b { display: block; font-size: 16px; color: var(--ink); }
+  .card p { margin: 4px 0 8px; font-size: 14.5px; color: var(--ink); }
+  .card dl { display: grid; grid-template-columns: auto 1fr; gap: 2px 10px; margin: 0; font-size: 13px; }
+  .card dt { color: var(--ink-2); }
+  .card dd { margin: 0; color: var(--ink); }
+  /* a Hierarchy row that is a heading or a view, not a control */
+  .tree .trow { display: flex; align-items: center; gap: 8px; min-height: 44px; padding: 0 8px; color: var(--ink); }
+  .tree li.child .trow { padding-left: 34px; }
+  .tree .trow small { margin-left: auto; color: var(--ink-3); font-size: 12px; }
+  /* a quiet line in the Inspector, and the reviewer-only note colour */
+  .inote { color: var(--ink-2); font-size: 14px; padding: 6px 2px; }
+  .branchnote { color: var(--accent); font-weight: 600; }
 
   @media (prefers-reduced-motion: reduce) { *, *::before, *::after { transition: none !important; animation: none !important; } }
 
@@ -228,9 +287,7 @@
   /* ---------- additions for the desk ---------- */
   .editor { height: 650px; grid-template-rows: 56px minmax(0, 1fr) 132px 26px;
             grid-template-areas: "tool tool tool" "left game right" "left proj right" "status status status"; }
-  .sr { position: absolute; width: 1px; height: 1px; overflow: hidden; clip: rect(0 0 0 0); white-space: nowrap; }
-  .gamebody canvas { flex: 1; min-width: 0; width: 100%; height: 100%; display: block; background: #111; }
-  .editor > .pointer { z-index: 5; }   /* placed by pointAt(), just above the tab it names */
+
   /* the studio dock: a milestone track and the departments, in the Quest dock's place */
   .studio h2 { margin: 4px 0 6px; font-size: 12.5px; font-weight: 700; color: var(--ink-3); letter-spacing: .04em; text-transform: uppercase; }
   .track2 { list-style: none; margin: 0 0 12px; padding: 0; display: grid; gap: 2px; }
@@ -259,13 +316,13 @@
   .ccard small { color: var(--ink-3); font-size: 12px; }
   .ccard.tool { border-color: var(--accent); }
   .ccard.fresh { box-shadow: 0 0 0 2px var(--accent); }
-  .ccard[aria-pressed="true"] { border-color: var(--accent); background: #3a3027; }
-  .lvl { display: flex; gap: 3px; } .lvl i { width: 14px; height: 5px; border-radius: 2px; background: #555; } .lvl i.on { background: var(--accent); }
+  .ccard[aria-pressed="true"] { border-color: var(--accent); background: var(--card-warm-on); }
+  .lvl { display: flex; gap: 3px; } .lvl i { width: 14px; height: 5px; border-radius: 2px; background: var(--track-off); } .lvl i.on { background: var(--accent); }
   .cardback b { display: block; font-size: 16px; margin-bottom: 4px; }
   .cardback p { margin: 0 0 8px; font-size: 14.5px; }
   .cardback dl { display: grid; grid-template-columns: auto 1fr; gap: 3px 10px; margin: 0; font-size: 13.5px; }
   .cardback dt { color: var(--ink-2); } .cardback dd { margin: 0; }
-  .branchnote { color: var(--accent); font-weight: 600; }
+
 </style>
 </head>
 <body>
@@ -439,17 +496,14 @@ function options(list) {
   if (!list.noShuffle) for (var k = list.length - 1; k > 0; k--) { var j = Math.floor(Math.random() * (k + 1)), t = list[k]; list[k] = list[j]; list[j] = t; }
   list.forEach(function (o) { var b = document.createElement('button'); b.className = 'opt'; b.textContent = o[0]; b.addEventListener('click', function () { o[1](); }); box.appendChild(b); });
   if (wasInEditor && box.firstChild) box.firstChild.focus({ preventScroll: true });
-  if ($('inspector').classList.contains('open')) $('inspector').style.setProperty('--pinned', ($('opts').offsetHeight + document.querySelector('.say').offsetHeight) + 'px');
 }
 function announce(t) { $('announce').textContent = t; }
 function inspector(title, html) {
   var el = $('inspector');
   if (!title) { el.classList.remove('open'); el.setAttribute('aria-hidden', 'true'); el.inert = true; $('dMentor').classList.remove('inspecting'); return; }
   $('inspName').textContent = title; $('inspBody').innerHTML = html; $('dMentor').classList.add('inspecting');
-  var log = $('log'), vis = [].filter.call(log.children, function (m) { return getComputedStyle(m).display !== 'none'; });
-  var last = vis[vis.length - 1], pin = $('opts').offsetHeight + document.querySelector('.say').offsetHeight;
-  el.style.top = (last ? last.offsetTop + last.offsetHeight + 10 : 34) + 'px'; el.style.setProperty('--pinned', pin + 'px');
   el.classList.add('open'); el.setAttribute('aria-hidden', 'false'); el.inert = false;
+  requestAnimationFrame(function () { var lg = $('log'); lg.scrollTop = lg.scrollHeight; });   // the Inspector docks below the conversation; keep its newest line in view
 }
 $('inspClose').addEventListener('click', function () { inspector(null); });
 document.addEventListener('keydown', function (e) { if (e.key === 'Escape') inspector(null); });
