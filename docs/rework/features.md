@@ -48,6 +48,7 @@ records the reason, so the next person can see why something is there — or isn
 | Core loop: do the jobs (shifts as hands-on minigames, incl. fix-it jobs) → grow your game → grow your studio | **In** | Jay | `core-loop.md`. Start with shifts + your game; the studio layer thin at first. |
 | The kid's hands are always busy: plays, notices, decides, tunes, makes, directs, proves | **In** | Jay, research | `core-loop.md`. Tuning/making are direct, no AI call. |
 | C# — peek (see the real code behind a change) + tweak (edit values, feel it), from mid-course | **In** | Jay | Arrange/write optional for keen kids. A Unity-flavoured C# subset translated to the game; no compiler. |
+| A hiring interview on first sign-in: a one-time code, a ~3-minute interview in its own scene (a backlit silhouette, one speech bubble, try-this moments on a tablet), a generated re-rollable handle and a picture password, ending "You're hired!" | **In** | Jay | Confirmed 2026-09-26; `briefs/hiring-interview.md`, wireframe 07. Takes over the first day's get-to-know-you questions. Three of its moments are a hidden growth snapshot that an exit interview repeats at session 10. Sign-in changes are designed only; `app/auth.js` waits for a separate plan. |
 | Leaderboards | **Parked** | proto, Jay | "Probably not necessary." |
 | Gallery | **Parked** | proto, Jay | "Not necessary for now." |
 | Code-debugging labs | **Out** | proto, critique | A no-syntax course; the critique found them the lowest point of the app. |
@@ -93,7 +94,26 @@ records the reason, so the next person can see why something is there — or isn
 | First 60 seconds: their game running, the AI says hi, one tap-able change | research 03, critique | Replaces the missing tour. |
 | Instructor view (who's stuck) | critique | Secondary user. |
 | **Free build: the studio is yours** | Jay, 2026-09-25 | After the kid has got far in the course (or finished it), open-ended time to use the AI and the engine to tweak, adjust, change, add and build whatever they want in their game, with every tool power they've earned. A reward and the course's graduation: the skills from the shifts, used freely. Natural home: around Launch party (session 10) or as an unlock after Beta. Open: whether the director still suggests ideas, and what guards stay on (the checker, cost limits). Not started. |
-| **A hiring interview on first sign-in** | Jay, 2026-09-25 | Before the first day: an interactive scene with a cartoon silhouette interviewer runs a quick mock job interview, as a conversation, so the kid feels hired by the studio. It can gather basic info for the learner card (kinds of fun, favourite games, comfort), and could take over the get-to-know-you questions now at the end of the first day (`briefs/first-run.md` v3, beat 8). Privacy rules apply: no real name, age, school or location (`docs/child-privacy-brief.md`). Not started, by Jay's instruction. |
+
+## Waiting — from the prototype plan (2026-09-26)
+
+All detailed in `prototype-plan.md`; the section is in brackets.
+
+| Idea | Source | Notes |
+|---|---|---|
+| The kid's game carries over between sessions; the first-day pick reorders later shifts | critique | §3. The critique's biggest finding (P0). |
+| Name your game on the first day | critique | §3. It becomes the project name in the toolbar. |
+| Studio time at the end of every shift | critique, plans review | §3, §4. Every tool the kid has earned is live in their own game. It makes free build a weekly habit. |
+| The chat box as an idea inbox; "Something else…" on every picker | critique, Jay | §3. The builder tries it and labels its guesses. Anything bigger becomes a ticket. |
+| A fixed running order each session: stand-up → shift → tickets → studio → show a friend | plans review | §4. Fills 60–90 minutes; tickets bring concepts back. |
+| One main verb and view per department (not the same fix-it loop every time) | critique | §4. Also customer games in other genres. |
+| "Kind of fun" as an owned studio word in S1 | fun research | §5. Needs Jay's decision. |
+| "My Game" one-page game design doc as the first Project tile | plans review, fun research | §5. A new surface: mock it up first. |
+| Paper-prototype warm-up (offline, S3) | fun research | §5. |
+| Unity reveal schedule and the S10 graduation layout | critique, plans review | §6. |
+| Handle-based sign-in; teacher role | inventory | §7. The role touches `auth.js` (ask first). |
+| New test events, a teacher view, and the end-of-test survey | inventory, Jay | §9. |
+| Ship it → frozen copy → separate play address → approval and consent → gallery and embeddable player | web export | §10. This un-parks the Gallery. |
 
 ## Open questions that block features
 

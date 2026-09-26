@@ -101,6 +101,15 @@
         ],
         "createdAt": "2026-09-26T01:44:01.656Z",
         "reason": "Claude: raw template has an unfilled {{CSS}} slot; the built 05-shift-floaty-jump.html sets 22px/16px/15px (same as 03 and 04 templates)"
+      },
+      {
+        "rule": "flat-type-hierarchy",
+        "value": "*",
+        "files": [
+          "docs/rework/wireframes/src/07-hiring-interview.template.html"
+        ],
+        "createdAt": "2026-09-26T22:14:42.141Z",
+        "reason": "Claude: raw template has an unfilled {{CSS}} slot, so headings measure at browser defaults; the built 07 sets 22px doc title, 26px door title, 19px bubble over 15px body (same finding dismissed on the 03/04/05 templates)"
       }
     ]
   }

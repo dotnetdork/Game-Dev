@@ -1,5 +1,7 @@
 # Brief: the first run — "Your first day at the studio"
 
+
+> **2026-09-26:** the get-to-know-you questions (beat 8) moved into the hiring interview, which now comes before the first day (`hiring-interview.md`, wireframe 07). The first day ends on playing the kid's own game, which the kid also names now (wireframe 04).
 **Status: v3, confirmed by Jay 2026-09-25 ("fine for now") — Jay's decisions from the first-day critique; wireframe:
 `../wireframes/04-first-day.html` (built from `../wireframes/src/`).** v2 (confirmed the same day,
 wireframes `01` and `02`) was a demo the kid watched: about 13 taps, two of them real, no keyboard,

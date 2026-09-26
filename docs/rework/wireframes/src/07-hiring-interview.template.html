@@ -1,0 +1,693 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Hiring Interview</title>
+<!--
+  Wireframe 07: the hiring interview, a kid's first sign-in (../briefs/hiring-interview.md). Before
+  the first day (wireframe 04): a one-time code opens the studio door, the studio director interviews
+  the kid as a conversation full of tiny try-this moments, makes their studio badge (a generated
+  handle, never a real name) and hires them. Along the way it fills the learner card, and three of
+  its moments are a hidden "before" snapshot that the exit interview repeats at session 10.
+  Built from this template by build.js with base.css and ui.js; edit here, not the output.
+-->
+<style>
+{{CSS}}
+  /* ---------- the interview: its own scene, deliberately NOT the course ----------
+     The course is a grey Unity editor; this is the studio's lobby at dusk, lit warm, before the kid
+     has ever seen the editor. No docks, no tabs, no toolbar. One backlit silhouette, one speech
+     bubble under it, the answers under that. The only shared pieces are League orange, the 44px
+     targets, the focus ring and the dialogue-answer habit the course will build on. */
+  .editor.scene { display: block; position: relative; background: #1b1512; }
+  .scene .room { position: absolute; inset: 0; width: 100%; height: 100%; }
+  .corner { position: absolute; top: 14px; z-index: 6; display: flex; align-items: center; gap: 10px; }
+  .corner.l { left: 18px; } .corner.r { right: 14px; }
+  .corner .wordmark { height: 28px; }
+  .scene .snd-toggle { color: #e9ddcf; } .scene .snd-toggle:hover { background: rgba(255,255,255,.08); color: #fff; }
+
+  /* the interviewer: a true silhouette, dark against the lit window (backlit), so no face is ever
+     needed until the characters get their looks (PRODUCT.md "Open") */
+  #iv { transform-box: fill-box; transform-origin: 50% 100%; animation: breathe 4.2s ease-in-out infinite; }
+  @keyframes breathe { 50% { transform: scaleY(1.012); } }
+  .sil { fill: #120e0c; } .lany { stroke: var(--accent); stroke-width: 5; fill: none; stroke-linecap: round; }
+  #ivHead, #ivArm, #ivPen { transform-box: fill-box; }
+  #ivHead { transform-origin: 50% 90%; transition: transform .45s cubic-bezier(.16,1,.3,1); }
+  .iv-lean #ivHead { transform: rotate(-6deg) translateX(5px); }
+  .iv-laugh #ivHead { animation: laugh .6s ease-in-out 2; }
+  @keyframes laugh { 50% { transform: translateY(-5px) rotate(3deg); } }
+  .iv-scribble #ivPen { animation: scribble .22s ease-in-out 4; }
+  @keyframes scribble { 50% { transform: translate(7px, 3px); } }
+  .iv-nod #ivHead { animation: nod .5s ease-in-out 2; }
+  @keyframes nod { 50% { transform: rotate(5deg) translateY(3px); } }
+  #ivAll { transition: transform .8s cubic-bezier(.16,1,.3,1); }
+  .iv-stand #ivAll { transform: translateY(-26px); }
+
+  /* the conversation: centre, under the silhouette. One bubble (the director's newest words), the
+     kid's last answer echoed just above it, the answers below. Bigger type than the course: this is
+     a scene to take in, not a tool to scan. */
+  .talk { position: absolute; left: 50%; top: 318px; width: 660px; transform: translateX(-50%); z-index: 3;
+          display: flex; flex-direction: column; align-items: center; gap: 10px; }
+  .echo { min-height: 26px; }
+  .echo span { display: inline-block; padding: 3px 12px; border-radius: 999px; background: rgba(245,130,10,.18); color: #ffd9b0; font-size: 14px; font-weight: 600; }
+  .bubble { position: relative; width: 100%; background: var(--callout-paper); color: var(--callout-ink); border-radius: 18px; padding: 14px 22px;
+            font-size: 19px; line-height: 1.4; text-align: center; box-shadow: 0 10px 30px rgba(0,0,0,.45); }
+  .bubble::before { content: ''; position: absolute; left: 50%; top: -9px; width: 18px; height: 18px; margin-left: -9px; background: var(--callout-paper);
+                    transform: rotate(45deg); border-radius: 3px; }
+  .bubble p { margin: 0; } .bubble p + p { margin-top: 4px; }
+  .bubble .who { display: block; font-size: 12.5px; font-weight: 700; letter-spacing: .04em; text-transform: uppercase; color: #8a5a20; margin-bottom: 2px; padding: 0; }
+  .bubble.fresh { animation: msgIn .3s cubic-bezier(.16,1,.3,1) both; }
+  .answers { display: flex; flex-wrap: wrap; justify-content: center; gap: 8px; width: 100%; }
+  .answers .opt { min-height: 44px; padding: 8px 18px; border-radius: 999px; border: 1.5px solid var(--accent); background: rgba(20,14,10,.72);
+                  color: #fff; font-weight: 600; font-size: 15.5px; cursor: pointer; flex-direction: column; justify-content: center; gap: 0; }
+  .answers .opt:hover { background: var(--accent); color: var(--accent-ink); }
+  .answers .opt small { color: #d8c8b6; font-size: 12px; font-weight: 500; }
+  .answers .opt:hover small { color: var(--accent-ink); }
+  .sayline { width: 420px; }
+  .sayline input { width: 100%; min-height: 44px; border-radius: 999px; border: 1px solid rgba(255,255,255,.18); background: rgba(10,7,5,.6); color: #fff;
+                   padding: 0 18px; font: inherit; font-size: 14.5px; text-align: center; }
+  .sayline input::placeholder { color: #bfb0a0; }
+
+  /* left: the director's clipboard. What they've learned, written up as the kid talks: the learner
+     card, in the open. */
+  .clip { position: absolute; left: 40px; top: 92px; width: 250px; min-height: 190px; z-index: 2; background: #efe6d6; color: #2a241c; border-radius: 10px;
+          padding: 26px 18px 16px; box-shadow: 0 10px 26px rgba(0,0,0,.45); transform: rotate(-2deg); }
+  .clip::before { content: ''; position: absolute; left: 50%; top: -8px; width: 70px; height: 20px; margin-left: -35px; border-radius: 5px; background: #6d6a66; }
+  .clip h2 { margin: 0 0 8px; font-size: 13px; letter-spacing: .05em; text-transform: uppercase; color: #6b5c48; }
+  .clip ul { list-style: none; margin: 0; padding: 0; display: grid; gap: 5px; }
+  .clip li { font-size: 16px; font-weight: 600; border-bottom: 1px solid #d8ccb8; padding-bottom: 3px; animation: jotIn .5s cubic-bezier(.16,1,.3,1) both; }
+  .clip li.empty { color: #8a7c68; font-weight: 500; font-style: italic; border: 0; }
+  @keyframes jotIn { from { opacity: 0; transform: translateX(-8px); } to { opacity: 1; transform: none; } }
+
+  /* right: the tablet, where every try-this moment happens. Dark, so what's on it glows. */
+  .tablet { position: absolute; right: 40px; top: 70px; width: 380px; height: 236px; z-index: 2; background: #0d0b0a; border-radius: 16px;
+            box-shadow: inset 0 0 0 8px #2b2521, 0 14px 34px rgba(0,0,0,.5); padding: 14px; display: flex; transition: opacity .4s, transform .4s cubic-bezier(.16,1,.3,1); }
+  .tablet.off { opacity: 0; transform: translateY(10px); pointer-events: none; }
+  .screen { flex: 1; min-width: 0; border-radius: 6px; background: #232323; display: flex; flex-direction: column; align-items: center;
+            justify-content: center; gap: 10px; padding: 10px; color: var(--ink); text-align: center; overflow: hidden; }
+  .screen h2 { margin: 0; font-size: 15px; font-weight: 650; color: var(--ink-2); }
+  .tiles { display: flex; flex-wrap: wrap; gap: 6px; justify-content: center; }
+  .tile { min-height: 44px; min-width: 44px; padding: 0 12px; border-radius: 8px; border: 1.5px solid var(--line-soft); background: var(--panel-2);
+          color: var(--ink); font-weight: 600; font-size: 14px; cursor: pointer; display: inline-flex; align-items: center; gap: 7px; }
+  .tile[aria-pressed="true"] { border-color: var(--accent); box-shadow: 0 0 0 2px var(--accent); }
+  .tile:hover { background: #4a4a4a; }
+  .tile svg { width: 20px; height: 20px; }
+  .pair { display: flex; gap: 12px; }
+  .pair > div { display: flex; flex-direction: column; align-items: center; gap: 6px; }
+  .pair canvas { width: 150px; height: 104px; border-radius: 6px; background: #9a9a9a; display: block; }
+
+  /* the door, for the code: the whole scene, closed, with the field in its middle */
+  .door { position: absolute; inset: 0; z-index: 5; display: grid; grid-template-columns: 1fr 1fr; transition: opacity .6s .5s; }
+  .door > .leaf { background: linear-gradient(#3a302a, #2c241f); transition: transform .9s cubic-bezier(.16,1,.3,1); }
+  .door > .leaf:first-child { box-shadow: inset -2px 0 0 #1c1714; } .door > .leaf:last-child { box-shadow: inset 2px 0 0 #1c1714; }
+  .door .front { position: absolute; left: 50%; top: 50%; transform: translate(-50%, -50%); width: 560px; padding: 28px 30px; border-radius: 14px; background: #221b17; box-shadow: 0 0 0 1px #3d332c, 0 20px 50px rgba(0,0,0,.45); display: flex; flex-direction: column;
+                 align-items: center; gap: 14px; text-align: center; color: #efe6d6; }
+  .door .front h2 { margin: 0; font-size: 26px; font-weight: 700; }
+  .door .front p { margin: 0; color: #cdbfae; font-size: 16px; }
+  .door .row { display: flex; gap: 8px; width: 100%; }
+  .door input { flex: 1; min-height: 56px; border-radius: 10px; border: 1.5px solid var(--accent); background: #1b1512; color: #fff; padding: 0 16px; text-align: center;
+                font: 600 22px/1 ui-monospace, "SFMono-Regular", Menlo, monospace; letter-spacing: .1em; text-transform: uppercase; }
+  .door input::placeholder { color: #9b8b79; letter-spacing: .02em; font-weight: 500; }
+  .door .go { min-height: 56px; padding: 0 22px; border-radius: 10px; border: 0; background: var(--accent); color: var(--accent-ink); font-weight: 700; font-size: 16px; cursor: pointer; }
+  .door .lamp { width: 14px; height: 14px; border-radius: 50%; background: #5a4a3e; box-shadow: 0 0 0 4px #2a221d; }
+  .door.ok .lamp { background: var(--accent); box-shadow: 0 0 0 4px #2a221d, 0 0 18px var(--accent); }
+  .door.nope .row { animation: feelNope .32s ease-in-out; }
+  .door .reply { min-height: 22px; color: #ffd9b0; font-size: 15px; }
+  .door .link { border: 0; background: transparent; color: #cdbfae; text-decoration: underline; text-underline-offset: .2em; min-height: 44px; cursor: pointer; font-size: 14px; }
+  .door.open > .leaf:first-child { transform: translateX(-100%); } .door.open > .leaf:last-child { transform: translateX(100%); }
+  .door.open { opacity: 0; pointer-events: none; }
+  .door.open .front { opacity: 0; }
+
+  /* the badge: the focal moment */
+  .badge { width: 250px; border-radius: 12px; background: #f3efe7; color: #1d1a12; overflow: hidden; box-shadow: 0 10px 28px rgba(0,0,0,.45); text-align: left; }
+  .badge .band { height: 30px; display: flex; align-items: center; padding: 0 12px; color: #fff; font-weight: 700; font-size: 12px; letter-spacing: .04em; }
+  .badge .body { display: flex; gap: 12px; align-items: center; padding: 12px; }
+  .badge .pic { width: 54px; height: 54px; border-radius: 10px; display: grid; place-items: center; color: #fff; flex: none; }
+  .badge .pic svg { width: 30px; height: 30px; stroke-width: 2; }
+  .badge strong { display: block; font-size: 17px; line-height: 1.15; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }  /* a handle is one line, however long */
+  .badge .body > div:last-child { min-width: 0; }
+  .badge small { display: block; margin-top: 3px; color: #5d574c; font-size: 12.5px; }
+  .badge-out { position: absolute; right: 105px; top: 96px; z-index: 4; animation: printOut 1.6s cubic-bezier(.16,1,.3,1) both; }
+  @keyframes printOut { from { transform: translateY(40px) scale(.85) rotate(4deg); opacity: 0; } 40% { opacity: 1; } to { transform: rotate(-3deg) scale(1.1); opacity: 1; } }
+  .swatches { display: flex; gap: 6px; }
+  .swatches .tile { padding: 0 10px; }
+  .swatches .tile i { width: 16px; height: 16px; border-radius: 50%; }
+  .pics { display: grid; grid-template-columns: repeat(3, 52px); gap: 6px; }
+  .pics .tile { padding: 0; justify-content: center; position: relative; }
+  .pics .tile b { position: absolute; top: 2px; right: 4px; font-size: 11px; color: var(--accent); }
+
+  /* the engine screenshot on the tablet (the portfolio moment) */
+  .mini { width: 100%; height: 100%; display: grid; grid-template-rows: 22px 1fr; grid-template-columns: 64px 1fr 84px; gap: 2px; background: #121212; position: relative; }
+  .mini > button { border: 0; padding: 0; background: #383838; cursor: crosshair; position: relative; }
+  .mini > button:hover { outline: 1px solid rgba(255,255,255,.18); outline-offset: -1px; }
+  .mini .mtop { grid-column: 1 / -1; background: #282828; display: flex; align-items: center; justify-content: center; }
+  .mini .mtop i { width: 30px; height: 14px; border-radius: 3px; background: #414141; display: grid; place-items: center; }
+  .mini .mtop i::before { content: ''; border-left: 7px solid #cfcfcf; border-top: 4px solid transparent; border-bottom: 4px solid transparent; }
+  .mini .mscene { background: #9aa5b1; }
+  .mini .mscene::before { content: ''; position: absolute; left: 12%; right: 12%; bottom: 22%; height: 10px; background: #6e6e6e; }
+  .mini .mscene::after { content: ''; position: absolute; left: 22%; bottom: calc(22% + 10px); width: 10px; height: 14px; background: #4f7bd6; }
+  .mini .mside::before, .mini .mside::after { content: ''; position: absolute; left: 8px; right: 8px; height: 5px; border-radius: 3px; background: #4a4a4a; }
+  .mini .mside::before { top: 10px; } .mini .mside::after { top: 22px; }
+  .mini .minsp::before { content: ''; position: absolute; left: 8px; right: 8px; top: 12px; height: 5px; border-radius: 3px; background: #4a4a4a;
+                         box-shadow: 0 14px 0 #4a4a4a, 0 28px 0 #4a4a4a, 0 42px 0 #4a4a4a; }
+  .mark { position: absolute; width: 18px; height: 18px; margin: -9px 0 0 -9px; border-radius: 50%; border: 3px solid var(--accent); pointer-events: none; }
+  .faces { display: flex; gap: 5px; }
+  .faces .tile { flex-direction: column; padding: 6px 3px; gap: 2px; min-width: 62px; font-size: 11.5px; font-weight: 600; color: var(--ink-2); }
+  .faces svg { width: 28px; height: 28px; stroke-width: 1.6; }
+
+  /* the returning sign-in (the last reviewer step): the same lobby, a class's badges on it */
+  .signin { position: absolute; inset: 0; z-index: 5; background: rgba(20,14,11,.94); display: none; flex-direction: column; align-items: center; justify-content: center; gap: 14px; color: #efe6d6; }
+  .signin.on { display: flex; }
+  .signin h2 { margin: 0; font-size: 22px; font-weight: 700; }
+  .signin p { margin: 0; color: #cdbfae; }
+  .signin .row { display: flex; gap: 10px; flex-wrap: wrap; justify-content: center; max-width: 720px; }
+  .signin .badge { width: 200px; cursor: pointer; border: 0; padding: 0; font: inherit; }
+  .signin .badge strong { font-size: 15px; }
+  .signin .badge:focus-visible { outline: 3px solid var(--focus); outline-offset: 3px; }
+</style>
+</head>
+<body>
+<header class="doc">
+  <h1>The hiring interview: a kid’s first sign-in</h1>
+  <p>Before the first day. Enter the code from your card (try <b>TIGER-42</b>), then talk to the studio director.
+     Every answer is right. The step buttons below are for reviewers and let you skip ahead.</p>
+</header>
+
+{{ICONS}}
+<svg width="0" height="0" style="position:absolute" aria-hidden="true">
+  <!-- the badge icons and the picture-password pictures: drawn in the same stroke as the icon set -->
+  <symbol id="p-rocket" viewBox="0 0 24 24"><path d="M12 3c3 2 5 5.5 5 9.5l-2 3.5H9l-2-3.5C7 8.5 9 5 12 3zM12 9.5a1.5 1.5 0 1 0 0 .01M9 16l-2.5 4M15 16l2.5 4"/></symbol>
+  <symbol id="p-cat" viewBox="0 0 24 24"><path d="M5 20V9l3-4 2 4h4l2-4 3 4v11zM9.5 13h.01M14.5 13h.01M10.5 16.5h3"/></symbol>
+  <symbol id="p-key" viewBox="0 0 24 24"><path d="M8 15a4 4 0 1 1 3.5-6h9.5v3h-2v2h-3v-2h-4.5A4 4 0 0 1 8 15z"/></symbol>
+  <symbol id="p-coin" viewBox="0 0 24 24"><circle cx="12" cy="12" r="8"/><path d="M12 8v8M9.5 10h4a1.5 1.5 0 0 1 0 3h-3a1.5 1.5 0 0 0 0 3h4"/></symbol>
+  <symbol id="p-heart" viewBox="0 0 24 24"><path d="M12 20s-7.5-4.5-7.5-10A4 4 0 0 1 12 7.5 4 4 0 0 1 19.5 10c0 5.5-7.5 10-7.5 10z"/></symbol>
+  <symbol id="p-moon" viewBox="0 0 24 24"><path d="M19 14.5A7.5 7.5 0 1 1 9.5 5a6 6 0 0 0 9.5 9.5z"/></symbol>
+  <symbol id="p-bolt" viewBox="0 0 24 24"><path d="M13.5 3L6 13.5h5.5L10.5 21 18 10.5h-5.5z"/></symbol>
+  <symbol id="p-tree" viewBox="0 0 24 24"><path d="M12 3l6 8h-3l4 5H5l4-5H6zM12 16v5"/></symbol>
+  <symbol id="p-ghost" viewBox="0 0 24 24"><path d="M6 20V10a6 6 0 0 1 12 0v10l-2-1.5-2 1.5-2-1.5-2 1.5-2-1.5zM10 10.5h.01M14 10.5h.01"/></symbol>
+  <symbol id="p-dice" viewBox="0 0 24 24"><rect x="4.5" y="4.5" width="15" height="15" rx="3"/><path d="M9 9h.01M15 9h.01M12 12h.01M9 15h.01M15 15h.01"/></symbol>
+  <symbol id="f-1" viewBox="0 0 24 24"><circle cx="12" cy="12" r="8.5"/><path d="M9 10h.01M15 10h.01M8.5 16.5c2-2 5-2 7 0"/></symbol>
+  <symbol id="f-2" viewBox="0 0 24 24"><circle cx="12" cy="12" r="8.5"/><path d="M9 10h.01M15 10h.01M9 16c1.8-1 4.2-1 6 0"/></symbol>
+  <symbol id="f-3" viewBox="0 0 24 24"><circle cx="12" cy="12" r="8.5"/><path d="M9 10h.01M15 10h.01M9 15.5h6"/></symbol>
+  <symbol id="f-4" viewBox="0 0 24 24"><circle cx="12" cy="12" r="8.5"/><path d="M9 10h.01M15 10h.01M9 14.5c1.8 1.2 4.2 1.2 6 0"/></symbol>
+  <symbol id="f-5" viewBox="0 0 24 24"><circle cx="12" cy="12" r="8.5"/><path d="M9 9.5h.01M15 9.5h.01M8 13.5c2 3.5 6 3.5 8 0z"/></symbol>
+</svg>
+
+<div class="stagehold"><div class="scaler" id="scaler">
+<div class="editor scene" id="editor" role="region" aria-label="The studio lobby: your hiring interview, drawn at 1366 by 650">
+  <svg class="room" viewBox="0 0 1366 650" preserveAspectRatio="xMidYMid slice" aria-hidden="true">
+    <defs>
+      <linearGradient id="dusk" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="#27335a"/><stop offset=".55" stop-color="#6d4a6e"/><stop offset="1" stop-color="#e08a4c"/></linearGradient>
+      <radialGradient id="glow" cx=".5" cy=".75" r=".6"><stop offset="0" stop-color="#ffb46a" stop-opacity=".35"/><stop offset="1" stop-color="#ffb46a" stop-opacity="0"/></radialGradient>
+      <linearGradient id="wall" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="#2d2420"/><stop offset="1" stop-color="#1f1916"/></linearGradient>
+    </defs>
+    <rect width="1366" height="650" fill="url(#wall)"/>
+    <!-- the big window behind the director, at dusk: it's what makes them a silhouette -->
+    <rect x="433" y="36" width="500" height="266" rx="6" fill="url(#dusk)"/>
+    <path d="M433 302V232h36v-30h28v48h22v-70h34v78h20v-40h30v58h24v-88h36v104h32v-52h30v58h28v-36h34v44h26v-66h32v82h28v-34h40v70z" fill="#1a1426" opacity=".85"/>
+    <rect x="433" y="36" width="500" height="266" rx="6" fill="none" stroke="#3a2f29" stroke-width="10"/>
+    <path d="M683 36v266M433 168h500" stroke="#3a2f29" stroke-width="6"/>
+    <ellipse cx="683" cy="300" rx="420" ry="140" fill="url(#glow)"/>
+    <!-- a plant and a lamp, so it's a place, not a backdrop -->
+    <path d="M1188 300c-10-50 8-86 30-104-4 36 6 70-8 104zM1210 300c4-44 30-70 56-78-16 30-18 58-34 78z" fill="#1d2a1f"/>
+    <rect x="1182" y="296" width="60" height="10" rx="3" fill="#2a221d"/>
+    <path d="M180 24v60" stroke="#3a2f29" stroke-width="3"/><path d="M150 84h60l-12 26h-36z" fill="#3a2f29"/>
+    <ellipse cx="180" cy="116" rx="70" ry="24" fill="#ffb46a" opacity=".12"/>
+    <g id="ivAll"><g id="iv">
+      <path class="sil" d="M548 312c0-86 58-136 135-136s135 50 135 136z"/>
+      <path class="lany" d="M650 186l33 58 33-58"/>
+      <g id="ivHead"><ellipse class="sil" cx="683" cy="118" rx="54" ry="60"/><path class="sil" d="M628 104c2-46 30-66 56-66 30 0 56 22 56 64-10-22-32-32-56-32s-46 12-56 34z"/></g>
+      <g id="ivArm"><path class="sil" d="M790 238c26 10 42 36 46 70h-34c-4-24-14-40-28-50z"/>
+        <rect x="806" y="232" width="62" height="80" rx="5" fill="#0c0908" transform="rotate(-10 837 272)"/>
+        <line id="ivPen" x1="860" y1="282" x2="878" y2="254" stroke="#0c0908" stroke-width="5" stroke-linecap="round"/></g>
+    </g></g>
+    <!-- the desk: the top edge the director sits behind, the front the conversation sits on -->
+    <rect x="0" y="302" width="1366" height="16" fill="#4a3a2f"/><rect x="0" y="302" width="1366" height="3" fill="#5c4a3c"/>
+    <rect x="0" y="318" width="1366" height="332" fill="#2a201b"/>
+  </svg>
+
+  <div class="corner l"><img class="wordmark" alt="The League of Amazing Programmers" src="{{LOGO}}"></div>
+  <div class="corner r"><button class="snd-toggle" id="bSound" aria-pressed="true"><svg class="i"><use href="#i-sound"/></svg><span>Sound on</span></button></div>
+
+  <div class="clip" id="clip" aria-label="The director's notes about you"><h2>Notes</h2><ul id="notes"><li class="empty">(nothing yet)</li></ul></div>
+  <div class="tablet off" id="tablet" aria-label="The director's tablet"><div class="screen" id="screen"></div></div>
+  <div id="badgeOut"></div>
+
+  <div class="talk" id="talk">
+    <div class="echo" id="echo" aria-hidden="true"></div>
+    <div class="bubble" id="bubble"><span class="who">Studio director</span><div id="words"></div></div>
+    <div class="answers" id="opts"></div>
+    <div class="sayline" id="sayRow"><input id="say" type="text" placeholder="Say something else…" aria-label="Say something else"></div>
+  </div>
+
+  <div class="door" id="door">
+    <div class="leaf"></div><div class="leaf"></div>
+    <div class="front">
+      <span class="lamp" aria-hidden="true"></span>
+      <h2>The League Game Studio</h2>
+      <p>New hires: type the code on the card your teacher gave you.</p>
+      <div class="row"><input id="code" type="text" autocomplete="off" spellcheck="false" maxlength="14" placeholder="Like TIGER-42" aria-label="The code on your card"><button class="go" id="codeGo">Open</button></div>
+      <div class="reply" id="doorReply" aria-live="off"></div>
+      <button class="link" id="noCard">I don’t have a card</button>
+    </div>
+  </div>
+  <div class="signin" id="signin"></div>
+  <p class="sr" id="announce" aria-live="polite"></p>
+</div>
+</div></div>
+
+<nav class="nav" aria-label="Steps (for reviewers)">
+  <button id="back">Back</button><span class="track" id="dots"></span><button id="next">Skip ahead</button>
+</nav>
+
+<section class="notes">
+  <div><h2 id="nBeat"></h2><p id="nWhat"></p></div>
+  <div><h2>Why it’s built this way</h2><p id="nGate"></p></div>
+  <div><h2>The learner card so far (reviewers only)</h2><p id="nCard">Nothing yet.</p></div>
+</section>
+
+<script>{{UI}}</script>
+<script>
+var $ = function (id) { return document.getElementById(id); };
+var SFX_DATA = {{SFX}}, AC = null, buffers = {};
+function playSfx(id) {
+  if (UI.muted()) return;
+  try { if (!AC) AC = new (window.AudioContext || window.webkitAudioContext)(); } catch (e) { return; }
+  if (AC.state === 'suspended') AC.resume();
+  var go2 = function () { var s = AC.createBufferSource(); s.buffer = buffers[id]; s.connect(AC.destination); s.start(); };
+  if (buffers[id]) { go2(); return; }
+  try { var bin = atob(SFX_DATA[id]), bytes = new Uint8Array(bin.length); for (var k = 0; k < bin.length; k++) bytes[k] = bin.charCodeAt(k);
+    AC.decodeAudioData(bytes.buffer, function (b) { buffers[id] = b; go2(); }, function () {}); } catch (e) {}
+}
+
+/* ---------- what the interview learns. The learner card (PRODUCT.md: small, visible, resettable)
+   plus the growth snapshot: identical items asked again in the exit interview at session 10. No
+   real name, age, school or place is ever asked (docs/child-privacy-brief.md). ---------- */
+var CARD, HANDLE = null;
+function freshCard() {
+  return { code: null, tone: null, games: [], fun: [], feelJump: null, feelSound: null, job: null,
+           handle: null, badge: { colour: '#e0474c', icon: 'rocket' }, pictures: [],
+           snapshot: { playTap: null, jumpTap: null, wordsHeard: [], decoyTicked: false, confidence: null, jumpPick: null },
+           comfort: { typedSomething: false } };
+}
+function showCard() {
+  var c = CARD, bits = [];
+  if (c.code) bits.push('code ' + c.code + ' (links to the teacher’s roster, not a name)');
+  if (c.tone) bits.push('tone: ' + c.tone);
+  if (c.games.length) bits.push('games: ' + c.games.join(', '));
+  if (c.feelJump) bits.push('jump feel: ' + c.feelJump);
+  if (c.feelSound) bits.push('coin sound: ' + c.feelSound);
+  if (c.fun.length) bits.push('kinds of fun: ' + c.fun.join(', '));
+  if (c.handle) bits.push('handle: ' + c.handle);
+  if (c.pictures.length) bits.push('picture password: ' + c.pictures.length + ' of 3 set');
+  var s = c.snapshot, snap = [];
+  if (s.jumpPick) snap.push('jump pick ' + s.jumpPick);
+  if (s.playTap) snap.push('Play guess: ' + s.playTap);
+  if (s.jumpTap) snap.push('jump-height guess: ' + s.jumpTap);
+  if (s.wordsHeard.length || s.decoyTicked) snap.push('words heard: ' + (s.wordsHeard.join(', ') || 'none') + (s.decoyTicked ? ' (ticked the made-up word)' : ''));
+  if (s.confidence) snap.push('confidence ' + s.confidence + '/5');
+  if (c.job) bits.push('job that sounds fun: ' + c.job);
+  $('nCard').textContent = (bits.length ? bits.join(' · ') : 'Nothing yet.') + (snap.length ? '   ▸ Growth snapshot: ' + snap.join(' · ') : '');
+}
+
+/* ---------- the interviewer: alive, and reacting to every answer ---------- */
+function react(kind) {
+  var st = $('editor'), cls = 'iv-' + kind;
+  st.classList.remove('iv-lean', 'iv-laugh', 'iv-scribble', 'iv-nod'); void st.offsetWidth; st.classList.add(cls);
+  if (kind !== 'lean') setTimeout(function () { st.classList.remove(cls); }, 1400);
+}
+/* "I'm writing that down": the learned word, on a note by the clipboard, for a moment. */
+function jot(word) {
+  react('scribble');
+  var ul = $('notes'), e = ul.querySelector('.empty'); if (e) e.remove();
+  var li = document.createElement('li'); li.textContent = word; ul.appendChild(li);
+  while (ul.children.length > 7) ul.removeChild(ul.firstElementChild);
+}
+function screen(html, off) { $('tablet').classList.toggle('off', !!off); var sc = $('screen'); sc.innerHTML = off ? '' : (html || ''); return sc; }
+
+/* ---------- the conversation: the same dock, bubbles and answers the kid will use all course ---------- */
+var shown = [], said = 0;
+/* This is a scene, not the course's conversation dock: one speech bubble under the silhouette holds
+   the director's newest words, and the kid's own answer is echoed just above it. Everything said is
+   still read out once by the one announcer. */
+function say(lines) {
+  shown = lines; said++;
+  var kid = lines.filter(function (m) { return m[0] === 'k'; }), dir = lines.filter(function (m) { return m[0] !== 'k'; });
+  if (kid.length) $('echo').innerHTML = '<span>You: ' + esc(kid[kid.length - 1][1]) + '</span>';
+  if (dir.length) {
+    $('words').innerHTML = dir.map(function (m) { return '<p>' + esc(m[1].replace(/@name/g, HANDLE || 'you')) + '</p>'; }).join('');
+    var b = $('bubble'); b.classList.remove('fresh'); void b.offsetWidth; b.classList.add('fresh');
+  }
+  var last = dir.length ? dir[dir.length - 1][1] : kid.length ? kid[kid.length - 1][1] : '';
+  if (last) announce(last.replace(/@name/g, HANDLE || 'you'));
+}
+function esc(t) { return String(t).replace(/[&<>]/g, function (c) { return { '&': '&amp;', '<': '&lt;', '>': '&gt;' }[c]; }); }
+function options(list) {
+  var box = $('opts'), wasInEditor = $('editor').contains(document.activeElement);
+  box.innerHTML = '';
+  list.forEach(function (o) {
+    var b = document.createElement('button'); b.className = 'opt'; b.textContent = o[0];
+    if (o[2]) { var sm = document.createElement('small'); sm.textContent = o[2]; b.appendChild(sm); }
+    b.addEventListener('click', function () { o[1](b); });
+    box.appendChild(b);
+  });
+  if (wasInEditor && box.firstChild) box.firstChild.focus({ preventScroll: true });
+}
+function announce(t) { $('announce').textContent = t; }
+/* Kid answers are shown as their own line, and the director always reacts: no answer is wrong. */
+function answer(text, reply, kind, then) { say([['k', text]].concat(reply.map(function (r) { return ['m', r]; }))); react(kind || 'nod'); if (then) then(); }
+
+/* ---------- the steps ---------- */
+var i = 0;
+function advance() { go(i + 1); }
+var STEPS = [
+  { beat: 'Code at the door',
+    enter: function () {
+      $('door').classList.remove('open', 'ok'); screen('', true); $('doorReply').textContent = '';
+      say([['m', '…']]); options([]);
+      $('code').value = ''; setTimeout(function () { if (i === 0) $('code').focus({ preventScroll: true }); }, 60); },
+    what: 'The first thing a kid sees on their first sign-in: the studio door. They type the one-time code from their teacher’s card.',
+    gate: 'The code links this account to a row on the teacher’s roster, so the teacher knows who it is and the app never needs a real name. It forgives lowercase and spaces. A wrong code keeps the door shut and says what to do. A used code says “sign in with your badge instead” (the last step shows that).' },
+  { beat: '“Come in, sit down!”',
+    enter: function () {
+      $('door').classList.add('open'); screen('', true);
+      say([['m', 'Come in, come in! Sit down.'], ['m', 'So. You’re here about the game developer job?']]); react('lean');
+      var t = function (tone, text, reply, kind) { return function () { CARD.tone = tone; showCard(); answer(text, reply, kind, function () { options([['Yes, I want the job!', advance]]); }); }; };
+      options([['Yes!', t('keen', 'Yes!', ['Great! Let’s see what you’re made of. Don’t worry: there are no wrong answers today.'])],
+               ['Wait, what job?', t('curious', 'Wait, what job?', ['Game developer! You make games, here, with us. Still interested?'])],
+               ['I’m just here for the snacks', t('silly', 'I’m just here for the snacks', ['Ha! Honestly, same. We’ll get to the snacks. First, the job.'], 'laugh')]]); },
+    what: 'The director, a cartoon silhouette behind the desk, greets the kid. The first question is a joke waiting to happen.',
+    gate: 'Every answer is fine. “Snacks” becomes a running joke that pays off at the hire. The pick sets the characters’ tone (earnest or silly) on the learner card.' },
+  { beat: '“Which of these have you played?”',
+    enter: function () {
+      react('lean'); var picked = {};
+      say([['m', 'First: which of these games have you played? Tap all you like.']]);
+      var G = [['Minecraft', 'build'], ['Mario', 'jump'], ['Roblox', 'build'], ['Fortnite', 'battle'], ['Zelda', 'adventure'], ['Among Us', 'team'], ['Pokémon', 'collect']];
+      var sc = screen('<h2>Games you’ve played</h2><div class="tiles" id="gtiles">' + G.map(function (g) {
+        return '<button class="tile" data-key="g:' + g[0] + '" aria-pressed="false">' + g[0] + '</button>'; }).join('') + '</div>');
+      Array.prototype.forEach.call(sc.querySelectorAll('.tile'), function (b) { b.addEventListener('click', function () {
+        var on = b.getAttribute('aria-pressed') !== 'true'; b.setAttribute('aria-pressed', String(on)); picked[b.textContent] = on; }); });
+      var done = function () {
+        CARD.games = Object.keys(picked).filter(function (k) { return picked[k]; }); showCard();
+        var kinds = CARD.games.map(function (g) { for (var k = 0; k < G.length; k++) if (G[k][0] === g) return G[k][1]; });
+        var w = { build: 'a builder', jump: 'a jumper', battle: 'a battler', adventure: 'an adventurer', team: 'a teammate', collect: 'a collector' }, seen = {};
+        var list = kinds.filter(function (k) { if (seen[k]) return false; seen[k] = 1; return true; }).map(function (k) { return w[k]; });
+        var line = !list.length ? 'A fresh start! I love it. You’ll see games differently after today.'
+                 : list.length === 1 ? 'Ooh, ' + list[0] + '! I’m writing that down.' : 'So you’re ' + list.slice(0, -1).join(', ') + ' AND ' + list[list.length - 1] + '. Noted!';
+        answer(CARD.games.length ? CARD.games.join(', ') : 'None of these', [line], 'nod'); if (list.length) jot(list[0].replace(/^an? /, ''));
+        options([['Next question', advance]]); };
+      options([['That’s all of them', done], ['None of these', function () { picked = {}; done(); }],
+               ['Something else…', function () { $('say').placeholder = 'Type a game you love…'; $('say').focus(); wantTyped = function (t) { picked[t] = true; done(); }; }]]); },
+    what: 'Games on the desk monitor (drawn as names, not logos). The kid taps any; the director reflects them back as a kind of player.',
+    gate: 'Nothing to get wrong. The picks feed examples and the customer games later in the course, and the handle generator in beat 6.' },
+  { beat: 'Two quick feels',
+    enter: function () {
+      react('lean');
+      say([['m', 'Quick one. Two jumps. Which one feels better to you?']]);
+      var sc = screen('<h2>Which jump feels better?</h2><div class="pair"><div><canvas id="jA" width="160" height="110" aria-label="Jump A floats up slowly and drifts down"></canvas><b>Jump A</b></div>' +
+        '<div><canvas id="jB" width="160" height="110" aria-label="Jump B snaps up fast and lands hard"></canvas><b>Jump B</b></div></div>');
+      startJumps();
+      var soundQ = function () {
+        stopJumps();
+        say([['m', 'Now sounds. You grab a coin. Tap each one to hear it.']]);
+        var sc2 = screen('<h2>Which coin sound?</h2><div class="tiles"><button class="tile" id="sA"><svg class="i"><use href="#i-sound"/></svg>Sound A</button><button class="tile" id="sB"><svg class="i"><use href="#i-sound"/></svg>Sound B</button></div>' +
+          '<p style="margin:0;font-size:13px;color:var(--ink-3)">Sound off? Pick the one whose name you like: A is a “ding”, B is a “thud”.</p>');
+        $('sA').addEventListener('click', function () { playSfx('ding'); });
+        $('sB').addEventListener('click', function () { playSfx('thud'); });
+        var s = function (v, text, reply) { return function () { CARD.feelSound = v; showCard(); answer(text, [reply], 'nod'); jot(v === 'ding' ? 'likes a sparkle' : 'likes a thump'); options([['Next', advance]]); }; };
+        options([['Sound A', s('ding', 'Sound A', 'The ding! Bright and happy. You have an ear for this.')], ['Sound B', s('thud', 'Sound B', 'The thud! Solid. You like things to feel heavy.')]]);
+      };
+      var j = function (v, text, reply) { return function () { CARD.feelJump = v; CARD.snapshot.jumpPick = v; showCard(); answer(text, [reply], 'nod'); jot(v === 'floaty' ? 'likes floaty' : 'likes snappy'); options([['OK, next', soundQ]]); }; };
+      options([['Jump A', j('floaty', 'Jump A', 'The floaty one! Like being on the moon.')], ['Jump B', j('snappy', 'Jump B', 'The snappy one! Quick and sharp.')],
+               ['They feel the same', j('same', 'They feel the same', 'Interesting! Watch them again later. There’s a secret in there.')]]); },
+    what: 'Two tiny jumps loop side by side on the monitor, then two real coin sounds. The kid picks what feels better.',
+    gate: 'A try-this moment, not a question: the kid feels the difference before they have a word for it (session 2 names it: gravity and jump height). The jump pick is part of the growth snapshot. At the exit, the same two jumps come back and the kid can say why.' },
+  { beat: 'The locked door',
+    enter: function () {
+      screen('', true); react('lean');
+      say([['m', 'You’re in a game. You find a locked door. What do you do?']]);
+      var d = function (fun, text, reply, note, kind) { return function () { CARD.fun.push(fun); showCard(); answer(text, [reply], kind || 'nod'); jot(note); options([['Next', advance]]); }; };
+      options([['Hunt for the key', d('explore', 'Hunt for the key', 'An explorer! You want to see everything.', 'explorer')],
+               ['Smash it', d('challenge', 'Smash it', 'Ha! Action first. Bold.', 'action', 'laugh')],
+               ['Sneak round the back', d('clever', 'Sneak round the back', 'Clever. You like figuring things out.', 'puzzler')],
+               ['Get a friend', d('social', 'Get a friend', 'A team player! Games are better together.', 'team player')],
+               ['Build a way over', d('make', 'Build a way over', 'A maker! You’d rather build your own way.', 'maker')]]); },
+    what: 'The locked door, the old get-to-know-you question (moved here from the end of the first day). Five answers, each a kind of fun.',
+    gate: 'Every answer is a kind of fun (explore, challenge, cleverness, friends, making), the idea the kid owns from session 1. It sets examples and which shifts come first.' },
+  { beat: 'Your badge',
+    enter: function () {
+      react('lean'); CARD.pictures = [];
+      say([['m', 'You need a badge. Everyone here goes by a studio name.'], ['m', 'I made you one from your answers. Don’t love it? Roll again!']]);
+      roll(); drawBadge();
+      options([['Roll again', function (b) { roll(); drawBadge(); UI.feel(b, 'good'); }, 'a new name from the same answers'],
+               ['Keep it!', function () { answer(HANDLE + '. Keep it!', ['Welcome, ' + HANDLE + '! Pick your badge colour and picture on the monitor.'], 'nod'); options([['Looks good', pics]]); }]]); },
+    what: 'The studio name is generated Reddit-style from what the kid just said (a word from their kind of fun, a word from their games, two digits), and they can roll again as often as they like. Then a badge colour and picture, and a picture password.',
+    gate: 'No typing a name, so no real names and no rude words. Rolling is part of the fun. The handle is the kid’s display name everywhere; the picture password (3 of 9, in order) is how they sign back in next week, with no typed password.' },
+  { beat: '“Take a look at this”',
+    enter: function () {
+      react('lean');
+      say([['m', 'Now, a look at our game engine. Have you seen one of these?'], ['m', 'Just guess! Tap where you think you’d press Play to test a game.']]);
+      mini(function (area) {
+        CARD.snapshot.playTap = area; showCard(); answer('(tapped: ' + AREA[area] + ')', ['Interesting guess! I’m noting it down.'], 'nod');
+        say([['m', 'And where would you change how high the hero jumps?']]);
+        mini(function (a2) {
+          CARD.snapshot.jumpTap = a2; showCard(); answer('(tapped: ' + AREA[a2] + ')', ['Great. You’ll know for sure in a week or two.'], 'nod');
+          words(); });
+      }); },
+    what: 'The portfolio moment: the director turns the monitor round to show an engine. Two guesses by tapping, then which words the kid has heard, with one made up (“flarnish”).',
+    gate: 'Part of the growth snapshot, framed as “just guess, we’re curious”, with no right or wrong shown. The exit interview shows the same screen: day one’s guesses against session 10’s. The made-up word catches a kid who ticks everything, so the word count means something. The regions are real buttons, with the same choices as answers for a keyboard or screen reader.' },
+  { beat: 'The first task',
+    enter: function () {
+      react('lean');
+      say([['m', 'Last thing. This coin is supposed to make a sound when you grab it. It’s silent. Fix it?']]);
+      screen('<h2>Coin: When grabbed</h2><div class="tiles" id="ftiles"><button class="tile" data-s="ding">Sparkly ding</button><button class="tile" data-s="boing">Springy boing</button><button class="tile" data-s="thud">Dull thud</button></div>');
+      Array.prototype.forEach.call($('ftiles').children, function (b) { b.addEventListener('click', function () {
+        playSfx(b.dataset.s); Array.prototype.forEach.call($('ftiles').children, function (x) { x.setAttribute('aria-pressed', String(x === b)); });
+        UI.sound('good'); UI.feel(b, 'good');
+        answer('(gave the coin a ' + b.textContent.toLowerCase() + ')', ['You’re a natural. That’s literally the sound designer’s job.'], 'nod');
+        confidence(); }); });
+      options([]); },
+    what: 'A 20-second trial job on the monitor: give a silent coin a sound. Any sound fixes it. Then two last questions: how sure they are they could make a game, and which job sounds most fun.',
+    gate: 'The kid ends the interview having already done a real studio job. Confidence (five drawn faces) is part of the growth snapshot: it measures self-belief, not skill, and it comes back at the exit. The job pick sets which department comes first.' },
+  { beat: 'You’re hired!',
+    enter: function () {
+      screen('', true); if (!HANDLE) { roll(); }
+      $('editor').classList.add('iv-stand'); drawBadgeOut();
+      UI.sound('hired');
+      say([['m', 'Well, ' + HANDLE + ', I’ve seen enough.'], ['m', 'YOU’RE HIRED! Welcome to the studio.' + (CARD.tone === 'silly' ? ' And yes: the snacks are in the break room.' : '')]]);
+      options([['Go to my desk', advance, 'the first day starts']]); },
+    what: 'The director stands, the badge prints and slides across the desk, and the hired sound plays once. “Go to my desk” opens the first day (wireframe 04), which greets the kid by their handle.',
+    gate: 'The focal moment is the badge, not confetti. The snacks joke pays off if the kid made it. Then straight to the game: the first day starts in an almost empty editor.' },
+  { beat: 'Next week: signing back in',
+    enter: function () {
+      $('editor').classList.remove('iv-stand'); $('badgeOut').innerHTML = ''; signIn();
+      say([['m', '(A week later.) Welcome back! Find your badge, then tap your three pictures.']]);
+      options([]); },
+    what: 'For reviewers: what a returning kid sees instead of the interview. Their class, their badge among their classmates’, then their three pictures in order.',
+    gate: 'No typing, no password to forget. A wrong picture just clears and lets them try again; after three misses the teacher can reset it. Progress is keyed to a stable account id, not the handle, so it survives app updates and later playtests.' }
+];
+
+/* ---------- the pieces the steps use ---------- */
+var wantTyped = null;
+var AREA = { top: 'the bar across the top', left: 'the list on the left', mid: 'the picture in the middle', right: 'the panel on the right' };
+function mini(onTap) {
+  var sc = screen('<div class="mini" id="mini">' +
+    '<button class="mtop" data-a="top" aria-label="The bar across the top"><i></i></button>' +
+    '<button class="mside" data-a="left" aria-label="The list on the left"></button>' +
+    '<button class="mscene" data-a="mid" aria-label="The picture in the middle"></button>' +
+    '<button class="minsp" data-a="right" aria-label="The panel on the right"></button></div>');
+  var m = $('mini');
+  Array.prototype.forEach.call(m.children, function (b) { b.addEventListener('click', function (e) {
+    var r = m.getBoundingClientRect(), k = r.width / m.offsetWidth, mk = document.createElement('span'); mk.className = 'mark';
+    mk.style.left = ((e.clientX ? e.clientX - r.left : (b.offsetLeft + b.offsetWidth / 2) * k) / k) + 'px';
+    mk.style.top = ((e.clientY ? e.clientY - r.top : (b.offsetTop + b.offsetHeight / 2) * k) / k) + 'px';
+    m.appendChild(mk); react('scribble'); setTimeout(function () { onTap(b.dataset.a); }, 450); }); });
+  /* the same four regions as answers: a keyboard or a screen reader never has to aim */
+  options(Object.keys(AREA).map(function (a) { return [AREA[a].replace(/^the /, 'The '), function () { m.querySelector('[data-a="' + a + '"]').click(); }]; }));
+}
+function words() {
+  var W = ['sprite', 'collider', 'prefab', 'frame', 'flarnish', 'Inspector'], on = {};
+  say([['m', 'Which of these words have you heard before? Tap any.']]);
+  var sc = screen('<h2>Heard of any of these?</h2><div class="tiles words">' + W.map(function (w) { return '<button class="tile" aria-pressed="false">' + w + '</button>'; }).join('') + '</div>');
+  Array.prototype.forEach.call(sc.querySelectorAll('.tile'), function (b) { b.addEventListener('click', function () {
+    var v = b.getAttribute('aria-pressed') !== 'true'; b.setAttribute('aria-pressed', String(v)); on[b.textContent] = v; }); });
+  var done = function () {
+    var got = Object.keys(on).filter(function (k) { return on[k]; });
+    CARD.snapshot.decoyTicked = got.indexOf('flarnish') >= 0; CARD.snapshot.wordsHeard = got.filter(function (w) { return w !== 'flarnish'; }); showCard();
+    answer(got.length ? got.join(', ') : 'None of them', [CARD.snapshot.decoyTicked ? 'Ha, flarnish! I made that one up. You’re keen, I like it.' : got.length ? 'Nice. You’ll know all of these soon.' : 'Perfect. You’ll learn every one of these here.'],
+           CARD.snapshot.decoyTicked ? 'laugh' : 'nod');
+    options([['Next', advance]]); };
+  options([['That’s all', done], ['None of them', function () { on = {}; done(); }]]);
+}
+function confidence() {
+  var F = ['Not sure at all', 'A bit unsure', 'Maybe', 'Pretty sure', 'Totally sure'];
+  say([['m', 'Be honest: how sure are you that you could make a game?']]);
+  screen('<h2>How sure are you?</h2><div class="faces">' + F.map(function (f, k) { return '<button class="tile" data-v="' + (k + 1) + '"><svg class="i"><use href="#f-' + (k + 1) + '"/></svg>' + f + '</button>'; }).join('') + '</div>');
+  Array.prototype.forEach.call(document.querySelectorAll('.faces .tile'), function (b) { b.addEventListener('click', function () {
+    CARD.snapshot.confidence = +b.dataset.v; showCard();
+    answer(F[b.dataset.v - 1], [b.dataset.v < 3 ? 'That’s OK! Everyone starts there. By the end, you’ll have made one.' : 'Love it. Let’s prove it.'], 'nod');
+    job(); }); });
+  options(F.map(function (f, k) { return [f, function () { document.querySelector('.faces [data-v="' + (k + 1) + '"]').click(); }]; }));
+}
+function job() {
+  screen('', true);
+  say([['m', 'And which job sounds most fun to you?']]);
+  var j = function (v, text, reply) { return function () { CARD.job = v; showCard(); answer(text, [reply], 'nod'); jot(v); options([['So… did I get the job?', advance]]); }; };
+  options([['Making the art', j('art', 'Making the art', 'An artist! Our art director will love you.')],
+           ['Making the sounds', j('audio', 'Making the sounds', 'Sound! You already fixed that coin.')],
+           ['Building the levels', j('design', 'Building the levels', 'A designer! Levels are where the fun lives.')],
+           ['Making things work', j('engineering', 'Making things work', 'A programmer! Our lead programmer is going to be thrilled.')],
+           ['All of it!', j('everything', 'All of it!', 'Ha! You’ll try every job here. That’s the plan.')]]);
+}
+/* The handle: Reddit-style, generated from what the kid told us, re-rollable, never typed. */
+var ADJ = { explore: ['Curious', 'Wandering', 'Roaming'], challenge: ['Turbo', 'Brave', 'Mighty'], clever: ['Sneaky', 'Clever', 'Tricky'],
+            social: ['Friendly', 'Loyal', 'Jolly'], make: ['Crafty', 'Handy', 'Inventive'], any: ['Pixel', 'Cosmic', 'Speedy', 'Lucky'] };
+var NOUN = { Minecraft: ['Miner', 'Builder'], Mario: ['Jumper', 'Hopper'], Roblox: ['Builder', 'Maker'], Fortnite: ['Glider', 'Ranger'],
+             Zelda: ['Hero', 'Explorer'], 'Among Us': ['Crewmate', 'Detective'], 'Pokémon': ['Trainer', 'Collector'], any: ['Fox', 'Byte', 'Rocket', 'Otter', 'Comet'] };
+function pickOne(a) { return a[Math.floor(Math.random() * a.length)]; }
+function roll() {
+  var adj = [].concat.apply([], CARD.fun.map(function (f) { return ADJ[f] || []; })); if (!adj.length) adj = ADJ.any;
+  var nn = [].concat.apply([], CARD.games.map(function (g) { return NOUN[g] || []; })); if (!nn.length) nn = NOUN.any;
+  var h, guard = 0; do { h = pickOne(adj) + pickOne(nn) + (10 + Math.floor(Math.random() * 90)); } while (h === HANDLE && guard++ < 5);
+  HANDLE = CARD.handle = h; showCard();
+}
+var COLOURS = [['Red', '#e0474c'], ['Blue', '#3f7fe0'], ['Green', '#2f9e5b'], ['Purple', '#8a5cd6']];
+var ICONS = ['rocket', 'cat', 'bolt', 'ghost'];
+function badgeHtml() {
+  var c = CARD.badge.colour;
+  return '<div class="badge"><div class="band" style="background:' + c + '">THE LEAGUE GAME STUDIO</div><div class="body"><div class="pic" style="background:' + c + '"><svg class="i"><use href="#p-' + CARD.badge.icon + '"/></svg></div>' +
+         '<div><strong>' + HANDLE + '</strong><small>Game developer · new hire</small></div></div></div>';
+}
+function drawBadge() {
+  var sc = screen(badgeHtml() + '<div class="swatches">' + COLOURS.map(function (c) { return '<button class="tile" data-key="c:' + c[1] + '" data-c="' + c[1] + '" aria-pressed="' + (CARD.badge.colour === c[1]) + '"><i style="background:' + c[1] + '"></i>' + c[0] + '</button>'; }).join('') + '</div>' +
+    '<div class="swatches">' + ICONS.map(function (ic) { return '<button class="tile" data-key="i:' + ic + '" data-i="' + ic + '" aria-pressed="' + (CARD.badge.icon === ic) + '" aria-label="' + ic + '"><svg class="i"><use href="#p-' + ic + '"/></svg></button>'; }).join('') + '</div>');
+  Array.prototype.forEach.call(sc.querySelectorAll('[data-c],[data-i]'), function (b) { b.addEventListener('click', function () {
+    if (b.dataset.c) CARD.badge.colour = b.dataset.c; if (b.dataset.i) CARD.badge.icon = b.dataset.i;
+    UI.keepFocus($('screen'), drawBadge); }); });
+}
+function drawBadgeOut() { $('badgeOut').innerHTML = '<div class="badge-out">' + badgeHtml() + '</div>'; }
+var PICS = ['rocket', 'cat', 'key', 'coin', 'heart', 'moon', 'bolt', 'tree', 'ghost'];
+function picGrid(chosen, onPick) {
+  return '<div class="pics">' + PICS.map(function (p) { var n = chosen.indexOf(p);
+    return '<button class="tile" data-p="' + p + '" data-key="p:' + p + '" aria-label="' + p + (n >= 0 ? ', picture ' + (n + 1) : '') + '" aria-pressed="' + (n >= 0) + '"><svg class="i"><use href="#p-' + p + '"/></svg>' + (n >= 0 ? '<b>' + (n + 1) + '</b>' : '') + '</button>'; }).join('') + '</div>';
+}
+function pics() {
+  say([['m', 'Now your secret: tap three pictures, in order. That’s how you’ll get back in next week.']]);
+  var draw = function () {
+    var sc = screen('<h2>Your secret pictures: ' + CARD.pictures.length + ' of 3</h2>' + picGrid(CARD.pictures));
+    Array.prototype.forEach.call(sc.querySelectorAll('.pics .tile'), function (b) { b.addEventListener('click', function () {
+      if (CARD.pictures.length >= 3 || CARD.pictures.indexOf(b.dataset.p) >= 0) return;
+      CARD.pictures.push(b.dataset.p); showCard(); UI.keepFocus($('screen'), draw);
+      if (CARD.pictures.length === 3) { UI.sound('card');
+        answer('(picked ' + CARD.pictures.join(', ') + ')', ['Got it. ' + CARD.pictures.join(', ') + '. Remember those! Your teacher can reset them if you forget.'], 'nod');
+        options([['I’ll remember', advance], ['Pick again', function () { CARD.pictures = []; showCard(); pics(); }]]); } }); });
+  };
+  draw(); options([]);
+}
+/* The two feel-test jumps, looping on the monitor until the kid answers. */
+var jumpsOn = false;
+function startJumps() {
+  jumpsOn = true; var t = 0;
+  var one = function (id, g, v) { var c = $(id); if (!c) return; var x = c.getContext('2d'), p = (t % 150), y = 0, vy = v, yy = 0;
+    for (var k = 0; k < p; k++) { vy -= g; yy += vy; if (yy < 0) { yy = 0; vy = 0; } }
+    x.fillStyle = '#9a9a9a'; x.fillRect(0, 0, 160, 110); x.fillStyle = '#6e6e6e'; x.fillRect(0, 92, 160, 18);
+    x.fillStyle = '#d9dde6'; x.fillRect(72, 80 - Math.min(78, yy), 16, 12); x.fillStyle = '#1d2230'; x.fillRect(75, 83 - Math.min(78, yy), 10, 4); };
+  var tick = function () { if (!jumpsOn) return; t++; one('jA', 0.035, 1.9); one('jB', 0.32, 5.4); requestAnimationFrame(tick); };
+  tick();
+}
+function stopJumps() { jumpsOn = false; }
+function signIn() {
+  var el = $('signin'); el.classList.add('on'); var tries = [];
+  var others = ['TurboFox27', 'CraftyMiner81', 'JollyOtter14', 'SneakyComet66', 'BraveJumper09'];
+  var all = [HANDLE || 'CuriousJumper42'].concat(others).sort();
+  var mine = HANDLE || 'CuriousJumper42';
+  el.innerHTML = '<h2>Ms. Rivera’s class</h2><p>Tap your badge.</p><div class="row" id="badges">' + all.map(function (h) {
+    return '<button class="badge" data-h="' + h + '"><div class="band" style="background:' + (h === mine ? CARD.badge.colour : '#777') + '">THE LEAGUE GAME STUDIO</div><div class="body"><div><strong>' + h + '</strong></div></div></button>'; }).join('') + '</div>';
+  Array.prototype.forEach.call(el.querySelectorAll('.badge'), function (b) { b.addEventListener('click', function () {
+    var want = CARD.pictures.length === 3 ? CARD.pictures : ['rocket', 'moon', 'key'];
+    var draw = function () {
+      el.innerHTML = '<h2>Hi, ' + b.dataset.h + '! Tap your three pictures.</h2>' + picGrid(tries) + '<p id="sinMsg">' + (want === CARD.pictures ? '' : '(Reviewers: this badge’s pictures are rocket, moon, key.)') + '</p>';
+      Array.prototype.forEach.call(el.querySelectorAll('.pics .tile'), function (t) { t.addEventListener('click', function () {
+        if (tries.indexOf(t.dataset.p) >= 0) return; tries.push(t.dataset.p);
+        if (tries.length === 3) {
+          var ok = tries.join() === want.join(); tries = [];
+          if (ok) { UI.sound('good'); el.innerHTML = '<h2>Welcome back, ' + b.dataset.h + '!</h2><p>Your game is waiting at your desk (wireframe 06).</p>'; say([['m', 'Welcome back! Your desk is ready.']]); return; }
+          UI.sound('nope'); UI.keepFocus(el, draw); $('sinMsg').textContent = 'Not quite. Try again: tap your three pictures in order.'; announce('Not quite. Try again.'); return; }
+        UI.keepFocus(el, draw); }); });
+    };
+    draw(); }); });
+}
+
+/* ---------- the door's code: forgiving, and it says what to do when it's wrong ---------- */
+function tryCode() {
+  var raw = $('code').value, c = raw.toUpperCase().replace(/[^A-Z0-9]/g, '');
+  if (!c) return;
+  var m = c.match(/^([A-Z]{3,8})(\d{2})$/);
+  if (m && m[1] + m[2] === 'USED00') { doorSay('This badge is already made. Sign in with your badge instead.'); return; }
+  if (m) { CARD.code = m[1] + '-' + m[2]; showCard(); $('door').classList.add('ok'); UI.sound('good');
+    doorSay('That’s the one! Come in…'); setTimeout(function () { if (i === 0) advance(); }, 900); return; }
+  $('door').classList.remove('nope'); void $('door').offsetWidth; $('door').classList.add('nope'); UI.sound('nope');
+  doorSay('Hmm, that code doesn’t open the door. It’s a word and two numbers, like TIGER-42. Check your card, or ask your teacher.');
+}
+function doorSay(t) { $('doorReply').textContent = t; announce(t); }
+$('noCard').addEventListener('click', function () { doorSay('No problem. Put your hand up and your teacher will bring you a card.'); });
+$('codeGo').addEventListener('click', tryCode);
+$('code').addEventListener('keydown', function (e) { if (e.key === 'Enter') { e.preventDefault(); tryCode(); } });
+$('say').addEventListener('keydown', function (e) {
+  if (e.key !== 'Enter' || !this.value.trim()) return;
+  e.preventDefault();
+  var text = this.value.trim().slice(0, 60); this.value = ''; this.placeholder = 'Say something else…'; CARD.comfort.typedSomething = true;
+  if (wantTyped) { var f = wantTyped; wantTyped = null; f(text); return; }
+  answer(text, ['Ha, I like you already. I’ve written that down.'], 'nod'); jot('said: ' + text.slice(0, 18));
+});
+
+/* ---------- steps, reviewer nav ---------- */
+function render() {
+  var s = STEPS[i]; stopJumps(); $('signin').classList.remove('on'); $('signin').innerHTML = ''; $('door').inert = i !== 0;
+  if (i < 8) { $('editor').classList.remove('iv-stand'); $('badgeOut').innerHTML = ''; }
+  if (i === 0) { $('notes').innerHTML = '<li class="empty">(nothing yet)</li>'; $('echo').innerHTML = ''; }
+  s.enter.call(s);
+  $('nBeat').textContent = 'Step ' + (i + 1) + ' · ' + s.beat; $('nWhat').textContent = s.what; $('nGate').textContent = s.gate; showCard();
+  $('back').disabled = i === 0; $('next').disabled = i === STEPS.length - 1;
+  Array.prototype.forEach.call($('dots').children, function (b, k) { if (k === i) b.setAttribute('aria-current', 'step'); else b.removeAttribute('aria-current'); b.classList.toggle('past', k < i); });
+}
+function go(n) { i = Math.max(0, Math.min(STEPS.length - 1, n)); render(); }
+STEPS.forEach(function (s, k) {
+  var b = document.createElement('button'); b.textContent = String(k + 1); b.setAttribute('aria-label', 'Step ' + (k + 1) + ': ' + s.beat);
+  b.addEventListener('click', function () { go(k); }); $('dots').appendChild(b);
+});
+$('back').addEventListener('click', function () { go(i - 1); });
+/* Skip ahead fills in plausible answers, so a reviewer can reach any beat. */
+$('next').addEventListener('click', function () {
+  if (i === 0 && !CARD.code) CARD.code = 'TIGER-42';
+  if (i <= 2 && !CARD.games.length) CARD.games = ['Mario', 'Minecraft'];
+  if (i <= 4 && !CARD.fun.length) CARD.fun = ['explore'];
+  if (i <= 5 && !HANDLE) roll();
+  if (i <= 5 && CARD.pictures.length < 3) CARD.pictures = ['rocket', 'moon', 'key'];
+  go(i + 1);
+});
+
+/* Scale the 1366×650 frame to the window, as in the other wireframes; #embed for the explainer. */
+(function () {
+  var s = $('scaler'), doc = document.querySelector('header.doc'), nav = document.querySelector('.nav');
+  var embed = location.hash === '#embed';
+  if (embed) {
+    document.documentElement.classList.add('embed');
+    var post = function () { parent.postMessage({ wfHeight: Math.ceil(document.body.getBoundingClientRect().height) }, '*'); };
+    if (window.ResizeObserver) new ResizeObserver(post).observe(document.body);
+    window.addEventListener('load', post);
+  }
+  function fit() {
+    if (embed) { var ke = Math.min(1, s.parentElement.clientWidth / 1366);
+      s.style.transform = 'scale(' + ke + ')'; s.style.height = (650 * ke) + 'px'; s.style.width = (1366 * ke) + 'px'; return; }
+    var chrome = doc.offsetHeight + nav.offsetHeight + 12 + 16;
+    var k = Math.min(1, (s.parentElement.clientWidth - 32) / 1366, (innerHeight - chrome > 150 ? Math.max(0.5, (innerHeight - chrome) / 650) : 1));
+    s.style.transform = 'scale(' + k + ')'; s.style.height = (650 * k) + 'px'; s.style.width = (1366 * k) + 'px';
+    document.documentElement.style.setProperty('--col', Math.round(1366 * k + 32) + 'px');
+  }
+  window.addEventListener('resize', fit); window.addEventListener('load', fit); fit(); fit();
+})();
+CARD = freshCard(); render();
+</script>
+</body>
+</html>
