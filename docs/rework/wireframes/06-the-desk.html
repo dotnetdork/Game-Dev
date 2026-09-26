@@ -233,7 +233,7 @@
   .pointer.at-tab { top: 12px; left: 10px; }
   .pointer.at-tab::after { top: -8px; bottom: auto; left: 22px; }
   /* the studio dock: a milestone track and the departments, in the Quest dock's place */
-  .studio h3 { margin: 4px 0 6px; font-size: 12.5px; font-weight: 700; color: var(--ink-3); letter-spacing: .04em; text-transform: uppercase; }
+  .studio h2 { margin: 4px 0 6px; font-size: 12.5px; font-weight: 700; color: var(--ink-3); letter-spacing: .04em; text-transform: uppercase; }
   .track2 { list-style: none; margin: 0 0 12px; padding: 0; display: grid; gap: 2px; }
   .track2 li { display: flex; align-items: center; gap: 10px; min-height: 30px; font-size: 14px; color: var(--ink-2); }
   .track2 .m { width: 18px; height: 18px; border-radius: 50%; border: 1.5px solid var(--ink-3); display: grid; place-items: center; flex: none; }
@@ -310,9 +310,9 @@
     <section class="dock studio" aria-label="Studio" style="grid-row: 1 / span 2">
       <div class="tabs"><span class="tab"><svg class="i"><use href="#i-flag"/></svg>Studio <small>Captain Byte’s</small></span></div>
       <div class="dock-body">
-        <h3>Milestones</h3>
+        <h2>Milestones</h2>
         <ul class="track2" id="milestones"></ul>
-        <h3>Departments</h3>
+        <h2>Departments</h2>
         <ul class="depts" id="depts"></ul>
         <div class="today" id="today" hidden>Today: Engineering<small>The programmer drops by with a script</small></div>
       </div>
