@@ -7,8 +7,9 @@ headers, so every session re-derived them and some sessions got them wrong.
 ## What this is
 
 A course app that teaches 11–14 year olds to build Phaser games. Students are on **school
-Chromebooks behind filtered networks**; it deploys to **Vercel serverless**. Both facts are load-
-bearing and explain most of what follows.
+Chromebooks behind filtered networks**, which is load-bearing and explains most of what follows. It
+runs on **the League's own server**: one Docker container behind Caddy, deployed on every push to
+`main` (see DEPLOY.md).
 
 ## Where things are
 
@@ -18,7 +19,6 @@ Everything that runs is under `app/`. The repository root holds documentation an
 |---|---|
 | `app/server.js` | Express: every route, the AI relay |
 | `app/auth.js` `app/store.js` `app/telemetry.js` | sessions · per-student saves · event log |
-| `app/api/index.js` | a 3-line Vercel shim. Not backend logic. Nothing goes here |
 | `app/ai/*.js` | the AI layer |
 | `app/ai/agents/*.md` `app/ai/skills/*.md` | **prompts are content.** Editing these changes how the AI teaches |
 | `app/content/` | the authored course. A person writes this — see `content/AUTHORING.md` |
@@ -45,9 +45,14 @@ Everything that runs is under `app/`. The repository root holds documentation an
    a solo maintainer and for you. Do not strip it and do not call it bloat.
 5. **`app/tools/check-*.js` repeat themselves on purpose.** Each is a standalone script a human runs
    and reads. Seven copies of a five-line `check()` helper is the price of that, and it is worth it.
-6. **Serverless realities.** No writable disk, no SSH, no background work after a response is sent,
-   60s function ceiling, cold starts wipe module state. Anything that wants a queue, a cache or a
-   file needs to account for this. Per-request state goes on the request, never in a module `let`.
+6. **One long-lived server, not serverless.** The app is a single Node process in Docker on the
+   League server (`docker-compose.yml`, `.github/workflows/deploy.yml`). It has a writable disk
+   (student saves go to the `gamedev_state` volume at `app/.data`), no platform timeout, and can do
+   background work. **Vercel is not a constraint.** The first beta test ran on Vercel serverless
+   and it will very likely never be used again, but many file headers explain decisions made under
+   its limits (60s ceiling, no disk, cold starts). Read those as history. What still holds:
+   per-request state goes on the request, never in a module `let`, because two students' requests
+   interleave in the one process.
 
 ## Two rules that come from real mistakes
 

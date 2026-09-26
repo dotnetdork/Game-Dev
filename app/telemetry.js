@@ -14,22 +14,13 @@
  * ---------------------------------------------------------------------------------------------
  * WHY STDOUT, AND NOT A FILE OR THE KV STORE
  *
- * The obvious answer — write a log file and go and fetch it — is the right answer on a server you
- * rent and the wrong one here. Vercel runs this as a serverless function: there is no SSH, and the
- * filesystem is read-only and thrown away when the invocation ends. A log file on Vercel is a log
- * file that does not exist five seconds later.
- *
- * The KV store is durable and was the other candidate. It costs a network round trip to Upstash per
- * event, and it cannot be fired and forgotten: a promise still running after res.json() may never be
- * resumed, because the platform is free to freeze the instance the moment the response is sent. So
- * every event would have to be AWAITED before replying to the child — latency on their question, to
- * buy a copy of a log nobody reads twice.
- *
- * console.log costs nothing and cannot be lost that way, because it is synchronous. Vercel collects
- * stdout from every invocation and serves it over its API; `vercel logs --follow --json`, running on
- * a laptop, pulls it down live. tools/session-capture.js is that command with the session's file
- * name already decided. The durable copy ends up on the machine that was watching, which is the
- * machine that wanted it.
+ * This was decided on the app's first host (Vercel), where there was no disk and no SSH and stdout
+ * was the only way out. The League server has both, and stdout is still the right channel: it is
+ * synchronous, so it costs nothing and cannot be lost; Docker keeps it (`docker compose logs`) across
+ * restarts; and nothing about it needs a file to be rotated, a folder to be writable, or a store to
+ * be reachable. tools/session-capture.js follows it live from a laptop and writes the session's file
+ * there — the durable copy ends up on the machine that was watching, which is the machine that
+ * wanted it.
  *
  * ---------------------------------------------------------------------------------------------
  * THE RULE THIS FILE MUST NEVER BREAK
@@ -40,14 +31,14 @@
  * the failure mode is silence.
  */
 
-/* One prefix, so a capture can tell our lines apart from Vercel's own request lines and from the
+/* One prefix, so a capture can tell our lines apart from anything else on stdout — including the
    [usage] and [league] messages that were already going to stdout. Deliberately not JSON-only:
    a bare `{` at the start of a log line is indistinguishable from anything else that logs JSON. */
 const TAG = 'EVT ';
 
-/* Vercel truncates very long log lines, and a truncated line is not parseable JSON — it is a hole in
-   the capture. Individual strings are cut well before that, and the whole line is checked again at
-   the end. 3000 leaves room for the envelope inside a 4KB platform limit. */
+/* A log pipeline may truncate very long lines (the first host cut at 4KB), and a truncated line is
+   not parseable JSON — it is a hole in the capture. Individual strings are cut well before that, and
+   the whole line is checked again at the end. */
 const MAX_FIELD = 700;
 const MAX_LINE = 3000;
 

@@ -1,7 +1,14 @@
-# Deploying to Vercel
+# Deploying
 
-The short version: set the Root Directory to `app`, add the environment variables below, push.
-Everything else is already in the repo (`app/vercel.json`, `app/api/index.js`).
+The app runs on **the League's own server** (`apps.jointheleague.org`) as one Docker container
+behind Caddy, at <https://game-dev.apps.jointheleague.org>.
+
+The short version: put the environment variables below in `/opt/Game-Dev/.env` on the server, then
+push to `main`. The deploy workflow does the rest.
+
+The first beta test ran on Vercel. That is over, and Vercel will very likely never be used again. It
+is not a constraint on anything. Some file headers still explain decisions made under its limits
+(60-second functions, no disk); read those as history.
 
 The long version is worth reading once, because two of the decisions here are about money and one
 is about children's accounts.
@@ -23,63 +30,50 @@ it just needs to be reachable.
 
 ---
 
-## 1. Create the Vercel project
+## 1. How a deploy happens
 
-1. Vercel → **Add New… → Project** → import `dotnetdork/CodeQuest`.
-2. **Root Directory: `app`.** This matters. The repo root has no `package.json`.
-3. Framework preset: **Other**. There is no build step; `app/vercel.json` routes every request to
-   the Express app.
-4. **Add the environment variables below before deploying** — on this same screen, in the
-   Environment Variables section. The storage comes after the first deploy; see below for why.
+- **`docker-compose.yml`** (repo root) builds `app/Dockerfile`: `node:20-slim`, `npm ci --omit=dev`,
+  `NODE_ENV=production`, `node server.js` on port 3000. Caddy labels route
+  `game-dev.apps.jointheleague.org` to it and terminate TLS.
+- **`.github/workflows/deploy.yml`** runs on every push to `main`. It SSHes to the server as the
+  `deploy` user, whose key can run exactly one thing: the server's deploy script
+  (`/opt/gamedev/deploy.sh`, via a `command=` restriction in that user's `authorized_keys`). What
+  the workflow's `script:` line says is irrelevant to what runs.
+- The server's copy of the repo lives at `/opt/Game-Dev`, and its `.env` sits beside
+  `docker-compose.yml` (`env_file: .env`). **That file is the only place secrets live.**
 
-**Do not press "Import .env".** The local file has `AI_PROVIDER=ollama` in it, which points at
-`localhost:11434` — on Vercel that is the serverless function itself, and every AI request fails
-with "not reachable". Paste the block from §2 instead.
+**Don't copy your laptop's `.env` across.** It probably has `AI_PROVIDER=ollama` pointing at
+`localhost:11434`, and inside the container `localhost` is the container itself, so every AI
+request fails with "not reachable". Paste the block from §2 instead.
 
-A deploy with nothing configured is not dangerous, only useless: `server.js` calls `process.exit(1)`
-when it finds itself hosted without a sign-in, so the function crashes and every request is a 500.
-It fails closed. But there is no reason to do it.
+A deploy with no sign-in configured is not dangerous, only useless: `server.js` calls
+`process.exit(1)` when it finds itself hosted without a sign-in, so the container restarts in a loop
+and every request fails. It fails closed.
 
-## 1b. Attach a KV store — AFTER the first deploy
+## 1b. Saved work
 
-Storage attaches to a project, and the project does not exist until it has been created. So the
-order is: create the project with its variables → deploy → attach the store → redeploy. Between the
-first and second deploy the app works and is gated; it just has nowhere to save anyone's work, which
-matters not at all before anyone is using it.
+**Nothing to set up.** Each student's work is saved as one small JSON file in `app/.data/state`
+inside the container. `docker-compose.yml` backs `app/.data` with the `gamedev_state` volume, so it
+survives rebuilds and redeploys. The boot log says `saves: file`.
 
-(You can also create the database first from the **team-level** Storage tab and use *Connect
-Project* afterwards. Same result, one less redeploy, slightly more clicking.)
+Two things depend on it, and neither fails loudly in the browser:
 
-**Take the free route, not the obvious one.** Vercel → Storage → Create Database → Redis walks you
-into the Marketplace, where Vercel folded its own "Vercel KV"; the provider there is Upstash and the
-plans it offers a Hobby team start at **$8/month**. That buys nothing this course needs.
-
-Instead, make the database at **upstash.com** directly — its free tier is 500,000 commands a month,
-256 MB and 10 GB of bandwidth, against a class that writes a few kilobytes per student — and paste
-its two REST values into the Vercel project as `UPSTASH_REDIS_REST_URL` and
-`UPSTASH_REDIS_REST_TOKEN`. `app/store.js:47-48` reads both those names and the `KV_REST_API_*` pair
-Vercel would have injected, and uses whichever is present, so the app cannot tell the difference.
-
-If someone later puts the team on a plan where Marketplace Redis is free, that route works too and
-injects its variables itself. Either way, **redeploy afterwards** — variables only reach a build that
-happens after them.
-
-**Two things stop working without it**, and neither fails loudly in the browser:
-
-- **Saved work.** Progress, the project and the design board are mirrored per student to this store.
-  With no store they live in `localStorage` only, which is per browser per machine — a tester who
+- **Saved work.** Progress, the project and the design board are copied per student to the server.
+  Without it they live in `localStorage` only, which is per browser per machine, so a tester who
   comes back on a different laptop gets an empty course. This is the thing Jed asked for.
-- **The rate limit on the paid relay.** It counts in this store. Without one it falls back to an
-  in-memory counter, which on serverless counts only the requests that happen to land on the same
-  short-lived instance.
+- **The rate limit on the paid relay.** It is counted in memory, which is correct for one process.
 
-The boot log says which you have: `saves: redis` or `saves: none`. So does a signed-in
-`GET /api/state`, which reports `store: true` once the store is live.
+A Redis (Upstash, over REST) is only needed if the app ever runs as more than one process. Set
+`UPSTASH_REDIS_REST_URL` and `UPSTASH_REDIS_REST_TOKEN` and the boot log says `saves: redis`.
+`STATE_DIR=none` turns server-side saves off entirely, which is only useful for testing that path.
+
+**Back up the volume** before anything that might delete it, such as `docker compose down -v` or
+moving servers. It is every child's work.
 
 ## 2. Environment variables
 
-Vercel → Project → Settings → Environment Variables. Add to **Production** (and Preview, if you
-want preview deployments to work — see the note about redirect URIs at the bottom).
+In `/opt/Game-Dev/.env` on the server. A change takes effect on the next deploy (or
+`docker compose up -d` on the server).
 
 ### Required — the AI relay
 
@@ -96,18 +90,15 @@ want preview deployments to work — see the note about redirect URIs at the bot
 | `TUTOR_TOOLS` | `1` |
 | `AI_TOTAL_BUDGET_MS` | `50000` |
 
-`AI_TOTAL_BUDGET_MS` is the ceiling on one student's question, retries included, and it has to sit
-**under** `vercel.json`'s 60s `maxDuration` — otherwise Vercel kills the function before the budget
-can fire, and the request that most needed recording logs nothing at all. The code default is 50000
-now, but it is listed here because running the code default by accident is how it came to be 110000
-in production in the first place.
+`AI_TOTAL_BUDGET_MS` is the ceiling on one student's question, retries included. The server has no
+platform timeout, so this is the only clock, and 50 seconds is about as long as a child will wait.
 
 **The two `_TOOLS` variables are why the app has offline Phaser docs at all.** With them on, the
 coder and the tutor look up the exact Phaser the student is running — 19,000 symbols, on disk — and
 read the lesson the student is actually on. With them off, both answer from memory, and the tutor
 tells students in so many words that it cannot read any docs. It does not look like a failure; it
 looks like the AI being unhelpful. If they are unset the code now switches them on by itself, but a
-dashboard entry saying `0` still wins, so check the dashboard rather than assuming.
+`.env` line saying `0` still wins, so check the file rather than assuming.
 
 Sign in and open `/api/info` on the deployed site to see what it actually has:
 
@@ -120,9 +111,10 @@ Sign in and open `/api/info` on the deployed site to see what it actually has:
 deployment — a different failure, with a different cause, that looks identical from the chat panel.
 Both must be true.
 
-**Ollama cannot work here.** The default `AI_PROVIDER=ollama` points at `localhost:11434`, which on
-Vercel is the serverless function itself. If you leave it, every AI request fails with "not
-reachable". This is the single most likely thing to go wrong on a first deploy.
+**Ollama needs a real address.** The default `OLLAMA_URL` is `localhost:11434`, which inside the
+container is the container itself. If you leave `AI_PROVIDER=ollama` with that URL, every AI request
+fails with "not reachable". Use Anthropic as above, or point `OLLAMA_URL` at a machine that actually
+runs Ollama.
 
 ### Required — sessions
 
@@ -284,7 +276,7 @@ safe way round for a flag whose job is to fake a login screen.
 
 ## 3. Deploy
 
-Push to `main`, or `vercel --prod` if you install the CLI. Then check, in this order:
+Push to `main` and wait for the `deploy` workflow to go green. Then check, in this order:
 
 1. `https://YOUR-DOMAIN/` redirects to `/login.html`
 2. The logo, the Cinzel title, and only the doors you configured are on the page
@@ -298,39 +290,32 @@ Push to `main`, or `vercel --prod` if you install the CLI. Then check, in this o
    returns **401**, not a reply
 
 **Step 5 is the one the beta depends on** — it is the whole of "their work is still there next
-time", and it fails silently if the KV store is not attached. **Step 7 is the one that protects the
+time", and it fails silently if saves are off (the boot log would say `saves: none`). **Step 7 is the one that protects the
 key**; do it after every change to the sign-in configuration.
 
 ---
 
 ## Things that will bite
 
-**The rate limit needs the KV store to be real.** 40 AI requests per student per 10 minutes, keyed
-on the signed-in session and counted in the store. Attach the store and it holds across instances;
-without one it falls back to an in-memory counter that a serverless platform resets whenever it
-feels like it. It also **fails open** by design — if the store is unreachable the request goes
-through, because a child mid-sentence should not be told to slow down by a storage hiccup. Sign-in
-and the spend cap are still what actually bound the damage.
+**The rate limit** is 40 AI requests per student per 10 minutes, keyed on the signed-in session. It
+**fails open** by design: if a Redis is configured and unreachable, the request goes through,
+because a child mid-sentence should not be told to slow down by a storage hiccup. Sign-in and the
+spend cap are what actually bound the damage.
 
-**Function timeout.** `app/vercel.json` asks for 60s, which is the Hobby ceiling. Tool-enabled
-requests take longer — the 25s in `.env.example` is measured against a local model, and the coder
-does a corrective retry when it invents an asset key — so a slow request can approach that.
+**Slow requests.** Tool-enabled requests can take a while. The coder does a corrective retry when
+it invents an asset key, and each answer can make up to `AI_TOOL_ROUNDS` lookups. If questions feel
+slow with a class on it, lower `AI_TOOL_ROUNDS` from 4 to 2 rather than turning `CODER_TOOLS` off:
+turning tools off is how the tutor once ended up unable to read the app's own Phaser docs, which
+costs far more accuracy than the wait costs anybody.
 
-The obvious lever is to turn `CODER_TOOLS` off, and this document used to say so. **Don't** — that
-is how the deployed tutor ended up unable to read the app's own Phaser docs, which costs far more
-accuracy than the timeout costs anybody. Lower `AI_TOOL_ROUNDS` from 4 to 2 instead: it caps how
-many lookups one answer may make, which is what actually sets the worst case.
+**Everything goes through the sign-in gate**, including the 3,300 static files under `/assets` and
+`/vendor`. If that ever feels slow, Caddy can serve those two folders directly: they are CC0 art and
+vendored libraries with nothing to protect.
 
-**Everything is served by the function**, including 3,300 static files. That is on purpose: Vercel's
-CDN cannot check a session cookie, so anything it served directly would bypass the gate. If it feels
-slow with a class on it, the fix is to let the CDN serve `/assets` and `/vendor` — both are CC0 art
-and vendored libraries with nothing to protect — and leave the rest on the function.
+**OAuth redirect URIs** must be registered for `https://game-dev.apps.jointheleague.org`. A
+different hostname (a tunnel, a second server) needs its own registration, or `PUBLIC_ORIGIN`.
 
-**Preview deployments get their own hostname**, and OAuth providers only redirect to URIs you have
-registered. Either register the preview URLs too, set `PUBLIC_ORIGIN`, or accept that sign-in only
-works on production.
-
-**Student work is mirrored, not merged.** With the KV store attached, the project, the progress and
+**Student work is mirrored, not merged.** With saves on, the project, the progress and
 the design board follow whoever is signed in, so a tester can come back on a different machine and
 find their game. What it does not do is merge: the same child signed in on two machines at once
 will have one overwrite the other, newest write wins. Fine for a beta; say it out loud before a

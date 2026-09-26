@@ -9,8 +9,8 @@ jobs:
     runs-on: ubuntu-latest
     strategy:
       fail-fast: false
-      # 20 is the floor `engines` allows; 24 is what Vercel actually runs, and nothing tested it
-      # until now — so the version that serves children was the one version never exercised.
+      # 20 is the floor `engines` allows and what app/Dockerfile runs on the League server; 24 is
+      # the current LTS, so a Dockerfile bump is already known to work.
       # fail-fast off because "it breaks on 24 only" is the finding, and cancelling the other job
       # hides which half of that sentence is true.
       matrix:

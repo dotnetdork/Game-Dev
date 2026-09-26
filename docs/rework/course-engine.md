@@ -45,8 +45,9 @@ findings in learning science. The kid just experiences it as the next quest.
 - **A checker sits between the AI and the child**, as in the prototype (`app/ai/quiz-check.js`,
   `app/ai/grade-check.js`: "reject, never repair"). Quest completion is judged against the outline's
   "what counts as done," not by the AI's say-so alone.
-- **Serverless limits** (`CLAUDE.md`): no background work and a 60-second ceiling, so the director
-  plans at the end of each quest, inside a request, not in the background.
+- **The director plans at the end of each quest, inside a request.** (This was first chosen for a
+  serverless host with no background work; the League server has no such limit, so background
+  planning is possible if it is ever needed. Planning inside the request is still simpler.)
 
 ## Prizes
 

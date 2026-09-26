@@ -37,7 +37,7 @@ app.use(express.urlencoded({ extended: false, limit: '4kb' }));
 const PORT = process.env.PORT || 3000;
 const ROOT = __dirname;
 
-/* Behind Vercel's proxy, `req.ip` is the platform's own address unless Express is told there is a
+/* Behind the Caddy reverse proxy on the League server, `req.ip` is the proxy's own address unless Express is told there is a
    hop in front of it — the same address for every student in the world. The login throttle keys on
    it, so without this one attacker's guessing would lock out every tester at once, which is worse
    than having no limit at all.
@@ -135,8 +135,8 @@ auth.mount(app, { limit: store.bump });
    else is a deployment — which is a reasonable guess and is still the fallback, but it is a guess
    made by the client about a fact the SERVER knows for certain.
 
-   `VERCEL` is set on every Vercel deployment and NODE_ENV covers anywhere else it runs for real, so
-   the server says so outright. Readable rather than HttpOnly because the point is for a script to
+   NODE_ENV=production (set by app/Dockerfile) marks a real deployment, so the server says so
+   outright. Readable rather than HttpOnly because the point is for a script to
    read it, and it carries no secret — one bit that is already obvious from the URL.
 
    Set on every response so it cannot go stale, and BEFORE the static middleware for the same reason
@@ -490,25 +490,21 @@ if (authProblem) {
   process.exit(1);
 }
 
-/* Vercel imports this file and calls the exported handler per request; there is no port to listen
-   on and calling listen() there would hold the function open. Locally there is no VERCEL variable
-   and it starts a server exactly as it always has. */
 /* Saving is a WARNING, not a refusal. A laptop with no store configured is the ordinary case and
    the app works perfectly without one — but a hosted deployment without one silently loses every
    student's work the moment they open it somewhere else, which is the exact thing the testers were
    promised would not happen. So it is said out loud on every boot. */
 const storeProblem = store.problem();
-if (storeProblem && (process.env.VERCEL || process.env.NODE_ENV === 'production')) {
+if (storeProblem && process.env.NODE_ENV === 'production') {
   console.error('[league] WARNING: ' + storeProblem);
 }
 
-if (!process.env.VERCEL) {
-  app.listen(PORT, () => {
-    const c = resolveModel('coder'), t = resolveModel('tutor');
-    console.log('Course agent on http://localhost:' + PORT + '  (coder: ' + c.provider + ':' + c.model + ' · tutor: ' + t.provider + ':' + t.model + ')'
-      + (auth.enabled() ? '  · sign-in ON' : '')
-      + '  · saves: ' + store.mode());
-  });
-}
-
-module.exports = app;
+/* Always listens. On the app's first host (Vercel) this was skipped, because that platform imported
+   the file and called the exported handler per request; that host and its shim (api/index.js) are
+   gone. */
+app.listen(PORT, () => {
+  const c = resolveModel('coder'), t = resolveModel('tutor');
+  console.log('Course agent on http://localhost:' + PORT + '  (coder: ' + c.provider + ':' + c.model + ' · tutor: ' + t.provider + ':' + t.model + ')'
+    + (auth.enabled() ? '  · sign-in ON' : '')
+    + '  · saves: ' + store.mode());
+});

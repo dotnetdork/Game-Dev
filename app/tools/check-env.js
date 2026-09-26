@@ -23,8 +23,7 @@ const EXAMPLE = path.join(APP, '.env.example');
 /* Injected by the host or by Node itself. Nobody writes these into a .env, so listing them there
    would be noise — but they are named here so "not in .env.example" always means something. */
 const ALLOWED = new Set([
-  'VERCEL',          // set by Vercel on every deployment
-  'NODE_ENV',        // set by the platform, or by a launch config
+  'NODE_ENV',        // set by app/Dockerfile, or by a launch config
   'PORT',            // set by the platform; defaults to 3000
   'npm_package_version'
 ]);

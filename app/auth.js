@@ -44,9 +44,10 @@
  * ---------------------------------------------------------------------------------------------
  * WHY THE SESSION IS A SIGNED COOKIE AND NOT A SESSION STORE
  *
- * This is meant to run on Vercel, where every request may land on a different short-lived
- * instance. Anything kept in memory is gone by the next request — the same reason the rate limiter
- * in server.js stops meaning anything once it is hosted. So the cookie IS the session: a payload
+ * It was written for the app's first host (Vercel, since dropped), where every request could land
+ * on a different short-lived instance and anything kept in memory was gone by the next one. The
+ * League server is one long-lived process, but the design still earns its keep — a restart or a
+ * redeploy signs nobody out. So the cookie IS the session: a payload
  * and an HMAC of that payload, verified on the way back in. Nothing to store, nothing to expire,
  * identical on one server or fifty. Node's crypto does the whole job, so this adds no dependency.
  *
@@ -68,9 +69,9 @@ const crypto = require('crypto');
 
 const SECRET = process.env.SESSION_SECRET || '';
 const SESSION_DAYS = Number(process.env.SESSION_DAYS || 14);
-/* Set by Vercel on every deployment; NODE_ENV covers anywhere else it is run for real. The only
-   thing this decides is whether an UNCONFIGURED app is allowed to let people in — see BYPASS. */
-const IS_HOSTED = !!(process.env.VERCEL || process.env.NODE_ENV === 'production');
+/* NODE_ENV=production marks a real deployment; app/Dockerfile sets it. The only thing this decides
+   is whether an UNCONFIGURED app is allowed to let people in — see BYPASS. */
+const IS_HOSTED = process.env.NODE_ENV === 'production';
 const COOKIE = 'league_session';
 const STATE_COOKIE = 'league_oauth_state';
 /* A companion to the session cookie holding nothing but the identity, and deliberately NOT
@@ -396,13 +397,13 @@ function clearSession(res) {
 
 /* WHEN A COOKIE IS Secure, decided once.
    There were two answers to this in the codebase and they did not agree: this file asked whether
-   the process is hosted (NODE_ENV/VERCEL), and the league_hosted middleware in server.js asked
+   the process is hosted (NODE_ENV), and the league_hosted middleware in server.js asked
    whether the REQUEST arrived over TLS. Either is defensible alone; having both means the session
    cookie and the cookie that tells the browser it is talking to a deployment can be marked
    differently on the same response, and nobody would notice until one of them stopped being sent.
    Exported so server.js uses this one rather than keeping its own. */
 function secureCookie() {
-  return (process.env.NODE_ENV === 'production' || process.env.VERCEL) ? '; Secure' : '';
+  return process.env.NODE_ENV === 'production' ? '; Secure' : '';
 }
 
 function setCookie(res, name, value, maxAgeSec, readable) {
@@ -427,10 +428,10 @@ function currentUser(req) {
   return d && d.email ? d : null;
 }
 
-/* The redirect target must match what is registered with the provider EXACTLY, and on Vercel the
-   host is only known per request (every preview deployment gets its own). Derived from the request
-   rather than configured, honouring the proxy headers because Vercel terminates TLS in front of us
-   and the request arrives as plain http. PUBLIC_ORIGIN pins it when that guess is wrong. */
+/* The redirect target must match what is registered with the provider EXACTLY, and the host is
+   only known per request (a laptop, a tunnel, the League server). Derived from the request rather
+   than configured, honouring the proxy headers because Caddy terminates TLS in front of us and the
+   request arrives as plain http. PUBLIC_ORIGIN pins it when that guess is wrong. */
 function origin(req) {
   if (process.env.PUBLIC_ORIGIN) return process.env.PUBLIC_ORIGIN.replace(/\/$/, '');
   const proto = (req.headers['x-forwarded-proto'] || req.protocol || 'http').split(',')[0].trim();

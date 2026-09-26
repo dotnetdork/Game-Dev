@@ -7,10 +7,9 @@
  *      break the line — a quote, a newline, a child typing an emoji, a question longer than the
  *      platform will carry — the capture silently fills with unparseable rubbish.
  *
- *   2. VERCEL'S ENVELOPE. The events come back wrapped, and the wrapper's shape has changed between
- *      CLI versions: sometimes the function's output is the entry's `message`, sometimes it is
- *      inside a `logs` array, sometimes those entries are strings and sometimes objects. The
- *      capture reads all of those. This is what proves it still does.
+ *   2. READING THEM BACK. The capture scans each log line for tagged events, and a line can carry
+ *      more than one, or a child's question with braces and quotes in it. This is what proves it
+ *      still finds every one.
  *
  * Run by `npm test`.
  */
@@ -73,16 +72,14 @@ catch (e) { threw = true; }
 check('a record() that cannot be serialised fails silently rather than throwing', !threw,
   'a logger must never break a student\'s request');
 
-/* ---------- 2. pulling events back out of Vercel's envelope ---------- */
+/* ---------- 2. pulling events back out of a log line ---------- */
 const ev = { t: '2026-09-20T23:04:00.000Z', ev: 'guard', who: 'miles@tester', name: 'no-ops', gaveUp: true };
 const payload = tel.TAG + JSON.stringify(ev);
 
 const SHAPES = {
-  'the whole entry is one message': JSON.stringify({ timestamp: 1, message: payload }),
-  'the output sits in a logs array of strings': JSON.stringify({ timestamp: 1, message: '', logs: [payload] }),
-  'the output sits in a logs array of objects': JSON.stringify({ timestamp: 1, logs: [{ message: payload }] }),
-  'several events share one message': JSON.stringify({ timestamp: 1, message: payload + '\n' + payload }),
-  'the line is not wrapped at all': payload
+  'the line is exactly one event': payload,
+  'the line has a timestamp in front': '2026-09-20T23:04:00.123456789Z ' + payload,
+  'several events share one line': payload + ' ' + payload
 };
 Object.keys(SHAPES).forEach(function (name) {
   const got = cap.eventsFrom(SHAPES[name]);
@@ -92,8 +89,8 @@ Object.keys(SHAPES).forEach(function (name) {
 });
 
 /* THE SHAPE THAT WAS SILENTLY LOSING EVENTS, from a real session on 20 September.
-   Vercel batches a function's output into one message and joins it with SPACES, not newlines — so
-   a busy request arrives with the usage line and several events run together. The scan used to take
+   The app's first host (Vercel) batched a function's output into one message joined with SPACES,
+   not newlines — so a busy request arrived with the usage line and several events run together. The scan used to take
    each event to the next "\n", found none, swallowed the rest of the string and failed to parse it.
    Short events at the end of a message survived; `ask`, `guard` and `model` did not, which is to
    say the ones worth capturing were exactly the ones being dropped. */
@@ -102,7 +99,7 @@ const model = { t: '2026-09-20T20:18:50.018Z', ev: 'model', agent: 'coder', cost
 const squashed = '[usage] coder claude-sonnet-5  in 7633 out 176  $0.0170 '
   + tel.TAG + JSON.stringify(model) + ' [usage] coder again '
   + tel.TAG + JSON.stringify(ask);
-const fromSquashed = cap.eventsFrom(JSON.stringify({ timestamp: 1, message: squashed }));
+const fromSquashed = cap.eventsFrom(squashed);
 check('events joined by spaces in one message are all found', fromSquashed.length === 2,
   fromSquashed.length + ' of 2 — this is how a real session lost its ask and guard events');
 check('...and the right ones, in order',
@@ -113,21 +110,15 @@ check('...and the right ones, in order',
 /* A question with a brace in it must not end the scan early. */
 const braceInText = { t: '2026-09-20T20:19:00.000Z', ev: 'ask', who: 'a@tester',
   q: 'why does {this} break, and what about a "quote" or a \\ backslash?' };
-const fromBrace = cap.eventsFrom(JSON.stringify({ timestamp: 1, message: tel.TAG + JSON.stringify(braceInText) + ' trailing noise' }));
+const fromBrace = cap.eventsFrom(tel.TAG + JSON.stringify(braceInText) + ' trailing noise');
 check('a brace or a quote inside a question does not truncate the event',
   fromBrace.length === 1 && fromBrace[0].q === braceInText.q,
   fromBrace.length ? 'question intact' : 'lost');
 
-/* Vercel's own request records are most of the stream and must not become events. */
-const plainRequest = JSON.stringify({ timestamp: 1, message: '', requestPath: '/content/glossary.yaml', responseStatusCode: 200, logs: [] });
-check('an ordinary request is not mistaken for an event', cap.eventsFrom(plainRequest).length === 0, 'ignored');
-
-/* ...but a failed API call is worth keeping even though nothing logged it. */
-const failedRequest = JSON.stringify({ timestamp: 1, message: '', requestPath: '/api/ai', responseStatusCode: 500, logs: [] });
-const synth = cap.eventsFrom(failedRequest);
-check('a failed /api call is kept even with nothing logged',
-  synth.length === 1 && synth[0].ev === 'http' && synth[0].status === 500,
-  'a 500 on /api/ai happened to a child whether or not it logged');
+/* The rest of stdout is most of the stream and must not become events. */
+check('an ordinary log line is not mistaken for an event',
+  cap.eventsFrom('[usage] coder claude-sonnet-5  in 7633 out 176').length === 0
+    && cap.eventsFrom('Course agent on http://localhost:3000  · saves: file').length === 0, 'ignored');
 
 check('a torn half-line is dropped rather than half-parsed',
   cap.eventsFrom(tel.TAG + '{"ev":"ask","who":"a@tes').length === 0, 'skipped');

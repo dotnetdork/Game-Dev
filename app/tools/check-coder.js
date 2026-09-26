@@ -10,8 +10,8 @@
  * So this one runs the real server against a FAKE provider. The fake is scripted: each scenario
  * hands it the exact replies a model would give, and the check reads what the student would see.
  * It also counts the calls, which is the other half of the story — a request that spends five model
- * calls to arrive at a canned sentence is a request that times out on Vercel before it arrives at
- * anything.
+ * calls to arrive at a canned sentence is a request that runs out of its 50s budget before it arrives
+ * at anything.
  *
  * Run: node app/tools/check-coder.js
  */

@@ -4,8 +4,8 @@
  *  DEV MODE IS DERIVED, NOT REMEMBERED.
  *
  *  It is on when the app is served from a laptop and off when
- *  it is served from anywhere else — so the build that goes to
- *  Vercel is a student's build because of where it is, not
+ *  it is served from anywhere else — so the build on the
+ *  League server is a student's build because of where it is, not
  *  because somebody remembered to flip a constant back before
  *  pushing. The old arrangement was a `true` in this file plus
  *  a release check to catch it, which is a reminder with a
@@ -26,8 +26,8 @@
  */
 
 /* THE SERVER'S ANSWER FIRST, because it is the only one that is not a guess.
-   Every response carries `league_hosted`: 1 when the app is running on Vercel or with
-   NODE_ENV=production, 0 when it is somebody's laptop. See the note on the cookie in server.js.
+   Every response carries `league_hosted`: 1 when the app is running with
+   NODE_ENV=production (the League server), 0 when it is somebody's laptop. See the note on the cookie in server.js.
    A "1" ends the question — no hostname, no URL parameter, nothing else can turn dev mode back on.
 
    The hostname check below remains as the fallback for the case the cookie cannot cover: a page
@@ -39,7 +39,7 @@ function hostedCookie() {
   } catch (e) { return null; }
 }
 /* Localhost, the loopback addresses, and the .local names a machine answers to on a school network.
-   Everything else — Vercel, a preview deployment, a tunnel — is a student's build. */
+   Everything else — the League server, a tunnel — is a student's build. */
 function devHost() {
   const hosted = hostedCookie();
   if (hosted !== null) return !hosted;

@@ -15,12 +15,11 @@
 //  deliberate on a laptop — it measures a session, and persisting spend
 //  figures invites treating them as the real ledger.
 //
-//  ON SERVERLESS IT IS NO LONGER TRUE, and /api/usage is misleading there:
-//  every cold start begins again, so the numbers describe one instance's
-//  lifetime rather than an afternoon. Each call is therefore ALSO written
-//  through telemetry.record, which survives because it is a line of stdout;
-//  add those up from a session capture for the real figure. The provider's
-//  own dashboard remains the authority either way.
+//  A restart or a redeploy mid-session begins again, so /api/usage can
+//  undercount an afternoon. Each call is therefore ALSO written through
+//  telemetry.record as a line of stdout; add those up from a session
+//  capture for the real figure. The provider's own dashboard remains the
+//  authority either way.
 // ============================================================
 const tel = require('../telemetry');
 
@@ -82,10 +81,8 @@ function record(agent, provider, model, body) {
 
     console.log('[usage] ' + agent + ' ' + model + '  in ' + u.in + ' out ' + u.out
       + (p ? '  $' + cost.toFixed(4) + '  session $' + state.cost.toFixed(3) : '  (no price for this model)'));
-    /* AND ONE THAT SURVIVES. The totals above live in module memory, which on a serverless platform
-       measures the lifetime of one instance rather than a session — the header of this file still
-       calls that deliberate, and it stopped being true the day this deployed. A capture of these
-       lines can be added up afterwards and gives the real figure for an afternoon. */
+    /* AND ONE THAT SURVIVES. The totals above live in module memory and die with the process. A
+       capture of these lines can be added up afterwards and gives the real figure for an afternoon. */
     tel.record('model', { agent: agent, provider: provider, model: model, in: u.in, out: u.out, cost: Number(cost.toFixed(5)) });
     return { in: u.in, out: u.out, cost: cost };
   } catch (e) { return null; }

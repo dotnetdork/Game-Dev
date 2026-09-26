@@ -1487,7 +1487,7 @@ body.resizing-v #gameFrame{pointer-events:none;}
    account, Reset the game throws away the code they have written — so the rule is that a control
    appears only when something has positively said it may, rather than disappearing only when
    somebody remembers to hide it. js/dev.js puts `data-dev` on <html> when the app is being served
-   from a laptop; on Vercel it never does, so these are simply not there. */
+   from a laptop; on the League server it never does, so these are simply not there. */
 [data-dev-only]{display:none !important;}
 html[data-dev] [data-dev-only]{display:revert !important;}
 html[data-dev] .transport [data-dev-only]{display:grid !important;}

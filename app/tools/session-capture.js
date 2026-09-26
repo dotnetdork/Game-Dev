@@ -2,22 +2,25 @@
  *
  *   npm --prefix app run session:watch
  *
- * Start this before the children arrive and leave it running. It does three things the bare
- * `vercel logs --follow --json` cannot:
+ * Start this before the children arrive and leave it running. It follows the app's stdout on the
+ * League server — `docker compose logs -f`, over SSH — and does three things the bare command cannot:
  *
  *   SAVES SOMEWHERE DECIDED IN ADVANCE. app/logs/session-<date>.jsonl, chosen here rather than
  *   typed at 4pm with three kids waiting. The folder is gitignored: these files hold children's
  *   questions word for word and belong on the laptop that captured them, not in a repository.
  *
- *   PRINTS SOMETHING A HUMAN CAN READ. Raw Vercel JSON is one 600-character line per request, which
- *   is unwatchable while also running a Zoom. Each event gets one short line instead.
+ *   PRINTS SOMETHING A HUMAN CAN READ. A raw event is one long line of JSON, which is unwatchable
+ *   while also running a Zoom. Each event gets one short line instead.
  *
  *   RECONNECTS, AND FILLS THE GAP. A two-hour stream will drop at least once; the bare command just
  *   stops, quietly, and you find out afterwards. On reconnect this asks for everything since the
  *   last event it saw, so a dropped minute is recovered rather than lost.
  *
- * WHY A LOG STREAM AT ALL: the app runs on Vercel, which has no SSH and throws its filesystem away
- * when an invocation ends. stdout is the one channel out. See app/telemetry.js.
+ * WHY A LOG STREAM AT ALL: see app/telemetry.js. In short, stdout costs a request nothing and cannot
+ * be lost, and Docker keeps it.
+ *
+ * NEEDS: SESSION_SSH in app/.env — an SSH login on the server that may run docker (not the deploy
+ * key, which can only deploy) — and SESSION_DIR if docker-compose.yml is not in /opt/Game-Dev.
  *
  * Ctrl+C to stop. The file is already written — it is appended as events arrive, not at the end, so
  * killing the terminal loses nothing but the tail.
@@ -26,7 +29,15 @@ const { spawn, spawnSync } = require('child_process');
 const fs = require('fs');
 const path = require('path');
 
+try { require('dotenv').config({ path: path.join(__dirname, '..', '.env') }); } catch (e) { /* optional */ }
 const LOG_DIR = path.join(__dirname, '..', 'logs');
+const SSH = (process.env.SESSION_SSH || '').replace(/[^\w@.\-]/g, '');
+const DIR = (process.env.SESSION_DIR || '/opt/Game-Dev').replace(/[^\w\/.\-]/g, '');
+/* The one command this file runs, with the variable parts filtered to safe characters on the way in. */
+function logsCmd(follow, since) {
+  return 'ssh ' + SSH + ' "cd ' + DIR + ' && docker compose logs --no-log-prefix'
+    + (follow ? ' -f' : '') + (since ? ' --since ' + since : '') + ' app"';
+}
 const TAG = 'EVT ';
 
 const stamp = new Date().toISOString().slice(0, 10);
@@ -101,12 +112,9 @@ function line(e) {
   }
 }
 
-/* ---------- pulling events out of Vercel's envelope ----------
-   Vercel wraps each request in a JSON object; anything the function printed arrives either as that
-   object's `message` or inside its `logs` array, and the exact shape has changed between CLI
-   versions. Rather than depend on one, this looks in all the plausible places and takes whatever
-   carries our prefix. A line that matches nothing is not an error — most of them are Vercel's own
-   request records. */
+/* ---------- pulling events out of the log ----------
+   Docker hands back the app's stdout as it was printed, one line per console.log. Anything without
+   our prefix — the boot banner, [usage] lines — is not an error, just not ours. */
 /* The index of the `}` that closes the `{` at `from`, or -1 if the string ends first. Strings and
    escapes are tracked because a child's question can contain a brace — "why does {this} break" —
    and counting braces naively would stop in the middle of their own words. */
@@ -124,50 +132,29 @@ function matchingBrace(s, from) {
   return -1;
 }
 
-function stringsIn(obj) {
-  const out = [];
-  if (!obj || typeof obj !== 'object') return out;
-  if (typeof obj.message === 'string') out.push(obj.message);
-  if (typeof obj.text === 'string') out.push(obj.text);
-  if (Array.isArray(obj.logs)) {
-    obj.logs.forEach(function (l) {
-      if (typeof l === 'string') out.push(l);
-      else if (l && typeof l === 'object') {
-        if (typeof l.message === 'string') out.push(l.message);
-        if (typeof l.text === 'string') out.push(l.text);
-      }
-    });
-  }
-  return out;
-}
-
 /* Pure, and exported, because this is the part most likely to be wrong and the only part that can
-   be checked without a live session. Vercel's envelope has changed shape between CLI versions;
-   tools/check-session.js feeds this the shapes we have actually seen. */
+   be checked without a live session. tools/check-session.js feeds it the lines we have seen. */
 function eventsFrom(raw) {
   const text = String(raw || '').trim();
   if (!text) return [];
 
-  let env = null;
-  if (text[0] === '{') { try { env = JSON.parse(text); } catch (e) { env = null; } }
-
   /* Our own events, wherever they were carried.
 
      READ TO THE MATCHING BRACE, NOT TO THE END OF THE LINE. This took each event to the next "\n"
-     on the reasonable assumption that a console.log is a line. Vercel does not preserve that: it
-     batches a function's output into one message and joins it with SPACES, so a busy request
-     arrives as
+     on the reasonable assumption that a console.log is a line. The app's first host (Vercel) did not
+     preserve that: it batched a function's output into one message joined with SPACES, so a busy
+     request arrived as
 
        [usage] coder … EVT {"ev":"model",…} [usage] coder … EVT {"ev":"ask",…}
 
      with no newline anywhere. The old scan then took everything after the first `EVT ` to the end
      of the string, JSON.parse choked on the trailing text, and the event was dropped — silently,
      in a catch whose comment said "half a line: skip it".
-     It dropped exactly the events worth having. Short ones that happened to sit at the end of a
-     message survived; `ask`, `guard` and `model` — the ones that share a message with the usage
-     line — did not. Found on the day, with a session running. */
+     It dropped exactly the events worth having. Found on the day, with a session running. Docker
+     keeps lines apart, but reading to the matching brace costs nothing and survives any pipeline
+     that joins them again. */
   const found = [];
-  stringsIn(env).concat(env ? [] : [text]).forEach(function (s) {
+  [text].forEach(function (s) {
     let i = s.indexOf(TAG);
     while (i >= 0) {
       const start = s.indexOf('{', i + TAG.length);
@@ -179,14 +166,6 @@ function eventsFrom(raw) {
     }
   });
 
-  /* Nothing of ours, but the request itself failed — worth keeping. A 500 on /api/ai during the
-     session is a thing that happened to a child even if nothing logged it. */
-  if (!found.length && env && env.responseStatusCode >= 400 && String(env.requestPath || '').indexOf('/api/') === 0) {
-    found.push({
-      t: new Date(env.timestamp || Date.now()).toISOString(), ev: 'http',
-      status: env.responseStatusCode, path: env.requestPath, who: ''
-    });
-  }
   return found;
 }
 
@@ -205,9 +184,8 @@ function noticeStoreWarning(text) {
   warnedNoStore = true;
   console.error('\n' + C.red + '  ⚠  NO SAVE STORE ON THIS DEPLOYMENT' + C.off
     + '\n     Work lives in one browser on one machine and does not follow a sign-in.'
-    + '\n     Free fix: make a database at upstash.com, then add UPSTASH_REDIS_REST_URL and'
-    + '\n     UPSTASH_REDIS_REST_TOKEN to the Vercel project and redeploy. Vercel\'s own'
-    + '\n     Marketplace Redis starts at $8/month; going to Upstash directly does not.\n');
+    + '\n     The server has STATE_DIR=none in its .env. Remove it and redeploy: saves then go to'
+    + '\n     the gamedev_state volume (see DEPLOY.md, "Saved work").\n');
 }
 
 function handleRaw(raw) {
@@ -228,19 +206,17 @@ function handleRaw(raw) {
    `node tools/session-capture.js --since 3h` reads HISTORY instead of following, then exits.
    It exists because of a real morning: the parser was dropping every event that shared a message
    with another (see eventsFrom), so a session's `ask`, `guard` and `model` events never reached the
-   file — while sitting perfectly intact in Vercel's own logs the whole time. Once the parser was
+   file — while sitting perfectly intact in the platform's own logs the whole time. Once the parser was
    fixed there was no way to go back for them, and the run they described was over.
    Now there is. It is also the honest answer to a laptop that slept: the events are not lost until
-   the platform's retention drops them. */
+   Docker's log retention drops them (it keeps them until the container is rebuilt). */
 function backfill(since) {
   const win = String(since).replace(/[^0-9a-zA-Z:.\-]/g, '');
   console.log(C.bold + 'reading history' + C.off + ' since ' + win + ' — not following.\n');
-  const out = spawnSync('vercel logs --json --environment production --since ' + win + ' -n 5000',
-    { shell: true, cwd: path.join(__dirname, '..', '..'), encoding: 'utf8', maxBuffer: 1 << 28 });
-  /* SORTED BEFORE PRINTING, unlike the live path. Vercel returns history newest-first and batches
-     several events into one entry, so replaying it in arrival order gave a list that jumped about
-     in time — unreadable as a session, which is the one thing a backfill is for. The live stream is
-     already in order and is left alone. */
+  const out = spawnSync(logsCmd(false, win),
+    { shell: true, encoding: 'utf8', maxBuffer: 1 << 28 });
+  /* SORTED BEFORE PRINTING, unlike the live path, because events are stamped by the browser that
+     sent them and a batch can arrive after a later one. The live stream is left in arrival order. */
   const history = [];
   (out.stdout || '').split(/\r?\n/).forEach(function (raw) {
     eventsFrom(raw).forEach(function (e) { history.push(e); });
@@ -248,7 +224,7 @@ function backfill(since) {
   history.sort(function (a, b) { return String(a.t) < String(b.t) ? -1 : 1; });
   history.forEach(function (e) { handleRaw(TAG + JSON.stringify(e)); });
   const err = (out.stderr || '').split(/\r?\n/)
-    .filter(function (s) { return s.trim() && !/waiting|Retrieving|Fetching|Finding|Vercel CLI/.test(s); });
+    .filter(function (s) { return s.trim(); });
   if (err.length) console.error(C.dim + err.join('\n') + C.off);
   console.log('\n' + C.bold + '  ' + count + ' events' + C.off + ' written to ' + OUT);
   console.log('  read them with:  npm --prefix app run session:report\n');
@@ -257,16 +233,12 @@ function backfill(since) {
 
 /* ---------- the stream ---------- */
 function start(sinceISO) {
-  /* shell:true because on Windows the installed `vercel` is a .cmd shim, and since Node 20 closed
-     CVE-2024-27980 spawning one without a shell fails outright with EINVAL.
-     One command STRING rather than a command plus an args array: passing both is what Node warns
-     about (DEP0190, "arguments are not escaped, only concatenated"), and the warning would sit in
-     the middle of the live view for the whole session. The only variable part is a timestamp this
-     file produced itself, and it is filtered to ISO characters on the way in regardless. */
+  /* One command STRING with shell:true rather than a command plus an args array: passing both is
+     what Node warns about (DEP0190, "arguments are not escaped, only concatenated"), and the warning
+     would sit in the middle of the live view for the whole session. The variable parts are a
+     timestamp this file produced and two settings, all filtered to safe characters. */
   const since = sinceISO ? String(sinceISO).replace(/[^0-9TZ:.\-]/g, '') : '';
-  const cmd = 'vercel logs --follow --json --environment production'
-    + (since ? ' --since ' + since : '');
-  const child = spawn(cmd, { shell: true, cwd: path.join(__dirname, '..', '..') });
+  const child = spawn(logsCmd(true, since), { shell: true });
 
   let buf = '';
   child.stdout.on('data', function (chunk) {
@@ -275,13 +247,9 @@ function start(sinceISO) {
     while ((nl = buf.indexOf('\n')) >= 0) { handleRaw(buf.slice(0, nl)); buf = buf.slice(nl + 1); }
     if (buf.length > 1 << 20) buf = '';        // a line that never ends is a line we cannot use
   });
-  /* The CLI writes its banner and any auth complaint to stderr. Worth showing, because "not logged
-     in" is the failure everybody hits first and is otherwise invisible.
-     But it also writes "waiting for new logs..." every few seconds forever, and during a real
-     session that printed thirty times between two events — the live view became a wall of it with
-     the actual events buried inside. A heartbeat that drowns the thing it is a heartbeat for is
-     worse than no heartbeat, so the chatter goes and anything unexpected still gets through. */
-  const NOISE = /^(waiting for new logs|Retrieving project|Fetching|Finding production deployment|Vercel CLI|>|\s*$)/;
+  /* ssh and docker write any complaint to stderr — "permission denied" is the failure everybody hits
+     first and is otherwise invisible — so it is shown, minus blank lines. */
+  const NOISE = /^\s*$/;
   child.stderr.on('data', function (c) {
     c.toString().split(/\r?\n/).forEach(function (s) {
       const line = s.trim();
@@ -311,12 +279,17 @@ function main() {
     sink.end(function () { process.exit(0); });
   });
 
-  console.log(C.bold + 'watching ' + C.off + 'production, writing to ' + C.bold + OUT + C.off);
+  if (!SSH) {
+    console.error(C.red + 'SESSION_SSH is not set.' + C.off + ' Put the SSH login that can run docker on the League'
+      + '\nserver in app/.env, e.g. SESSION_SSH=you@apps.jointheleague.org — see the top of this file.');
+    process.exit(1);
+  }
+  console.log(C.bold + 'watching ' + C.off + SSH + ', writing to ' + C.bold + OUT + C.off);
   console.log(C.dim + 'Ctrl+C to stop. Nothing appears here until somebody uses the app.' + C.off);
   /* --since <window> reads history and stops; no argument follows the live stream. */
   const arg = process.argv.indexOf('--since');
   if (arg > 0 && process.argv[arg + 1]) { backfill(process.argv[arg + 1]); return; }
-  console.log(C.dim + 'Vercel\'s log pipeline runs a little behind, so expect events a few seconds late.' + C.off + '\n');
+  console.log('');
   start();
 }
 

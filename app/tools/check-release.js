@@ -5,7 +5,7 @@
  * It used to read `unlockAll: true` out of js/dev.js and fail while it was on, because the flag had
  * to be flipped back by hand before a deploy. That is a reminder with a safety net, and the net only
  * works if somebody runs it. Dev mode is now DERIVED — on when the app is served from a laptop, off
- * everywhere else — so the Vercel build is a student's build because of where it is, and there is
+ * everywhere else — so the League server's build is a student's build because of where it is, and there is
  * no longer a constant that can be left in the wrong position.
  *
  * So this checks the derivation instead: that dev mode is still decided by the hostname, that a URL
@@ -76,7 +76,7 @@ check('the server’s answer decides it, not the hostname',
   'league_hosted is set on every response by server.js');
 
 const LOCAL = ['localhost', '127.0.0.1', 'app.localhost', 'jays-laptop.local'];
-const HOSTED = ['game-dev.vercel.app', 'league-game-dev-git-main-jay.vercel.app', 'gamedev.jointheleague.org',
+const HOSTED = ['game-dev.apps.jointheleague.org', 'gamedev.jointheleague.org',
   'notlocalhost.com', 'localhost.evil.com', 'my-localhost-app.net'];
 if (!devHost) {
   check('devHost() could be read out of js/dev.js', false, 'the function was not found — this check cannot run');
@@ -93,7 +93,7 @@ if (!devHost) {
       be a link a student could pass round that unlocks the course and hands them a reset button. */
 check('a URL cannot switch dev mode ON where it is off',
   /if\s*\(\s*want\s*&&\s*!here\s*\)\s*return/.test(dev),
-  'the guard in the override block is what stops ?dev=1 working on Vercel');
+  'the guard in the override block is what stops ?dev=1 working on the League server');
 
 /* 4. The controls that destroy a student's work are marked, and the marking defaults to hidden. */
 const devOnly = (html.match(/data-dev-only/g) || []).length;

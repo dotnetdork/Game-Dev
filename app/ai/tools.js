@@ -307,9 +307,10 @@ function runTool(name, args, ctx) {
 
 /* Can this process actually READ the things the tools look things up in?
    Two separate questions, and on a laptop they are both always yes, which is exactly why they need
-   asking somewhere else. Serverless platforms bundle a function from the files they can see being
-   required; these are read by a path built at runtime, so nothing traces them, and the first anyone
-   would know is an agent quietly answering from memory. Reported by /api/info so the answer comes
+   asking somewhere else. A deployment can leave these files out — the app's first host bundled only
+   the files it saw being required, and a .dockerignore could do the same today — and they are read
+   by a path built at runtime, so nothing traces them. The first anyone would know is an agent
+   quietly answering from memory. Reported by /api/info so the answer comes
    from the deployment rather than from a guess about it. */
 function status() {
   const idx = apiIndex();

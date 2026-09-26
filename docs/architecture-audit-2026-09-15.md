@@ -1,5 +1,9 @@
 # Architecture audit — 15 September 2026
 
+> **Hosting has changed since this was written.** The app now runs on the League's own server (one
+> Docker container; see `DEPLOY.md`). The Vercel/serverless limits cited below (60 s ceiling, no disk, no
+> background work) no longer apply and are not constraints. Vercel will very likely never be used again.
+
 Measured against `main` at `4b634b5`. Every path and line number below was read, not inferred;
 where I could not verify something it says so. Companion to `audit-2026-09.md` (content and UX);
 this one is structure, state, duplication and the plan to fix them without stopping the beta.

@@ -281,7 +281,7 @@ else {
   console.log('  median ' + p(0.5) + 's    slowest ' + p(0.99) + 's    ' + timed.length + ' requests');
   const slow = timed.filter(function (e) { return e.ms > 30000; });
   if (slow.length) {
-    console.log(yel('\n  ' + slow.length + ' took over 30 seconds') + dim('  (the function is killed at 60s on Vercel):'));
+    console.log(yel('\n  ' + slow.length + ' took over 30 seconds') + dim('  (the budget gives up at 50s):'));
     slow.slice(0, 6).forEach(function (e) {
       console.log('  ' + String(Math.round(e.ms / 1000) + 's').padStart(5) + '  ' + name(e.who).padEnd(10) + clip(e.q, 60));
     });

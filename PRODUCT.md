@@ -68,8 +68,8 @@ industry through play, and every kid's path and game is their own.
 
 ## Capabilities and Constraints
 
-- **Browser only, filtered network, no installs;** vendored libraries; Vercel serverless (no
-  background work, 60 s ceiling); no bundler (`CLAUDE.md`).
+- **Browser only, filtered network, no installs;** vendored libraries; runs on the League's own
+  server (one Docker container behind Caddy); no bundler (`CLAUDE.md`).
 - **The AI writes the words; code keeps the score.** Scheduling, skill tracking, quest completion
   and prizes are deterministic code, never the model's say-so. People write the concept web and the
   quest outlines; the AI improvises inside them (`docs/rework/course-engine.md`).

@@ -15,17 +15,20 @@
  * ---------------------------------------------------------------------------------------------
  * THREE BACKENDS, CHOSEN BY WHAT IS CONFIGURED
  *
- *   redis   Upstash over its REST API — which is what a Vercel KV store is underneath. Chosen
+ *   redis   Upstash over its REST API. Chosen
  *           because it needs NO npm package: it is a POST with a bearer token, and `fetch` is in
  *           Node now. This app has no bundler and vendors its browser libraries on purpose; taking
  *           a runtime dependency for four HTTP calls would be out of keeping with that.
  *
- *   file    A folder on disk, for `npm start` on a laptop. Not available on Vercel, whose
- *           filesystem is read-only — which is the whole reason the redis backend exists.
+ *   file    A folder on disk: app/.data/state, or STATE_DIR. The DEFAULT, on a laptop and on the
+ *           League server alike — docker-compose.yml backs that folder with a volume so it
+ *           survives a rebuild. One process, one disk, no network hop.
+ *           (The app's first host, Vercel, had a read-only filesystem, so this backend used to be
+ *           switched off whenever the app was hosted. That rule outlived the host: on the League
+ *           server it meant saves went nowhere unless a Redis was configured.)
  *
- *   none    Nothing configured. The endpoints say so and the browser stays on localStorage alone,
- *           exactly as it did before this file existed. A missing store must never be an error: a
- *           developer with no Redis should get the app, not a stack trace.
+ *   none    STATE_DIR=none. The endpoints say so and the browser stays on localStorage alone,
+ *           exactly as it did before this file existed. A missing store must never be an error.
  *
  * ---------------------------------------------------------------------------------------------
  * WHAT IS STORED, AND WHAT IS DELIBERATELY NOT
@@ -42,20 +45,20 @@ const crypto = require('crypto');
 const fs = require('fs');
 const path = require('path');
 
-/* Vercel KV injects KV_REST_API_*; a store created directly with Upstash uses UPSTASH_*. Both are
-   the same API, so both names are read and whichever is present wins. */
+/* Upstash's own names are UPSTASH_*. KV_REST_API_* is the older pair, from the first host's KV
+   integration, still read so an existing .env keeps working. Same API; whichever is present wins. */
 const REDIS_URL = (process.env.KV_REST_API_URL || process.env.UPSTASH_REDIS_REST_URL || '').replace(/\/$/, '');
 const REDIS_TOKEN = process.env.KV_REST_API_TOKEN || process.env.UPSTASH_REDIS_REST_TOKEN || '';
-const IS_HOSTED = !!(process.env.VERCEL || process.env.NODE_ENV === 'production');
 /* Where the file backend keeps things. Under the app rather than in a temp folder, so it survives a
    reboot and is obvious enough to delete. .gitignored. */
-const FILE_DIR = process.env.STATE_DIR || path.join(__dirname, '.data', 'state');
+const FILE_DIR = (process.env.STATE_DIR && process.env.STATE_DIR !== 'none')
+  ? process.env.STATE_DIR : path.join(__dirname, '.data', 'state');
 
 /* A blob is one child's whole working life in this app. 512KB is generous for a handful of small
    JS files, a progress ledger and a board — and small enough that a bug cannot fill the store. */
 const MAX_BYTES = 512 * 1024;
 
-const MODE = (REDIS_URL && REDIS_TOKEN) ? 'redis' : (IS_HOSTED ? 'none' : 'file');
+const MODE = (REDIS_URL && REDIS_TOKEN) ? 'redis' : (process.env.STATE_DIR === 'none' ? 'none' : 'file');
 
 function enabled() { return MODE !== 'none'; }
 function mode() { return MODE; }
@@ -64,8 +67,8 @@ function mode() { return MODE; }
 function problem() {
   if (MODE !== 'none') return null;
   return 'no per-student save store is configured, so work will only survive in the browser it was '
-    + 'made in. Create a KV store in the Vercel dashboard and redeploy — it sets KV_REST_API_URL '
-    + 'and KV_REST_API_TOKEN itself.';
+    + 'made in. STATE_DIR is set to "none": unset it to save to disk, or set UPSTASH_REDIS_REST_URL '
+    + 'and UPSTASH_REDIS_REST_TOKEN to save to Redis.';
 }
 
 function keyFor(identity) {
@@ -126,13 +129,13 @@ async function clear(identity) {
 
 /* ---------- counters that expire ----------
    The primitive behind every rate limit in the app. It exists here rather than in server.js for one
-   reason: on Vercel a counter in a module-level Map counts only the requests that happened to land
-   on the same short-lived instance as the last one, which on a cold path is none of them. A limit
-   that resets whenever the platform feels like it is not a limit, and the only thing standing
-   between the public URL and a paid API key should not be decorative.
+   reason: with more than one process (the app's first host ran many short-lived ones), a counter in
+   a module-level Map counts only the requests that reached the same process. A limit that resets
+   whenever a process recycles is not a limit, and the only thing standing between the public URL
+   and a paid API key should not be decorative.
 
-   With a KV store it is a real shared counter. Without one — a laptop — the in-memory Map is
-   correct, because there is exactly one process.
+   With a KV store it is a real shared counter. Without one — a laptop, or the League server's single
+   container — the in-memory Map is correct, because there is exactly one process.
 
    IT FAILS OPEN. If the store is unreachable this returns 0, which reads as "not over the limit",
    and the caller lets the request through. A child mid-sentence must not be told to slow down

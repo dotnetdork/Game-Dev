@@ -1,5 +1,9 @@
 # Making "the AI is the course" cheap: cost and efficiency research
 
+> **Hosting has changed since this was written.** The app now runs on the League's own server (one
+> Docker container; see `DEPLOY.md`). The Vercel/serverless limits cited below (60 s ceiling, no disk, no
+> background work) no longer apply and are not constraints. Vercel will very likely never be used again.
+
 2026-09-25. Scope: cost and efficiency only (a separate architecture design is under way elsewhere).
 Inputs read: `CLAUDE.md`, `docs/rework/00-direction.md`, `docs/rework/course-engine.md`,
 `docs/rework/briefs/first-run.md` §6, `docs/ai-system-brief.md`, `docs/child-privacy-brief.md`,

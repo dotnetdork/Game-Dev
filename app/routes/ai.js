@@ -66,9 +66,8 @@ function mount(app, deps) {
      suggestion. It is keyed on the session now, which the server issued and signs, so a student gets
      one bucket whatever their browser claims to be.
 
-     And it was a Map in this module, which on Vercel counts only the requests that happened to reach
-     the same instance. store.bump() puts the counter in the KV store when there is one — see the note
-     there, including why it fails open. */
+     And it was a Map in this module. store.bump() owns the counter now — in-memory for one process,
+     the KV store when there is one — see the note there, including why it fails open. */
   const RATE = { windowSec: 10 * 60, max: 40 };
   async function rateLimited(req) {
     const me = auth.currentUser(req);
@@ -399,7 +398,7 @@ function mount(app, deps) {
        THEY USED TO RUN IN SEQUENCE, one retry each. That was deliberate and it was too expensive:
        four guards × one retry, each retry itself up to MAX_TOOL_ROUNDS + 1 model calls, is
        twenty-five calls for one child's question, and the capture showed a single coder pass taking
-       ten seconds against a 60s Vercel ceiling. Now: run every applicable detector, send ONE
+       ten seconds against a 50s budget. Now: run every applicable detector, send ONE
        correction listing everything that fired, retry ONCE, re-run every detector. Worst case drops
        from five callAI to two.
 

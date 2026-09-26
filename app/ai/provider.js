@@ -19,18 +19,18 @@ const { DEFAULT_PROVIDER, OLLAMA_URL, OLLAMA_NUM_CTX, OLLAMA_NUM_PREDICT, OLLAMA
    The arithmetic behind that: one answer is up to MAX_TOOL_ROUNDS lookups plus a final call, and the
    coder can run that whole thing five times over (the first attempt plus one corrective retry per
    guard). Twenty-five model calls, in sequence, none of them with a deadline — and on a laptop
-   there is no platform timeout to stop it either. Hosted, Vercel kills the function at maxDuration
-   and the handler never resumes, so the request that most needed recording is the one that logs
-   nothing at all.
+   there is no platform timeout to stop it either. On the app's first host (Vercel) the platform
+   killed the function at its 60s ceiling and the handler never resumed, so the request that most
+   needed recording was the one that logged nothing at all. The League server has no such ceiling,
+   which makes this budget the only clock there is.
    Two deadlines, therefore: one per call, and one for the whole request. Both come back as a normal
    thrown error, which every caller already turns into "the AI is not reachable right now" — a
    sentence a child can act on, arriving in seconds instead of never.
 
-   A BUDGET ABOVE THE PLATFORM'S OWN TIMEOUT IS DECORATION. This defaulted to 110s against Vercel's
-   60s function ceiling (app/vercel.json), so hosted, the budget could never fire: Vercel killed the
-   function first and the request that most needed recording logged nothing — the exact outcome the
-   paragraph above says this prevents. The default is under the ceiling now. A laptop on slow Ollama
-   that genuinely needs longer sets AI_TOTAL_BUDGET_MS in .env, where the platform is its own. */
+   50s is set by the child, not the platform: it is about as long as a 10-year-old will watch a
+   spinner before deciding the app is broken. (It was 110s once, against the first host's 60s
+   ceiling, so it could never fire there.) A laptop on slow Ollama that genuinely needs longer sets
+   AI_TOTAL_BUDGET_MS in .env. */
 const CALL_TIMEOUT_MS = Number(process.env.AI_CALL_TIMEOUT_MS || 45000);
 const TOTAL_BUDGET_MS = Number(process.env.AI_TOTAL_BUDGET_MS || 50000);
 

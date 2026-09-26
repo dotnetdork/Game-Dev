@@ -1,5 +1,9 @@
 # Make Build mode as useful as Tutor mode
 
+> **Hosting has changed since this was written.** The app now runs on the League's own server (one
+> Docker container; see `DEPLOY.md`). The Vercel/serverless limits cited below (60 s ceiling, no disk, no
+> background work) no longer apply and are not constraints. Vercel will very likely never be used again.
+
 **For: Claude Fable 5, in plan mode, with this repository open.**
 **Deliverable: a written plan an implementing model (Opus) can follow. Do not write the fix yourself.**
 

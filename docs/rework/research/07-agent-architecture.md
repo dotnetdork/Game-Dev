@@ -1,5 +1,9 @@
 # "The AI is the course" — an architecture that fits this repo
 
+> **Hosting has changed since this was written.** The app now runs on the League's own server (one
+> Docker container; see `DEPLOY.md`). The Vercel/serverless limits cited below (60 s ceiling, no disk, no
+> background work) no longer apply and are not constraints. Vercel will very likely never be used again.
+
 Research for the rework, 2026-09-25. A design produced by an architecture agent after reading
 `CLAUDE.md`, the rework docs, `docs/child-privacy-brief.md` and the whole AI layer. Kept close to
 as returned. **[uncertain]** = needs measuring; **[ask]** = needs Jay's call. Checked by hand:
