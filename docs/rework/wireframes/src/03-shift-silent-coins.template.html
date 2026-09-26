@@ -115,7 +115,7 @@
 <body>
 <header class="doc">
   <h1>A shift you can’t click through: “The silent coins”</h1>
-  <p>Play it for real: click the game, then use the arrow keys and Space. Progress only unlocks when you've
+  <p>Play it for real: click the game, then use the arrow keys or WASD. Progress only unlocks when you've
      actually done the job. The step buttons below are for reviewers and let you skip ahead.</p>
 </header>
 
@@ -154,8 +154,8 @@
   <section class="dock game" aria-label="Game">
     <div class="tabs"><span class="tab"><svg class="i"><use href="#i-pad"/></svg>Game <small id="gameOf">customer's game</small></span></div>
     <div class="gamebody" id="gamebody">
-      <canvas id="cv" tabindex="0" aria-label="The game. Arrow keys move, Space jumps."></canvas>
-      <div class="focus-hint" id="hint" hidden>Click the game, then <span class="keys"><span class="key">←</span><span class="key">→</span></span> move · <span class="key">Space</span> jump</div>
+      <canvas id="cv" tabindex="0" aria-label="The game. Arrow keys or A and D move; Space or W jumps."></canvas>
+      <div class="focus-hint" id="hint" hidden>Click the game, then <span class="keys"><span class="key">←</span><span class="key">→</span></span> or <span class="keys"><span class="key">A</span><span class="key">D</span></span> move · <span class="key">Space</span> or <span class="key">W</span> jump</div>
     </div>
     <!-- The script is its own dock beside the Game dock, so its tab sits on the same line as Game's,
          as two docked panels do in Unity. It used to live inside the game area, one tab-height lower. -->
@@ -270,8 +270,11 @@ function level() {
                                : [{ x: 216, y: 94, got: false }, { x: 290, y: 136, got: false }];
 }
 var ground = [[0, 150, 118], [168, 150, 152]], ledge = [196, 116, 60];
+/* Arrow keys or WASD (A, D move; W jumps), and Space jumps. Mapped by physical key (e.code), so
+   it works on any keyboard layout and with Caps Lock on. */
+var KEYMAP = { ArrowLeft: 'ArrowLeft', KeyA: 'ArrowLeft', ArrowRight: 'ArrowRight', KeyD: 'ArrowRight', ArrowUp: 'ArrowUp', KeyW: 'ArrowUp', Space: ' ' };
 function onKey(e, down) {
-  if (['ArrowLeft', 'ArrowRight', 'ArrowUp', ' ', 'Spacebar'].indexOf(e.key) >= 0) { e.preventDefault(); keys[e.key] = down; }
+  var k = KEYMAP[e.code]; if (k) { e.preventDefault(); keys[k] = down; }
 }
 cv.addEventListener('keydown', function (e) { onKey(e, true); });
 cv.addEventListener('keyup', function (e) { onKey(e, false); });
@@ -552,7 +555,7 @@ var STEPS = [
     gate: 'Nothing to gate yet: this is the hook. A kid who can’t hear goes on anyway, with the pops as their sound.' },
   { beat: 'Play it', check: 'play',
     enter: function () { setRunning(true); level(); got = 0; $('hint').hidden = false;
-      say([['s', 'Click the game, then use the arrow keys and Space. Grab both coins.']]); options([]); },
+      say([['s', 'Click the game, then use the arrow keys or A, D and W. Grab both coins.']]); options([]); },
     onEvent: function (a) { if (a === 'coin' && got >= 2) { done.play = true; setChecks(); advanceLater(500); } },
     what: 'The kid plays the customer’s game with the keyboard. Grabbing a coin makes no sound and nothing happens.',
     gate: 'There is no button. The only way on is to actually grab both coins in the game.' },

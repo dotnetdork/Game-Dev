@@ -266,7 +266,7 @@
 <body>
 <header class="doc">
   <h1>A shift: “The floaty jump”</h1>
-  <p>Play it for real: press Play, use the arrow keys and Space. Progress only unlocks when you’ve actually done the
+  <p>Play it for real: press Play, use the arrow keys or WASD. Progress only unlocks when you’ve actually done the
      job. The step buttons below are for reviewers and let you skip ahead.</p>
 </header>
 
@@ -320,8 +320,8 @@
   <section class="dock game" aria-label="Game">
     <div class="tabs"><span class="tab"><svg class="i"><use href="#i-pad"/></svg>Game <small id="gameOf">customer’s game</small></span></div>
     <div class="gamebody" id="gamebody">
-      <canvas id="cv" tabindex="0" aria-label="The game. Arrow keys move, Space jumps."></canvas>
-      <div class="focus-hint" id="hint" hidden>Click the game, then <span class="keys"><span class="key">←</span><span class="key">→</span></span> move · <span class="key">Space</span> jump</div>
+      <canvas id="cv" tabindex="0" aria-label="The game. Arrow keys or A and D move; Space or W jumps."></canvas>
+      <div class="focus-hint" id="hint" hidden>Click the game, then <span class="keys"><span class="key">←</span><span class="key">→</span></span> or <span class="keys"><span class="key">A</span><span class="key">D</span></span> move · <span class="key">Space</span> or <span class="key">W</span> jump</div>
     </div>
   </section>
 
@@ -381,8 +381,11 @@ var LV = {
 };
 function g() { return 0.05 * tune.G; } function v() { return 1.2 + 0.35 * tune.J; }
 function level() { P = { x: 20, y: 134, vy: 0, w: 12, h: 16, on: true }; coin = { x: LV[theme].coin[0], y: LV[theme].coin[1], got: false }; }
+/* Arrow keys or WASD (A, D move; W jumps), and Space jumps. Mapped by physical key (e.code), so
+   it works on any keyboard layout and with Caps Lock on. */
+var KEYMAP = { ArrowLeft: 'ArrowLeft', KeyA: 'ArrowLeft', ArrowRight: 'ArrowRight', KeyD: 'ArrowRight', ArrowUp: 'ArrowUp', KeyW: 'ArrowUp', Space: ' ' };
 function onKey(e, down) {
-  if (['ArrowLeft', 'ArrowRight', 'ArrowUp', ' ', 'Spacebar'].indexOf(e.key) >= 0) { e.preventDefault(); keys[e.key] = down; }
+  var k = KEYMAP[e.code]; if (k) { e.preventDefault(); keys[k] = down; }
 }
 cv.addEventListener('keydown', function (e) { onKey(e, true); });
 cv.addEventListener('keyup', function (e) { onKey(e, false); });
@@ -595,7 +598,7 @@ var STEPS = [
   { beat: 'Play it', check: 'play',
     enter: function () { $('bPlay').classList.add('cue'); say([['p', 'Press Play. Try a jump right where you start, then try to reach the coin.']]); options([]); this.hit = false; },
     onEvent: function (a) {
-      if (a === 'play') say([['p', 'Arrow keys to move, Space to jump. Watch how the jump moves.']]);
+      if (a === 'play') say([['p', 'Arrow keys or A and D to move, Space or W to jump. Watch how the jump moves.']]);
       if ((a === 'bonk' || a === 'fell') && !this.hit) { this.hit = true;
         say([['p', a === 'bonk' ? 'Bonk! It floated up so high it hit the spikes.' : 'You fell in the gap!'], ['p', 'Press Stop when you’ve seen enough.']]); $('bPlay').classList.add('cue'); }
       if (a === 'stop' && this.hit) { done.play = true; advance(); }

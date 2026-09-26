@@ -240,9 +240,7 @@
   .sr { position: absolute; width: 1px; height: 1px; overflow: hidden; clip: rect(0 0 0 0); white-space: nowrap; }
   /* A pointer that names a panel points at the panel's tab, just above it: the tab is the label the
      kid will find again in Unity, so that's where the eye should go (Jay, 2026-09-25). */
-  .pointer { z-index: 2; }
-  .pointer.at-tab { top: 12px; left: 10px; }
-  .pointer.at-tab::after { top: -8px; bottom: auto; left: 22px; }
+  .editor > .pointer { z-index: 5; }   /* placed by pointAt(), just above the tab it names */
   /* the Inspector's Solid switch: a 44px target, the state said in words as well as shown */
   .switch { display: inline-flex; align-items: center; gap: 10px; min-height: 44px; padding: 0 12px 0 8px; border-radius: 8px;
             border: 1.5px solid var(--line-soft); background: var(--panel-2); color: var(--ink); font-weight: 600; cursor: pointer; }
@@ -269,7 +267,7 @@
 <body>
 <header class="doc">
   <h1>Your first day is your first shift</h1>
-  <p>Play it for real. Press Play, use the arrow keys and Space, find what’s broken and fix it. Progress only
+  <p>Play it for real. Press Play, use the arrow keys or WASD, find what’s broken and fix it. Progress only
      unlocks when you’ve actually done it. The step buttons below are for reviewers and let you skip ahead.</p>
 </header>
 
@@ -323,9 +321,8 @@
   <section class="dock game closed" id="dGame" aria-label="Game">
     <div class="tabs"><span class="tab"><svg class="i"><use href="#i-pad"/></svg>Game <small id="gameOf">the intern’s game</small></span></div>
     <div class="gamebody" id="gamebody">
-      <canvas id="cv" tabindex="0" aria-label="The game. Arrow keys move, Space jumps."></canvas>
-      <div class="pointer" id="pointer" hidden><span id="pointerText"></span></div>
-      <div class="focus-hint" id="hint" hidden>Click the game, then <span class="keys"><span class="key">←</span><span class="key">→</span></span> move · <span class="key">Space</span> jump</div>
+      <canvas id="cv" tabindex="0" aria-label="The game. Arrow keys or A and D move; Space or W jumps."></canvas>
+      <div class="focus-hint" id="hint" hidden>Click the game, then <span class="keys"><span class="key">←</span><span class="key">→</span></span> or <span class="keys"><span class="key">A</span><span class="key">D</span></span> move · <span class="key">Space</span> or <span class="key">W</span> jump</div>
     </div>
   </section>
 
@@ -351,6 +348,7 @@
     <span class="chip" id="cardChip">1 card: Play mode</span>
   </div>
 
+  <div class="pointer" id="pointer" hidden><span id="pointerText"></span></div>
   <p class="sr" id="announce" aria-live="polite"></p>
   <div class="status">
     <span id="statusMsg">Welcome to the studio</span>
@@ -396,8 +394,11 @@ function level() {
   P = { x: 20, y: 120, vx: 0, vy: 0, w: 12, h: 16, on: false };
   coins = [{ x: 170, y: 132, got: false }, { x: 290, y: 132, got: false }];
 }
+/* Arrow keys or WASD (A, D move; W jumps), and Space jumps. Mapped by physical key (e.code), so
+   it works on any keyboard layout and with Caps Lock on. */
+var KEYMAP = { ArrowLeft: 'ArrowLeft', KeyA: 'ArrowLeft', ArrowRight: 'ArrowRight', KeyD: 'ArrowRight', ArrowUp: 'ArrowUp', KeyW: 'ArrowUp', Space: ' ' };
 function onKey(e, down) {
-  if (['ArrowLeft', 'ArrowRight', 'ArrowUp', ' ', 'Spacebar'].indexOf(e.key) >= 0) { e.preventDefault(); keys[e.key] = down; }
+  var k = KEYMAP[e.code]; if (k) { e.preventDefault(); keys[k] = down; }
 }
 cv.addEventListener('keydown', function (e) { onKey(e, true); });
 cv.addEventListener('keyup', function (e) { onKey(e, false); });
@@ -587,8 +588,15 @@ function who(kind) {
             a: ['Art director', 'Art department'], u: ['Sound designer', 'Audio department'], d: ['Lead designer', 'Design department'] }[kind];
   $('whoTab').textContent = W[0]; $('whoName').innerHTML = W[0] + (kind === 'm' ? '' : ' <span style="font-weight:500;color:var(--ink-3)">(name TBD)</span>'); $('whoRole').textContent = W[1];
 }
-function pointAt(text, atTab) { var el = $('pointer'); el.classList.toggle('at-tab', !!atTab);
-  if (text) { el.hidden = false; $('pointerText').textContent = text; } else el.hidden = true; }
+/* A pointer that names a panel floats just ABOVE that panel's tab and points down at it: the tab is
+   the label the kid will find again in Unity, and the bubble shouldn't cover the panel it names
+   (Jay, 2026-09-25). Positions are in the editor's own 1366×650 units, so scaling doesn't move it. */
+function pointAt(text, tab) {
+  var el = $('pointer'); if (!text) { el.hidden = true; return; }
+  $('pointerText').textContent = text; el.hidden = false;
+  var ed = $('editor').getBoundingClientRect(), k = ed.width / 1366, r = tab.getBoundingClientRect();
+  el.style.left = Math.round((r.left - ed.left) / k) + 'px'; el.style.top = Math.round((r.top - ed.top) / k - el.offsetHeight - 10) + 'px';
+}
 
 /* ---------- Play mode: one place, and Unity's rule: what changes while playing is undone on Stop ---------- */
 function setRunning(on) {
@@ -622,12 +630,12 @@ var STEPS = [
   { beat: 'Press Play',
     enter: function () {
       openDock('dGame', true); reveal('transport', true); $('bPlay').classList.add('cue');
-      pointAt('This is the Game view: where games run.', true);
+      pointAt('This is the Game view: where games run.', document.querySelector('#dGame .tab'));
       say([['m', 'This is the Game view. Press Play up top to run it.']]); options([]);
       this.hit = false; var self = this;
       this.nudge = setTimeout(function () { if (i === 1 && running && !self.hit) say([['m', 'Try walking over that floor on the left. Carefully…']]); }, 25000); },
     onEvent: function (a) {
-      if (a === 'play') { pointAt(null); say([['m', 'Use the arrow keys and Space. Find what’s broken!']]); }
+      if (a === 'play') { pointAt(null); say([['m', 'Use the arrow keys, or A, D and W. Find what’s broken!']]); }
       if (a === 'fell' || a === 'coin' || a === 'lava') {
         if (!this.hit) { found = a; this.hit = true;
           say([['m', a === 'fell' ? 'Whoa, you fell right through the floor!' : a === 'coin' ? 'You grabbed a coin… and nothing happened. No sound at all.' : 'You walked into the lava and… nothing. It doesn’t even hurt.'],
