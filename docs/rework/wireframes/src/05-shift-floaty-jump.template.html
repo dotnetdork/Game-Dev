@@ -1,0 +1,503 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Floaty Jump Shift</title>
+<!--
+  Wireframe 05: the shift "The floaty jump" (Engineering, session 2; ../briefs/shift-floaty-jump.md).
+  The kid plays a customer's moon-jump, predicts what gravity will do, tunes Gravity and Jump height
+  in the Inspector until the hero clears the gap under the ceiling spikes, then picks their own
+  game's feel. Built from this template by build.js; shares base.css and the patterns of 03 and 04
+  (evidence gates, one setRunning with Unity's undo-on-Stop, shuffled answers, the announcer).
+-->
+<style>
+{{CSS}}
+  /* ---------- additions for the shift ---------- */
+  .editor { height: 650px; grid-template-rows: 56px minmax(0, 1fr) 30px 26px; }
+  .gamebody canvas { flex: 1; min-width: 0; width: 100%; height: 100%; display: block; outline: none; background: #111; }
+  .gamebody canvas:focus-visible { box-shadow: inset 0 0 0 3px var(--focus); }
+  .gamebody.playing::after { content: ''; position: absolute; inset: 0; box-shadow: inset 0 0 0 3px var(--accent); pointer-events: none; }
+  .focus-hint { position: absolute; inset: auto 0 18px 0; margin: 0 auto; width: max-content; max-width: 80%;
+                background: rgba(20,20,20,.86); color: #fff; padding: 10px 14px; border-radius: 10px; font-size: 15px; pointer-events: none; }
+  .focus-hint[hidden] { display: none; }
+  .keys { display: inline-flex; gap: 4px; margin: 0 4px; }
+  .key { border: 1px solid #777; border-bottom-width: 3px; border-radius: 5px; padding: 0 7px; font-size: 13px; }
+  .sr { position: absolute; width: 1px; height: 1px; overflow: hidden; clip: rect(0 0 0 0); white-space: nowrap; }
+  /* quest checklist, as in wireframe 03 */
+  .checks { list-style: none; margin: 8px 0 0; padding: 0; display: grid; gap: 4px; }
+  .checks li { display: flex; align-items: center; gap: 8px; min-height: 30px; font-size: 14px; color: var(--ink-2); }
+  .checks li .box { width: 20px; height: 20px; border-radius: 5px; border: 1.5px solid var(--ink-3); display: grid; place-items: center; flex: none; }
+  .checks li.done { color: var(--ink); }
+  .checks li.done .box { background: var(--accent); border-color: var(--accent); color: var(--accent-ink); }
+  .checks li.now { color: var(--ink); font-weight: 600; }
+  .checks li.now .box { border-color: var(--accent); }
+  .checks .box svg { width: 14px; height: 14px; }
+  /* a slider row that shows its number, so the value is read as well as seen */
+  .irow output { font: 600 13px ui-monospace, "Cascadia Mono", Consolas, monospace; color: var(--ink); min-width: 3ch; text-align: right; }
+  .slide { display: flex; align-items: center; gap: 10px; }
+  .tree .trow { display: flex; align-items: center; gap: 8px; min-height: 44px; padding: 0 8px; color: var(--ink); }
+  .tree .trow small { margin-left: auto; color: var(--ink-3); font-size: 12px; }
+  .feelchip { display: inline-block; margin-top: 4px; padding: 2px 10px; border-radius: 999px; background: var(--accent-soft); color: var(--ink); font-weight: 600; }
+  /* two components, two sliders: rows at the 44px target (not 48) so both fit without scrolling */
+  .inspector .irow { min-height: 44px; }
+  .inspector .comp { min-height: 32px; margin-bottom: 2px; }
+  .inote { color: var(--ink-2); font-size: 14px; padding: 6px 2px; }
+  .card { margin: 4px 0 2px; border-radius: 10px; background: #2f2a24; border: 1.5px solid var(--accent); padding: 12px 14px; }
+  .card b { display: block; font-size: 16px; color: var(--ink); }
+  .card p { margin: 4px 0 8px; font-size: 14.5px; color: var(--ink); }
+  .card dl { display: grid; grid-template-columns: auto 1fr; gap: 2px 10px; margin: 0; font-size: 13px; }
+  .card dt { color: var(--ink-2); } .card dd { margin: 0; color: var(--ink); }
+</style>
+</head>
+<body>
+<header class="doc">
+  <h1>A shift: “The floaty jump”</h1>
+  <p>Play it for real: press Play, use the arrow keys and Space. Progress only unlocks when you’ve actually done the
+     job. The step buttons below are for reviewers and let you skip ahead.</p>
+</header>
+
+{{ICONS}}
+
+<div class="stagehold"><div class="scaler" id="scaler">
+<div class="editor" id="editor" role="region" aria-label="The studio editor during an Engineering shift, drawn at 1366 by 650">
+
+  <div class="toolbar">
+    <div class="brand">
+      <img class="wordmark" alt="The League of Amazing Programmers" src="{{LOGO}}">
+      <span class="project">· <b>Captain Byte’s Game</b></span>
+    </div>
+    <div class="transport" aria-label="Play controls">
+      <button class="tbtn" id="bPlay"><svg class="i"><use id="bPlayIcon" href="#i-play"/></svg><span>Play</span></button>
+    </div>
+    <div class="tool-right"></div>
+  </div>
+
+  <div class="left">
+    <section class="dock" aria-label="Quest">
+      <div class="tabs"><span class="tab"><svg class="i"><use href="#i-flag"/></svg>Quest</span></div>
+      <div class="dock-body">
+        <div class="quest-dept"><span class="dot"></span>Engineering department</div>
+        <div class="quest-now">The floaty jump</div>
+        <ul class="checks" id="checks"></ul>
+      </div>
+    </section>
+    <section class="dock" aria-label="Hierarchy">
+      <div class="tabs"><span class="tab"><svg class="i"><use href="#i-tree"/></svg>Hierarchy <small id="hierOf">customer’s game</small></span></div>
+      <div class="dock-body"><ul class="tree" id="tree"></ul></div>
+    </section>
+  </div>
+
+  <section class="dock game" aria-label="Game">
+    <div class="tabs"><span class="tab"><svg class="i"><use href="#i-pad"/></svg>Game <small id="gameOf">customer’s game</small></span></div>
+    <div class="gamebody" id="gamebody">
+      <canvas id="cv" tabindex="0" aria-label="The game. Arrow keys move, Space jumps."></canvas>
+      <div class="focus-hint" id="hint" hidden>Click the game, then <span class="keys"><span class="key">←</span><span class="key">→</span></span> move · <span class="key">Space</span> jump</div>
+    </div>
+  </section>
+
+  <section class="dock right" id="dMentor" aria-label="Conversation">
+    <div class="tabs"><span class="tab"><svg class="i" style="color:var(--accent)"><use href="#i-cube"/></svg><span id="whoTab">Lead programmer</span></span></div>
+    <div class="who">
+      <div class="face" aria-hidden="true">face<br>TBD</div>
+      <div><strong id="whoName">Lead programmer</strong><span id="whoRole">Engineering department</span></div>
+    </div>
+    <div class="log" id="log"></div>
+    <div class="opts" id="opts"></div>
+    <div class="say"><input id="say" type="text" placeholder="Say something else…" aria-label="Say something else"></div>
+
+    <div class="inspector" id="inspector" aria-label="Inspector" aria-hidden="true" inert>
+      <div class="tabs"><span class="tab"><svg class="i"><use href="#i-sliders"/></svg>Inspector <small id="inspName"></small></span>
+        <button class="x" id="inspClose" aria-label="Close the Inspector"><svg class="i"><use href="#i-x"/></svg></button></div>
+      <div class="dock-body" id="inspBody"></div>
+    </div>
+  </section>
+
+  <div class="proj" id="proj">
+    <svg class="i"><use href="#i-cards"/></svg><b>Project</b><span>your cards</span>
+    <span class="chip" id="cardChip">1 card: Play mode</span>
+  </div>
+
+  <p class="sr" id="announce" aria-live="polite"></p>
+  <div class="status">
+    <span id="statusMsg">Shift started</span>
+    <span class="stars" id="stars"><svg class="i"><use href="#i-star"/></svg><span id="starCount">1 star</span></span>
+  </div>
+</div>
+</div></div>
+
+<nav class="nav" aria-label="Steps (for reviewers)">
+  <button id="back">Back</button><span class="track" id="dots"></span><button id="next">Skip ahead</button>
+</nav>
+
+<section class="notes">
+  <div><h2 id="nBeat"></h2><p id="nWhat"></p></div>
+  <div><h2>Why you can’t click through this step</h2><p id="nGate"></p></div>
+</section>
+
+<script>
+var $ = function (id) { return document.getElementById(id); };
+var NAME = 'Captain Byte', HERO = 'robot';   // from the first day: sign-in name and hero pick
+
+/* ---------- the game: one hero, two numbers that matter ----------
+   gravity = 0.05 × the Gravity slider; jump speed = 1.2 + 0.35 × the Jump height slider. The
+   customer's values (1.2, 6.3) float the hero ~96px up into the spikes; something like (4, 6.3)
+   clears the 50px gap with the head well under them. */
+var cv = $('cv'), ctx = cv.getContext('2d'), W = 320, H = 180, SPEED = 2.2;
+var keys = {}, P, coin, running = false;   // running: set only through setRunning()
+var theme = 'customer', tune = { G: 1.2, J: 6.3 }, playTune = null;
+var LV = {
+  customer: { floors: [[0, 150, 120], [170, 150, 150]], pit: [120, 170], spikes: [150, 230, 96],   /* open sky first, so a jump in place shows the float; spikes over the gap */ coin: [290, 132], lava: null },
+  yours:    { floors: [[0, 150, 200], [240, 150, 80]], pit: null, spikes: null, coin: [290, 132], lava: [200, 240, 164] }
+};
+function g() { return 0.05 * tune.G; } function v() { return 1.2 + 0.35 * tune.J; }
+function level() { P = { x: 20, y: 134, vy: 0, w: 12, h: 16, on: true }; coin = { x: LV[theme].coin[0], y: LV[theme].coin[1], got: false }; }
+function onKey(e, down) {
+  if (['ArrowLeft', 'ArrowRight', 'ArrowUp', ' ', 'Spacebar'].indexOf(e.key) >= 0) { e.preventDefault(); keys[e.key] = down; }
+}
+cv.addEventListener('keydown', function (e) { onKey(e, true); });
+cv.addEventListener('keyup', function (e) { onKey(e, false); });
+cv.addEventListener('focus', function () { $('hint').hidden = true; });
+cv.addEventListener('blur', function () { keys = {}; if (running) $('hint').hidden = false; });
+cv.addEventListener('pointerdown', function () { cv.focus(); });
+
+function respawn() { P.x = 20; P.y = 134; P.vy = 0; P.on = true; P.trail = []; P.freeze = 0; }
+/* A bonk freezes the hero in the spikes for a moment with the path it floated along, so the kid
+   sees the float instead of an instant teleport home (critique: the moon jump was never felt). */
+function bonk() { P.freeze = 40; P.bonked = true; events('bonk'); }
+function step() {
+  if (!running) return;
+  if (P.freeze) { P.freeze--; if (!P.freeze) { P.bonked = false; respawn(); } return; }
+  var L = LV[theme], vx = (keys.ArrowLeft ? -SPEED : 0) + (keys.ArrowRight ? SPEED : 0);
+  if ((keys[' '] || keys.Spacebar || keys.ArrowUp) && P.on) { P.vy = -v(); P.on = false; P.jumpFrom = P.x; }
+  P.vy += g(); P.x = Math.max(0, Math.min(W - P.w, P.x + vx)); P.y += P.vy; P.on = false;
+  if (!P.trail) P.trail = []; P.trail.push([P.x + 6, P.y + 8]); if (P.trail.length > 120) P.trail.shift();
+  L.floors.forEach(function (f) {
+    if (P.x + P.w > f[0] && P.x < f[0] + f[2] && P.y + P.h >= f[1] && P.y + P.h - P.vy <= f[1] + 1 && P.vy >= 0) { P.y = f[1] - P.h; P.vy = 0; P.on = true; }
+  });
+  if (P.on) P.trail = [];
+  if (L.spikes && P.y < L.spikes[2] && P.x + P.w > L.spikes[0] && P.x < L.spikes[1]) { P.y = L.spikes[2]; bonk(); return; }
+  if (L.lava && P.y + P.h >= L.lava[2] && P.x + P.w > L.lava[0] && P.x < L.lava[1]) { events('lava'); respawn(); return; }
+  if (P.y > H) { events('fell'); respawn(); return; }
+  if (P.on && L.lava && P.x > L.lava[1] && P.jumpFrom !== undefined && P.jumpFrom < L.lava[0]) { P.jumpFrom = undefined; events('cleared'); }
+  if (!coin.got && Math.abs(P.x + 6 - coin.x) < 11 && Math.abs(P.y + 8 - coin.y) < 13) { coin.got = true; events('coin'); }
+}
+/* The jump arc, shown while stopped: where a jump from the edge would go with today's numbers. It
+   moves as the sliders move, so the kid sees the change before testing it (feel, see, name). */
+function arcFrom() { return theme === 'customer' ? 106 : 186; }
+/* The arc stops where the jump would end: in the spikes, in the gap, or on the far side. Its
+   result is also said in words (the slider's aria-valuetext and the Inspector's line). */
+function arcPoints() {
+  var x = arcFrom(), y = 134, vy = -v(), pts = [], L = LV[theme], end = 'lands';
+  for (var k = 0; k < 160; k++) {
+    vy += g(); x += SPEED; y += vy; pts.push([x + 6, y + 8]);
+    if (L.spikes && y < L.spikes[2] && x + 12 > L.spikes[0] && x < L.spikes[1]) { end = 'spikes'; break; }
+    if (y >= 134 && vy > 0) { var landed = L.floors.some(function (f) { return x + 12 > f[0] && x < f[0] + f[2]; }); if (!landed) end = 'short'; break; }
+    if (y > H) { end = 'short'; break; }
+  }
+  pts.end = end; return pts;
+}
+function arcWords() { var e = arcPoints().end; return e === 'spikes' ? 'the jump hits the spikes' : e === 'short' ? 'the jump falls short' : 'the jump clears it'; }
+function draw() {
+  var bw = $('gamebody').clientWidth, bh = $('gamebody').clientHeight; if (!bw || !bh) return;
+  if (cv.width !== bw || cv.height !== bh) { cv.width = bw; cv.height = bh; }
+  var k = Math.min(bw / W, bh / H), ox = (bw - W * k) / 2, oy = (bh - H * k) / 2, L = LV[theme], cust = theme === 'customer';
+  ctx.setTransform(1, 0, 0, 1, 0, 0); ctx.fillStyle = '#111'; ctx.fillRect(0, 0, bw, bh); ctx.setTransform(k, 0, 0, k, ox, oy);
+  var sky = ctx.createLinearGradient(0, 0, 0, H);
+  sky.addColorStop(0, cust ? '#3b2f52' : '#9a9a9a'); sky.addColorStop(1, cust ? '#6b5a8a' : '#9a9a9a'); ctx.fillStyle = sky; ctx.fillRect(0, 0, W, H);
+  if (L.spikes) { ctx.fillStyle = '#2a2238'; ctx.fillRect(0, 0, W, L.spikes[2] - 14); ctx.fillStyle = '#e9e4f2';
+    for (var sx = L.spikes[0]; sx < L.spikes[1]; sx += 10) { ctx.beginPath(); ctx.moveTo(sx, L.spikes[2] - 14); ctx.lineTo(sx + 5, L.spikes[2]); ctx.lineTo(sx + 10, L.spikes[2] - 14); ctx.fill(); } }
+  // The kid's level is still grey (Art comes later), but its lava is warm: it's the danger this step is about.
+  if (L.lava) { ctx.fillStyle = '#c4532b'; ctx.fillRect(L.lava[0], L.lava[2], L.lava[1] - L.lava[0], H - L.lava[2]);
+    ctx.fillStyle = '#e8894e'; ctx.fillRect(L.lava[0], L.lava[2], L.lava[1] - L.lava[0], 2); }
+  L.floors.forEach(function (f) { ctx.fillStyle = cust ? '#4c7a3a' : '#6e6e6e'; ctx.fillRect(f[0], f[1], f[2], 30); ctx.fillStyle = cust ? '#7fc65a' : '#858585'; ctx.fillRect(f[0], f[1], f[2], 4); });
+  if (!coin.got) { ctx.fillStyle = cust ? '#ffd23f' : '#c4c4c4'; ctx.strokeStyle = cust ? '#e8a300' : '#8f8f8f'; ctx.lineWidth = 2; ctx.beginPath(); ctx.arc(coin.x, coin.y, 6, 0, 7); ctx.fill(); ctx.stroke(); }
+  if (!running && showArc) {
+    var pts = arcPoints(), bad = pts.end !== 'lands', fx = arcFrom() + 6;
+    // "jump here": where the arc starts, so the dots read as the kid's jump, not decoration
+    ctx.fillStyle = cust ? '#ffffff' : '#1d1d1d'; ctx.font = '600 7px system-ui, sans-serif'; ctx.textAlign = 'center';
+    ctx.fillText('jump here', fx, 145); ctx.fillRect(fx - 0.5, 146, 1, 4);
+    ctx.fillStyle = bad ? '#ff7a6b' : (cust ? '#ffffff' : '#1d1d1d');
+    pts.forEach(function (p, n) { if (n % 3 === 0 || n === pts.length - 1) { ctx.beginPath(); ctx.arc(p[0], p[1], 1.5, 0, 7); ctx.fill(); } });
+    if (bad) { var q = pts[pts.length - 1]; ctx.strokeStyle = '#ff7a6b'; ctx.lineWidth = 1.5; ctx.beginPath(); ctx.moveTo(q[0] - 3, q[1] - 3); ctx.lineTo(q[0] + 3, q[1] + 3); ctx.moveTo(q[0] + 3, q[1] - 3); ctx.lineTo(q[0] - 3, q[1] + 3); ctx.stroke(); }
+  }
+  // a bonk: the hero stuck in the spikes, with the floaty path it took to get there
+  if (P.bonked && P.trail) {
+    ctx.fillStyle = 'rgba(255,255,255,.75)'; P.trail.forEach(function (t, n) { if (n % 2 === 0) { ctx.beginPath(); ctx.arc(t[0], t[1], 1.2, 0, 7); ctx.fill(); } });
+    ctx.fillStyle = '#ffffff'; ctx.font = '800 11px system-ui, sans-serif'; ctx.textAlign = 'center'; ctx.fillText('BONK!', P.x + 6, P.y + 30);
+  }
+  drawHero();
+}
+function drawHero() {
+  var x = P.x, y = P.y;
+  if (theme === 'customer') { ctx.fillStyle = '#3b6fe0'; ctx.fillRect(x, y, P.w, P.h); ctx.fillStyle = '#fff'; ctx.fillRect(x + 7, y + 4, 3, 3); return; }
+  ctx.fillStyle = '#d9dde6'; ctx.fillRect(x, y + 2, 12, 12); ctx.fillStyle = '#1d2230'; ctx.fillRect(x + 2, y + 5, 8, 4);
+  ctx.fillStyle = '#f5820a'; ctx.fillRect(x + 3, y + 6, 2, 2); ctx.fillRect(x + 7, y + 6, 2, 2); ctx.fillStyle = '#aeb4c2'; ctx.fillRect(x + 1, y + 14, 3, 2); ctx.fillRect(x + 8, y + 14, 3, 2);
+}
+var showArc = false;
+function loop() { step(); draw(); requestAnimationFrame(loop); }
+
+/* ---------- conversation, Hierarchy, Inspector ---------- */
+var shown = [], clicks = [], spamAt = null;
+function say(lines) {
+  shown = lines; var log = $('log'); log.innerHTML = ''; var prev = null;
+  lines.forEach(function (m) {
+    var d = document.createElement('div'); d.className = 'msg' + (m[0] === 'k' ? ' kid' : m[0] === 'm' ? '' : ' guest');
+    if (m[0] !== prev) { var f = document.createElement('span'); f.className = 'from'; f.textContent = m[0] === 'k' ? NAME : m[0] === 'm' ? 'Mentor' : 'Lead programmer'; d.appendChild(f); }
+    prev = m[0];
+    var txt = m[1].replace(/@name/g, NAME);
+    if (m[2] === 'html') { var w = document.createElement('div'); w.innerHTML = txt; d.appendChild(w); } else d.appendChild(document.createTextNode(txt));
+    log.appendChild(d);
+  });
+  var lastLine = lines.length ? lines[lines.length - 1][1].replace(/<[^>]+>/g, ' ').replace(/@name/g, NAME) : ''; if (lastLine) announce(lastLine);
+  requestAnimationFrame(function () { log.scrollTop = log.scrollHeight; });
+}
+function options(list) {
+  var box = $('opts'), wasInEditor = $('editor').contains(document.activeElement) && document.activeElement !== cv;
+  box.innerHTML = ''; list = list.slice();
+  for (var k = list.length - 1; k > 0; k--) { var j = Math.floor(Math.random() * (k + 1)), t = list[k]; list[k] = list[j]; list[j] = t; }
+  list.forEach(function (o) {
+    var b = document.createElement('button'); b.className = 'opt'; b.textContent = o[0];
+    b.addEventListener('click', function () { if (spamCheck()) return; o[1](); }); box.appendChild(b);
+  });
+  if (wasInEditor && box.firstChild && !running) box.firstChild.focus({ preventScroll: true });
+  if ($('inspector').classList.contains('open')) $('inspector').style.setProperty('--pinned', ($('opts').offsetHeight + document.querySelector('.say').offsetHeight) + 'px');
+}
+function announce(text) { $('announce').textContent = text; }
+function spamCheck() {
+  var t = Date.now(); clicks.push(t); clicks = clicks.filter(function (x) { return t - x < 1800; });
+  if (clicks.length < 3 || spamAt === i || i < 2) return false;
+  spamAt = i; clicks = [];
+  var vv = STEPS[i].voice || 'p';
+  say([[vv, 'Whoa, speedy! Quick guess first: what does gravity do to a jump?']]);
+  options([['It pulls the hero back down', function () { render(); }],
+           ['It makes the hero walk faster', function () { say([[vv, 'Not quite. Gravity only pulls down. More gravity, faster fall.']]); options([['Got it', render]]); }]]);
+  return true;
+}
+var CHECKS = [['play', 'Play the game'], ['spot', 'Spot what’s wrong'], ['predict', 'Predict what gravity does'], ['tune', 'Tune it in the Inspector'], ['yours', 'Tune your own game']];
+var done = {};
+function setChecks() {
+  var now = STEPS[i].check;
+  $('checks').innerHTML = CHECKS.map(function (c) {
+    var cls = done[c[0]] ? 'done' : (c[0] === now ? 'now' : '');
+    return '<li class="' + cls + '"><span class="box">' + (done[c[0]] ? '<svg class="i"><use href="#i-check"/></svg>' : '') + '</span>' + c[1] + '</li>';
+  }).join('');
+}
+var selected = null;
+function parts() {
+  return theme === 'customer' ? [['Cave Level', 'customer’s level', null, true], ['Player', 'blue hero', 'player'], ['Spikes', 'don’t touch', 'spikes'], ['Coin', 'the goal', 'coin']]
+                              : [['Level 1', 'the level', null, true], ['Player', 'your ' + HERO, 'player'], ['Coin', 'the goal', 'coin'], ['Lava', 'jump over it', 'lava']];   // four rows fit under the checklist; five hid the Lava row this step names
+}
+function tree() {
+  $('tree').innerHTML = '';
+  parts().forEach(function (p) {
+    var li = document.createElement('li'); if (!p[3]) li.className = 'child';
+    var b = document.createElement(p[2] ? 'button' : 'span'); if (p[2]) b.setAttribute('aria-pressed', String(selected === p[2])); else b.className = 'trow';   // the level row is a heading, not a control
+    b.innerHTML = (p[3] ? '<svg class="i" style="width:14px;margin-right:-4px"><use href="#i-fold"/></svg>' : '') + '<svg class="i"><use href="#i-cube"/></svg>' + p[0] + '<small>' + p[1] + '</small>';
+    b.addEventListener('click', function () { clicks = []; if (p[2]) openPart(p[2], p[0]); });
+    li.appendChild(b); $('tree').appendChild(li);
+  });
+}
+function row(id, label, unity, min, max, val) {
+  return '<div class="irow"><label for="' + id + '">' + label + '<small>' + unity + '</small></label><div class="slide"><input id="' + id + '" type="range" min="' + min + '" max="' + max + '" step="0.1" value="' + val + '"><output id="' + id + 'Out">' + val.toFixed(1) + '</output></div></div>';
+}
+function openPart(id, name) {
+  selected = id; tree();
+  var html;
+  if (id === 'player') html = '<div class="comp"><svg class="i"><use href="#i-fold"/></svg><strong>Rigidbody 2D</strong></div>' + row('rG', 'Gravity', 'Unity: Gravity Scale', 0.5, 6, tune.G) +
+       '<div class="comp"><svg class="i"><use href="#i-fold"/></svg><strong>Player Controller (Script)</strong></div>' + row('rJ', 'Jump height', 'Unity: jumpForce', 1, 9, tune.J);
+  else html = '<p class="inote">' + ({ spikes: 'Sharp! The hero’s head must stay under these.', coin: 'The goal. Reach it to finish the level.', floor: 'You made this solid on your first day.', lava: 'Jump clear over it.' })[id] + '</p>';
+  inspector(name, html);
+  ['rG', 'rJ'].forEach(function (s) { var el = $(s); if (!el) return;
+    var words = function () { el.setAttribute('aria-valuetext', parseFloat(el.value).toFixed(1) + ', ' + arcWords()); };
+    words(); el.addEventListener('input', function () { tune[s === 'rG' ? 'G' : 'J'] = parseFloat(this.value); $(s + 'Out').textContent = tune[s === 'rG' ? 'G' : 'J'].toFixed(1); showArc = true; words(); events('tune'); }); });
+}
+function inspector(title, html) {
+  var el = $('inspector');
+  if (!title) { el.classList.remove('open'); el.setAttribute('aria-hidden', 'true'); el.inert = true; $('dMentor').classList.remove('inspecting'); if (selected) { selected = null; tree(); } return; }
+  $('inspName').textContent = title; $('inspBody').innerHTML = html; $('dMentor').classList.add('inspecting');
+  var log = $('log'), vis = [].filter.call(log.children, function (m) { return getComputedStyle(m).display !== 'none'; });
+  var last = vis[vis.length - 1], pin = $('opts').offsetHeight + document.querySelector('.say').offsetHeight;
+  el.style.top = (last ? last.offsetTop + last.offsetHeight + 10 : 34) + 'px'; el.style.setProperty('--pinned', pin + 'px');
+  el.classList.add('open'); el.setAttribute('aria-hidden', 'false'); el.inert = false;
+}
+$('inspClose').addEventListener('click', function () { inspector(null); tree(); });
+document.addEventListener('keydown', function (e) { if (e.key === 'Escape' && $('inspector').classList.contains('open')) { inspector(null); tree(); } });
+function who(kind) {
+  var Wd = { m: ['Mentor', 'The studio’s AI, and proud of it'], p: ['Lead programmer', 'Engineering department'] }[kind];
+  $('whoTab').textContent = Wd[0]; $('whoName').innerHTML = Wd[0] + (kind === 'm' ? '' : ' <span style="font-weight:500;color:var(--ink-3)">(name TBD)</span>'); $('whoRole').textContent = Wd[1];
+}
+
+/* ---------- Play mode: Unity's rule, again. What changes while playing is undone on Stop. ---------- */
+function setRunning(on) {
+  var was = running; running = !!on;
+  if (running && !was) playTune = { G: tune.G, J: tune.J };
+  if (!running && was && playTune && (playTune.G !== tune.G || playTune.J !== tune.J)) {
+    tune = playTune; if ($('rG')) { $('rG').value = tune.G; $('rGOut').textContent = tune.G.toFixed(1); $('rJ').value = tune.J; $('rJOut').textContent = tune.J.toFixed(1); }
+    events('reverted');
+  }
+  if (!running) playTune = null;
+  $('editor').classList.toggle('playmode', running); $('gamebody').classList.toggle('playing', running);
+  $('bPlay').classList.toggle('on', running); $('bPlay').classList.remove('cue');
+  $('bPlayIcon').setAttribute('href', running ? '#i-stop' : '#i-play'); $('bPlay').querySelector('span').textContent = running ? 'Stop' : 'Play';
+  $('statusMsg').textContent = running ? 'Play mode' : 'Stopped';
+  // Stop puts the scene back as it was, as Unity does: hero at the start, coin back, no frozen bonk.
+  level(); if (running) { $('hint').hidden = document.activeElement === cv; } else { keys = {}; $('hint').hidden = true; }
+  events(running ? 'play' : 'stop');
+}
+$('bPlay').addEventListener('click', function () { setRunning(!running); if (running) cv.focus(); });
+
+/* ---------- the shift ---------- */
+var i = 0, prediction = null, feel = null;
+var rendering = false;   // while a step is being set up, stopping the game is housekeeping, not the kid's action
+function events(a) { if (rendering) return; var s = STEPS[i]; if (s && s.onEvent) s.onEvent(a); }
+function advance() { go(i + 1); }
+function advanceLater(ms) { var at = i; setTimeout(function () { if (i === at) advance(); }, ms); }
+function setGame(which) { theme = which; level(); tree();
+  $('gameOf').textContent = which === 'yours' ? 'your game' : 'customer’s game'; $('hierOf').textContent = which === 'yours' ? 'your parts' : 'customer’s game'; }
+
+var STEPS = [
+  { beat: 'The ticket', check: 'play',
+    enter: function () { setGame('customer'); tune = { G: 1.2, J: 6.3 }; showArc = false;
+      say([['p', 'Hi @name! Remember that floor you fixed? I’ve got a new one.'], ['p', 'A customer says their hero jumps like it’s on the moon. Can you try it?']]);
+      options([['Let’s try it', advance]]); },
+    what: 'The lead programmer from the first day brings a customer’s ticket. Same department, same character, a new job.',
+    gate: 'Nothing to gate yet: this is the hook.' },
+  { beat: 'Play it', check: 'play',
+    enter: function () { $('bPlay').classList.add('cue'); say([['p', 'Press Play. Try a jump right where you start, then try to reach the coin.']]); options([]); this.hit = false; },
+    onEvent: function (a) {
+      if (a === 'play') say([['p', 'Arrow keys to move, Space to jump. Watch how the jump moves.']]);
+      if ((a === 'bonk' || a === 'fell') && !this.hit) { this.hit = true;
+        say([['p', a === 'bonk' ? 'Bonk! It floated up so high it hit the spikes.' : 'You fell in the gap!'], ['p', 'Press Stop when you’ve seen enough.']]); $('bPlay').classList.add('cue'); }
+      if (a === 'stop' && this.hit) { done.play = true; advance(); }
+    },
+    what: 'The customer’s moon-jump: the hero floats slowly and far too high, and bonks the ceiling spikes.',
+    gate: 'No button moves on. The kid has to press Play and feel the problem: bonk the spikes or miss the landing. Then Stop.' },
+  { beat: 'Spot what’s wrong', check: 'spot',
+    enter: function () { say([['p', 'So, what felt wrong?']]);
+      var wrong = function () { say([['p', 'Maybe! Play once more and watch the jump, not the walk.']]); options([['OK, I’ll play again', function () { go(1); }]]); };
+      // The right answer is what the kid saw ("way too high"); "floaty" is the diagnosis, named after.
+      options([['The jump goes way too high', function () { done.spot = true; setChecks(); say([['p', 'Exactly. It floats up too high and too slowly. That’s a floaty jump.'], ['p', 'Let’s fix it.']]); options([['How?', advance]]); }],
+               ['The hero walks too slowly', wrong], ['The coin is too far away', wrong]]); },
+    what: 'The kid names the problem in their own words before anyone names the idea.',
+    gate: 'A wrong answer sends the kid back to play and watch. Answers are shuffled every time.' },
+  { beat: 'Predict first', check: 'predict',
+    enter: function () {
+      /* Asked the curriculum map's way ("higher or lower?"), which is what the kid needs to know to
+         get under the spikes, and without a hint line in front of it. */
+      say([['p', 'Gravity is a number in the game. Guess first: if we turn gravity UP, will the jump go higher or lower?']]);
+      var next = function (said) { return function () { prediction = said; done.predict = true; setChecks();
+        say([['k', said === 'lower' ? 'Lower' : 'Higher'], ['p', 'Let’s find out. Tune it and watch the jump.']]); options([['Let me tune it', advance]]); }; };
+      options([['Higher', next('higher')], ['Lower', next('lower')]]); },
+    what: 'A prediction before touching anything. It’s recorded, right or wrong, and playing shows the answer.',
+    gate: 'The curriculum map’s gravity evidence starts with a prediction. Either answer moves on; the next step proves it.' },
+  { beat: 'Tune it in the Inspector', check: 'tune',
+    enter: function () { showArc = true; this.retune = false;
+      say([['p', 'Tap Player in the Hierarchy. The dots show where a jump from “jump here” will go.'], ['p', 'Turn Gravity up until the dots stay under the spikes and reach the far side. Then press Play.']]); options([]); },
+    onEvent: function (a) {
+      if (a === 'reverted') { this.retune = true; say([['p', 'It snapped back! Remember your first day? Changes made while playing don’t stick.'], ['p', 'Tune it now, while it’s stopped, then press Play.']]); }
+      if (a === 'bonk') say([['p', 'Bonk! Still too high. More gravity, or a smaller jump.'], ['p', 'Stop, tune, then try again.']]);
+      if (a === 'fell') say([['p', 'Missed the gap! Jump right at the edge, or add a little Jump height.']]);
+      /* Lowering Jump height alone also reaches the coin, but the hero still drifts down like on the
+         moon, and gravity is the idea this shift teaches. The customer asked for a normal jump. The
+         hero goes back to the start, so the coin can't re-fire every frame while it overlaps. */
+      if (a === 'coin' && tune.G < 2.5) { coin.got = false; respawn();
+        say([['p', 'You made it! But it still floats down slowly, like on the moon.'], ['p', 'The customer wants a normal jump. Stop, turn Gravity up too, and try again.']]); return; }
+      if (a === 'coin') { done.tune = true; setChecks(); inspector(null); setRunning(false);
+        // close the prediction loop: the kid hears whether their guess was right
+        say([['p', 'Under the spikes and over the gap. You tuned a real game!'],
+             ['p', prediction === 'lower' ? 'And you guessed it: more gravity made the jump lower.' : prediction === 'higher' ? 'You guessed higher, but look: more gravity pulled the jump lower.' : 'More gravity pulled the jump lower.']]); advanceLater(2600); }
+    },
+    what: 'Two real knobs: Gravity (Rigidbody 2D) and Jump height (the player’s script). A dotted arc shows the jump while stopped and moves with the sliders.',
+    gate: 'The customer’s numbers can’t reach the coin. Only a tuning that stays under the spikes and clears the gap, proved in play, finishes it. Tuning during Play snaps back on Stop, as on day one.' },
+  { beat: 'Name it', check: 'yours',
+    enter: function () {
+      say([['p', 'That knob is called gravity. And the panel you used is the Inspector.'],
+           ['p', '<div class="card"><b>Gravity</b><p>The game pretends things fall. It’s a number you can tune.</p><dl><dt>Unity</dt><dd>Rigidbody 2D → Gravity Scale</dd></dl></div>', 'html'],
+           ['p', '<div class="card"><b>Inspector</b><p>Click a thing and see all its knobs. Change them here.</p><dl><dt>Unity</dt><dd>Inspector</dd></dl></div>', 'html']]);
+      $('cardChip').textContent = '3 cards: Play mode, Gravity, Inspector'; $('starCount').textContent = '2 stars'; $('statusMsg').textContent = 'New cards: Gravity, Inspector';
+      options([['Now my game', advance]]); },
+    what: 'The ideas are named only after the kid has felt and fixed them, each with its Unity name. No surprise prize this time: prizes are surprises, not a price on every job.',
+    gate: 'The cards exist because the kid earned them.' },
+  { beat: 'Tune your own game', check: 'yours', voice: 'm',
+    /* A real decision: the kid names the feel first, then has to tune Gravity into that feel's range
+       and still clear the lava in play. */
+    enter: function () { setGame('yours'); tune = { G: 3, J: 5 }; showArc = false; feel = null; var self = this;
+      say([['m', 'Your turn, @name. How should YOUR ' + HERO + '’s jump feel?']]);
+      var pickFeel = function (f, line) { return function () { feel = f; showArc = true;
+        say([['k', line], ['m', 'Tap Player to open its knobs. Tune Gravity for a ' + f + ' jump, then jump clear over the lava.']]); options([]); }; };
+      options([['Floaty, like the moon', pickFeel('moon', 'Floaty, like the moon')], ['Normal', pickFeel('normal', 'Normal')], ['Heavy and snappy', pickFeel('heavy', 'Heavy and snappy')]]); },
+    band: { moon: [0.5, 2.4], normal: [2.5, 4.4], heavy: [4.5, 6] },
+    onEvent: function (a) {
+      if (!feel) return;
+      var b = this.band[feel], inBand = tune.G >= b[0] && tune.G <= b[1];
+      if (a === 'lava') say([['m', 'Over the lava, not through it! Stop, and tune it so you can jump clear.']]);
+      if (a === 'cleared' && !inBand) say([['m', 'You cleared it! But that’s not a ' + feel + ' jump yet. Stop and tune Gravity ' + (tune.G < b[0] ? 'up' : 'down') + '.']]);
+      if (a === 'cleared' && inBand) { done.yours = true; setChecks(); setRunning(false); inspector(null);
+        say([['m', { moon: 'A moon jump! Floaty and fun.', normal: 'A nice, normal jump.', heavy: 'A heavy, snappy jump!' }[feel] + ' That’s your game’s feel now.'],
+             ['m', '<span class="feelchip">Your jump: ' + feel + '</span>', 'html']]); options([['Done', advance]]); }
+    },
+    what: 'The kid picks their own game’s feel (moon, normal or heavy), then tunes it to match and still clears the lava.',
+    gate: 'Gravity has to land in the chosen feel’s range and the jump has to clear the lava in play. The feel goes on the learner card.' },
+  { beat: 'Later: it comes back', check: null,
+    enter: function () { inspector(null); setGame('yours');
+      var q = [['p', 'Three shifts later…'], ['p', 'QA says: in your game, the hero can’t reach the new ledge. Which knob, which way?']];
+      say(q);
+      // "Which way" is really tested (up and down both offered), and a wrong answer keeps the question on screen.
+      options([['Jump height up', function () { say([['p', 'Yes! A bigger jump reaches higher. And gravity stays how you like it.']]); options([['Play the shift again', function () { go(0); }]]); }],
+               ['Jump height down', function () { say(q.concat([['p', 'That makes the jump smaller. Try another.']])); }],
+               ['Gravity up', function () { say(q.concat([['p', 'That pulls harder, so the jump gets even lower. Try another.']])); }]]); },
+    what: 'The idea returns weeks later as a decision in a new situation. Code scores it.',
+    gate: 'Wrong answers get explained and asked again. The result updates the skill tracker; it never moves the kid on by itself.' }
+];
+
+function render() {
+  clicks = [];
+  var s = STEPS[i]; inspector(null); who(s.voice || 'p');
+  rendering = true; if (running) setRunning(false); rendering = false;
+  s.enter.call(s); setChecks();
+  $('nBeat').textContent = 'Step ' + (i + 1) + ' · ' + s.beat; $('nWhat').textContent = s.what; $('nGate').textContent = s.gate;
+  $('back').disabled = i === 0; $('next').disabled = i === STEPS.length - 1;
+  Array.prototype.forEach.call($('dots').children, function (b, k) { if (k === i) b.setAttribute('aria-current', 'step'); else b.removeAttribute('aria-current'); b.classList.toggle('past', k < i); });
+}
+function go(n) { i = Math.max(0, Math.min(STEPS.length - 1, n)); render(); }
+STEPS.forEach(function (s, k) {
+  var b = document.createElement('button'); b.textContent = String(k + 1); b.setAttribute('aria-label', 'Step ' + (k + 1) + ': ' + s.beat);
+  b.addEventListener('click', function () { go(k); }); $('dots').appendChild(b);
+});
+$('back').addEventListener('click', function () { go(i - 1); });
+$('next').addEventListener('click', function () {
+  ['play', 'spot', 'predict', 'tune', 'yours'].slice(0, i).forEach(function (c) { done[c] = true; });
+  go(i + 1);
+});
+$('say').addEventListener('keydown', function (e) {
+  if (e.key !== 'Enter' || !this.value.trim()) return;
+  var vv = STEPS[i].voice || 'p', text = this.value.trim().slice(0, 120); this.value = '';
+  var keep = shown.filter(function (m) { return m[0] !== 'k' && m[2] !== 'html'; }).slice(-1);
+  say(keep.concat([['k', text], [vv, $('opts').children.length ? 'Good thought! For now, tap one of the answers below.' : 'Good thought! Keep going: ' + (keep.length ? keep[0][1] : 'the game is waiting.')]]));
+});
+
+/* Scale the 1366×650 frame to the window, as in 03 and 04; #embed for the explainer page. */
+(function () {
+  var s = $('scaler'), doc = document.querySelector('header.doc'), nav = document.querySelector('.nav');
+  var embed = location.hash === '#embed';
+  if (embed) {
+    document.documentElement.classList.add('embed');
+    var post = function () { parent.postMessage({ wfHeight: Math.ceil(document.body.getBoundingClientRect().height) }, '*'); };
+    if (window.ResizeObserver) new ResizeObserver(post).observe(document.body);
+    window.addEventListener('load', post);
+  }
+  function fit() {
+    if (embed) { var ke = Math.min(1, s.parentElement.clientWidth / 1366);
+      s.style.transform = 'scale(' + ke + ')'; s.style.height = (650 * ke) + 'px'; s.style.width = (1366 * ke) + 'px'; return; }
+    var chrome = doc.offsetHeight + nav.offsetHeight + 12 + 16;
+    var k = Math.min(1, (s.parentElement.clientWidth - 32) / 1366, (innerHeight - chrome > 150 ? Math.max(0.5, (innerHeight - chrome) / 650) : 1));
+    s.style.transform = 'scale(' + k + ')'; s.style.height = (650 * k) + 'px'; s.style.width = (1366 * k) + 'px';
+    document.documentElement.style.setProperty('--col', Math.round(1366 * k + 32) + 'px');
+  }
+  window.addEventListener('resize', fit); window.addEventListener('load', fit); fit(); fit();
+})();
+level(); tree(); render(); loop();
+</script>
+</body>
+</html>

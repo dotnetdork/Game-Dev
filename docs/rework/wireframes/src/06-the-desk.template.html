@@ -1,0 +1,302 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>The Desk</title>
+<!--
+  Wireframe 06: the desk, the thin studio layer (../briefs/the-desk.md). The first minute of a
+  returning session (session 5, after the silent coins): the kid's own game, their studio's
+  milestones and departments, their cards and tools, the stand-up, and a glimpse of today. Built
+  from this template by build.js; shares base.css and the patterns of 03–05.
+-->
+<style>
+{{CSS}}
+  /* ---------- additions for the desk ---------- */
+  .editor { height: 650px; grid-template-rows: 56px minmax(0, 1fr) 132px 26px;
+            grid-template-areas: "tool tool tool" "left game right" "left proj right" "status status status"; }
+  .sr { position: absolute; width: 1px; height: 1px; overflow: hidden; clip: rect(0 0 0 0); white-space: nowrap; }
+  .gamebody canvas { flex: 1; min-width: 0; width: 100%; height: 100%; display: block; background: #111; }
+  .pointer.at-tab { top: 12px; left: 10px; }
+  .pointer.at-tab::after { top: -8px; bottom: auto; left: 22px; }
+  /* the studio dock: a milestone track and the departments, in the Quest dock's place */
+  .studio h3 { margin: 4px 0 6px; font-size: 12.5px; font-weight: 700; color: var(--ink-3); letter-spacing: .04em; text-transform: uppercase; }
+  .track2 { list-style: none; margin: 0 0 12px; padding: 0; display: grid; gap: 2px; }
+  .track2 li { display: flex; align-items: center; gap: 10px; min-height: 30px; font-size: 14px; color: var(--ink-2); }
+  .track2 .m { width: 18px; height: 18px; border-radius: 50%; border: 1.5px solid var(--ink-3); display: grid; place-items: center; flex: none; }
+  .track2 .m svg { width: 12px; height: 12px; }
+  .track2 li.done { color: var(--ink); } .track2 li.done .m { background: var(--accent); border-color: var(--accent); color: var(--accent-ink); }
+  .track2 li.next { color: var(--ink); font-weight: 600; } .track2 li.next .m { border-color: var(--accent); }
+  .track2 small { margin-left: auto; color: var(--ink-3); font-size: 12px; font-weight: 500; }
+  .depts { list-style: none; margin: 0; padding: 0; display: grid; gap: 2px; }
+  .depts li { display: flex; align-items: center; gap: 8px; min-height: 28px; font-size: 14px; color: var(--ink); }
+  .depts li .dot { background: var(--accent); }
+  .depts li.locked { color: var(--ink-3); } .depts li.locked .dot { background: transparent; box-shadow: inset 0 0 0 1.5px var(--ink-3); }
+  .depts small { margin-left: auto; font-size: 12px; color: var(--ink-3); }
+  .today { margin-top: 12px; padding: 9px 10px; background: var(--panel-2); border-radius: var(--radius); font-size: 14px; }
+  .today small { display: block; color: var(--ink-3); font-size: 12px; }
+  /* the Project drawer, opened: tools, then cards with their progress */
+  /* min-width: 0 keeps the grid track at its size; the cards scroll inside the drawer. Without it the
+     row of cards widened the whole editor past 1366px and a click scrolled the editor sideways. */
+  .shelf { grid-area: proj; background: var(--panel); display: flex; flex-direction: column; min-height: 0; min-width: 0; border-top: 1px solid var(--line); }
+  .shelf-body { display: flex; gap: 8px; padding: 8px 12px; align-items: stretch; flex: 1; overflow-x: auto; min-height: 0; }
+  .shelf-body .grp { align-self: center; font-size: 12px; font-weight: 700; color: var(--ink-3); writing-mode: vertical-rl; transform: rotate(180deg); letter-spacing: .06em; text-transform: uppercase; }
+  .ccard { flex: none; display: flex; flex-direction: column; justify-content: space-between; gap: 4px; width: 132px; min-height: 76px; padding: 8px 10px;
+           border-radius: 8px; border: 1.5px solid var(--line-soft); background: var(--panel-2); color: var(--ink); text-align: left; cursor: pointer; font: inherit; }
+  .ccard strong { font-size: 14px; line-height: 1.2; }
+  .ccard small { color: var(--ink-3); font-size: 12px; }
+  .ccard.tool { border-color: var(--accent); }
+  .ccard.fresh { box-shadow: 0 0 0 2px var(--accent); }
+  .ccard[aria-pressed="true"] { border-color: var(--accent); background: #3a3027; }
+  .lvl { display: flex; gap: 3px; } .lvl i { width: 14px; height: 5px; border-radius: 2px; background: #555; } .lvl i.on { background: var(--accent); }
+  .cardback b { display: block; font-size: 16px; margin-bottom: 4px; }
+  .cardback p { margin: 0 0 8px; font-size: 14.5px; }
+  .cardback dl { display: grid; grid-template-columns: auto 1fr; gap: 3px 10px; margin: 0; font-size: 13.5px; }
+  .cardback dt { color: var(--ink-2); } .cardback dd { margin: 0; }
+  .branchnote { color: var(--accent); font-weight: 600; }
+</style>
+</head>
+<body>
+<header class="doc">
+  <h1>The desk: coming back to your studio</h1>
+  <p>The first minute of a returning session (here, session 5). Answer the stand-up, look around your studio, tap a
+     card, then clock in. The step buttons below are for reviewers.</p>
+</header>
+
+{{ICONS}}
+
+<div class="stagehold"><div class="scaler" id="scaler">
+<div class="editor" id="editor" role="region" aria-label="The studio editor at the start of session 5, drawn at 1366 by 650">
+
+  <div class="toolbar">
+    <div class="brand">
+      <img class="wordmark" alt="The League of Amazing Programmers" src="{{LOGO}}">
+      <span class="project">· <b>Captain Byte’s Game</b></span>
+    </div>
+    <div class="transport" aria-label="Play controls"><button class="tbtn" id="bPlay" disabled aria-disabled="true" title="Clock in first"><svg class="i"><use href="#i-play"/></svg><span>Play</span></button></div>
+    <div class="tool-right"></div>
+  </div>
+
+  <div class="left">
+    <section class="dock studio" aria-label="Studio" style="grid-row: 1 / span 2">
+      <div class="tabs"><span class="tab"><svg class="i"><use href="#i-flag"/></svg>Studio <small>Captain Byte’s</small></span></div>
+      <div class="dock-body">
+        <h3>Milestones</h3>
+        <ul class="track2" id="milestones"></ul>
+        <h3>Departments</h3>
+        <ul class="depts" id="depts"></ul>
+        <div class="today" id="today" hidden>Today: Engineering<small>The programmer drops by with a script</small></div>
+      </div>
+    </section>
+  </div>
+
+  <section class="dock game" aria-label="Game">
+    <div class="tabs"><span class="tab"><svg class="i"><use href="#i-pad"/></svg>Game <small>your game</small></span></div>
+    <div class="gamebody" id="gamebody">
+      <canvas id="cv" aria-label="Your game: a grey level with your robot, two coins and lava."></canvas>
+      <div class="pointer" id="pointer" hidden><span id="pointerText"></span></div>
+    </div>
+  </section>
+
+  <section class="dock right" id="dMentor" aria-label="Conversation">
+    <div class="tabs"><span class="tab"><svg class="i" style="color:var(--accent)"><use href="#i-cube"/></svg><span>Mentor</span></span></div>
+    <div class="who">
+      <div class="face" aria-hidden="true">face<br>TBD</div>
+      <div><strong>Mentor</strong><span>The studio’s AI, and proud of it</span></div>
+    </div>
+    <div class="log" id="log"></div>
+    <div class="opts" id="opts"></div>
+    <div class="say"><input id="say" type="text" placeholder="Say something else…" aria-label="Say something else"></div>
+    <div class="inspector" id="inspector" aria-label="Inspector" aria-hidden="true" inert>
+      <div class="tabs"><span class="tab"><svg class="i"><use href="#i-sliders"/></svg>Inspector <small id="inspName"></small></span>
+        <button class="x" id="inspClose" aria-label="Close the Inspector"><svg class="i"><use href="#i-x"/></svg></button></div>
+      <div class="dock-body" id="inspBody"></div>
+    </div>
+  </section>
+
+  <section class="shelf" aria-label="Project: your cards and tools">
+    <div class="tabs"><span class="tab"><svg class="i"><use href="#i-cards"/></svg>Project <small>your cards and tools</small></span></div>
+    <div class="shelf-body" id="shelf"></div>
+  </section>
+
+  <p class="sr" id="announce" aria-live="polite"></p>
+  <div class="status">
+    <span id="statusMsg">Welcome back</span>
+    <span class="stars"><svg class="i"><use href="#i-star"/></svg>6 stars</span>
+  </div>
+</div>
+</div></div>
+
+<nav class="nav" aria-label="Steps (for reviewers)">
+  <button id="back">Back</button><span class="track" id="dots"></span><button id="next">Skip ahead</button>
+</nav>
+
+<section class="notes">
+  <div><h2 id="nBeat"></h2><p id="nWhat"></p></div>
+  <div><h2>Why it’s built this way</h2><p id="nGate"></p></div>
+</section>
+
+<script>
+var $ = function (id) { return document.getElementById(id); };
+var NAME = 'Captain Byte';
+/* The kid's studio at the start of session 5. In the product this comes from their learner card and
+   the concept web (docs/rework/concept-web.yaml); here it's written in. */
+var MILESTONES = [['Hired', 'session 1', 'done'], ['Prototype', 'session 3', 'done'], ['Alpha', 'session 6', 'next'], ['Beta', 'session 8', ''], ['Launch party', 'session 10', '']];
+var DEPTS = [['Front Desk', ''], ['Engineering', 'today'], ['Design', ''], ['Audio', 'last week'], ['Art', 'unlocks at Alpha', 1], ['Animation and VFX', 'session 7', 1], ['QA, Production, Publishing', 'later', 1]];
+/* Cards: [name, level 1–4 (new, learning, solid, strong), from session, kid word, Unity]. Levels are the
+   skill tracker's boxes; a card rises only when its evidence is met in a later session. */
+var CARDS = [
+  ['Feedback', 1, 4, 'The game answers you, so you know something happened.', '—'],
+  ['Sound effect', 1, 4, 'A short sound for an action: jump, coin, ouch.', 'AudioClip + AudioSource'],
+  ['Audio mixer', 1, 4, 'The volume board: balance music and sounds so the important one is heard.', 'Audio Mixer'],
+  ['Event', 1, 4, 'When X happens, do Y.', 'OnTriggerEnter2D'],
+  ['Mechanic', 2, 3, 'The verb: what the player does.', '—'],
+  ['Core loop', 2, 3, 'The few things you do over and over that make it fun.', '—'],
+  ['Win and lose', 2, 3, 'What makes you win, what makes you lose.', '—'],
+  ['Playtest', 2, 3, 'Watch someone play without helping.', '—'],
+  ['Inspector', 3, 2, 'Click a thing and see all its knobs.', 'Inspector'],
+  ['Gravity', 3, 2, 'The game pretends things fall. It’s a number you can tune.', 'Rigidbody 2D → Gravity Scale'],
+  ['Game engine', 3, 1, 'A giant toolbox that already knows how to draw, play sounds and do physics.', 'Unity'],
+  ['Play mode', 4, 1, 'Press Play and it becomes a real game. Changes made while playing vanish.', 'Play mode'],
+  ['Hierarchy', 3, 1, 'The list of every thing in your level.', 'Hierarchy']];
+var LEVEL = ['', 'new', 'learning', 'solid', 'strong'];
+
+function paint() {
+  $('milestones').innerHTML = MILESTONES.map(function (m) {
+    return '<li class="' + m[2] + '"><span class="m">' + (m[2] === 'done' ? '<svg class="i"><use href="#i-check"/></svg>' : '') + '</span>' + m[0] + '<small>' + (m[2] === 'done' ? 'done' : m[1]) + '</small></li>'; }).join('');
+  $('depts').innerHTML = DEPTS.map(function (d) { return '<li class="' + (d[2] ? 'locked' : '') + '"><span class="dot"></span>' + d[0] + '<small>' + d[1] + '</small></li>'; }).join('');
+  $('shelf').innerHTML = '<span class="grp">Tools</span><button class="ccard tool" data-tool="1"><strong>Sound Mixer</strong><small>won in the Audio shift</small></button><span class="grp">Cards</span>' +
+    CARDS.map(function (c, k) { return '<button class="ccard' + (c[2] === 4 ? ' fresh' : '') + '" data-card="' + k + '" aria-pressed="false" aria-label="' + c[0] + ', ' + LEVEL[c[1]] + '"><strong>' + c[0] + '</strong><span class="lvl" aria-hidden="true">' +
+      [1, 2, 3, 4].map(function (n) { return '<i class="' + (n <= c[1] ? 'on' : '') + '"></i>'; }).join('') + '</span><small>' + LEVEL[c[1]] + (c[2] === 4 ? ' · last week' : '') + '</small></button>'; }).join('');
+  Array.prototype.forEach.call($('shelf').querySelectorAll('.ccard'), function (b) { b.addEventListener('click', function () { openCard(b); }); });
+}
+function openCard(b) {
+  Array.prototype.forEach.call($('shelf').querySelectorAll('.ccard'), function (x) { x.setAttribute('aria-pressed', 'false'); });
+  b.setAttribute('aria-pressed', 'true');
+  var html;
+  if (b.dataset.tool) html = '<div class="cardback"><b>Sound Mixer</b><p>Your tool power: set how loud music and sounds are in your own game, any time.</p><dl><dt>Won</dt><dd>The silent coins (session 4)</dd><dt>Unity</dt><dd>Audio Mixer</dd></dl></div>';
+  else { var c = CARDS[+b.dataset.card]; html = '<div class="cardback"><b>' + c[0] + '</b><p>' + c[3] + '</p><dl><dt>Unity</dt><dd>' + c[4] + '</dd><dt>Level</dt><dd>' + LEVEL[c[1]] + '</dd><dt>Met in</dt><dd>session ' + c[2] + '</dd></dl></div>'; }
+  events('card');   // the mentor's reply first, so the Inspector opens below its lines, not over them
+  inspector(b.dataset.tool ? 'Sound Mixer' : CARDS[+b.dataset.card][0], html);
+}
+
+/* their game, as they left it: drawn still (the desk doesn't run it until they clock in) */
+function drawGame() {
+  var cv = $('cv'), ctx = cv.getContext('2d'), bw = $('gamebody').clientWidth, bh = $('gamebody').clientHeight; if (!bw || !bh) return;
+  cv.width = bw; cv.height = bh; var W = 320, H = 180, k = Math.min(bw / W, bh / H), ox = (bw - W * k) / 2, oy = (bh - H * k) / 2;
+  ctx.fillStyle = '#111'; ctx.fillRect(0, 0, bw, bh); ctx.setTransform(k, 0, 0, k, ox, oy);
+  ctx.fillStyle = '#9a9a9a'; ctx.fillRect(0, 0, W, H);
+  ctx.fillStyle = '#c4532b'; ctx.fillRect(200, 164, 40, 16);
+  [[0, 150, 200], [240, 150, 80]].forEach(function (f) { ctx.fillStyle = '#6e6e6e'; ctx.fillRect(f[0], f[1], f[2], 30); ctx.fillStyle = '#858585'; ctx.fillRect(f[0], f[1], f[2], 4); });
+  [[170, 132], [290, 132]].forEach(function (c) { ctx.fillStyle = '#c4c4c4'; ctx.strokeStyle = '#8f8f8f'; ctx.lineWidth = 2; ctx.beginPath(); ctx.arc(c[0], c[1], 6, 0, 7); ctx.fill(); ctx.stroke(); });
+  var x = 20, y = 134; ctx.fillStyle = '#d9dde6'; ctx.fillRect(x, y + 2, 12, 12); ctx.fillStyle = '#1d2230'; ctx.fillRect(x + 2, y + 5, 8, 4);
+  ctx.fillStyle = '#f5820a'; ctx.fillRect(x + 3, y + 6, 2, 2); ctx.fillRect(x + 7, y + 6, 2, 2);
+}
+
+/* ---------- conversation and Inspector (as in 03–05) ---------- */
+var shown = [], clicks = [];
+function say(lines) {
+  shown = lines; var log = $('log'); log.innerHTML = ''; var prev = null;
+  lines.forEach(function (m) {
+    var d = document.createElement('div'); d.className = 'msg' + (m[0] === 'k' ? ' kid' : '');
+    if (m[0] !== prev) { var f = document.createElement('span'); f.className = 'from'; f.textContent = m[0] === 'k' ? NAME : 'Mentor'; d.appendChild(f); }
+    prev = m[0]; d.appendChild(document.createTextNode(m[1].replace(/@name/g, NAME))); log.appendChild(d);
+  });
+  if (lines.length) announce(lines[lines.length - 1][1].replace(/@name/g, NAME));
+  requestAnimationFrame(function () { log.scrollTop = log.scrollHeight; });
+}
+function options(list) {
+  var box = $('opts'), wasInEditor = $('editor').contains(document.activeElement);
+  box.innerHTML = ''; list = list.slice();
+  if (!list.noShuffle) for (var k = list.length - 1; k > 0; k--) { var j = Math.floor(Math.random() * (k + 1)), t = list[k]; list[k] = list[j]; list[j] = t; }
+  list.forEach(function (o) { var b = document.createElement('button'); b.className = 'opt'; b.textContent = o[0]; b.addEventListener('click', function () { o[1](); }); box.appendChild(b); });
+  if (wasInEditor && box.firstChild) box.firstChild.focus({ preventScroll: true });
+  if ($('inspector').classList.contains('open')) $('inspector').style.setProperty('--pinned', ($('opts').offsetHeight + document.querySelector('.say').offsetHeight) + 'px');
+}
+function announce(t) { $('announce').textContent = t; }
+function inspector(title, html) {
+  var el = $('inspector');
+  if (!title) { el.classList.remove('open'); el.setAttribute('aria-hidden', 'true'); el.inert = true; $('dMentor').classList.remove('inspecting'); return; }
+  $('inspName').textContent = title; $('inspBody').innerHTML = html; $('dMentor').classList.add('inspecting');
+  var log = $('log'), vis = [].filter.call(log.children, function (m) { return getComputedStyle(m).display !== 'none'; });
+  var last = vis[vis.length - 1], pin = $('opts').offsetHeight + document.querySelector('.say').offsetHeight;
+  el.style.top = (last ? last.offsetTop + last.offsetHeight + 10 : 34) + 'px'; el.style.setProperty('--pinned', pin + 'px');
+  el.classList.add('open'); el.setAttribute('aria-hidden', 'false'); el.inert = false;
+}
+$('inspClose').addEventListener('click', function () { inspector(null); });
+document.addEventListener('keydown', function (e) { if (e.key === 'Escape') inspector(null); });
+function pointAt(text) { var el = $('pointer'); if (text) { el.classList.add('at-tab'); el.hidden = false; $('pointerText').textContent = text; } else el.hidden = true; }
+
+var i = 0;
+function events(a) { var s = STEPS[i]; if (s && s.onEvent) s.onEvent(a); }
+function advance() { go(i + 1); }
+var STEPS = [
+  { beat: 'Stand-up',
+    enter: function () {
+      var ask = function (lines) { say(lines); options([
+        ['Sounds for the coin and the jump', function () { say([['k', 'Sounds for the coin and the jump'], ['m', 'Yes! Your game answers you now. That’s feedback.']]); options([['What else is new?', advance]]); }],
+        ['A new level', function () { ask([['m', 'Not that one. Look at your cards below: the newest ones are from last week.'], ['m', 'So, what did you add?']]); }],
+        ['A faster hero', function () { ask([['m', 'Not that one. Look at your cards below: the newest ones are from last week.'], ['m', 'So, what did you add?']]); }]]); };
+      ask([['m', 'Welcome back, @name! Stand-up time, like a real studio.'], ['m', 'What did you add to your game last week?']]); },
+    what: 'Every session after the first opens with a stand-up. The kid recalls what they added last time, from answers built out of their own history.',
+    gate: 'Remembering is the point (recall beats a recap), so the mentor doesn’t tell them. A wrong answer points at the cards from last week, and asks again.' },
+  { beat: 'Your studio',
+    enter: function () { pointAt('This is your studio: how far it’s come, and what’s next.');
+      say([['m', 'Here’s your studio. Two milestones done!'], ['m', 'Alpha is next: in two sessions your game gets real art.']]); options([['Show my cards', advance]]); },
+    what: 'The Studio dock, in the Quest dock’s place between shifts: the milestone track and the departments (unlocked, today, later).',
+    gate: 'A glimpse, not the map: one line about what’s next. Milestones are real studio words (Prototype, Alpha, Beta), not levels or a score.' },
+  { beat: 'Your cards and tools',
+    enter: function () { pointAt(null);
+      say([['m', 'These are your cards, one for each idea you’ve met. The bars show how well you know it.'], ['m', 'Tap one to see its back.']]); options([]); this.seen = false; },
+    onEvent: function (a) { if (a === 'card' && !this.seen) { this.seen = true;
+      say([['m', 'That’s its back: your word, the real word, and Unity’s name for it.'], ['m', 'Cards level up when you use the idea again in a later shift.']]); options([['What’s today?', advance]]); } },
+    what: 'The Project drawer, opened: the Sound Mixer tool and 13 cards with their level (new, learning, solid, strong). Tapping a card opens its back in the Inspector.',
+    gate: 'The kid has to open one card. Levels come from the skill tracker, which only moves a card up when its evidence is met in a later session. The kid can see their progress; nothing is for sale.' },
+  { beat: 'Today',
+    enter: function () { inspector(null); $('today').hidden = false;
+      say([['m', 'Today: Engineering. The programmer is dropping by.'], ['m', 'They want to show you the code behind your coin sound…']]);
+      options([['Clock in', function () {
+        $('nGate').innerHTML = '<span class="branchnote">Reviewer note:</span> Clock in opens session 5’s first shift (the programmer’s first visit: “Fell through the floor” and <code>Coin.cs</code>), which isn’t built as its own wireframe yet. Its C# step is in the silent-coins wireframe.';
+        $('statusMsg').textContent = 'Clocked in'; say([['m', 'Clocked in. Have a great shift, @name!']]); options([]); }]]); },
+    what: 'The director’s glimpse of today, as one teaser, and one next step: Clock in.',
+    gate: 'Everything on the desk leads to Clock in. Play stays off until then: the desk is for looking back and ahead, the shift is for doing.' }
+];
+function render() {
+  var s = STEPS[i]; inspector(null); pointAt(null); $('today').hidden = i < 3; s.enter.call(s);
+  $('nBeat').textContent = 'Step ' + (i + 1) + ' · ' + s.beat; $('nWhat').textContent = s.what; $('nGate').textContent = s.gate;
+  $('back').disabled = i === 0; $('next').disabled = i === STEPS.length - 1;
+  Array.prototype.forEach.call($('dots').children, function (b, k) { if (k === i) b.setAttribute('aria-current', 'step'); else b.removeAttribute('aria-current'); b.classList.toggle('past', k < i); });
+}
+function go(n) { i = Math.max(0, Math.min(STEPS.length - 1, n)); render(); }
+STEPS.forEach(function (s, k) { var b = document.createElement('button'); b.textContent = String(k + 1); b.setAttribute('aria-label', 'Step ' + (k + 1) + ': ' + s.beat); b.addEventListener('click', function () { go(k); }); $('dots').appendChild(b); });
+$('back').addEventListener('click', function () { go(i - 1); });
+$('next').addEventListener('click', function () { go(i + 1); });
+$('say').addEventListener('keydown', function (e) {
+  if (e.key !== 'Enter' || !this.value.trim()) return;
+  var text = this.value.trim().slice(0, 120); this.value = '';
+  say(shown.filter(function (m) { return m[0] !== 'k'; }).slice(-1).concat([['k', text], ['m', 'Good thought! For now, tap one of the answers below.']]));
+});
+
+(function () {
+  var s = $('scaler'), doc = document.querySelector('header.doc'), nav = document.querySelector('.nav');
+  var embed = location.hash === '#embed';
+  if (embed) {
+    document.documentElement.classList.add('embed');
+    var post = function () { parent.postMessage({ wfHeight: Math.ceil(document.body.getBoundingClientRect().height) }, '*'); };
+    if (window.ResizeObserver) new ResizeObserver(post).observe(document.body);
+    window.addEventListener('load', post);
+  }
+  function fit() {
+    if (embed) { var ke = Math.min(1, s.parentElement.clientWidth / 1366);
+      s.style.transform = 'scale(' + ke + ')'; s.style.height = (650 * ke) + 'px'; s.style.width = (1366 * ke) + 'px'; drawGame(); return; }
+    var chrome = doc.offsetHeight + nav.offsetHeight + 12 + 16;
+    var k = Math.min(1, (s.parentElement.clientWidth - 32) / 1366, (innerHeight - chrome > 150 ? Math.max(0.5, (innerHeight - chrome) / 650) : 1));
+    s.style.transform = 'scale(' + k + ')'; s.style.height = (650 * k) + 'px'; s.style.width = (1366 * k) + 'px';
+    document.documentElement.style.setProperty('--col', Math.round(1366 * k + 32) + 'px'); drawGame();
+  }
+  window.addEventListener('resize', fit); window.addEventListener('load', fit); fit(); fit();
+})();
+paint(); render(); drawGame();
+</script>
+</body>
+</html>

@@ -83,6 +83,24 @@
         ],
         "createdAt": "2026-09-25T20:56:53.055Z",
         "reason": "Claude: raw template has an unfilled {{CSS}} slot, so h1/h2 measure at the 16px default; the built 04-first-day.html sets 22px/16px/15px (same finding dismissed on the 03 template)"
+      },
+      {
+        "rule": "cramped-padding",
+        "value": "*",
+        "files": [
+          "docs/rework/wireframes/src/05-shift-floaty-jump.template.html"
+        ],
+        "createdAt": "2026-09-26T01:44:01.560Z",
+        "reason": "Claude: editor's fixed Unity strips (toolbar, tab strips, tabs, status bar) sit flush by design (DESIGN.md); same finding dismissed on 03 and 04, confirmed false positive by Assessment B for 05"
+      },
+      {
+        "rule": "flat-type-hierarchy",
+        "value": "*",
+        "files": [
+          "docs/rework/wireframes/src/05-shift-floaty-jump.template.html"
+        ],
+        "createdAt": "2026-09-26T01:44:01.656Z",
+        "reason": "Claude: raw template has an unfilled {{CSS}} slot; the built 05-shift-floaty-jump.html sets 22px/16px/15px (same as 03 and 04 templates)"
       }
     ]
   }

@@ -1,0 +1,335 @@
+# The concept web, version 1 — the map of what there is to learn (docs/rework/course-engine.md, part 1).
+#
+# WRITTEN BY PEOPLE. The director, the characters and every shift read from this file; none of them
+# may invent a concept, change an order, or decide what counts as learned. It was transcribed on
+# 2026-09-25 from curriculum-map.md §3 (the 25 OWNED concepts) and §6 (the returns grid); where the
+# two disagree, fix curriculum-map.md first, then this file. Check it with:
+#   node docs/rework/tools/check-concept-web.js
+#
+# Fields:
+#   id          stable key (never rename one a kid's learner card may hold)
+#   name        what the kid sees on the card
+#   tier        3 = technical term (budget ≤3 new a session) · 2 = studio word (≤1 a session)
+#   session     the session that introduces it (1–10)
+#   department  who teaches it
+#   kid         the kid definition, one sentence, ~6th-grade reading level
+#   engines     Unity first; Unreal and Godot for the card's back. verified: false = not yet checked
+#               against the engine's own docs (curriculum-map.md marks these [unverified]). Nothing
+#               unverified goes on a card a kid sees.
+#   taught_by   the shift that introduces it, and its wireframe when one exists
+#   evidence    what the kid must do or get right, and how code judges it (people write it, code decides)
+#   needs       concept ids that must come first
+#   returns     later sessions where it comes back (a ticket, a decision, a prediction, a peek).
+#               A concept is owned only after its evidence is met in a LATER session; ≥4 returns each.
+#   same_session_return  true where a planned retrieval later in the same session counts (S7 only)
+
+concepts:
+  # ---- S1 · Front Desk ----
+  - id: game-engine
+    name: Game engine
+    tier: 3
+    session: 1
+    department: Front Desk
+    kid: A giant toolbox that already knows how to draw, play sounds and do physics.
+    engines: { unity: Unity, unreal: Unreal Engine, godot: Godot, verified: true }
+    taught_by: { shift: The first day, wireframe: wireframes/04-first-day.html }
+    evidence: "S2: sorts 6 cards into 'the engine does it' / 'you decide it'; 5 of 6 right."
+    needs: []
+    returns: [2, 5, 6, 10]
+
+  - id: play-mode
+    name: Play mode
+    tier: 3
+    session: 1
+    department: Front Desk
+    kid: Press Play and your building table becomes a real game. Changes made while playing vanish.
+    engines: { unity: Play mode + Game view, unreal: Play In Editor, godot: Run (F5), verified: false }
+    taught_by: { shift: The first day, wireframe: wireframes/04-first-day.html }
+    evidence: "Later edits are made in Edit mode (log). S9: routes 'my fix disappeared' to 'made in Play mode' (option id)."
+    needs: [game-engine]
+    returns: [2, 3, 5, 9, 10]
+
+  - id: hierarchy
+    name: Hierarchy
+    tier: 3
+    session: 1
+    department: Front Desk
+    kid: The list of every thing in your level, like a class register.
+    engines: { unity: Hierarchy, unreal: Outliner, godot: Scene dock, verified: false }
+    taught_by: { shift: The first day, wireframe: wireframes/04-first-day.html }
+    evidence: "Asked to 'select the Coin', selects it from the Hierarchy (log: selection source), in 3 sessions."
+    needs: [game-engine]
+    returns: [2, 4, 5, 6, 8, 10]
+
+  # ---- S2 · Engineering ----
+  - id: inspector
+    name: Inspector
+    tier: 3
+    session: 2
+    department: Engineering
+    kid: Click a thing and see all its knobs. Change them here.
+    engines: { unity: Inspector, unreal: Details panel, godot: Inspector dock, verified: false }
+    taught_by: { shift: The floaty jump, wireframe: wireframes/05-shift-floaty-jump.html }
+    evidence: "Value inside a target band, then clears the gap in play (range + play event)."
+    needs: [hierarchy]
+    returns: [3, 4, 5, 6, 7, 8, 10]
+
+  - id: gravity
+    name: Gravity
+    tier: 3
+    session: 2
+    department: Engineering
+    kid: The game pretends things fall. It's a number you can tune.
+    engines: { unity: Rigidbody 2D Gravity Scale, unreal: Simulate Physics, godot: gravity_scale, verified: false }
+    taught_by: { shift: The floaty jump, wireframe: wireframes/05-shift-floaty-jump.html }
+    evidence: "Predicts 'faster or slower?' first; final value clears the gap, not the ceiling (range)."
+    needs: [inspector]
+    returns: [3, 5, 6, 9, 10]
+
+  - id: frame-and-game-loop
+    name: Frame and game loop
+    tier: 3
+    session: 2
+    department: Engineering
+    kid: One still picture; a game draws about 60 a second. Every frame it checks the buttons, updates everything, draws.
+    engines: { unity: "Frame; Update() runs once a frame; toolbar Step = one frame", unreal: Tick, godot: _process, verified: false }
+    taught_by: { shift: "The slow-motion dial (its own short shift, after the floaty jump)", wireframe: null }
+    evidence: "Orders Listen, Think, Draw and predicts what skipping Draw does. S5: Steps to the exact frame the ball skips the wall (frame index)."
+    needs: [play-mode]
+    returns: [5, 7, 8, 9, 10]
+
+  # ---- S3 · Design ----
+  - id: mechanic
+    name: Mechanic
+    tier: 3
+    session: 3
+    department: Design
+    kid: "The verb: what the player does (jump, dodge, collect)."
+    engines: { unity: null, unreal: null, godot: null, verified: true }
+    taught_by: { shift: "Is it fun?", wireframe: null }
+    evidence: "Picks the change that adds a mechanic vs. only changes the look (option id)."
+    needs: []
+    returns: [4, 6, 8, 10]
+
+  - id: core-loop
+    name: Core loop
+    tier: 3
+    session: 3
+    department: Design
+    kid: The few things you do over and over that make it fun.
+    engines: { unity: null, unreal: null, godot: null, verified: true }
+    taught_by: { shift: "Is it fun?", wireframe: null }
+    evidence: "Loop includes their mechanic and a reward (card ids). S4: 'which moment happens most? It needs a sound.'"
+    needs: [mechanic]
+    returns: [4, 6, 8, 9, 10]
+
+  - id: win-lose
+    name: Win and lose condition
+    tier: 3
+    session: 3
+    department: Design
+    kid: What makes you win, what makes you lose.
+    engines: { unity: null, unreal: null, godot: null, verified: true }
+    taught_by: { shift: "Is it fun?", wireframe: null }
+    evidence: "Their game ends in a win and a lose in one playtest (both events)."
+    needs: [core-loop]
+    returns: [4, 6, 8, 10]
+
+  - id: playtest
+    name: Playtest
+    tier: 2
+    session: 3
+    department: Design
+    kid: Watch someone play without helping. Where they get stuck is what to fix.
+    engines: { unity: null, unreal: null, godot: null, verified: true }
+    taught_by: { shift: "Is it fun?", wireframe: null }
+    evidence: "Taps land near the scripted stuck point (timestamp window)."
+    needs: [play-mode]
+    returns: [4, 6, 8, 9, 10]
+
+  # ---- S4 · Audio ----
+  - id: feedback
+    name: Feedback
+    tier: 2
+    session: 4
+    department: Audio
+    kid: The game answers you, so you know something happened.
+    engines: { unity: null, unreal: null, godot: null, verified: true }
+    taught_by: { shift: The silent coins, wireframe: wireframes/03-shift-silent-coins.html }
+    evidence: "Every core-loop action in their game has a sound or visual (mapping complete)."
+    needs: [core-loop]
+    returns: [5, 6, 7, 9, 10]
+
+  - id: sound-effect
+    name: Sound effect
+    tier: 3
+    session: 4
+    department: Audio
+    kid: "A short sound for an action: jump, coin, ouch."
+    engines: { unity: AudioClip + AudioSource, unreal: Sound Wave / Sound Cue, godot: AudioStreamPlayer, verified: false }
+    taught_by: { shift: The silent coins, wireframe: wireframes/03-shift-silent-coins.html }
+    evidence: "S9: 'the jump is silent' asks for the right kind of sound (category id)."
+    needs: [feedback]
+    returns: [5, 7, 8, 9, 10]
+
+  - id: audio-mixer
+    name: Audio mixer
+    tier: 3
+    session: 4
+    department: Audio
+    kid: "The volume board: balance music and sounds so the important one is heard."
+    engines: { unity: Audio Mixer + groups, unreal: Submix, godot: Audio Buses, verified: false }
+    taught_by: { shift: The silent coins, wireframe: wireframes/03-shift-silent-coins.html }
+    evidence: "Coin grabbed while SFX ≥ music + margin (the wireframe's gate). S8: 'can't hear the door' → remix (range)."
+    needs: [sound-effect]
+    returns: [6, 7, 8, 10]
+
+  - id: event
+    name: Event
+    tier: 3
+    session: 4
+    department: Audio
+    kid: "When X happens, do Y."
+    engines: { unity: OnTriggerEnter2D / UnityEvent, unreal: Begin Overlap, godot: signals, verified: false }
+    taught_by: { shift: The silent coins, wireframe: wireframes/03-shift-silent-coins.html }
+    evidence: "Adds a working when-then rule to their own game that fires in play (rule + fired)."
+    needs: [feedback]
+    returns: [5, 7, 8, 9, 10]
+
+  # ---- S5 · Engineering ----
+  - id: collider
+    name: Collider
+    tier: 3
+    session: 5
+    department: Engineering
+    kid: An invisible shape that decides when things touch. It isn't the picture.
+    engines: { unity: Box Collider 2D, unreal: Collision component, godot: CollisionShape2D, verified: false }
+    taught_by: { shift: Fell through the floor, wireframe: null }
+    evidence: "Collider overlaps the sprite enough (computed). Routes the fall-through ticket to Engineering."
+    needs: [inspector, frame-and-game-loop]
+    returns: [6, 8, 9, 10]
+
+  - id: bug
+    name: Bug
+    tier: 2
+    session: 5
+    department: Engineering
+    kid: The game doing something its makers didn't mean.
+    engines: { unity: null, unreal: null, godot: null, verified: true }
+    taught_by: { shift: Fell through the floor, wireframe: null }
+    evidence: "The bug fires before the fix and not after (event log)."
+    needs: [play-mode]
+    returns: [6, 8, 9, 10]
+
+  - id: script
+    name: Script
+    tier: 3
+    session: 5
+    department: Engineering
+    kid: Instructions for one thing, written in code. Unity scripts are C#.
+    engines: { unity: "C# script on a GameObject (MonoBehaviour)", unreal: Blueprint, godot: GDScript, verified: true }
+    taught_by: { shift: "The programmer's first visit (Coin.cs)", wireframe: wireframes/03-shift-silent-coins.html }
+    evidence: "Picks the line that does X (option id), with a new script, in 3 later sessions."
+    needs: [event, collider]
+    returns: [6, 7, 8, 9, 10]
+
+  - id: variable
+    name: Variable
+    tier: 3
+    session: 5
+    department: Engineering
+    kid: "A named number the game remembers: pitch, speed, lives. Public ones show up in the Inspector."
+    engines: { unity: public field shown in the Inspector, unreal: Blueprint variable, godot: "@export var", verified: true }
+    taught_by: { shift: "The programmer's first visit (Coin.cs)", wireframe: wireframes/03-shift-silent-coins.html }
+    evidence: "Saved value in a target range, then heard or seen in play (save + play event). S8: lose when lives hits 0 (state diff)."
+    needs: [inspector, script]
+    returns: [6, 7, 8, 9, 10]
+
+  # ---- S6 · Art + Design (Alpha) ----
+  - id: sprite
+    name: Sprite
+    tier: 3
+    session: 6
+    department: Art
+    kid: A flat picture used as a character or object.
+    engines: { unity: Sprite / Sprite Renderer, unreal: Paper2D Sprite, godot: Sprite2D, verified: false }
+    taught_by: { shift: The art pass, wireframe: null }
+    evidence: "No placeholder left on hero, enemies or pickups (asset ids)."
+    needs: [hierarchy]
+    returns: [7, 8, 9, 10]
+
+  - id: component
+    name: Component
+    tier: 3
+    session: 6
+    department: Art
+    kid: A thing does stuff because of the parts snapped onto it.
+    engines: { unity: GameObject + Component, unreal: Actor + Component, godot: node tree, verified: false }
+    taught_by: { shift: The art pass, wireframe: null }
+    evidence: "Adds the right parts for the behaviour asked (required components present)."
+    needs: [collider, script]
+    returns: [7, 8, 9, 10]
+
+  - id: prefab
+    name: Prefab
+    tier: 3
+    session: 6
+    department: Art
+    kid: A master copy. Change it and every copy changes.
+    engines: { unity: Prefab, unreal: Blueprint Class, godot: instanced scene, verified: false }
+    taught_by: { shift: "Fix one, fix fifty", wireframe: null }
+    evidence: "Edit made on the master, not a copy (log). S8: explains why one copy stayed giant (override)."
+    needs: [component]
+    returns: [7, 8, 9, 10]
+
+  - id: iterate
+    name: Iterate
+    tier: 2
+    session: 6
+    department: Art
+    kid: Change it, play it, change it again.
+    engines: { unity: null, unreal: null, godot: null, verified: true }
+    taught_by: { shift: The art pass, wireframe: null }
+    evidence: "2+ edit, play, edit rounds on one property (log sequence)."
+    needs: [playtest]
+    returns: [7, 8, 9, 10]
+
+  # ---- S7 · Animation and VFX ----
+  - id: animation-frames
+    name: Animation frames
+    tier: 3
+    session: 7
+    department: Animation and VFX
+    kid: The drawings in an animation, in order. Not game frames.
+    engines: { unity: Sprite Editor slicing + Animation window, unreal: Flipbook, godot: AnimatedSprite2D, verified: false }
+    taught_by: { shift: "Order a jump's frames", wireframe: null }
+    evidence: "Order correct. Interleaved: 'the walk shows 8, the game draws 60: which is which?'"
+    needs: [frame-and-game-loop, sprite]
+    returns: [8, 9, 10]
+    same_session_return: true
+
+  - id: particles
+    name: Particles and VFX
+    tier: 3
+    session: 7
+    department: Animation and VFX
+    kid: Lots of tiny pictures shot out to make sparkles, smoke and fire.
+    engines: { unity: Particle System, unreal: Niagara, godot: GPUParticles2D, verified: false }
+    taught_by: { shift: The explosion builder, wireframe: null }
+    evidence: "The burst shows but doesn't cover the hero (ranges + readability check)."
+    needs: [component]
+    returns: [8, 9, 10]
+    same_session_return: true
+
+  - id: juice
+    name: Juice
+    tier: 3
+    session: 7
+    department: Animation and VFX
+    kid: Extra shake, pop and sound that make a moment feel great without changing the rules.
+    engines: { unity: null, unreal: null, godot: null, verified: true }
+    taught_by: { shift: The juice board, wireframe: null }
+    evidence: "S9: sorts 'juice or rule?' cards (answer key)."
+    needs: [feedback, particles]
+    returns: [8, 9, 10]
+    same_session_return: true

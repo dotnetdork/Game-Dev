@@ -6,7 +6,13 @@
 | File | What it is |
 |---|---|
 | `03-shift-silent-coins.template.html` | the shift's markup and script, with `{{CSS}}` `{{ICONS}}` `{{LOGO}}` slots |
-| `04-first-day.template.html` | the first day as the first shift (`briefs/first-run.md` v3); replaces 01/02 as the first run. `node docs/rework/wireframes/src/build.js 04-first-day` |
+| `04-first-day.template.html` | the first day as the first shift (`briefs/first-run.md` v3), all four fix branches; replaces 01/02 as the first run. `node docs/rework/wireframes/src/build.js 04-first-day` |
+| `05-shift-floaty-jump.template.html` | the Engineering shift "The floaty jump" (`briefs/shift-floaty-jump.md`): predict, tune Gravity and Jump height with a jump arc, pick your own game's feel |
+| `06-the-desk.template.html` | the desk, the thin studio layer (`briefs/the-desk.md`): stand-up, milestones, departments, cards and tools |
+| `0N-gate-test.js` | plays 03, 04 or 05 in a real browser and checks every gate (see below). 06 has no gates to speak of: it is checked by playing it |
+
+The concept web these wireframes teach from is `docs/rework/concept-web.yaml`, checked by
+`node docs/rework/tools/check-concept-web.js`.
 | `base.css` `icons.svg` `logo.txt` | shared styles, the icon sprite, the League wordmark as a data URI |
 | `build.js` | fills the slots and writes the self-contained HTML; `{{SFX}}` inlines four Kenney CC0 sounds from `app/public/assets/` (the list is at the top of the file) |
 | `03-gate-test.js` | plays the whole shift in a real browser and checks every gate |

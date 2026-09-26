@@ -12,6 +12,8 @@ This is the model agreed in the interview. It is a design, not yet code.
    character teaches it, and its Unity / Godot / Unreal names. **Written by people.**
    *Seed in the prototype:* `app/content/vocabulary.yaml` is already a what-needs-what web, and
    `app/tools/check-vocab.js` fails if a lesson leans on an idea before it is taught. Reuse the idea.
+   **Version 1 exists:** `concept-web.yaml` (the 25 owned concepts from `curriculum-map.md`, with
+   needs, returns, evidence and engine names), checked by `node docs/rework/tools/check-concept-web.js`.
 
 2. **Quest outlines** — for each quest: which character gives it, the concept, the goal, and what
    counts as done. Short. **Written by people.** Everything *inside* a quest — dialogue, examples,

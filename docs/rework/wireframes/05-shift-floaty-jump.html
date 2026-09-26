@@ -1,0 +1,732 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Floaty Jump Shift</title>
+<!--
+  Wireframe 05: the shift "The floaty jump" (Engineering, session 2; ../briefs/shift-floaty-jump.md).
+  The kid plays a customer's moon-jump, predicts what gravity will do, tunes Gravity and Jump height
+  in the Inspector until the hero clears the gap under the ceiling spikes, then picks their own
+  game's feel. Built from this template by build.js; shares base.css and the patterns of 03 and 04
+  (evidence gates, one setRunning with Unity's undo-on-Stop, shuffled answers, the announcer).
+-->
+<style>
+
+  /* ---------- tokens ---------- */
+  :root {
+    --ground: #232323;      /* editor ground, behind docks */
+    --panel: #383838;       /* dock body (Unity dark skin, approx.) */
+    --panel-2: #414141;     /* raised rows, inputs */
+    --tabbar: #282828;      /* dock tab strip */
+    --tab: #383838;         /* active tab = dock body, as in Unity */
+    --line: #121212;        /* hairline between docks */
+    --line-soft: #444;
+    --ink: #e8e8e8;
+    --ink-2: #b4b4b4;
+    --ink-3: #b0b0b0;
+    --accent: #f5820a;      /* League orange: Unity's selection blue, repurposed */
+    --accent-ink: #1a1206;
+    --accent-soft: rgba(245, 130, 10, .16);
+    --focus: #ffffff;
+    --page: #0f0f0f;        /* darker than the editor ground, so the editor reads as a lit screen */
+    --doc-ink: #e8e8e8;
+    --doc-muted: #a6a6a6;
+    --doc-line: #2a2a2a;
+    --radius: 5px;
+    --col: 1398px;          /* the scaled frame's width plus gutters; the script at the bottom sets it */
+  }
+  /* The page is dark in every theme, as the editor is. A light page (the old light-theme override)
+     made the editor look like a picture pasted on paper, and it was asked to go. */
+
+  * { box-sizing: border-box; }
+  html { color-scheme: dark; scrollbar-color: #3a3a3a var(--page); }
+  html, body { margin: 0; background: var(--page); color: var(--doc-ink);
+    font: 15px/1.45 system-ui, -apple-system, "Segoe UI", Roboto, sans-serif; }
+  ::selection { background: var(--accent); color: var(--accent-ink); }
+  button { font: inherit; color: inherit; }
+  :focus-visible { outline: 2px solid var(--focus); outline-offset: 2px; }
+  svg.i { width: 18px; height: 18px; fill: none; stroke: currentColor; stroke-width: 1.75;
+          stroke-linecap: round; stroke-linejoin: round; flex: none; }
+
+  header.doc { max-width: var(--col); margin: 0 auto; padding: 20px 16px 16px; }
+  header.doc h1 { margin: 0 0 6px; font-size: 22px; font-weight: 650; letter-spacing: -.01em; line-height: 1.25; text-wrap: balance; }
+  header.doc p { margin: 0; color: var(--doc-muted); max-width: 72ch; text-wrap: pretty; }
+
+  /* #embed (inside the explainer page): no header of our own, edge to edge, text lined up with the page */
+  .embed body { background: transparent; }
+  .embed header.doc { display: none; }
+  .embed .stagehold, .embed .nav, .embed .notes { padding-inline: 0; max-width: none; }
+  .embed .notes { padding-bottom: 8px; }
+
+  /* ---------- the 1366×768 frame, scaled to fit the window's width AND height ---------- */
+  .stagehold { padding: 0 16px; overflow: hidden; }
+  .scaler { transform-origin: top left; margin: 0 auto; }
+  .editor {
+    width: 1366px; height: 650px; background: var(--ground); color: var(--ink);
+    display: grid; grid-template-rows: 56px 1fr 30px 26px;
+    grid-template-columns: 264px 1fr 388px;
+    grid-template-areas: "tool tool tool" "left game right" "proj proj right" "status status status";
+    gap: 1px; border-radius: 8px; overflow: hidden;
+    box-shadow: 0 0 0 1px rgba(255,255,255,.07), 0 24px 60px rgba(0,0,0,.6);
+    font-size: 15px; position: relative;
+  }
+
+  /* toolbar */
+  .toolbar { grid-area: tool; background: var(--tabbar); display: grid; grid-template-columns: 1fr auto 1fr;
+             align-items: center; padding: 0 12px; border-bottom: 1px solid var(--line); }
+  .brand { display: flex; align-items: center; gap: 10px; min-width: 0; }
+  .wordmark { height: 30px; width: auto; display: block; }
+  .project { color: var(--ink-2); font-size: 14px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+  .project b { color: var(--ink); font-weight: 600; }
+  .transport { display: flex; gap: 2px; background: var(--ground); padding: 3px; border-radius: 7px; }
+  .tbtn { display: inline-flex; align-items: center; gap: 6px; height: 44px; padding: 0 14px; border: 0;
+          background: var(--panel-2); border-radius: 5px; color: var(--ink-2); cursor: default; }
+  .tbtn span { font-size: 14px; font-weight: 600; }
+  .tbtn.on { background: var(--accent); color: var(--accent-ink); }
+  #bPlay { cursor: pointer; }
+  #bPlay.cue { box-shadow: 0 0 0 2px var(--accent); }
+  .transport .tbtn:not(#bPlay) { cursor: default; }
+  .transport.ghosted { opacity: 0; transform: translateY(-6px); }
+  .tool-right { justify-self: end; color: var(--ink-3); font-size: 13px; }
+
+  /* Play mode: Unity tints the editor chrome while the game runs */
+  .editor.playmode .toolbar, .editor.playmode .tabs, .editor.playmode .status, .editor.playmode .proj { background: #3a2c1c; }
+
+  /* docks */
+  .dock { background: var(--panel); display: flex; flex-direction: column; min-height: 0;
+          transition: opacity .45s cubic-bezier(.16,1,.3,1), transform .45s cubic-bezier(.16,1,.3,1); }
+  .dock.closed { background: transparent; box-shadow: inset 0 0 0 1px #3a3a3a; pointer-events: none; }
+  .dock.closed > * { opacity: 0; }
+  .dock > * { transition: opacity .45s cubic-bezier(.16,1,.3,1); }
+  .tabs { background: var(--tabbar); display: flex; align-items: flex-end; height: 34px; padding: 0 6px; flex: none; }
+  .tab { display: inline-flex; align-items: center; gap: 7px; height: 30px; padding: 0 12px; background: var(--tab);
+         border-radius: 6px 6px 0 0; font-size: 14px; font-weight: 600; color: var(--ink); }
+  .tab small { font-weight: 500; color: var(--ink-3); font-size: 12.5px; }
+  .dock-body { padding: 10px 12px; min-height: 0; overflow: auto; }
+
+  .left { grid-area: left; display: grid; grid-template-rows: auto 1fr; gap: 0; background: var(--ground); }
+  .left .dock + .dock { border-top: 1px solid var(--line); }
+  .left .dock { min-height: 0; }
+
+  /* Quest panel (added) */
+  .quest-dept { display: flex; align-items: center; gap: 8px; font-weight: 700; }
+  .dot { width: 9px; height: 9px; border-radius: 50%; background: var(--accent); flex: none; }
+  .quest-now { margin-top: 8px; padding: 9px 10px; background: var(--panel-2); border-radius: var(--radius); font-size: 14px; }
+  .quest-now small { display: block; color: var(--ink-3); font-size: 12px; }
+  .quest-next { margin-top: 6px; color: var(--ink-3); font-size: 13px; padding: 0 2px; }
+
+  /* Hierarchy */
+  .tree { list-style: none; margin: 0; padding: 0; }
+  .tree li button { width: 100%; display: flex; align-items: center; gap: 8px; min-height: 44px; padding: 0 8px;
+                    border: 0; background: transparent; border-radius: 4px; text-align: left; color: var(--ink); cursor: pointer; }
+  .tree li button:hover { background: var(--panel-2); }
+  .tree li.child button { padding-left: 34px; }
+  .tree li button[aria-pressed="true"] { background: var(--accent); color: var(--accent-ink); }
+  .tree li button small { margin-left: auto; color: var(--ink-3); font-size: 12px; }
+  .tree li button[aria-pressed="true"] small { color: var(--accent-ink); }
+  .tree li.snap button { animation: snap .6s cubic-bezier(.16,1,.3,1) both; }
+  @keyframes snap { from { transform: translateX(-14px); opacity: 0; background: var(--accent-soft); }
+                    60% { background: var(--accent-soft); } to { transform: none; opacity: 1; } }
+  .empty-note { color: var(--ink-3); font-size: 13px; padding: 4px 2px; }
+
+  /* Game view */
+  .game { grid-area: game; }
+  .gamebody { flex: 1; display: flex; background: #111; position: relative; min-height: 0; }
+  .screen { flex: 1; position: relative; overflow: hidden;
+            box-shadow: inset 0 0 0 0 transparent; transition: box-shadow .3s ease-out; }
+  .screen.playing { box-shadow: inset 0 0 0 3px var(--accent); }
+  .screen svg { display: block; width: 100%; height: 100%; }
+  .pointer { position: absolute; left: 24px; top: 18px; max-width: 70%;
+             background: #fbf6ea; color: #1d1a12; border-radius: 10px; padding: 8px 12px; font-size: 14px;
+             box-shadow: 0 6px 18px rgba(0,0,0,.35); }
+  .pointer::after { content: ''; position: absolute; left: 28px; bottom: -8px; width: 16px; height: 16px; background: #fbf6ea; transform: rotate(45deg); border-radius: 2px; }
+  .pointer[hidden] { display: none; }
+  .game-empty { color: var(--ink-3); font-size: 14px; text-align: center; }
+  .fps { position: absolute; top: 8px; right: 10px; font: 600 12px/1 ui-monospace, "SFMono-Regular", Menlo, monospace;
+         color: #fff; background: rgba(0,0,0,.45); padding: 4px 6px; border-radius: 4px; }
+  .fps[hidden] { display: none; }
+
+  /* Mentor dock (Unity's Inspector slot) */
+  .right { grid-area: right; position: relative; overflow: hidden; }
+  .who { display: flex; gap: 10px; align-items: center; padding: 12px 12px 8px; }
+  .who strong { display: block; font-size: 15px; }
+  .who span { font-size: 12.5px; color: var(--ink-3); }
+  .face { width: 46px; height: 46px; flex: none; border-radius: 50%; border: 1.5px dashed var(--ink-3); display: grid; place-items: center; text-align: center; font-size: 12px; line-height: 1.05; color: var(--ink-3); }
+  .log { flex: 1; overflow: auto; padding: 4px 12px 8px; display: flex; flex-direction: column; gap: 8px; min-height: 0; }
+  .msg { max-width: 94%; padding: 9px 12px; border-radius: 12px; background: var(--panel-2); font-size: 15px; line-height: 1.4; }
+  .msg .from { display: block; font-size: 12px; font-weight: 700; color: var(--ink-3); margin-bottom: 2px; }
+  .msg.kid { align-self: flex-end; background: #4a3b2a; }
+  .msg.guest { background: #33404f; }
+  .opts { display: grid; gap: 6px; padding: 8px 12px 6px; }
+  .opt { display: flex; align-items: center; justify-content: space-between; gap: 10px; min-height: 44px; padding: 8px 12px;
+         background: transparent; border: 1.5px solid var(--accent); border-radius: 8px; text-align: left; cursor: pointer; color: var(--ink); font-weight: 600; }
+  .opt:hover { background: var(--accent-soft); }
+  .opt:hover small { color: var(--ink); }
+  .opt small { font-weight: 500; color: var(--ink-3); font-size: 12.5px; }
+  .say { display: flex; gap: 6px; padding: 4px 12px 12px; }
+  .say input { flex: 1; min-height: 44px; border-radius: 8px; border: 1px solid var(--line-soft); background: var(--ground);
+               color: var(--ink); padding: 0 12px; font: inherit; font-size: 14px; }
+  .say input::placeholder { color: var(--ink-3); }
+
+  /* Inspector: slides over the mentor's lower half when a part is selected */
+  .inspector { position: absolute; left: 0; right: 0; top: 34px; bottom: var(--pinned, 180px); background: var(--panel);
+               border-top: 1px solid var(--line); box-shadow: 0 -10px 24px rgba(0,0,0,.35);
+               transform: translateX(104%); transition: transform .4s cubic-bezier(.16,1,.3,1); display: flex; flex-direction: column; }
+  .inspector.open { transform: none; }
+  /* The Inspector covers the older lines but never the last two: a step's instruction is often the
+     line before the newest, and hiding it left the kid with a failure line that said nothing to do. */
+  .right.inspecting .msg:not(:nth-last-child(-n+2)) { display: none; }
+  .inspector .tabs { justify-content: space-between; align-items: center; }
+  .x { border: 0; background: transparent; color: var(--ink-2); min-height: 44px; min-width: 44px; border-radius: 4px; cursor: pointer; }
+  .x:hover { background: var(--panel-2); }
+  .irow { display: grid; grid-template-columns: 1fr 1.3fr; align-items: center; gap: 10px; min-height: 48px; font-size: 14px; }
+  .irow label { color: var(--ink-2); }
+  .irow label small { display: block; color: var(--ink-3); font-size: 12px; }
+  .irow input[type=range] { -webkit-appearance: none; appearance: none; width: 100%; height: 44px; background: transparent; cursor: pointer; }
+  .irow input[type=range]::-webkit-slider-runnable-track { height: 6px; border-radius: 3px; background: var(--panel-2); }
+  .irow input[type=range]::-webkit-slider-thumb { -webkit-appearance: none; width: 22px; height: 22px; margin-top: -8px; border-radius: 50%; background: var(--accent); border: 2px solid var(--accent-ink); }
+  .irow input[type=range]::-moz-range-track { height: 6px; border-radius: 3px; background: var(--panel-2); }
+  .irow input[type=range]::-moz-range-thumb { width: 22px; height: 22px; border-radius: 50%; background: var(--accent); border: 2px solid var(--accent-ink); }
+  .comp { display: flex; align-items: center; gap: 6px; min-height: 36px; margin: -4px -2px 4px; padding: 0 4px; border-bottom: 1px solid var(--line-soft); font-size: 14px; }
+
+  /* Project drawer (repurposed: your cards) + status bar */
+  .proj { grid-area: proj; background: var(--tabbar); display: flex; align-items: center; gap: 10px; padding: 0 10px; font-size: 13.5px; color: var(--ink-2); }
+  .proj b { color: var(--ink); }
+  .chip { background: var(--panel-2); border-radius: 4px; padding: 2px 8px; color: var(--ink-2); font-size: 12.5px; }
+  .status { grid-area: status; background: var(--tabbar); display: flex; align-items: center; justify-content: space-between;
+            padding: 0 12px; font-size: 12.5px; color: var(--ink-3); border-top: 1px solid var(--line); }
+  .stars { display: inline-flex; align-items: center; gap: 6px; }
+  .stars svg { width: 14px; height: 14px; stroke: var(--accent); }
+  .reveal { transition: opacity .45s cubic-bezier(.16,1,.3,1); }
+  .reveal.closed { opacity: 0; }
+  .proj.reveal.closed { opacity: 1; background: transparent; box-shadow: inset 0 0 0 1px #3a3a3a; }
+  .proj.reveal.closed > * { opacity: 0; }
+
+  @media (prefers-reduced-motion: reduce) { *, *::before, *::after { transition: none !important; animation: none !important; } }
+
+  /* ---------- beat controls + notes (outside the product) ---------- */
+  /* One strip: Back, the numbered steps as a single joined track, Skip ahead. Steps already passed
+     read brighter than steps to come, so a reviewer can see where they are in the shift at a glance. */
+  .nav { max-width: var(--col); margin: 12px auto 0; padding: 0 16px; display: flex; gap: 8px; flex-wrap: wrap; align-items: center; }
+  .nav button { min-height: 40px; min-width: 40px; padding: 0 14px; border-radius: 6px; border: 1px solid #333;
+                background: #1a1a1a; color: var(--doc-ink); font-weight: 600; cursor: pointer;
+                transition: background-color .15s ease-out, border-color .15s ease-out, color .15s ease-out; }
+  .nav button:hover:not(:disabled) { background: #242424; border-color: #4a4a4a; }
+  .nav button:disabled { opacity: .4; cursor: default; }
+  .nav .track { display: flex; flex-wrap: wrap; gap: 2px; padding: 2px; border-radius: 8px; background: #1a1a1a; border: 1px solid #2a2a2a; }
+  .nav .track button { min-width: 40px; padding: 0 10px; border: 0; border-radius: 5px; background: transparent;
+                       color: #8a8a8a; font-variant-numeric: tabular-nums; }
+  .nav .track button.past { color: var(--doc-ink); background: #262626; }
+  .nav .track button:hover { background: #2e2e2e; color: var(--doc-ink); }
+  .nav .track button[aria-current="step"] { background: var(--accent); color: var(--accent-ink); }
+  .notes { max-width: var(--col); margin: 14px auto 0; padding: 0 16px 40px; display: grid; gap: 14px 32px;
+           grid-template-columns: repeat(auto-fit, minmax(280px, 1fr)); }
+  .notes > div { padding-top: 12px; border-top: 1px solid var(--doc-line); }
+  .notes h2 { margin: 0 0 4px; font-size: 16px; font-weight: 650; text-wrap: balance; }
+  .notes p { margin: 0; color: var(--doc-muted); max-width: 64ch; text-wrap: pretty; }
+
+  /* ---------- additions for the shift ---------- */
+  .editor { height: 650px; grid-template-rows: 56px minmax(0, 1fr) 30px 26px; }
+  .gamebody canvas { flex: 1; min-width: 0; width: 100%; height: 100%; display: block; outline: none; background: #111; }
+  .gamebody canvas:focus-visible { box-shadow: inset 0 0 0 3px var(--focus); }
+  .gamebody.playing::after { content: ''; position: absolute; inset: 0; box-shadow: inset 0 0 0 3px var(--accent); pointer-events: none; }
+  .focus-hint { position: absolute; inset: auto 0 18px 0; margin: 0 auto; width: max-content; max-width: 80%;
+                background: rgba(20,20,20,.86); color: #fff; padding: 10px 14px; border-radius: 10px; font-size: 15px; pointer-events: none; }
+  .focus-hint[hidden] { display: none; }
+  .keys { display: inline-flex; gap: 4px; margin: 0 4px; }
+  .key { border: 1px solid #777; border-bottom-width: 3px; border-radius: 5px; padding: 0 7px; font-size: 13px; }
+  .sr { position: absolute; width: 1px; height: 1px; overflow: hidden; clip: rect(0 0 0 0); white-space: nowrap; }
+  /* quest checklist, as in wireframe 03 */
+  .checks { list-style: none; margin: 8px 0 0; padding: 0; display: grid; gap: 4px; }
+  .checks li { display: flex; align-items: center; gap: 8px; min-height: 30px; font-size: 14px; color: var(--ink-2); }
+  .checks li .box { width: 20px; height: 20px; border-radius: 5px; border: 1.5px solid var(--ink-3); display: grid; place-items: center; flex: none; }
+  .checks li.done { color: var(--ink); }
+  .checks li.done .box { background: var(--accent); border-color: var(--accent); color: var(--accent-ink); }
+  .checks li.now { color: var(--ink); font-weight: 600; }
+  .checks li.now .box { border-color: var(--accent); }
+  .checks .box svg { width: 14px; height: 14px; }
+  /* a slider row that shows its number, so the value is read as well as seen */
+  .irow output { font: 600 13px ui-monospace, "Cascadia Mono", Consolas, monospace; color: var(--ink); min-width: 3ch; text-align: right; }
+  .slide { display: flex; align-items: center; gap: 10px; }
+  .tree .trow { display: flex; align-items: center; gap: 8px; min-height: 44px; padding: 0 8px; color: var(--ink); }
+  .tree .trow small { margin-left: auto; color: var(--ink-3); font-size: 12px; }
+  .feelchip { display: inline-block; margin-top: 4px; padding: 2px 10px; border-radius: 999px; background: var(--accent-soft); color: var(--ink); font-weight: 600; }
+  /* two components, two sliders: rows at the 44px target (not 48) so both fit without scrolling */
+  .inspector .irow { min-height: 44px; }
+  .inspector .comp { min-height: 32px; margin-bottom: 2px; }
+  .inote { color: var(--ink-2); font-size: 14px; padding: 6px 2px; }
+  .card { margin: 4px 0 2px; border-radius: 10px; background: #2f2a24; border: 1.5px solid var(--accent); padding: 12px 14px; }
+  .card b { display: block; font-size: 16px; color: var(--ink); }
+  .card p { margin: 4px 0 8px; font-size: 14.5px; color: var(--ink); }
+  .card dl { display: grid; grid-template-columns: auto 1fr; gap: 2px 10px; margin: 0; font-size: 13px; }
+  .card dt { color: var(--ink-2); } .card dd { margin: 0; color: var(--ink); }
+</style>
+</head>
+<body>
+<header class="doc">
+  <h1>A shift: “The floaty jump”</h1>
+  <p>Play it for real: press Play, use the arrow keys and Space. Progress only unlocks when you’ve actually done the
+     job. The step buttons below are for reviewers and let you skip ahead.</p>
+</header>
+
+<svg width="0" height="0" style="position:absolute" aria-hidden="true">
+  <symbol id="i-play" viewBox="0 0 24 24"><path d="M8 5.5v13l10.5-6.5z"/></symbol>
+  <symbol id="i-pause" viewBox="0 0 24 24"><path d="M8.5 5.5v13M15.5 5.5v13"/></symbol>
+  <symbol id="i-step" viewBox="0 0 24 24"><path d="M6 5.5v13l9-6.5zM18 5.5v13"/></symbol>
+  <symbol id="i-tree" viewBox="0 0 24 24"><path d="M5 5h6M8 5v14M8 11h6M8 17h6M15 9h4v4h-4zM15 15h4v4h-4z"/></symbol>
+  <symbol id="i-pad" viewBox="0 0 24 24"><path d="M7 8h10a4 4 0 0 1 4 4v1a3 3 0 0 1-5.4 1.8L14.6 14H9.4l-1 .8A3 3 0 0 1 3 13v-1a4 4 0 0 1 4-4zM8 10.5v3M6.5 12h3M16 11.2h.01M17.8 12.8h.01"/></symbol>
+  <symbol id="i-flag" viewBox="0 0 24 24"><path d="M6 20V4M6 4h10l-2 4 2 4H6"/></symbol>
+  <symbol id="i-cube" viewBox="0 0 24 24"><path d="M12 3l8 4.5v9L12 21l-8-4.5v-9zM12 12l8-4.5M12 12v9M12 12L4 7.5"/></symbol>
+  <symbol id="i-sliders" viewBox="0 0 24 24"><path d="M5 7h9M18 7h1M5 17h3M12 17h7M16 5v4M10 15v4"/></symbol>
+  <symbol id="i-cards" viewBox="0 0 24 24"><path d="M8 4h9a2 2 0 0 1 2 2v11M5 7h9a2 2 0 0 1 2 2v9a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V9a2 2 0 0 1 2-2z"/></symbol>
+  <symbol id="i-star" viewBox="0 0 24 24"><path d="M12 3.5l2.6 5.3 5.9.9-4.3 4.1 1 5.8L12 16.9l-5.2 2.7 1-5.8-4.3-4.1 5.9-.9z"/></symbol>
+  <symbol id="i-stop" viewBox="0 0 24 24"><rect x="6.5" y="6.5" width="11" height="11" rx="1.5"/></symbol>
+  <symbol id="i-fold" viewBox="0 0 24 24"><path d="M8 10l4 4 4-4"/></symbol>
+  <symbol id="i-x" viewBox="0 0 24 24"><path d="M6 6l12 12M18 6L6 18"/></symbol>
+  <symbol id="i-code" viewBox="0 0 24 24"><path d="M9 7l-5 5 5 5M15 7l5 5-5 5"/></symbol>
+<symbol id="i-check" viewBox="0 0 24 24"><path d="M5 12.5l4.5 4.5L19 7.5"/></symbol>
+</svg>
+
+<div class="stagehold"><div class="scaler" id="scaler">
+<div class="editor" id="editor" role="region" aria-label="The studio editor during an Engineering shift, drawn at 1366 by 650">
+
+  <div class="toolbar">
+    <div class="brand">
+      <img class="wordmark" alt="The League of Amazing Programmers" src="data:image/png;base64,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">
+      <span class="project">· <b>Captain Byte’s Game</b></span>
+    </div>
+    <div class="transport" aria-label="Play controls">
+      <button class="tbtn" id="bPlay"><svg class="i"><use id="bPlayIcon" href="#i-play"/></svg><span>Play</span></button>
+    </div>
+    <div class="tool-right"></div>
+  </div>
+
+  <div class="left">
+    <section class="dock" aria-label="Quest">
+      <div class="tabs"><span class="tab"><svg class="i"><use href="#i-flag"/></svg>Quest</span></div>
+      <div class="dock-body">
+        <div class="quest-dept"><span class="dot"></span>Engineering department</div>
+        <div class="quest-now">The floaty jump</div>
+        <ul class="checks" id="checks"></ul>
+      </div>
+    </section>
+    <section class="dock" aria-label="Hierarchy">
+      <div class="tabs"><span class="tab"><svg class="i"><use href="#i-tree"/></svg>Hierarchy <small id="hierOf">customer’s game</small></span></div>
+      <div class="dock-body"><ul class="tree" id="tree"></ul></div>
+    </section>
+  </div>
+
+  <section class="dock game" aria-label="Game">
+    <div class="tabs"><span class="tab"><svg class="i"><use href="#i-pad"/></svg>Game <small id="gameOf">customer’s game</small></span></div>
+    <div class="gamebody" id="gamebody">
+      <canvas id="cv" tabindex="0" aria-label="The game. Arrow keys move, Space jumps."></canvas>
+      <div class="focus-hint" id="hint" hidden>Click the game, then <span class="keys"><span class="key">←</span><span class="key">→</span></span> move · <span class="key">Space</span> jump</div>
+    </div>
+  </section>
+
+  <section class="dock right" id="dMentor" aria-label="Conversation">
+    <div class="tabs"><span class="tab"><svg class="i" style="color:var(--accent)"><use href="#i-cube"/></svg><span id="whoTab">Lead programmer</span></span></div>
+    <div class="who">
+      <div class="face" aria-hidden="true">face<br>TBD</div>
+      <div><strong id="whoName">Lead programmer</strong><span id="whoRole">Engineering department</span></div>
+    </div>
+    <div class="log" id="log"></div>
+    <div class="opts" id="opts"></div>
+    <div class="say"><input id="say" type="text" placeholder="Say something else…" aria-label="Say something else"></div>
+
+    <div class="inspector" id="inspector" aria-label="Inspector" aria-hidden="true" inert>
+      <div class="tabs"><span class="tab"><svg class="i"><use href="#i-sliders"/></svg>Inspector <small id="inspName"></small></span>
+        <button class="x" id="inspClose" aria-label="Close the Inspector"><svg class="i"><use href="#i-x"/></svg></button></div>
+      <div class="dock-body" id="inspBody"></div>
+    </div>
+  </section>
+
+  <div class="proj" id="proj">
+    <svg class="i"><use href="#i-cards"/></svg><b>Project</b><span>your cards</span>
+    <span class="chip" id="cardChip">1 card: Play mode</span>
+  </div>
+
+  <p class="sr" id="announce" aria-live="polite"></p>
+  <div class="status">
+    <span id="statusMsg">Shift started</span>
+    <span class="stars" id="stars"><svg class="i"><use href="#i-star"/></svg><span id="starCount">1 star</span></span>
+  </div>
+</div>
+</div></div>
+
+<nav class="nav" aria-label="Steps (for reviewers)">
+  <button id="back">Back</button><span class="track" id="dots"></span><button id="next">Skip ahead</button>
+</nav>
+
+<section class="notes">
+  <div><h2 id="nBeat"></h2><p id="nWhat"></p></div>
+  <div><h2>Why you can’t click through this step</h2><p id="nGate"></p></div>
+</section>
+
+<script>
+var $ = function (id) { return document.getElementById(id); };
+var NAME = 'Captain Byte', HERO = 'robot';   // from the first day: sign-in name and hero pick
+
+/* ---------- the game: one hero, two numbers that matter ----------
+   gravity = 0.05 × the Gravity slider; jump speed = 1.2 + 0.35 × the Jump height slider. The
+   customer's values (1.2, 6.3) float the hero ~96px up into the spikes; something like (4, 6.3)
+   clears the 50px gap with the head well under them. */
+var cv = $('cv'), ctx = cv.getContext('2d'), W = 320, H = 180, SPEED = 2.2;
+var keys = {}, P, coin, running = false;   // running: set only through setRunning()
+var theme = 'customer', tune = { G: 1.2, J: 6.3 }, playTune = null;
+var LV = {
+  customer: { floors: [[0, 150, 120], [170, 150, 150]], pit: [120, 170], spikes: [150, 230, 96],   /* open sky first, so a jump in place shows the float; spikes over the gap */ coin: [290, 132], lava: null },
+  yours:    { floors: [[0, 150, 200], [240, 150, 80]], pit: null, spikes: null, coin: [290, 132], lava: [200, 240, 164] }
+};
+function g() { return 0.05 * tune.G; } function v() { return 1.2 + 0.35 * tune.J; }
+function level() { P = { x: 20, y: 134, vy: 0, w: 12, h: 16, on: true }; coin = { x: LV[theme].coin[0], y: LV[theme].coin[1], got: false }; }
+function onKey(e, down) {
+  if (['ArrowLeft', 'ArrowRight', 'ArrowUp', ' ', 'Spacebar'].indexOf(e.key) >= 0) { e.preventDefault(); keys[e.key] = down; }
+}
+cv.addEventListener('keydown', function (e) { onKey(e, true); });
+cv.addEventListener('keyup', function (e) { onKey(e, false); });
+cv.addEventListener('focus', function () { $('hint').hidden = true; });
+cv.addEventListener('blur', function () { keys = {}; if (running) $('hint').hidden = false; });
+cv.addEventListener('pointerdown', function () { cv.focus(); });
+
+function respawn() { P.x = 20; P.y = 134; P.vy = 0; P.on = true; P.trail = []; P.freeze = 0; }
+/* A bonk freezes the hero in the spikes for a moment with the path it floated along, so the kid
+   sees the float instead of an instant teleport home (critique: the moon jump was never felt). */
+function bonk() { P.freeze = 40; P.bonked = true; events('bonk'); }
+function step() {
+  if (!running) return;
+  if (P.freeze) { P.freeze--; if (!P.freeze) { P.bonked = false; respawn(); } return; }
+  var L = LV[theme], vx = (keys.ArrowLeft ? -SPEED : 0) + (keys.ArrowRight ? SPEED : 0);
+  if ((keys[' '] || keys.Spacebar || keys.ArrowUp) && P.on) { P.vy = -v(); P.on = false; P.jumpFrom = P.x; }
+  P.vy += g(); P.x = Math.max(0, Math.min(W - P.w, P.x + vx)); P.y += P.vy; P.on = false;
+  if (!P.trail) P.trail = []; P.trail.push([P.x + 6, P.y + 8]); if (P.trail.length > 120) P.trail.shift();
+  L.floors.forEach(function (f) {
+    if (P.x + P.w > f[0] && P.x < f[0] + f[2] && P.y + P.h >= f[1] && P.y + P.h - P.vy <= f[1] + 1 && P.vy >= 0) { P.y = f[1] - P.h; P.vy = 0; P.on = true; }
+  });
+  if (P.on) P.trail = [];
+  if (L.spikes && P.y < L.spikes[2] && P.x + P.w > L.spikes[0] && P.x < L.spikes[1]) { P.y = L.spikes[2]; bonk(); return; }
+  if (L.lava && P.y + P.h >= L.lava[2] && P.x + P.w > L.lava[0] && P.x < L.lava[1]) { events('lava'); respawn(); return; }
+  if (P.y > H) { events('fell'); respawn(); return; }
+  if (P.on && L.lava && P.x > L.lava[1] && P.jumpFrom !== undefined && P.jumpFrom < L.lava[0]) { P.jumpFrom = undefined; events('cleared'); }
+  if (!coin.got && Math.abs(P.x + 6 - coin.x) < 11 && Math.abs(P.y + 8 - coin.y) < 13) { coin.got = true; events('coin'); }
+}
+/* The jump arc, shown while stopped: where a jump from the edge would go with today's numbers. It
+   moves as the sliders move, so the kid sees the change before testing it (feel, see, name). */
+function arcFrom() { return theme === 'customer' ? 106 : 186; }
+/* The arc stops where the jump would end: in the spikes, in the gap, or on the far side. Its
+   result is also said in words (the slider's aria-valuetext and the Inspector's line). */
+function arcPoints() {
+  var x = arcFrom(), y = 134, vy = -v(), pts = [], L = LV[theme], end = 'lands';
+  for (var k = 0; k < 160; k++) {
+    vy += g(); x += SPEED; y += vy; pts.push([x + 6, y + 8]);
+    if (L.spikes && y < L.spikes[2] && x + 12 > L.spikes[0] && x < L.spikes[1]) { end = 'spikes'; break; }
+    if (y >= 134 && vy > 0) { var landed = L.floors.some(function (f) { return x + 12 > f[0] && x < f[0] + f[2]; }); if (!landed) end = 'short'; break; }
+    if (y > H) { end = 'short'; break; }
+  }
+  pts.end = end; return pts;
+}
+function arcWords() { var e = arcPoints().end; return e === 'spikes' ? 'the jump hits the spikes' : e === 'short' ? 'the jump falls short' : 'the jump clears it'; }
+function draw() {
+  var bw = $('gamebody').clientWidth, bh = $('gamebody').clientHeight; if (!bw || !bh) return;
+  if (cv.width !== bw || cv.height !== bh) { cv.width = bw; cv.height = bh; }
+  var k = Math.min(bw / W, bh / H), ox = (bw - W * k) / 2, oy = (bh - H * k) / 2, L = LV[theme], cust = theme === 'customer';
+  ctx.setTransform(1, 0, 0, 1, 0, 0); ctx.fillStyle = '#111'; ctx.fillRect(0, 0, bw, bh); ctx.setTransform(k, 0, 0, k, ox, oy);
+  var sky = ctx.createLinearGradient(0, 0, 0, H);
+  sky.addColorStop(0, cust ? '#3b2f52' : '#9a9a9a'); sky.addColorStop(1, cust ? '#6b5a8a' : '#9a9a9a'); ctx.fillStyle = sky; ctx.fillRect(0, 0, W, H);
+  if (L.spikes) { ctx.fillStyle = '#2a2238'; ctx.fillRect(0, 0, W, L.spikes[2] - 14); ctx.fillStyle = '#e9e4f2';
+    for (var sx = L.spikes[0]; sx < L.spikes[1]; sx += 10) { ctx.beginPath(); ctx.moveTo(sx, L.spikes[2] - 14); ctx.lineTo(sx + 5, L.spikes[2]); ctx.lineTo(sx + 10, L.spikes[2] - 14); ctx.fill(); } }
+  // The kid's level is still grey (Art comes later), but its lava is warm: it's the danger this step is about.
+  if (L.lava) { ctx.fillStyle = '#c4532b'; ctx.fillRect(L.lava[0], L.lava[2], L.lava[1] - L.lava[0], H - L.lava[2]);
+    ctx.fillStyle = '#e8894e'; ctx.fillRect(L.lava[0], L.lava[2], L.lava[1] - L.lava[0], 2); }
+  L.floors.forEach(function (f) { ctx.fillStyle = cust ? '#4c7a3a' : '#6e6e6e'; ctx.fillRect(f[0], f[1], f[2], 30); ctx.fillStyle = cust ? '#7fc65a' : '#858585'; ctx.fillRect(f[0], f[1], f[2], 4); });
+  if (!coin.got) { ctx.fillStyle = cust ? '#ffd23f' : '#c4c4c4'; ctx.strokeStyle = cust ? '#e8a300' : '#8f8f8f'; ctx.lineWidth = 2; ctx.beginPath(); ctx.arc(coin.x, coin.y, 6, 0, 7); ctx.fill(); ctx.stroke(); }
+  if (!running && showArc) {
+    var pts = arcPoints(), bad = pts.end !== 'lands', fx = arcFrom() + 6;
+    // "jump here": where the arc starts, so the dots read as the kid's jump, not decoration
+    ctx.fillStyle = cust ? '#ffffff' : '#1d1d1d'; ctx.font = '600 7px system-ui, sans-serif'; ctx.textAlign = 'center';
+    ctx.fillText('jump here', fx, 145); ctx.fillRect(fx - 0.5, 146, 1, 4);
+    ctx.fillStyle = bad ? '#ff7a6b' : (cust ? '#ffffff' : '#1d1d1d');
+    pts.forEach(function (p, n) { if (n % 3 === 0 || n === pts.length - 1) { ctx.beginPath(); ctx.arc(p[0], p[1], 1.5, 0, 7); ctx.fill(); } });
+    if (bad) { var q = pts[pts.length - 1]; ctx.strokeStyle = '#ff7a6b'; ctx.lineWidth = 1.5; ctx.beginPath(); ctx.moveTo(q[0] - 3, q[1] - 3); ctx.lineTo(q[0] + 3, q[1] + 3); ctx.moveTo(q[0] + 3, q[1] - 3); ctx.lineTo(q[0] - 3, q[1] + 3); ctx.stroke(); }
+  }
+  // a bonk: the hero stuck in the spikes, with the floaty path it took to get there
+  if (P.bonked && P.trail) {
+    ctx.fillStyle = 'rgba(255,255,255,.75)'; P.trail.forEach(function (t, n) { if (n % 2 === 0) { ctx.beginPath(); ctx.arc(t[0], t[1], 1.2, 0, 7); ctx.fill(); } });
+    ctx.fillStyle = '#ffffff'; ctx.font = '800 11px system-ui, sans-serif'; ctx.textAlign = 'center'; ctx.fillText('BONK!', P.x + 6, P.y + 30);
+  }
+  drawHero();
+}
+function drawHero() {
+  var x = P.x, y = P.y;
+  if (theme === 'customer') { ctx.fillStyle = '#3b6fe0'; ctx.fillRect(x, y, P.w, P.h); ctx.fillStyle = '#fff'; ctx.fillRect(x + 7, y + 4, 3, 3); return; }
+  ctx.fillStyle = '#d9dde6'; ctx.fillRect(x, y + 2, 12, 12); ctx.fillStyle = '#1d2230'; ctx.fillRect(x + 2, y + 5, 8, 4);
+  ctx.fillStyle = '#f5820a'; ctx.fillRect(x + 3, y + 6, 2, 2); ctx.fillRect(x + 7, y + 6, 2, 2); ctx.fillStyle = '#aeb4c2'; ctx.fillRect(x + 1, y + 14, 3, 2); ctx.fillRect(x + 8, y + 14, 3, 2);
+}
+var showArc = false;
+function loop() { step(); draw(); requestAnimationFrame(loop); }
+
+/* ---------- conversation, Hierarchy, Inspector ---------- */
+var shown = [], clicks = [], spamAt = null;
+function say(lines) {
+  shown = lines; var log = $('log'); log.innerHTML = ''; var prev = null;
+  lines.forEach(function (m) {
+    var d = document.createElement('div'); d.className = 'msg' + (m[0] === 'k' ? ' kid' : m[0] === 'm' ? '' : ' guest');
+    if (m[0] !== prev) { var f = document.createElement('span'); f.className = 'from'; f.textContent = m[0] === 'k' ? NAME : m[0] === 'm' ? 'Mentor' : 'Lead programmer'; d.appendChild(f); }
+    prev = m[0];
+    var txt = m[1].replace(/@name/g, NAME);
+    if (m[2] === 'html') { var w = document.createElement('div'); w.innerHTML = txt; d.appendChild(w); } else d.appendChild(document.createTextNode(txt));
+    log.appendChild(d);
+  });
+  var lastLine = lines.length ? lines[lines.length - 1][1].replace(/<[^>]+>/g, ' ').replace(/@name/g, NAME) : ''; if (lastLine) announce(lastLine);
+  requestAnimationFrame(function () { log.scrollTop = log.scrollHeight; });
+}
+function options(list) {
+  var box = $('opts'), wasInEditor = $('editor').contains(document.activeElement) && document.activeElement !== cv;
+  box.innerHTML = ''; list = list.slice();
+  for (var k = list.length - 1; k > 0; k--) { var j = Math.floor(Math.random() * (k + 1)), t = list[k]; list[k] = list[j]; list[j] = t; }
+  list.forEach(function (o) {
+    var b = document.createElement('button'); b.className = 'opt'; b.textContent = o[0];
+    b.addEventListener('click', function () { if (spamCheck()) return; o[1](); }); box.appendChild(b);
+  });
+  if (wasInEditor && box.firstChild && !running) box.firstChild.focus({ preventScroll: true });
+  if ($('inspector').classList.contains('open')) $('inspector').style.setProperty('--pinned', ($('opts').offsetHeight + document.querySelector('.say').offsetHeight) + 'px');
+}
+function announce(text) { $('announce').textContent = text; }
+function spamCheck() {
+  var t = Date.now(); clicks.push(t); clicks = clicks.filter(function (x) { return t - x < 1800; });
+  if (clicks.length < 3 || spamAt === i || i < 2) return false;
+  spamAt = i; clicks = [];
+  var vv = STEPS[i].voice || 'p';
+  say([[vv, 'Whoa, speedy! Quick guess first: what does gravity do to a jump?']]);
+  options([['It pulls the hero back down', function () { render(); }],
+           ['It makes the hero walk faster', function () { say([[vv, 'Not quite. Gravity only pulls down. More gravity, faster fall.']]); options([['Got it', render]]); }]]);
+  return true;
+}
+var CHECKS = [['play', 'Play the game'], ['spot', 'Spot what’s wrong'], ['predict', 'Predict what gravity does'], ['tune', 'Tune it in the Inspector'], ['yours', 'Tune your own game']];
+var done = {};
+function setChecks() {
+  var now = STEPS[i].check;
+  $('checks').innerHTML = CHECKS.map(function (c) {
+    var cls = done[c[0]] ? 'done' : (c[0] === now ? 'now' : '');
+    return '<li class="' + cls + '"><span class="box">' + (done[c[0]] ? '<svg class="i"><use href="#i-check"/></svg>' : '') + '</span>' + c[1] + '</li>';
+  }).join('');
+}
+var selected = null;
+function parts() {
+  return theme === 'customer' ? [['Cave Level', 'customer’s level', null, true], ['Player', 'blue hero', 'player'], ['Spikes', 'don’t touch', 'spikes'], ['Coin', 'the goal', 'coin']]
+                              : [['Level 1', 'the level', null, true], ['Player', 'your ' + HERO, 'player'], ['Coin', 'the goal', 'coin'], ['Lava', 'jump over it', 'lava']];   // four rows fit under the checklist; five hid the Lava row this step names
+}
+function tree() {
+  $('tree').innerHTML = '';
+  parts().forEach(function (p) {
+    var li = document.createElement('li'); if (!p[3]) li.className = 'child';
+    var b = document.createElement(p[2] ? 'button' : 'span'); if (p[2]) b.setAttribute('aria-pressed', String(selected === p[2])); else b.className = 'trow';   // the level row is a heading, not a control
+    b.innerHTML = (p[3] ? '<svg class="i" style="width:14px;margin-right:-4px"><use href="#i-fold"/></svg>' : '') + '<svg class="i"><use href="#i-cube"/></svg>' + p[0] + '<small>' + p[1] + '</small>';
+    b.addEventListener('click', function () { clicks = []; if (p[2]) openPart(p[2], p[0]); });
+    li.appendChild(b); $('tree').appendChild(li);
+  });
+}
+function row(id, label, unity, min, max, val) {
+  return '<div class="irow"><label for="' + id + '">' + label + '<small>' + unity + '</small></label><div class="slide"><input id="' + id + '" type="range" min="' + min + '" max="' + max + '" step="0.1" value="' + val + '"><output id="' + id + 'Out">' + val.toFixed(1) + '</output></div></div>';
+}
+function openPart(id, name) {
+  selected = id; tree();
+  var html;
+  if (id === 'player') html = '<div class="comp"><svg class="i"><use href="#i-fold"/></svg><strong>Rigidbody 2D</strong></div>' + row('rG', 'Gravity', 'Unity: Gravity Scale', 0.5, 6, tune.G) +
+       '<div class="comp"><svg class="i"><use href="#i-fold"/></svg><strong>Player Controller (Script)</strong></div>' + row('rJ', 'Jump height', 'Unity: jumpForce', 1, 9, tune.J);
+  else html = '<p class="inote">' + ({ spikes: 'Sharp! The hero’s head must stay under these.', coin: 'The goal. Reach it to finish the level.', floor: 'You made this solid on your first day.', lava: 'Jump clear over it.' })[id] + '</p>';
+  inspector(name, html);
+  ['rG', 'rJ'].forEach(function (s) { var el = $(s); if (!el) return;
+    var words = function () { el.setAttribute('aria-valuetext', parseFloat(el.value).toFixed(1) + ', ' + arcWords()); };
+    words(); el.addEventListener('input', function () { tune[s === 'rG' ? 'G' : 'J'] = parseFloat(this.value); $(s + 'Out').textContent = tune[s === 'rG' ? 'G' : 'J'].toFixed(1); showArc = true; words(); events('tune'); }); });
+}
+function inspector(title, html) {
+  var el = $('inspector');
+  if (!title) { el.classList.remove('open'); el.setAttribute('aria-hidden', 'true'); el.inert = true; $('dMentor').classList.remove('inspecting'); if (selected) { selected = null; tree(); } return; }
+  $('inspName').textContent = title; $('inspBody').innerHTML = html; $('dMentor').classList.add('inspecting');
+  var log = $('log'), vis = [].filter.call(log.children, function (m) { return getComputedStyle(m).display !== 'none'; });
+  var last = vis[vis.length - 1], pin = $('opts').offsetHeight + document.querySelector('.say').offsetHeight;
+  el.style.top = (last ? last.offsetTop + last.offsetHeight + 10 : 34) + 'px'; el.style.setProperty('--pinned', pin + 'px');
+  el.classList.add('open'); el.setAttribute('aria-hidden', 'false'); el.inert = false;
+}
+$('inspClose').addEventListener('click', function () { inspector(null); tree(); });
+document.addEventListener('keydown', function (e) { if (e.key === 'Escape' && $('inspector').classList.contains('open')) { inspector(null); tree(); } });
+function who(kind) {
+  var Wd = { m: ['Mentor', 'The studio’s AI, and proud of it'], p: ['Lead programmer', 'Engineering department'] }[kind];
+  $('whoTab').textContent = Wd[0]; $('whoName').innerHTML = Wd[0] + (kind === 'm' ? '' : ' <span style="font-weight:500;color:var(--ink-3)">(name TBD)</span>'); $('whoRole').textContent = Wd[1];
+}
+
+/* ---------- Play mode: Unity's rule, again. What changes while playing is undone on Stop. ---------- */
+function setRunning(on) {
+  var was = running; running = !!on;
+  if (running && !was) playTune = { G: tune.G, J: tune.J };
+  if (!running && was && playTune && (playTune.G !== tune.G || playTune.J !== tune.J)) {
+    tune = playTune; if ($('rG')) { $('rG').value = tune.G; $('rGOut').textContent = tune.G.toFixed(1); $('rJ').value = tune.J; $('rJOut').textContent = tune.J.toFixed(1); }
+    events('reverted');
+  }
+  if (!running) playTune = null;
+  $('editor').classList.toggle('playmode', running); $('gamebody').classList.toggle('playing', running);
+  $('bPlay').classList.toggle('on', running); $('bPlay').classList.remove('cue');
+  $('bPlayIcon').setAttribute('href', running ? '#i-stop' : '#i-play'); $('bPlay').querySelector('span').textContent = running ? 'Stop' : 'Play';
+  $('statusMsg').textContent = running ? 'Play mode' : 'Stopped';
+  // Stop puts the scene back as it was, as Unity does: hero at the start, coin back, no frozen bonk.
+  level(); if (running) { $('hint').hidden = document.activeElement === cv; } else { keys = {}; $('hint').hidden = true; }
+  events(running ? 'play' : 'stop');
+}
+$('bPlay').addEventListener('click', function () { setRunning(!running); if (running) cv.focus(); });
+
+/* ---------- the shift ---------- */
+var i = 0, prediction = null, feel = null;
+var rendering = false;   // while a step is being set up, stopping the game is housekeeping, not the kid's action
+function events(a) { if (rendering) return; var s = STEPS[i]; if (s && s.onEvent) s.onEvent(a); }
+function advance() { go(i + 1); }
+function advanceLater(ms) { var at = i; setTimeout(function () { if (i === at) advance(); }, ms); }
+function setGame(which) { theme = which; level(); tree();
+  $('gameOf').textContent = which === 'yours' ? 'your game' : 'customer’s game'; $('hierOf').textContent = which === 'yours' ? 'your parts' : 'customer’s game'; }
+
+var STEPS = [
+  { beat: 'The ticket', check: 'play',
+    enter: function () { setGame('customer'); tune = { G: 1.2, J: 6.3 }; showArc = false;
+      say([['p', 'Hi @name! Remember that floor you fixed? I’ve got a new one.'], ['p', 'A customer says their hero jumps like it’s on the moon. Can you try it?']]);
+      options([['Let’s try it', advance]]); },
+    what: 'The lead programmer from the first day brings a customer’s ticket. Same department, same character, a new job.',
+    gate: 'Nothing to gate yet: this is the hook.' },
+  { beat: 'Play it', check: 'play',
+    enter: function () { $('bPlay').classList.add('cue'); say([['p', 'Press Play. Try a jump right where you start, then try to reach the coin.']]); options([]); this.hit = false; },
+    onEvent: function (a) {
+      if (a === 'play') say([['p', 'Arrow keys to move, Space to jump. Watch how the jump moves.']]);
+      if ((a === 'bonk' || a === 'fell') && !this.hit) { this.hit = true;
+        say([['p', a === 'bonk' ? 'Bonk! It floated up so high it hit the spikes.' : 'You fell in the gap!'], ['p', 'Press Stop when you’ve seen enough.']]); $('bPlay').classList.add('cue'); }
+      if (a === 'stop' && this.hit) { done.play = true; advance(); }
+    },
+    what: 'The customer’s moon-jump: the hero floats slowly and far too high, and bonks the ceiling spikes.',
+    gate: 'No button moves on. The kid has to press Play and feel the problem: bonk the spikes or miss the landing. Then Stop.' },
+  { beat: 'Spot what’s wrong', check: 'spot',
+    enter: function () { say([['p', 'So, what felt wrong?']]);
+      var wrong = function () { say([['p', 'Maybe! Play once more and watch the jump, not the walk.']]); options([['OK, I’ll play again', function () { go(1); }]]); };
+      // The right answer is what the kid saw ("way too high"); "floaty" is the diagnosis, named after.
+      options([['The jump goes way too high', function () { done.spot = true; setChecks(); say([['p', 'Exactly. It floats up too high and too slowly. That’s a floaty jump.'], ['p', 'Let’s fix it.']]); options([['How?', advance]]); }],
+               ['The hero walks too slowly', wrong], ['The coin is too far away', wrong]]); },
+    what: 'The kid names the problem in their own words before anyone names the idea.',
+    gate: 'A wrong answer sends the kid back to play and watch. Answers are shuffled every time.' },
+  { beat: 'Predict first', check: 'predict',
+    enter: function () {
+      /* Asked the curriculum map's way ("higher or lower?"), which is what the kid needs to know to
+         get under the spikes, and without a hint line in front of it. */
+      say([['p', 'Gravity is a number in the game. Guess first: if we turn gravity UP, will the jump go higher or lower?']]);
+      var next = function (said) { return function () { prediction = said; done.predict = true; setChecks();
+        say([['k', said === 'lower' ? 'Lower' : 'Higher'], ['p', 'Let’s find out. Tune it and watch the jump.']]); options([['Let me tune it', advance]]); }; };
+      options([['Higher', next('higher')], ['Lower', next('lower')]]); },
+    what: 'A prediction before touching anything. It’s recorded, right or wrong, and playing shows the answer.',
+    gate: 'The curriculum map’s gravity evidence starts with a prediction. Either answer moves on; the next step proves it.' },
+  { beat: 'Tune it in the Inspector', check: 'tune',
+    enter: function () { showArc = true; this.retune = false;
+      say([['p', 'Tap Player in the Hierarchy. The dots show where a jump from “jump here” will go.'], ['p', 'Turn Gravity up until the dots stay under the spikes and reach the far side. Then press Play.']]); options([]); },
+    onEvent: function (a) {
+      if (a === 'reverted') { this.retune = true; say([['p', 'It snapped back! Remember your first day? Changes made while playing don’t stick.'], ['p', 'Tune it now, while it’s stopped, then press Play.']]); }
+      if (a === 'bonk') say([['p', 'Bonk! Still too high. More gravity, or a smaller jump.'], ['p', 'Stop, tune, then try again.']]);
+      if (a === 'fell') say([['p', 'Missed the gap! Jump right at the edge, or add a little Jump height.']]);
+      /* Lowering Jump height alone also reaches the coin, but the hero still drifts down like on the
+         moon, and gravity is the idea this shift teaches. The customer asked for a normal jump. The
+         hero goes back to the start, so the coin can't re-fire every frame while it overlaps. */
+      if (a === 'coin' && tune.G < 2.5) { coin.got = false; respawn();
+        say([['p', 'You made it! But it still floats down slowly, like on the moon.'], ['p', 'The customer wants a normal jump. Stop, turn Gravity up too, and try again.']]); return; }
+      if (a === 'coin') { done.tune = true; setChecks(); inspector(null); setRunning(false);
+        // close the prediction loop: the kid hears whether their guess was right
+        say([['p', 'Under the spikes and over the gap. You tuned a real game!'],
+             ['p', prediction === 'lower' ? 'And you guessed it: more gravity made the jump lower.' : prediction === 'higher' ? 'You guessed higher, but look: more gravity pulled the jump lower.' : 'More gravity pulled the jump lower.']]); advanceLater(2600); }
+    },
+    what: 'Two real knobs: Gravity (Rigidbody 2D) and Jump height (the player’s script). A dotted arc shows the jump while stopped and moves with the sliders.',
+    gate: 'The customer’s numbers can’t reach the coin. Only a tuning that stays under the spikes and clears the gap, proved in play, finishes it. Tuning during Play snaps back on Stop, as on day one.' },
+  { beat: 'Name it', check: 'yours',
+    enter: function () {
+      say([['p', 'That knob is called gravity. And the panel you used is the Inspector.'],
+           ['p', '<div class="card"><b>Gravity</b><p>The game pretends things fall. It’s a number you can tune.</p><dl><dt>Unity</dt><dd>Rigidbody 2D → Gravity Scale</dd></dl></div>', 'html'],
+           ['p', '<div class="card"><b>Inspector</b><p>Click a thing and see all its knobs. Change them here.</p><dl><dt>Unity</dt><dd>Inspector</dd></dl></div>', 'html']]);
+      $('cardChip').textContent = '3 cards: Play mode, Gravity, Inspector'; $('starCount').textContent = '2 stars'; $('statusMsg').textContent = 'New cards: Gravity, Inspector';
+      options([['Now my game', advance]]); },
+    what: 'The ideas are named only after the kid has felt and fixed them, each with its Unity name. No surprise prize this time: prizes are surprises, not a price on every job.',
+    gate: 'The cards exist because the kid earned them.' },
+  { beat: 'Tune your own game', check: 'yours', voice: 'm',
+    /* A real decision: the kid names the feel first, then has to tune Gravity into that feel's range
+       and still clear the lava in play. */
+    enter: function () { setGame('yours'); tune = { G: 3, J: 5 }; showArc = false; feel = null; var self = this;
+      say([['m', 'Your turn, @name. How should YOUR ' + HERO + '’s jump feel?']]);
+      var pickFeel = function (f, line) { return function () { feel = f; showArc = true;
+        say([['k', line], ['m', 'Tap Player to open its knobs. Tune Gravity for a ' + f + ' jump, then jump clear over the lava.']]); options([]); }; };
+      options([['Floaty, like the moon', pickFeel('moon', 'Floaty, like the moon')], ['Normal', pickFeel('normal', 'Normal')], ['Heavy and snappy', pickFeel('heavy', 'Heavy and snappy')]]); },
+    band: { moon: [0.5, 2.4], normal: [2.5, 4.4], heavy: [4.5, 6] },
+    onEvent: function (a) {
+      if (!feel) return;
+      var b = this.band[feel], inBand = tune.G >= b[0] && tune.G <= b[1];
+      if (a === 'lava') say([['m', 'Over the lava, not through it! Stop, and tune it so you can jump clear.']]);
+      if (a === 'cleared' && !inBand) say([['m', 'You cleared it! But that’s not a ' + feel + ' jump yet. Stop and tune Gravity ' + (tune.G < b[0] ? 'up' : 'down') + '.']]);
+      if (a === 'cleared' && inBand) { done.yours = true; setChecks(); setRunning(false); inspector(null);
+        say([['m', { moon: 'A moon jump! Floaty and fun.', normal: 'A nice, normal jump.', heavy: 'A heavy, snappy jump!' }[feel] + ' That’s your game’s feel now.'],
+             ['m', '<span class="feelchip">Your jump: ' + feel + '</span>', 'html']]); options([['Done', advance]]); }
+    },
+    what: 'The kid picks their own game’s feel (moon, normal or heavy), then tunes it to match and still clears the lava.',
+    gate: 'Gravity has to land in the chosen feel’s range and the jump has to clear the lava in play. The feel goes on the learner card.' },
+  { beat: 'Later: it comes back', check: null,
+    enter: function () { inspector(null); setGame('yours');
+      var q = [['p', 'Three shifts later…'], ['p', 'QA says: in your game, the hero can’t reach the new ledge. Which knob, which way?']];
+      say(q);
+      // "Which way" is really tested (up and down both offered), and a wrong answer keeps the question on screen.
+      options([['Jump height up', function () { say([['p', 'Yes! A bigger jump reaches higher. And gravity stays how you like it.']]); options([['Play the shift again', function () { go(0); }]]); }],
+               ['Jump height down', function () { say(q.concat([['p', 'That makes the jump smaller. Try another.']])); }],
+               ['Gravity up', function () { say(q.concat([['p', 'That pulls harder, so the jump gets even lower. Try another.']])); }]]); },
+    what: 'The idea returns weeks later as a decision in a new situation. Code scores it.',
+    gate: 'Wrong answers get explained and asked again. The result updates the skill tracker; it never moves the kid on by itself.' }
+];
+
+function render() {
+  clicks = [];
+  var s = STEPS[i]; inspector(null); who(s.voice || 'p');
+  rendering = true; if (running) setRunning(false); rendering = false;
+  s.enter.call(s); setChecks();
+  $('nBeat').textContent = 'Step ' + (i + 1) + ' · ' + s.beat; $('nWhat').textContent = s.what; $('nGate').textContent = s.gate;
+  $('back').disabled = i === 0; $('next').disabled = i === STEPS.length - 1;
+  Array.prototype.forEach.call($('dots').children, function (b, k) { if (k === i) b.setAttribute('aria-current', 'step'); else b.removeAttribute('aria-current'); b.classList.toggle('past', k < i); });
+}
+function go(n) { i = Math.max(0, Math.min(STEPS.length - 1, n)); render(); }
+STEPS.forEach(function (s, k) {
+  var b = document.createElement('button'); b.textContent = String(k + 1); b.setAttribute('aria-label', 'Step ' + (k + 1) + ': ' + s.beat);
+  b.addEventListener('click', function () { go(k); }); $('dots').appendChild(b);
+});
+$('back').addEventListener('click', function () { go(i - 1); });
+$('next').addEventListener('click', function () {
+  ['play', 'spot', 'predict', 'tune', 'yours'].slice(0, i).forEach(function (c) { done[c] = true; });
+  go(i + 1);
+});
+$('say').addEventListener('keydown', function (e) {
+  if (e.key !== 'Enter' || !this.value.trim()) return;
+  var vv = STEPS[i].voice || 'p', text = this.value.trim().slice(0, 120); this.value = '';
+  var keep = shown.filter(function (m) { return m[0] !== 'k' && m[2] !== 'html'; }).slice(-1);
+  say(keep.concat([['k', text], [vv, $('opts').children.length ? 'Good thought! For now, tap one of the answers below.' : 'Good thought! Keep going: ' + (keep.length ? keep[0][1] : 'the game is waiting.')]]));
+});
+
+/* Scale the 1366×650 frame to the window, as in 03 and 04; #embed for the explainer page. */
+(function () {
+  var s = $('scaler'), doc = document.querySelector('header.doc'), nav = document.querySelector('.nav');
+  var embed = location.hash === '#embed';
+  if (embed) {
+    document.documentElement.classList.add('embed');
+    var post = function () { parent.postMessage({ wfHeight: Math.ceil(document.body.getBoundingClientRect().height) }, '*'); };
+    if (window.ResizeObserver) new ResizeObserver(post).observe(document.body);
+    window.addEventListener('load', post);
+  }
+  function fit() {
+    if (embed) { var ke = Math.min(1, s.parentElement.clientWidth / 1366);
+      s.style.transform = 'scale(' + ke + ')'; s.style.height = (650 * ke) + 'px'; s.style.width = (1366 * ke) + 'px'; return; }
+    var chrome = doc.offsetHeight + nav.offsetHeight + 12 + 16;
+    var k = Math.min(1, (s.parentElement.clientWidth - 32) / 1366, (innerHeight - chrome > 150 ? Math.max(0.5, (innerHeight - chrome) / 650) : 1));
+    s.style.transform = 'scale(' + k + ')'; s.style.height = (650 * k) + 'px'; s.style.width = (1366 * k) + 'px';
+    document.documentElement.style.setProperty('--col', Math.round(1366 * k + 32) + 'px');
+  }
+  window.addEventListener('resize', fit); window.addEventListener('load', fit); fit(); fit();
+})();
+level(); tree(); render(); loop();
+</script>
+</body>
+</html>
