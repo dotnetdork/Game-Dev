@@ -22,6 +22,12 @@ colors:
   guest-bubble: "#33404f"
   callout-paper: "#fbf6ea"
   callout-ink: "#1d1a12"
+  card-warm: "#2f2a24"
+  card-warm-on: "#3a3027"
+  code-ground: "#1e1e1e"
+  code-keyword: "#9cb8e0"
+  meter-music: "#8fb3ff"
+  track-off: "#555555"
 typography:
   body:
     fontFamily: "system-ui, -apple-system, \"Segoe UI\", Roboto, sans-serif"
@@ -53,6 +59,7 @@ typography:
 rounded:
   row: "4px"
   control: "5px"
+  well: "7px"
   tab: "6px 6px 0 0"
   option: "8px"
   callout: "10px"
@@ -142,6 +149,41 @@ components:
     textColor: "{colors.callout-ink}"
     rounded: "{rounded.callout}"
     padding: "8px 12px"
+  inspector-slot:
+    backgroundColor: "transparent"
+    textColor: "{colors.ink-2}"
+    typography: "{typography.title}"
+    rounded: "{rounded.option}"
+    padding: "0 12px"
+    height: "44px"
+  choice-swatch:
+    backgroundColor: "{colors.panel-2}"
+    textColor: "{colors.ink}"
+    typography: "{typography.title}"
+    rounded: "{rounded.option}"
+    padding: "0 10px"
+    height: "44px"
+  concept-card:
+    backgroundColor: "{colors.card-warm}"
+    textColor: "{colors.ink}"
+    typography: "{typography.message}"
+    rounded: "{rounded.callout}"
+    padding: "12px 14px"
+  card-tile:
+    backgroundColor: "{colors.panel-2}"
+    textColor: "{colors.ink}"
+    typography: "{typography.title}"
+    rounded: "{rounded.option}"
+    padding: "8px 10px"
+    width: "132px"
+  card-tile-selected:
+    backgroundColor: "{colors.card-warm-on}"
+    textColor: "{colors.ink}"
+  checklist-item:
+    backgroundColor: "transparent"
+    textColor: "{colors.ink-2}"
+    typography: "{typography.title}"
+    height: "30px"
 ---
 
 # Design System: Game Dev (the rework)
@@ -223,6 +265,13 @@ A neutral graphite editor with one warm accent and one saturated zone, the game.
   competes with the game.
 - **Callout Paper** (`callout-paper`) on **Callout Ink** (`callout-ink`): the one light surface in
   the editor, the pointer bubble that names what the kid is looking at.
+- **Card Warm** (`card-warm`): a concept card in the conversation, a warm graphite that marks the
+  moment an idea is named; **Card Warm, Picked** (`card-warm-on`): a card tile the kid has opened.
+- **Script Ground** (`code-ground`) and **Keyword Blue-Grey** (`code-keyword`): the C# pane, a
+  code editor's near-black with muted keywords; still quieter than the game.
+- **Music Meter Blue** (`meter-music`): the music level in the Audio Mixer, the one non-orange level,
+  so music and sound effects read apart at a glance.
+- **Empty Track** (`track-off`): the unfilled part of a switch or a card's level bar.
 
 ### Named Rules
 **The One Accent Rule.** Orange is the only chrome hue. Anything Unity would paint selection blue
@@ -260,19 +309,31 @@ without the plain one.
 
 ## Layout
 
-A fixed editor frame designed at 1366×768, the Chromebook screen, scaled down whole to fit
-narrower windows. A four-row, three-column grid: toolbar (56px), workspace, Project drawer (30px),
-status bar (26px); left column 264px, centre flexible, right column 388px running from under the
-toolbar to the status bar. Docks meet with 1px gaps that show the charcoal ground, as editor
-panes do.
+An editor designed at 1366×650, the usable part of a 1366×768 Chromebook screen once Chrome's own
+bars are gone. A four-row, three-column grid: toolbar (56px), workspace, Project drawer (30px, or a
+118–132px shelf when a shift needs its sounds or cards), status bar (26px); left column 264px,
+centre flexible, right column 388px running from under the toolbar to the status bar. The
+workspace row is `minmax(0, 1fr)` so tall dock content scrolls inside its dock instead of pushing
+the drawer and status bar out of the frame. Docks meet with 1px gaps that show the charcoal
+ground, as editor panes do.
 
-- **Toolbar:** League wordmark and project name left, Play / Pause / Step centred in a charcoal
-  well, exactly where Unity keeps them.
-- **Left column:** a compact Quest dock over the Hierarchy.
-- **Centre:** the Game dock, the game filling it.
-- **Right column:** the mentor's dock, in Unity's Inspector slot. The kid's primary action, the
-  mentor's options, sits at its lower right.
-- **Bottom:** the Project drawer ("your cards") and the status bar with the quiet stars.
+- **Toolbar:** League wordmark and project name left, Play centred in a charcoal well, exactly
+  where Unity keeps it. Pause and Step join it only when a quest needs them (the frame shift).
+- **Left column:** during a shift, a compact Quest dock (the checklist) over the Hierarchy; on the
+  desk between shifts, the Studio dock (milestones and departments) in the same place.
+- **Centre:** the Game dock, the game filling it. When the C# pane opens it is its own dock beside
+  the game, its tab level with the Game tab.
+- **Right column:** the character's dock (the mentor, or the studio character running the shift).
+  The kid's primary action, the options, sits at its lower right. When a part is picked, the
+  **Inspector opens as its own dock above it**, with its own tab.
+- **Bottom:** the Project drawer ("your cards", or the shift's shelf) and the status bar with the
+  quiet stars.
+
+**The Zoom Rule.** The product's editor is a fluid layout that honours browser zoom: at 1366×650 it
+is exactly the grid above, and when a kid zooms in, text and targets get bigger and the docks
+reflow (columns shrink before type does). The wireframes in `docs/rework/wireframes/` stand in with
+a fixed frame scaled to fit the window, which cancels zoom (WCAG 2.2 resize text, 1.4.4); the
+prototype must not copy that (Jay, 2026-09-25, from the audit).
 
 Spacing runs on a small editor rhythm (6, 8, 10, 12px); dock bodies pad 10px by 12px. Fixed-height
 strips centre their content vertically. Controls grow to 44px targets even inside compact strips.
@@ -283,12 +344,11 @@ in its final place, so the layout never jumps and the kid sees where things will
 ## Elevation & Depth
 
 Depth is tonal: charcoal ground, graphite docks, raised graphite rows, the darkest well behind the
-game. Shadows are rare and soft, used only on the few things that float over the docks.
+game. Shadows are rare and soft, used only on the few things that float over the docks: the
+callout, the key hint over the game, and the pops. The Inspector is a dock and does not lift.
 
 ### Shadow Vocabulary
-- **Inspector lift** (`box-shadow: 0 -10px 24px rgba(0,0,0,.35)`): the Inspector as it slides over
-  the mentor's dock.
-- **Callout lift** (`box-shadow: 0 6px 18px rgba(0,0,0,.35)`): the pointer bubble over the game.
+- **Callout lift** (`box-shadow: 0 6px 18px rgba(0,0,0,.35)`): the pointer bubble above a tab.
 - **Play ring** (`box-shadow: inset 0 0 0 3px` League Orange): round the game while it runs.
 - **Play cue** (`box-shadow: 0 0 0 2px` League Orange): round the Play button when pressing it is
   the next step.
@@ -296,12 +356,16 @@ game. Shadows are rare and soft, used only on the few things that float over the
 
 ### Named Rules
 **The Tonal Stack Rule.** Docks never cast shadows; they sit flat in their grid and read by tone.
-Only overlays (Inspector, callout) lift.
+Only true overlays (the callout, the key hint, the pops) lift.
+
+**The No Overlay Rule.** A panel never lies over another panel. When something needs room (the
+Inspector, the C# pane), it opens as a dock and its neighbours shrink; what they held stays
+readable and scrolls to its newest line (Jay, 2026-09-25).
 
 ## Shapes
 
 Small, practical corners, as editor chrome has: 4px on list rows and chips, 5px on transport
-buttons and the quest card, 6px tops on tabs (square at the bottom where they join the dock),
+buttons and the quest card, 7px on the charcoal well that groups the transport, 6px tops on tabs (square at the bottom where they join the dock),
 8px on dialogue options and the say field, 10px on the callout, 12px on message bubbles, circles
 for the quest dot, slider thumbs and the mentor's face. Borders are hairlines; the only heavier
 stroke is the 1.5px orange outline on dialogue options.
@@ -314,7 +378,8 @@ stroke; no icon fonts, no emoji, no second set.
 ## Components
 
 ### Buttons (transport)
-Play, Pause, Step: Unity's own buttons, with words.
+Play (and Pause, Step when a quest needs them): Unity's own buttons, with words. Play is real: it
+runs and stops the game, and the toolbar can never disagree with the game.
 - **Shape:** gently rounded (5px), 44px tall, icon plus word, grouped in a charcoal well (7px).
 - **Idle:** Raised Graphite with Secondary Ink.
 - **Active:** Play becomes Stop while the game runs: solid League Orange with Orange Ink, stop icon.
@@ -330,7 +395,15 @@ The kid's primary action: 3–4 answers under the mentor's latest line, plus "sa
 - **Say field:** charcoal well, Soft Hairline border, 8px corners, 44px tall, 14px text, Quiet Ink
   placeholder "Say something else…". Typing is never required.
 - **Inspector sliders:** 44px hit height, 6px Raised Graphite track, 22px League Orange thumb with
-  an Orange Ink rim. Each row is 48px: the kid's field name over its real Unity property name.
+  an Orange Ink rim. Each row is 44px: the kid's field name over its real Unity property name, and
+  the value shown as a number beside the track. A slider's accessible value says what it means
+  ("2.0, the jump hits the spikes"), not only the number.
+- **Switch** (e.g. Solid, Hurts player): a 44px button with a 38×22px track (Empty Track grey, League
+  Orange when on) and the state in words beside it ("On: things stand on it").
+- **Choice swatches** (a colour, a sound): 44px buttons with a word, and a colour dot when it is a
+  colour; never colour alone. The picked one gets the 2px orange ring.
+- **Inspector slot** (e.g. a sound slot): a 44px dashed outline in Quiet Ink while empty ("Tap to add
+  a sound", one line), solid orange outline once filled.
 
 ### Chips
 - **Style:** Raised Graphite, Secondary Ink, 4px corners, Label size; used for counts in the
@@ -347,14 +420,21 @@ The tab carries an icon, the **real Unity panel name**, and a kid subtitle in La
 the level, which has a fold chevron. Hover is Raised Graphite; selected is solid League Orange
 with Orange Ink. New parts snap in from the left with a brief Orange Wash (0.6s).
 
-### Mentor dock and Inspector (signature)
-The mentor lives in Unity's Inspector slot: a header (face, name, "The studio's AI, and proud of
-it"), the message log, the options, the say field. Messages are 12px-rounded bubbles: mentor in
-Raised Graphite, the kid right-aligned in Kid Bubble, visiting characters in Guest Bubble, each
-with a Caption naming the speaker. When a Hierarchy part is picked, the **Inspector slides in from
-the right below the mentor's latest line**, earlier lines hide, and the options and say field stay
-pinned beneath it: the kid still sees what the mentor just said and can still answer. The Inspector
-has its own tab and a 44px close button.
+### Character dock and Inspector (signature)
+The mentor, or the studio character running the shift, lives in the right column: a header (face,
+name, role), the message log, the options, the say field. Messages are 12px-rounded bubbles: mentor
+in Raised Graphite, the kid right-aligned in Kid Bubble, visiting characters in Guest Bubble. The
+speaker's Caption shows only when the speaker changes; a second line in a row doesn't repeat it.
+The dock's tab always names who is talking. Answers are shuffled every time they are shown, and
+each new line is read out once by a single screen-reader announcer.
+
+When a Hierarchy part is picked, the **Inspector opens as its own dock above the character's dock**,
+with its own tab ("Inspector · Player") and a 44px close button (Escape closes it too). The
+character's dock shrinks, drops its name card (its tab still says who is talking) and keeps its
+newest line scrolled into view; the options and say field stay where they are. Nothing lies over
+the conversation. *One narrow exception:* when a step opens the Inspector for its job (the silent
+coins' sound slots and mixer), the step owns it and closes it when the job is done, so it has no
+close button; a kid who closed it early could not get it back.
 
 ### Game dock
 The game fills the Game Well. In Play mode the game gets the 3px orange inset ring, the chrome
@@ -362,23 +442,55 @@ takes the Play-Mode Umber tint, and a one-number frame counter (Unity's Stats ov
 sits top right in the Stats face on a translucent black plate.
 
 ### Callout
-A cream speech bubble (10px corners, callout lift, a tail) pinned over the game, naming what the
-kid is looking at in one sentence ("This is the Game view: where your game lives.").
+A cream speech bubble (10px corners, callout lift, a tail) naming a panel in one sentence ("This is
+the Game view: where games run."). It floats **just above the panel's tab and points down at it**,
+never inside the panel it names: the tab is the label the kid will find again in Unity.
+
+### Quest checklist
+The shift's steps in the Quest dock: 30px rows, a 20px box that fills League Orange with a check
+only on evidence from play, the current step in Title weight with an orange box outline.
+
+### Concept card
+Earned in the conversation after an idea is felt and used: Card Warm ground, 1.5px orange outline,
+10px corners; the name in bold, the kid definition in one sentence, then the real names (Unity
+first). Cards collect in the Project drawer.
+
+### Cards drawer and tiles
+On the desk the Project drawer opens into a shelf of 132px tiles, newest first, scrolling sideways
+inside the drawer: the idea's name, a four-segment level bar (new, learning, solid, strong: League
+Orange segments on Empty Track grey), and the level in words. A tool (a prize) gets an orange
+outline. Tapping a tile opens its back in the Inspector.
+
+### Studio dock
+Between shifts: the milestone track (Hired, Prototype, Alpha, Beta, Launch party: a filled orange
+circle with a check when done, an orange outline for the next one) and the departments (an orange
+dot when unlocked, a hollow dot when not), with one line about today.
+
+### Pops and the key hint
+A sound made visible over the game ("DING!", 20px, weight 800, white with a dark shadow), which
+drifts up and fades; a sound the music buries shows small and faint, so the pop tells the same
+story as the speakers. The key hint ("← → or A D move · Space or W jump") sits over the bottom of
+the game until the game has focus.
 
 ### Unity mapping
 Recorded in the contract and the artifact's step notes; any new surface keeps it.
 - **Kept, real names:** toolbar with centred Play / Pause / Step; Game view; Hierarchy (parts
   indented under the level); Inspector (component header, property rows); Play-mode tint and the
   undo-on-Stop behaviour; the Stats overlay (one number).
-- **Repurposed:** the Inspector's right-hand slot holds the mentor; the Project window becomes
-  "your cards"; the status bar holds the quiet stars; selection blue becomes League orange.
-- **Removed (until a quest needs them):** the Scene tab, Console, move/rotate/scale tools, the
-  account and layout menus.
-- **Added:** the Quest dock above the Hierarchy; the mentor; kid subtitles on real panel names.
+- **Repurposed:** the right-hand column holds the mentor and characters, with the Inspector docked
+  above them when a part is picked; the Project window becomes "your cards" (and a shift's shelf);
+  the status bar holds the quiet stars; selection blue becomes League orange.
+- **Removed (until a quest needs them):** the Scene tab, Console (it returns as one line under the C#
+  pane), move/rotate/scale tools, Pause and Step, the account and layout menus.
+- **Added:** the Quest and Studio docks above the Hierarchy; the characters; kid subtitles on real
+  panel names.
 
 ### Motion
-Reveals fade over 0.45s and the Inspector slides over 0.4s, both on `cubic-bezier(.16,1,.3,1)`;
-parts snap in 650ms apart. Under `prefers-reduced-motion` every transition and animation is off.
+Reveals fade over 0.45s and the Inspector dock drops in over 0.35s (fade and 8px), both on
+`cubic-bezier(.16,1,.3,1)`; parts snap in 650ms apart; pops rise and fade over 0.9s; a new tool
+arrives in the toolbar with a 1.2s ring. A first success holds about 1.5s, with a line of praise,
+before the story moves on. Under `prefers-reduced-motion` every transition and animation is off;
+the states they carry (a pop, a new tool) still appear, just without the movement.
 
 ## Do's and Don'ts
 
@@ -390,7 +502,10 @@ parts snap in 650ms apart. Under `prefers-reduced-motion` every transition and a
 - **Do** keep the kid's game the most colourful thing on screen; chrome stays grey.
 - **Do** show unrevealed docks as a 1px closed outline in their final place.
 - **Do** tint the chrome and ring the game in orange while Play mode is on.
-- **Do** keep the mentor's latest line and its options visible when the Inspector opens.
+- **Do** open the Inspector as its own dock above the character's dock; keep the newest line and the options visible.
+- **Do** point a callout at a panel's tab from above.
+- **Do** make every step's progress depend on evidence from play, and shuffle answers every time.
+- **Do** build the product's editor fluid, so browser zoom makes it bigger (The Zoom Rule).
 
 ### Don't:
 - **Don't** take colours, type or components from the legacy `app/public/` styles; they are not authority for the rework.
@@ -399,3 +514,6 @@ parts snap in 650ms apart. Under `prefers-reduced-motion` every transition and a
 - **Don't** use icon-only controls, icon fonts, emoji or a second icon set.
 - **Don't** show a removed Unity tool (Scene tab, Console, transform tools, account and layout menus) until a quest needs it.
 - **Don't** give docks shadows; only overlays lift.
+- **Don't** lay a panel over another panel; docks stack and shrink (The No Overlay Rule).
+- **Don't** show a control that looks live but does nothing; hide it until a quest needs it (hidden, not greyed out).
+- **Don't** scale the product's editor to fit the window; that cancels zoom.

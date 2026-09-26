@@ -70,7 +70,9 @@
       <img class="wordmark" alt="The League of Amazing Programmers" src="{{LOGO}}">
       <span class="project">· <b>Captain Byte’s Game</b></span>
     </div>
-    <div class="transport" aria-label="Play controls"><button class="tbtn" id="bPlay" disabled aria-disabled="true" title="Clock in first"><svg class="i"><use href="#i-play"/></svg><span>Play</span></button></div>
+    <!-- Play is hidden on the desk, not greyed out: a control that looks live but does nothing is a
+         Don't in DESIGN.md. It appears when the kid clocks in. -->
+    <div class="transport ghosted" id="transport" aria-label="Play controls" inert><button class="tbtn" id="bPlay"><svg class="i"><use href="#i-play"/></svg><span>Play</span></button></div>
     <div class="tool-right"></div>
   </div>
 
@@ -262,12 +264,13 @@ var STEPS = [
       say([['m', 'Today: Engineering. The programmer is dropping by.'], ['m', 'They want to show you the code behind your coin sound…']]);
       options([['Clock in', function () {
         $('nGate').innerHTML = '<span class="branchnote">Reviewer note:</span> Clock in opens session 5’s first shift (the programmer’s first visit: “Fell through the floor” and <code>Coin.cs</code>), which isn’t built as its own wireframe yet. Its C# step is in the silent-coins wireframe.';
-        $('statusMsg').textContent = 'Clocked in'; say([['m', 'Clocked in. Have a great shift, @name!']]); options([]); }]]); },
+        $('statusMsg').textContent = 'Clocked in'; $('transport').classList.remove('ghosted'); $('transport').inert = false;
+        say([['m', 'Clocked in. Have a great shift, @name!']]); options([]); }]]); },
     what: 'The director’s glimpse of today, as one teaser, and one next step: Clock in.',
-    gate: 'Everything on the desk leads to Clock in. Play stays off until then: the desk is for looking back and ahead, the shift is for doing.' }
+    gate: 'Everything on the desk leads to Clock in. Play is hidden until then, not greyed out: the desk is for looking back and ahead, the shift is for doing.' }
 ];
 function render() {
-  var s = STEPS[i]; inspector(null); pointAt(null); $('today').hidden = i < 3; s.enter.call(s);
+  var s = STEPS[i]; inspector(null); pointAt(null); $('today').hidden = i < 3; $('transport').classList.add('ghosted'); $('transport').inert = true; s.enter.call(s);
   $('nBeat').textContent = 'Step ' + (i + 1) + ' · ' + s.beat; $('nWhat').textContent = s.what; $('nGate').textContent = s.gate;
   $('back').disabled = i === 0; $('next').disabled = i === STEPS.length - 1;
   Array.prototype.forEach.call($('dots').children, function (b, k) { if (k === i) b.setAttribute('aria-current', 'step'); else b.removeAttribute('aria-current'); b.classList.toggle('past', k < i); });
