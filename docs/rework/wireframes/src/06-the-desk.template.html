@@ -94,21 +94,26 @@
     </div>
   </section>
 
-  <section class="dock right" id="dMentor" aria-label="Conversation">
-    <div class="tabs"><span class="tab"><svg class="i" style="color:var(--accent)"><use href="#i-cube"/></svg><span>Mentor</span></span></div>
-    <div class="who">
-      <div class="face" aria-hidden="true">face<br>TBD</div>
-      <div><strong>Mentor</strong><span>The studio’s AI, and proud of it</span></div>
-    </div>
-    <div class="log" id="log"></div>
-    <div class="opts" id="opts"></div>
-    <div class="say"><input id="say" type="text" placeholder="Say something else…" aria-label="Say something else"></div>
-    <div class="inspector" id="inspector" aria-label="Inspector" aria-hidden="true" inert>
+  <!-- The right column: the Inspector opens as its own dock ABOVE the character's dock, with its own
+       tab, as Unity stacks docked panels. It never lies over the conversation (Jay, 2026-09-25). -->
+  <div class="rightcol">
+  <section class="dock inspector" id="inspector" aria-label="Inspector" aria-hidden="true" inert>
       <div class="tabs"><span class="tab"><svg class="i"><use href="#i-sliders"/></svg>Inspector <small id="inspName"></small></span>
         <button class="x" id="inspClose" aria-label="Close the Inspector"><svg class="i"><use href="#i-x"/></svg></button></div>
       <div class="dock-body" id="inspBody"></div>
-    </div>
-  </section>
+    </section>
+
+    <section class="dock right" id="dMentor" aria-label="Conversation">
+      <div class="tabs"><span class="tab"><svg class="i" style="color:var(--accent)"><use href="#i-cube"/></svg><span>Mentor</span></span></div>
+      <div class="who">
+        <div class="face" aria-hidden="true">face<br>TBD</div>
+        <div><strong>Mentor</strong><span>The studio’s AI, and proud of it</span></div>
+      </div>
+      <div class="log" id="log"></div>
+      <div class="opts" id="opts"></div>
+      <div class="say"><input id="say" type="text" placeholder="Say something else…" aria-label="Say something else"></div>
+    </section>
+  </div>
 
   <section class="shelf" aria-label="Project: your cards and tools">
     <div class="tabs"><span class="tab"><svg class="i"><use href="#i-cards"/></svg>Project <small>your cards and tools</small></span></div>

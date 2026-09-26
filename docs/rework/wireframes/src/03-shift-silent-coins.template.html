@@ -131,21 +131,25 @@
     </div>
   </section>
 
-  <section class="dock right" id="dMentor" aria-label="Conversation">
-    <div class="tabs"><span class="tab"><svg class="i" style="color:var(--accent)"><use href="#i-cube"/></svg><span id="whoTab">Sound designer</span></span></div>
-    <div class="who">
-      <div class="face" aria-hidden="true">face<br>TBD</div>
-      <div><strong id="whoName">Sound designer <span style="font-weight:500;color:var(--ink-3)">(name TBD)</span></strong><span id="whoRole">Audio department</span></div>
-    </div>
-    <div class="log" id="log"></div>
-    <div class="opts" id="opts"></div>
-    <div class="say"><input id="say" type="text" placeholder="Say something else…" aria-label="Say something else"></div>
-
-    <div class="inspector" id="inspector" aria-label="Inspector" aria-hidden="true" inert>
+  <!-- The right column: the Inspector opens as its own dock ABOVE the character's dock, with its own
+       tab, as Unity stacks docked panels. It never lies over the conversation (Jay, 2026-09-25). -->
+  <div class="rightcol">
+  <section class="dock inspector" id="inspector" aria-label="Inspector" aria-hidden="true" inert>
       <div class="tabs"><span class="tab"><svg class="i"><use href="#i-sliders"/></svg>Inspector <small id="inspName"></small></span></div>
       <div class="dock-body" id="inspBody"></div>
-    </div>
-  </section>
+    </section>
+
+    <section class="dock right" id="dMentor" aria-label="Conversation">
+      <div class="tabs"><span class="tab"><svg class="i" style="color:var(--accent)"><use href="#i-cube"/></svg><span id="whoTab">Sound designer</span></span></div>
+      <div class="who">
+        <div class="face" aria-hidden="true">face<br>TBD</div>
+        <div><strong id="whoName">Sound designer <span style="font-weight:500;color:var(--ink-3)">(name TBD)</span></strong><span id="whoRole">Audio department</span></div>
+      </div>
+      <div class="log" id="log"></div>
+      <div class="opts" id="opts"></div>
+      <div class="say"><input id="say" type="text" placeholder="Say something else…" aria-label="Say something else"></div>
+    </section>
+  </div>
 
   <section class="shelf locked" id="shelf" aria-label="Project: sounds">
     <div class="tabs"><span class="tab"><svg class="i"><use href="#i-cards"/></svg>Project <small>sounds</small></span></div>
@@ -406,7 +410,7 @@ function slotsHtml() {
   function row(k, label, why) {
     var v = assign[k];
     return '<div class="irow"><label>' + label + '<small>' + why + '</small></label><button class="slot' + (v ? ' filled' : '') + '" data-slot="' + k + '">' +
-      (v ? SOUNDS[v].label : 'Tap to add a sound')   // the dashed outline already says it's empty; one line, not two + '</button></div>';
+      (v ? SOUNDS[v].label : 'Tap to add a sound') + '</button></div>';
   }
   return '<div class="comp"><svg class="i"><use href="#i-fold"/></svg><strong>Audio Source</strong></div>' +
     row('coin', 'When you grab a coin', 'Unity: AudioClip') + row('jump', 'When you jump', 'Unity: AudioClip') + row('hurt', 'When you fall in lava', 'Unity: AudioClip');

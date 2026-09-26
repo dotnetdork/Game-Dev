@@ -174,18 +174,22 @@
                color: var(--ink); padding: 0 12px; font: inherit; font-size: 14px; }
   .say input::placeholder { color: var(--ink-3); }
 
-  /* Inspector: docks INTO the panel, between the conversation and the answers, when a part is picked.
-     It used to be laid over the panel from wherever the last line happened to end, which could cover
-     the conversation (Jay, 2026-09-25). Now the conversation shrinks to make room and keeps its newest
-     lines scrolled into view (the scripts scroll it after opening); nothing is ever underneath it.
-     Order: tabs, who, conversation, Inspector, answers, say field. */
-  .right > .tabs, .right > .who { order: 0; } .right > .log { order: 1; min-height: 72px; }
-  .right > .inspector { order: 2; } .right > .opts { order: 3; } .right > .say { order: 4; }
-  .inspector { display: none; flex: 0 1 auto; max-height: 62%; min-height: 0; flex-direction: column; background: var(--panel);
-               border-top: 1px solid var(--line); box-shadow: 0 -10px 24px rgba(0,0,0,.35); }
-  .inspector.open { display: flex; animation: inspIn .4s cubic-bezier(.16,1,.3,1); }
+  /* The right column holds two docks, as Unity stacks docked panels: the Inspector ON TOP, with its
+     own tab, and the character's dock below it. The Inspector dock exists only while a part is
+     picked; then the character's dock shrinks and keeps its newest line in view (the scripts scroll
+     it). Nothing lies over anything (Jay, 2026-09-25: "a tab above the sound designer ... not an
+     overlay"). Docks meet on the 1px ground gap and cast no shadow (The Tonal Stack Rule). */
+  .rightcol { grid-area: right; display: flex; flex-direction: column; gap: 1px; min-height: 0; background: var(--ground); }
+  .rightcol > .right { grid-area: auto; flex: 1 1 auto; min-height: 0; }
+  .right .log { min-height: 72px; }
+  /* While the Inspector is open the character's dock drops its name card: its tab already says who is
+     talking, and the room goes to the conversation, so the newest line always fits. */
+  .rightcol:has(.inspector.open) .who { display: none; }
+  .inspector .irow { min-height: 44px; }
+  .inspector { display: none; flex: 0 1 auto; max-height: 56%; min-height: 0; flex-direction: column; background: var(--panel); }
+  .inspector.open { display: flex; animation: inspIn .35s cubic-bezier(.16,1,.3,1); }
   .inspector .dock-body { overflow: auto; }
-  @keyframes inspIn { from { transform: translateX(104%); } to { transform: none; } }
+  @keyframes inspIn { from { opacity: 0; transform: translateY(-8px); } to { opacity: 1; transform: none; } }
   .inspector .tabs { justify-content: space-between; align-items: center; }
   .x { border: 0; background: transparent; color: var(--ink-2); min-height: 44px; min-width: 44px; border-radius: 4px; cursor: pointer; }
   .x:hover { background: var(--panel-2); }
@@ -419,21 +423,25 @@
     </div>
   </section>
 
-  <section class="dock right" id="dMentor" aria-label="Conversation">
-    <div class="tabs"><span class="tab"><svg class="i" style="color:var(--accent)"><use href="#i-cube"/></svg><span id="whoTab">Sound designer</span></span></div>
-    <div class="who">
-      <div class="face" aria-hidden="true">face<br>TBD</div>
-      <div><strong id="whoName">Sound designer <span style="font-weight:500;color:var(--ink-3)">(name TBD)</span></strong><span id="whoRole">Audio department</span></div>
-    </div>
-    <div class="log" id="log"></div>
-    <div class="opts" id="opts"></div>
-    <div class="say"><input id="say" type="text" placeholder="Say something else…" aria-label="Say something else"></div>
-
-    <div class="inspector" id="inspector" aria-label="Inspector" aria-hidden="true" inert>
+  <!-- The right column: the Inspector opens as its own dock ABOVE the character's dock, with its own
+       tab, as Unity stacks docked panels. It never lies over the conversation (Jay, 2026-09-25). -->
+  <div class="rightcol">
+  <section class="dock inspector" id="inspector" aria-label="Inspector" aria-hidden="true" inert>
       <div class="tabs"><span class="tab"><svg class="i"><use href="#i-sliders"/></svg>Inspector <small id="inspName"></small></span></div>
       <div class="dock-body" id="inspBody"></div>
-    </div>
-  </section>
+    </section>
+
+    <section class="dock right" id="dMentor" aria-label="Conversation">
+      <div class="tabs"><span class="tab"><svg class="i" style="color:var(--accent)"><use href="#i-cube"/></svg><span id="whoTab">Sound designer</span></span></div>
+      <div class="who">
+        <div class="face" aria-hidden="true">face<br>TBD</div>
+        <div><strong id="whoName">Sound designer <span style="font-weight:500;color:var(--ink-3)">(name TBD)</span></strong><span id="whoRole">Audio department</span></div>
+      </div>
+      <div class="log" id="log"></div>
+      <div class="opts" id="opts"></div>
+      <div class="say"><input id="say" type="text" placeholder="Say something else…" aria-label="Say something else"></div>
+    </section>
+  </div>
 
   <section class="shelf locked" id="shelf" aria-label="Project: sounds">
     <div class="tabs"><span class="tab"><svg class="i"><use href="#i-cards"/></svg>Project <small>sounds</small></span></div>
@@ -694,7 +702,7 @@ function slotsHtml() {
   function row(k, label, why) {
     var v = assign[k];
     return '<div class="irow"><label>' + label + '<small>' + why + '</small></label><button class="slot' + (v ? ' filled' : '') + '" data-slot="' + k + '">' +
-      (v ? SOUNDS[v].label : 'Tap to add a sound')   // the dashed outline already says it's empty; one line, not two + '</button></div>';
+      (v ? SOUNDS[v].label : 'Tap to add a sound') + '</button></div>';
   }
   return '<div class="comp"><svg class="i"><use href="#i-fold"/></svg><strong>Audio Source</strong></div>' +
     row('coin', 'When you grab a coin', 'Unity: AudioClip') + row('jump', 'When you jump', 'Unity: AudioClip') + row('hurt', 'When you fall in lava', 'Unity: AudioClip');
