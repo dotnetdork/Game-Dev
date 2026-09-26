@@ -13,7 +13,7 @@ colors:
   line-soft: "#444444"
   closed-outline: "#3a3a3a"
   ink: "#e8e8e8"
-  ink-2: "#b4b4b4"
+  ink-2: "#cfcfcf"
   ink-3: "#b0b0b0"
   focus: "#ffffff"
   playmode-tint: "#3a2c1c"
@@ -253,7 +253,9 @@ A neutral graphite editor with one warm accent and one saturated zone, the game.
   separators inside a dock (the Inspector component header) and the say-field border.
 - **Closed Outline** (`closed-outline`): the 1px inset outline of a dock not yet revealed.
 - **Editor Ink** (`ink`), **Secondary Ink** (`ink-2`), **Quiet Ink** (`ink-3`): primary text;
-  idle control labels and Inspector field names; subtitles, notes, placeholders and the status bar.
+  idle control labels and Inspector field names; subtitles, notes, placeholders, the status bar and
+  earlier lines of the conversation. Secondary was #b4b4b4 beside Quiet's #b0b0b0, two steps the
+  eye could not tell apart; it is #cfcfcf now, so the three read as three.
 - **Focus White** (`focus`): the 2px focus outline, offset 2px, on everything.
 
 ### Contextual
@@ -308,6 +310,14 @@ gloss sits beside or below it (Label, Quiet Ink). The kid learns the real word a
 without the plain one.
 
 ## Layout
+
+**The Front Door exception.** The hiring interview (wireframe 07, a kid's first sign-in) is
+deliberately *not* the editor (Jay, 2026-09-26: "it should be distinct from the course"): a warm
+studio lobby at dusk, the interviewer a silhouette backlit by a big window, one cream speech bubble
+centred under them (19px), the kid's last answer echoed above it, rounded answer pills below, the
+director's clipboard notes on the left and a tablet for the try-this moments on the right. It shares
+only League orange, the 44px targets, the focus ring, the one announcer and the answer-picking
+habit. Everything below describes the editor.
 
 An editor designed at 1366×650, the usable part of a 1366×768 Chromebook screen once Chrome's own
 bars are gone. A four-row, three-column grid: toolbar (56px), workspace, Project drawer (30px, or a
@@ -425,16 +435,24 @@ The mentor, or the studio character running the shift, lives in the right column
 name, role), the message log, the options, the say field. Messages are 12px-rounded bubbles: mentor
 in Raised Graphite, the kid right-aligned in Kid Bubble, visiting characters in Guest Bubble. The
 speaker's Caption shows only when the speaker changes; a second line in a row doesn't repeat it.
-The dock's tab always names who is talking. Answers are shuffled every time they are shown, and
-each new line is read out once by a single screen-reader announcer.
+**The conversation keeps its history:** new lines append (a 0.3s rise), earlier ones stay in Quiet
+Ink, and the last eight are kept, so an instruction or a line of praise never vanishes the moment
+the story moves on. The dock's tab carries the chat icon (not the GameObject cube) and always names
+who is talking. Answers are shuffled every time they are shown, and each new line is read out once
+by a single screen-reader announcer; so is what happens in play ("Coin grabbed."), unless a line
+was just said for it. **"Say something else" is the idea inbox:** a typed idea is always answered
+("I've pinned it to your idea board for studio time"), never deflected. Every picker ends in
+**"Something else…"**: the kid describes it, and gets the nearest thing, labelled as a guess.
 
 When a Hierarchy part is picked, the **Inspector opens as its own dock above the character's dock**,
 with its own tab ("Inspector · Player") and a 44px close button (Escape closes it too). The
 character's dock shrinks, drops its name card (its tab still says who is talking) and keeps its
 newest line scrolled into view; the options and say field stay where they are. Nothing lies over
-the conversation. *One narrow exception:* when a step opens the Inspector for its job (the silent
-coins' sound slots and mixer), the step owns it and closes it when the job is done, so it has no
-close button; a kid who closed it early could not get it back.
+the conversation. Components belong to the part they are on, as in Unity: a sound slot is on the
+Coin, the Player or the Lava, opened from the Hierarchy, never on the level. Parts are edited only
+while stopped; tapping one during Play gets "Press Stop first" and nothing opens. *One narrow
+exception:* the Audio Mixer, which belongs to no part, is opened by its step and closed when the
+job is done, so it has no close button; a kid who closed it early could not get it back.
 
 ### Game dock
 The game fills the Game Well. In Play mode the game gets the 3px orange inset ring, the chrome
@@ -456,10 +474,12 @@ Earned in the conversation after an idea is felt and used: Card Warm ground, 1.5
 first). Cards collect in the Project drawer.
 
 ### Cards drawer and tiles
-On the desk the Project drawer opens into a shelf of 132px tiles, newest first, scrolling sideways
-inside the drawer: the idea's name, a four-segment level bar (new, learning, solid, strong: League
-Orange segments on Empty Track grey), and the level in words. A tool (a prize) gets an orange
-outline. Tapping a tile opens its back in the Inspector.
+On the desk the Project drawer (a 44px bar when closed) opens taller, taking its height from the
+Game view and never overlaying it, into a **wrapping grid** of tiles that scrolls vertically if it
+must, never sideways: tools first, then cards newest first. Each tile: the idea's name, a
+four-segment level bar (new, learning, solid, strong: League Orange segments on Empty Track grey),
+and the level in words. A tool (a prize) gets an orange outline. Tapping a tile opens its back in
+the Inspector. A card for an idea with no engine panel says "Unity: an idea, not a panel".
 
 ### Studio dock
 Between shifts: the milestone track (Hired, Prototype, Alpha, Beta, Launch party: a filled orange
@@ -485,11 +505,21 @@ Recorded in the contract and the artifact's step notes; any new surface keeps it
 - **Added:** the Quest and Studio docks above the Hierarchy; the characters; kid subtitles on real
   panel names.
 
+### Sound
+The UI makes a sound only when **the kid caused a change**: Play and Stop, a step passed, a wrong
+answer, a card or tool earned, being hired. Routine taps (a Hierarchy row, a slider, an answer) are
+silent, because twenty trackpads clicking at once in one room is noise, not feedback. Sounds are
+Kenney CC0 interface sounds, all under a second, at gain 0.15–0.35, and never two within 250ms.
+One **Sound** switch in the toolbar (44px, icon and word) mutes the UI and the game together; pops
+still show. The shared implementation is `docs/rework/wireframes/src/ui.js`.
+
 ### Motion
 Reveals fade over 0.45s and the Inspector dock drops in over 0.35s (fade and 8px), both on
 `cubic-bezier(.16,1,.3,1)`; parts snap in 650ms apart; pops rise and fade over 0.9s; a new tool
 arrives in the toolbar with a 1.2s ring. A first success holds about 1.5s, with a line of praise,
-before the story moves on. Under `prefers-reduced-motion` every transition and animation is off;
+before the story moves on. Reactiveness is small and tied to what the kid did: a press sinks 1px,
+a passed step pulses the game once in orange (0.5s), a wrong answer shakes its button once (0.32s),
+a checklist box ticks in with a scale. Under `prefers-reduced-motion` every transition and animation is off;
 the states they carry (a pop, a new tool) still appear, just without the movement.
 
 ## Do's and Don'ts
@@ -506,6 +536,8 @@ the states they carry (a pop, a new tool) still appear, just without the movemen
 - **Do** point a callout at a panel's tab from above.
 - **Do** make every step's progress depend on evidence from play, and shuffle answers every time.
 - **Do** build the product's editor fluid, so browser zoom makes it bigger (The Zoom Rule).
+- **Do** keep the conversation's history, answer every typed idea, and end every picker in "Something else…".
+- **Do** make a sound only when the kid caused a change, quietly, with one Sound switch for everything.
 
 ### Don't:
 - **Don't** take colours, type or components from the legacy `app/public/` styles; they are not authority for the rework.
@@ -517,3 +549,4 @@ the states they carry (a pop, a new tool) still appear, just without the movemen
 - **Don't** lay a panel over another panel; docks stack and shrink (The No Overlay Rule).
 - **Don't** show a control that looks live but does nothing; hide it until a quest needs it (hidden, not greyed out).
 - **Don't** scale the product's editor to fit the window; that cancels zoom.
+- **Don't** play a sound on a routine tap, or two sounds at once.

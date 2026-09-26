@@ -9,7 +9,10 @@
     --line: #121212;        /* hairline between docks */
     --line-soft: #444;
     --ink: #e8e8e8;
-    --ink-2: #b4b4b4;
+    /* Secondary was #b4b4b4 beside tertiary #b0b0b0: two tokens the eye can't tell apart, so labels,
+       subtitles and hints read at one flat level. Secondary is brighter; tertiary stays where it passes
+       4.5:1 on the raised rows (4.7:1 on --panel-2). */
+    --ink-2: #cfcfcf;
     --ink-3: #b0b0b0;
     --accent: #f5820a;      /* League orange: Unity's selection blue, repurposed */
     --accent-ink: #1a1206;
@@ -86,7 +89,21 @@
   #bPlay.cue { box-shadow: 0 0 0 2px var(--accent); }
   .transport .tbtn:not(#bPlay) { cursor: default; }
   .transport.ghosted { opacity: 0; transform: translateY(-6px); }
-  .tool-right { justify-self: end; color: var(--ink-3); font-size: 13px; }
+  .tool-right { justify-self: end; color: var(--ink-3); font-size: 13px; display: flex; align-items: center; gap: 8px; }
+  /* Sound on/off: one switch for the UI sounds and the game's (ui.js). In the toolbar, not the 26px
+     status bar, so it keeps a 44px target. */
+  .snd-toggle { display: inline-flex; align-items: center; gap: 7px; min-height: 44px; padding: 0 12px; border: 0; border-radius: 5px;
+                background: transparent; color: var(--ink-2); font-size: 13.5px; font-weight: 600; cursor: pointer; }
+  .snd-toggle:hover { background: var(--panel-2); color: var(--ink); }
+  .snd-toggle[aria-pressed="false"] { color: var(--ink-3); }
+  /* a tool the kid has earned lives in the toolbar (the Sound Mixer, from the Audio shift on) */
+  .toolchip { display: inline-flex; align-items: center; gap: 7px; height: 36px; padding: 0 12px; border-radius: 5px;
+              background: var(--panel-2); color: var(--ink); font-size: 14px; font-weight: 600; }
+  .toolchip small { font-weight: 500; font-size: 12.5px; color: var(--ink-3); }
+  .toolchip.new { animation: arrive 1.2s cubic-bezier(.16,1,.3,1) both; }
+  @keyframes arrive { from { transform: translateY(-10px) scale(.9); opacity: 0; box-shadow: 0 0 0 3px var(--accent); }
+                      60% { box-shadow: 0 0 0 3px var(--accent); } to { transform: none; opacity: 1; box-shadow: 0 0 0 0 transparent; } }
+  .toolchip[hidden] { display: none; }
 
   /* Play mode: Unity tints the editor chrome while the game runs */
   .editor.playmode .toolbar, .editor.playmode .tabs, .editor.playmode .status, .editor.playmode .proj { background: var(--playmode-tint); }
@@ -121,7 +138,7 @@
   .tree li button:hover { background: var(--panel-2); }
   .tree li.child button { padding-left: 34px; }
   .tree li button[aria-pressed="true"] { background: var(--accent); color: var(--accent-ink); }
-  .tree li button small { margin-left: auto; color: var(--ink-3); font-size: 12px; }
+  .tree li button small { margin-left: auto; color: var(--ink-3); font-size: 12px; min-width: 0; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }  /* a typed hero or a long note stays one line */
   .tree li button[aria-pressed="true"] small { color: var(--accent-ink); }
   .tree li.snap button { animation: snap .6s cubic-bezier(.16,1,.3,1) both; }
   @keyframes snap { from { transform: translateX(-14px); opacity: 0; background: var(--accent-soft); }
@@ -156,6 +173,20 @@
   .msg .from { display: block; font-size: 12px; font-weight: 700; color: var(--ink-3); margin-bottom: 2px; }
   .msg.kid { align-self: flex-end; background: var(--kid-bubble); }
   .msg.guest { background: var(--guest-bubble); }
+  /* The conversation keeps its history (critique: an instruction vanished the moment it was replaced,
+     and a slow reader lost the praise). Earlier lines stay, a step quieter; the newest batch is full ink
+     and arrives with a short rise. */
+  .msg.old { color: var(--ink-3); }
+  .msg.new { animation: msgIn .3s cubic-bezier(.16,1,.3,1) both; }
+  @keyframes msgIn { from { opacity: 0; transform: translateY(6px); } to { opacity: 1; transform: none; } }
+  /* reactiveness (ui.js feel()): a press sinks a little; success pulses once; "not yet" shakes once */
+  .opt:active, .swatch:active, .switch:active, .tbtn:active, .tree button:active { transform: translateY(1px); }
+  .feel-good { animation: feelGood .5s cubic-bezier(.16,1,.3,1); }
+  @keyframes feelGood { 0% { box-shadow: 0 0 0 0 var(--accent); } 40% { box-shadow: 0 0 0 5px var(--accent-soft); } 100% { box-shadow: 0 0 0 0 transparent; } }
+  .feel-nope { animation: feelNope .32s ease-in-out; }
+  @keyframes feelNope { 25% { transform: translateX(-4px); } 75% { transform: translateX(4px); } }
+  .checks li.done .box { animation: tick .45s cubic-bezier(.16,1,.3,1); }
+  @keyframes tick { from { transform: scale(.6); } to { transform: none; } }
   .opts { display: grid; gap: 6px; padding: 8px 12px 6px; }
   .opt { display: flex; align-items: center; justify-content: space-between; gap: 10px; min-height: 44px; padding: 8px 12px;
          background: transparent; border: 1.5px solid var(--accent); border-radius: 8px; text-align: left; cursor: pointer; color: var(--ink); font-weight: 600; }
@@ -180,6 +211,7 @@
   .rightcol:has(.inspector.open) .who { display: none; }
   .inspector .irow { min-height: 44px; }
   .inspector { display: none; flex: 0 1 auto; max-height: 56%; min-height: 0; flex-direction: column; background: var(--panel); }
+  .rightcol .inspector.open { flex-shrink: 0; }  /* the longer conversation must never squeeze the Inspector: the log gives way */
   .inspector.open { display: flex; animation: inspIn .35s cubic-bezier(.16,1,.3,1); }
   .inspector .dock-body { overflow: auto; }
   @keyframes inspIn { from { opacity: 0; transform: translateY(-8px); } to { opacity: 1; transform: none; } }

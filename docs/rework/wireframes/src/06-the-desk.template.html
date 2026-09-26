@@ -9,36 +9,74 @@
   returning session (session 5, after the silent coins): the kid's own game, their studio's
   milestones and departments, their cards and tools, the stand-up, and a glimpse of today. Built
   from this template by build.js; shares base.css and the patterns of 03–05.
+
+  2026-09-26 (critique: "the desk is a menu, not a studio"): the kid's game now RUNS from the first
+  moment, and the stand-up is asked while they play it, the way the first day asks its questions.
+  The Hierarchy is back under the Studio dock, and the cards sit in a wrapping grid in the Project
+  drawer, which opens taller instead of scrolling sideways. The game, its level and its physics are
+  wireframe 04's (the default review path: Engineering pick, the robot, "Robot Lava Run").
 -->
 <style>
 {{CSS}}
   /* ---------- additions for the desk ---------- */
-  .editor { height: 650px; grid-template-rows: 56px minmax(0, 1fr) 132px 26px;
+  /* The drawer row is 44px closed (one bar-wide button, a full target) and 264px open: three rows of
+     five tiles at 1366×650. It only ever takes height from the Game dock above it; nothing lies over
+     anything (The No Overlay Rule, DESIGN.md). */
+  .editor { height: 650px; grid-template-rows: 56px minmax(0, 1fr) 44px 26px;
             grid-template-areas: "tool tool tool" "left game right" "left proj right" "status status status"; }
+  .editor.drawer-open { grid-template-rows: 56px minmax(0, 1fr) 264px 26px; }
+  /* the left column: the Studio dock takes what the Hierarchy leaves */
+  .left { grid-template-rows: minmax(0, 1fr) auto; }
 
   /* the studio dock: a milestone track and the departments, in the Quest dock's place */
-  .studio h2 { margin: 4px 0 6px; font-size: 12.5px; font-weight: 700; color: var(--ink-3); letter-spacing: .04em; text-transform: uppercase; }
-  .track2 { list-style: none; margin: 0 0 12px; padding: 0; display: grid; gap: 2px; }
-  .track2 li { display: flex; align-items: center; gap: 10px; min-height: 30px; font-size: 14px; color: var(--ink-2); }
+  .studio h2 { margin: 0 0 3px; font-size: 12px; font-weight: 700; color: var(--ink-3); letter-spacing: .04em; text-transform: uppercase; }
+  .recap { margin: 0 0 8px; font-size: 14px; line-height: 1.35; color: var(--ink); }
+  .recap b { font-weight: 700; }
+  .recap + .recap { margin-top: -4px; }
+  .track2 { list-style: none; margin: 0 0 6px; padding: 0; display: grid; gap: 0; }
+  .track2 li { display: flex; align-items: center; gap: 10px; min-height: 22px; font-size: 14px; color: var(--ink-2); }
   .track2 .m { width: 18px; height: 18px; border-radius: 50%; border: 1.5px solid var(--ink-3); display: grid; place-items: center; flex: none; }
   .track2 .m svg { width: 12px; height: 12px; }
   .track2 li.done { color: var(--ink); } .track2 li.done .m { background: var(--accent); border-color: var(--accent); color: var(--accent-ink); }
   .track2 li.next { color: var(--ink); font-weight: 600; } .track2 li.next .m { border-color: var(--accent); }
   .track2 small { margin-left: auto; color: var(--ink-3); font-size: 12px; font-weight: 500; }
-  .depts { list-style: none; margin: 0; padding: 0; display: grid; gap: 2px; }
-  .depts li { display: flex; align-items: center; gap: 8px; min-height: 28px; font-size: 14px; color: var(--ink); }
+  /* the four open departments in two columns; the ones still to come on a row each, with when */
+  .depts { list-style: none; margin: 0; padding: 0; display: grid; grid-template-columns: 1fr 1fr; gap: 0 8px; }
+  .depts li { display: flex; align-items: center; gap: 8px; min-height: 21px; font-size: 14px; color: var(--ink); }
   .depts li .dot { background: var(--accent); }
-  .depts li.locked { color: var(--ink-3); } .depts li.locked .dot { background: transparent; box-shadow: inset 0 0 0 1.5px var(--ink-3); }
+  .depts li.locked { grid-column: 1 / -1; color: var(--ink-3); } .depts li.locked .dot { background: transparent; box-shadow: inset 0 0 0 1.5px var(--ink-3); }
   .depts small { margin-left: auto; font-size: 12px; color: var(--ink-3); }
-  .today { margin-top: 12px; padding: 9px 10px; background: var(--panel-2); border-radius: var(--radius); font-size: 14px; }
-  .today small { display: block; color: var(--ink-3); font-size: 12px; }
+  /* the Hierarchy: four parts, each with what the kid did to it */
+  #dHier .dock-body { padding: 4px 8px; }
+  .tree li button small { white-space: nowrap; }
+  /* read-only knobs: the desk shows a part's settings; changing them is a shift's job */
+  .irow .ilabel { color: var(--ink-2); }
+  .irow .ilabel small { display: block; color: var(--ink-3); font-size: 12px; }
+  .ival { font-weight: 600; color: var(--ink); }
+  /* The conversation keeps its history now, so its natural height is large; as a flex basis it
+     squeezed the Inspector to about 100px. From zero, the conversation takes what the Inspector (up to
+     base.css's 56%) leaves, and scrolls to its newest line. */
+  .rightcol > .right { flex-basis: 0; }
+  /* a pop stays inside the game: when the drawer opens under it, it mustn't hang over the cards */
+  .gamebody { overflow: hidden; }
   /* the Project drawer, opened: tools, then cards with their progress */
   /* min-width: 0 keeps the grid track at its size; the cards scroll inside the drawer. Without it the
      row of cards widened the whole editor past 1366px and a click scrolled the editor sideways. */
   .shelf { grid-area: proj; background: var(--panel); display: flex; flex-direction: column; min-height: 0; min-width: 0; border-top: 1px solid var(--line); }
-  .shelf-body { display: flex; gap: 8px; padding: 8px 12px; align-items: stretch; flex: 1; overflow-x: auto; min-height: 0; }
-  .shelf-body .grp { align-self: center; font-size: 12px; font-weight: 700; color: var(--ink-3); writing-mode: vertical-rl; transform: rotate(180deg); letter-spacing: .06em; text-transform: uppercase; }
-  .ccard { flex: none; display: flex; flex-direction: column; justify-content: space-between; gap: 4px; width: 132px; min-height: 76px; padding: 8px 10px;
+  .shelf-bar { flex: 1; display: flex; align-items: center; gap: 10px; width: 100%; padding: 0 12px; border: 0; background: var(--tabbar);
+               color: var(--ink-2); font-size: 13.5px; text-align: left; cursor: pointer; }
+  .shelf-bar:hover { background: var(--panel-2); }
+  .shelf-bar b { color: var(--ink); }
+  .shelf-bar .open-word { margin-left: auto; color: var(--ink); font-weight: 600; }
+  .shelf .tabs { justify-content: space-between; align-items: center; }
+  .shelf:not(.open) .tabs, .shelf:not(.open) .shelf-body { display: none; }
+  .shelf.open .shelf-bar { display: none; }
+  .editor.playmode .shelf-bar { background: var(--playmode-tint); }
+  /* A wrapping grid, tools first, scrolling down if it must: never sideways (the old single row was
+     2027px of tiles in a 697px drawer, critique 2026-09-26). */
+  .shelf-body { display: grid; grid-template-columns: repeat(auto-fill, minmax(120px, 1fr)); align-content: start; gap: 8px;
+                padding: 8px 12px; flex: 1; overflow-y: auto; overflow-x: hidden; min-height: 0; }
+  .ccard { min-width: 0; display: flex; flex-direction: column; justify-content: space-between; gap: 4px; min-height: 66px; padding: 8px 10px;
            border-radius: 8px; border: 1.5px solid var(--line-soft); background: var(--panel-2); color: var(--ink); text-align: left; cursor: pointer; font: inherit; }
   .ccard strong { font-size: 14px; line-height: 1.2; }
   .ccard small { color: var(--ink-3); font-size: 12px; }
@@ -56,8 +94,9 @@
 <body>
 <header class="doc">
   <h1>The desk: coming back to your studio</h1>
-  <p>The first minute of a returning session (here, session 5). Answer the stand-up, look around your studio, tap a
-     card, then clock in. The step buttons below are for reviewers.</p>
+  <p>The first minute of a returning session (here, session 5). Your game is already running: play it while you
+     answer the stand-up, look around your studio, tap a part or a card, then clock in. The step buttons below are
+     for reviewers.</p>
 </header>
 
 {{ICONS}}
@@ -68,31 +107,41 @@
   <div class="toolbar">
     <div class="brand">
       <img class="wordmark" alt="The League of Amazing Programmers" src="{{LOGO}}">
-      <span class="project">· <b>Captain Byte’s Game</b></span>
+      <span class="project">· <b>Robot Lava Run</b></span>
     </div>
-    <!-- Play is hidden on the desk, not greyed out: a control that looks live but does nothing is a
-         Don't in DESIGN.md. It appears when the kid clocks in. -->
-    <div class="transport ghosted" id="transport" aria-label="Play controls" inert><button class="tbtn" id="bPlay"><svg class="i"><use href="#i-play"/></svg><span>Play</span></button></div>
-    <div class="tool-right"></div>
+    <!-- Play is live on the desk from the first moment: it's the kid's own game, and playing it is
+         how they remember last week (critique 2026-09-26: "the desk won't play your game"). -->
+    <div class="transport" id="transport" aria-label="Play controls"><button class="tbtn" id="bPlay"><svg class="i"><use id="bPlayIcon" href="#i-play"/></svg><span>Play</span></button></div>
+    <div class="tool-right">
+      <!-- the Sound Mixer, earned in session 4, stays in the toolbar from then on -->
+      <span class="toolchip"><svg class="i"><use href="#i-mixer"/></svg>Sound Mixer <small>your tool</small></span>
+      <button class="snd-toggle" id="bSound" aria-pressed="true"><svg class="i"><use href="#i-sound"/></svg><span>Sound on</span></button>
+    </div>
   </div>
 
   <div class="left">
-    <section class="dock studio" aria-label="Studio" style="grid-row: 1 / span 2">
+    <section class="dock studio" aria-label="Studio">
       <div class="tabs"><span class="tab"><svg class="i"><use href="#i-flag"/></svg>Studio <small>Captain Byte’s</small></span></div>
       <div class="dock-body">
+        <p class="recap"><b>Last time:</b> your coins got a sound.</p>
+        <p class="recap" id="today" hidden><b>Today:</b> Engineering.</p>
         <h2>Milestones</h2>
         <ul class="track2" id="milestones"></ul>
         <h2>Departments</h2>
         <ul class="depts" id="depts"></ul>
-        <div class="today" id="today" hidden>Today: Engineering<small>The programmer drops by with a script</small></div>
       </div>
+    </section>
+    <section class="dock" id="dHier" aria-label="Hierarchy">
+      <div class="tabs"><span class="tab"><svg class="i"><use href="#i-tree"/></svg>Hierarchy <small>your parts</small></span></div>
+      <div class="dock-body"><ul class="tree" id="tree"></ul></div>
     </section>
   </div>
 
-  <section class="dock game" aria-label="Game">
+  <section class="dock game" id="dGame" aria-label="Game">
     <div class="tabs"><span class="tab"><svg class="i"><use href="#i-pad"/></svg>Game <small>your game</small></span></div>
     <div class="gamebody" id="gamebody">
-      <canvas id="cv" aria-label="Your game: a grey level with your robot, two coins and lava."></canvas>
+      <canvas id="cv" tabindex="0" aria-label="Your game, Robot Lava Run: a grey level with your robot, two coins and lava. Arrow keys or A and D move; Space or W jumps."></canvas>
+      <div class="focus-hint" id="hint" hidden>Click the game, then <span class="keys"><span class="key">←</span><span class="key">→</span></span> or <span class="keys"><span class="key">A</span><span class="key">D</span></span> move · <span class="key">Space</span> or <span class="key">W</span> jump</div>
     </div>
   </section>
 
@@ -106,7 +155,7 @@
     </section>
 
     <section class="dock right" id="dMentor" aria-label="Conversation">
-      <div class="tabs"><span class="tab"><svg class="i" style="color:var(--accent)"><use href="#i-cube"/></svg><span>Mentor</span></span></div>
+      <div class="tabs"><span class="tab"><svg class="i"><use href="#i-chat"/></svg><span>Mentor</span></span></div>
       <div class="who">
         <div class="face" aria-hidden="true">face<br>TBD</div>
         <div><strong>Mentor</strong><span>The studio’s AI, and proud of it</span></div>
@@ -117,8 +166,11 @@
     </section>
   </div>
 
-  <section class="shelf" aria-label="Project: your cards and tools">
-    <div class="tabs"><span class="tab"><svg class="i"><use href="#i-cards"/></svg>Project <small>your cards and tools</small></span></div>
+  <section class="shelf" id="shelfDock" aria-label="Project: your cards and tools">
+    <button class="shelf-bar" id="shelfOpen" aria-expanded="false" aria-controls="shelf"><svg class="i"><use href="#i-cards"/></svg><b>Project</b><span>your cards and tools</span>
+      <span class="chip">1 tool · 13 cards</span><span class="open-word">Open</span></button>
+    <div class="tabs"><span class="tab"><svg class="i"><use href="#i-cards"/></svg>Project <small>1 tool, then 13 cards, newest first</small></span>
+      <button class="x" id="shelfClose" aria-label="Close the Project drawer"><svg class="i"><use href="#i-x"/></svg></button></div>
     <div class="shelf-body" id="shelf"></div>
   </section>
 
@@ -126,7 +178,7 @@
   <p class="sr" id="announce" aria-live="polite"></p>
   <div class="status">
     <span id="statusMsg">Welcome back</span>
-    <span class="stars"><svg class="i"><use href="#i-star"/></svg>6 stars</span>
+    <span class="stars"><svg class="i"><use href="#i-star"/></svg>4 stars</span>
   </div>
 </div>
 </div></div>
@@ -140,24 +192,27 @@
   <div><h2>Why it’s built this way</h2><p id="nGate"></p></div>
 </section>
 
+<script>{{UI}}</script>
 <script>
 var $ = function (id) { return document.getElementById(id); };
 var NAME = 'Captain Byte';
 /* The kid's studio at the start of session 5. In the product this comes from their learner card and
-   the concept web (docs/rework/concept-web.yaml); here it's written in. */
+   the concept web (docs/rework/concept-web.yaml); here it's written in. One progression model
+   (prototype-plan.md): milestones are the progress; departments are what's open, not a score. */
 var MILESTONES = [['Hired', 'session 1', 'done'], ['Prototype', 'session 3', 'done'], ['Alpha', 'session 6', 'next'], ['Beta', 'session 8', ''], ['Launch party', 'session 10', '']];
-var DEPTS = [['Front Desk', ''], ['Engineering', 'today'], ['Design', ''], ['Audio', 'last week'], ['Art', 'unlocks at Alpha', 1], ['Animation and VFX', 'session 7', 1], ['QA, Production, Publishing', 'later', 1]];
+var DEPTS = [['Engineering'], ['Design'], ['Art'], ['Audio'], ['Animation and VFX', 'session 7'], ['QA, Production, Publishing', 'later']];
 /* Cards: [name, level 1–4 (new, learning, solid, strong), from session, kid word, Unity]. Levels are the
-   skill tracker's boxes; a card rises only when its evidence is met in a later session. */
+   skill tracker's boxes; a card rises only when its evidence is met in a later session. A null Unity
+   name is an idea with no panel of its own in Unity (Feedback, Mechanic…), and the card says so. */
 var CARDS = [
-  ['Feedback', 1, 4, 'The game answers you, so you know something happened.', '—'],
+  ['Feedback', 1, 4, 'The game answers you, so you know something happened.', null],
   ['Sound effect', 1, 4, 'A short sound for an action: jump, coin, ouch.', 'AudioClip + AudioSource'],
   ['Audio mixer', 1, 4, 'The volume board: balance music and sounds so the important one is heard.', 'Audio Mixer'],
   ['Event', 1, 4, 'When X happens, do Y.', 'OnTriggerEnter2D'],
-  ['Mechanic', 2, 3, 'The verb: what the player does.', '—'],
-  ['Core loop', 2, 3, 'The few things you do over and over that make it fun.', '—'],
-  ['Win and lose', 2, 3, 'What makes you win, what makes you lose.', '—'],
-  ['Playtest', 2, 3, 'Watch someone play without helping.', '—'],
+  ['Mechanic', 2, 3, 'The verb: what the player does.', null],
+  ['Core loop', 2, 3, 'The few things you do over and over that make it fun.', null],
+  ['Win and lose', 2, 3, 'What makes you win, what makes you lose.', null],
+  ['Playtest', 2, 3, 'Watch someone play without helping.', null],
   ['Inspector', 3, 2, 'Click a thing and see all its knobs.', 'Inspector'],
   ['Gravity', 3, 2, 'The game pretends things fall. It’s a number you can tune.', 'Rigidbody 2D → Gravity Scale'],
   ['Game engine', 3, 1, 'A giant toolbox that already knows how to draw, play sounds and do physics.', 'Unity'],
@@ -168,52 +223,180 @@ var LEVEL = ['', 'new', 'learning', 'solid', 'strong'];
 function paint() {
   $('milestones').innerHTML = MILESTONES.map(function (m) {
     return '<li class="' + m[2] + '"><span class="m">' + (m[2] === 'done' ? '<svg class="i"><use href="#i-check"/></svg>' : '') + '</span>' + m[0] + '<small>' + (m[2] === 'done' ? 'done' : m[1]) + '</small></li>'; }).join('');
-  $('depts').innerHTML = DEPTS.map(function (d) { return '<li class="' + (d[2] ? 'locked' : '') + '"><span class="dot"></span>' + d[0] + '<small>' + d[1] + '</small></li>'; }).join('');
-  $('shelf').innerHTML = '<span class="grp">Tools</span><button class="ccard tool" data-tool="1"><strong>Sound Mixer</strong><small>won in the Audio shift</small></button><span class="grp">Cards</span>' +
+  $('depts').innerHTML = DEPTS.map(function (d) { return '<li class="' + (d[1] ? 'locked' : '') + '"><span class="dot"></span>' + d[0] + (d[1] ? '<small>' + d[1] + '</small>' : '') + '</li>'; }).join('');
+  $('shelf').innerHTML = '<button class="ccard tool" data-tool="1" aria-pressed="false" aria-label="Sound Mixer, your tool"><strong>Sound Mixer</strong><small>tool · session 4</small></button>' +
     CARDS.map(function (c, k) { return '<button class="ccard' + (c[2] === 4 ? ' fresh' : '') + '" data-card="' + k + '" aria-pressed="false" aria-label="' + c[0] + ', ' + LEVEL[c[1]] + '"><strong>' + c[0] + '</strong><span class="lvl" aria-hidden="true">' +
       [1, 2, 3, 4].map(function (n) { return '<i class="' + (n <= c[1] ? 'on' : '') + '"></i>'; }).join('') + '</span><small>' + LEVEL[c[1]] + (c[2] === 4 ? ' · last week' : '') + '</small></button>'; }).join('');
   Array.prototype.forEach.call($('shelf').querySelectorAll('.ccard'), function (b) { b.addEventListener('click', function () { openCard(b); }); });
 }
+function unpressCards() { Array.prototype.forEach.call($('shelf').querySelectorAll('.ccard'), function (x) { x.setAttribute('aria-pressed', 'false'); }); }
 function openCard(b) {
-  Array.prototype.forEach.call($('shelf').querySelectorAll('.ccard'), function (x) { x.setAttribute('aria-pressed', 'false'); });
-  b.setAttribute('aria-pressed', 'true');
+  unpressCards(); b.setAttribute('aria-pressed', 'true');
+  selected = null; tree();
   var html;
   if (b.dataset.tool) html = '<div class="cardback"><b>Sound Mixer</b><p>Your tool power: set how loud music and sounds are in your own game, any time.</p><dl><dt>Won</dt><dd>The silent coins (session 4)</dd><dt>Unity</dt><dd>Audio Mixer</dd></dl></div>';
-  else { var c = CARDS[+b.dataset.card]; html = '<div class="cardback"><b>' + c[0] + '</b><p>' + c[3] + '</p><dl><dt>Unity</dt><dd>' + c[4] + '</dd><dt>Level</dt><dd>' + LEVEL[c[1]] + '</dd><dt>Met in</dt><dd>session ' + c[2] + '</dd></dl></div>'; }
+  else { var c = CARDS[+b.dataset.card]; html = '<div class="cardback"><b>' + c[0] + '</b><p>' + c[3] + '</p><dl><dt>Unity</dt><dd>' + (c[4] || 'an idea, not a panel') + '</dd><dt>Level</dt><dd>' + LEVEL[c[1]] + '</dd><dt>Met in</dt><dd>session ' + c[2] + '</dd></dl></div>'; }
   events('card');   // the mentor's reply first, so the Inspector opens below its lines, not over them
   inspector(b.dataset.tool ? 'Sound Mixer' : CARDS[+b.dataset.card][0], html);
 }
 
-/* their game, as they left it: drawn still (the desk doesn't run it until they clock in) */
-function drawGame() {
-  var cv = $('cv'), ctx = cv.getContext('2d'), bw = $('gamebody').clientWidth, bh = $('gamebody').clientHeight; if (!bw || !bh) return;
-  cv.width = bw; cv.height = bh; var W = 320, H = 180, k = Math.min(bw / W, bh / H), ox = (bw - W * k) / 2, oy = (bh - H * k) / 2;
-  ctx.fillStyle = '#111'; ctx.fillRect(0, 0, bw, bh); ctx.setTransform(k, 0, 0, k, ox, oy);
-  ctx.fillStyle = '#9a9a9a'; ctx.fillRect(0, 0, W, H);
-  ctx.fillStyle = '#c4532b'; ctx.fillRect(200, 164, 40, 16);
-  [[0, 150, 200], [240, 150, 80]].forEach(function (f) { ctx.fillStyle = '#6e6e6e'; ctx.fillRect(f[0], f[1], f[2], 30); ctx.fillStyle = '#858585'; ctx.fillRect(f[0], f[1], f[2], 4); });
-  [[170, 132], [290, 132]].forEach(function (c) { ctx.fillStyle = '#c4c4c4'; ctx.strokeStyle = '#8f8f8f'; ctx.lineWidth = 2; ctx.beginPath(); ctx.arc(c[0], c[1], 6, 0, 7); ctx.fill(); ctx.stroke(); });
-  var x = 20, y = 134; ctx.fillStyle = '#d9dde6'; ctx.fillRect(x, y + 2, 12, 12); ctx.fillStyle = '#1d2230'; ctx.fillRect(x + 2, y + 5, 8, 4);
-  ctx.fillStyle = '#f5820a'; ctx.fillRect(x + 3, y + 6, 2, 2); ctx.fillRect(x + 7, y + 6, 2, 2);
+/* The Project drawer: a 44px bar until it's opened, then a taller dock of tiles. Opening it takes
+   height from the Game dock only (see the .editor rows above). */
+function drawer(open, byKid) {
+  $('editor').classList.toggle('drawer-open', open); $('shelfDock').classList.toggle('open', open);
+  $('shelfOpen').setAttribute('aria-expanded', String(open));
+  if (byKid) (open ? $('shelf').querySelector('.ccard') : $('shelfOpen')).focus({ preventScroll: true });
+}
+$('shelfOpen').addEventListener('click', function () { drawer(true, true); });
+$('shelfClose').addEventListener('click', function () { drawer(false, true); });
+
+/* ---------- their game, as they left it, and running: wireframe 04's level after the default
+   first day (Engineering: the floor tile solid; the robot; named Robot Lava Run), session 2's
+   "normal" jump, and session 4's sounds (a ding on the coin, a boing on the jump). The lava is still
+   just a floor: making it hurt is the Design department's job, and nobody has done it yet. ---------- */
+var cv = $('cv'), ctx = cv.getContext('2d'), W = 320, H = 180;
+var keys = {}, P, coins, running = false, respawn = null;   // running: set only through setRunning()
+var GROUND = [[0, 150, 100], [140, 150, 60], [240, 150, 80]], TILE = [100, 150, 40], LAVA = [200, 164, 40];
+var JUMP = 4.6;   // "normal", as tuned in session 2
+/* Real sounds (Kenney CC0, inlined by build.js): decoded on first use. Silent when the toolbar's
+   Sound switch is off; the pops still show. */
+var SFX_DATA = {{SFX}}, AC = null, buffers = {};
+function playSfx(id) {
+  if (UI.muted()) return;
+  try { if (!AC) AC = new (window.AudioContext || window.webkitAudioContext)(); } catch (e) { return; }
+  if (AC.state === 'suspended') AC.resume();
+  var go2 = function () { var s = AC.createBufferSource(); s.buffer = buffers[id]; s.connect(AC.destination); s.start(); };
+  if (buffers[id]) { go2(); return; }
+  try { var bin = atob(SFX_DATA[id]), bytes = new Uint8Array(bin.length); for (var k = 0; k < bin.length; k++) bytes[k] = bin.charCodeAt(k);
+    AC.decodeAudioData(bytes.buffer, function (b) { buffers[id] = b; go2(); }, function () {}); } catch (e) {}
+}
+function level() {
+  P = { x: 20, y: 120, vx: 0, vy: 0, w: 12, h: 16, on: false };
+  coins = [{ x: 170, y: 132, got: false }, { x: 290, y: 132, got: false }];
+}
+/* Arrow keys or WASD (A, D move; W jumps), and Space jumps, by physical key (as in wireframe 04). */
+var KEYMAP = { ArrowLeft: 'ArrowLeft', KeyA: 'ArrowLeft', ArrowRight: 'ArrowRight', KeyD: 'ArrowRight', ArrowUp: 'ArrowUp', KeyW: 'ArrowUp', Space: ' ' };
+function onKey(e, down) { var k = KEYMAP[e.code]; if (k) { e.preventDefault(); keys[k] = down; } }
+cv.addEventListener('keydown', function (e) { onKey(e, true); });
+cv.addEventListener('keyup', function (e) { onKey(e, false); });
+cv.addEventListener('focus', function () { $('hint').hidden = true; });
+cv.addEventListener('blur', function () { keys = {}; if (running) $('hint').hidden = false; });
+cv.addEventListener('pointerdown', function () { cv.focus(); });
+
+function step() {
+  if (!running) return;
+  P.vx = (keys.ArrowLeft ? -1.6 : 0) + (keys.ArrowRight ? 1.6 : 0);
+  if ((keys[' '] || keys.ArrowUp) && P.on) { P.vy = -JUMP; P.on = false; playSfx('boing'); pop('BOING!', { x: P.x + 6, y: P.y + 6 }); }
+  // the ground's sides are walls: walking out of the lava pit takes a jump, not a slide through the floor
+  var nx = Math.max(0, Math.min(W - P.w, P.x + P.vx));
+  GROUND.concat([TILE]).forEach(function (g) { if (P.y + P.h > g[1] + 1 && nx + P.w > g[0] && nx < g[0] + g[2]) nx = P.vx > 0 ? g[0] - P.w : g[0] + g[2]; });
+  P.vy += 0.22; P.x = nx; P.y += P.vy; P.on = false;
+  GROUND.concat([TILE, LAVA]).forEach(function (g) {
+    if (P.x + P.w > g[0] && P.x < g[0] + g[2] && P.y + P.h >= g[1] && P.y + P.h - P.vy <= g[1] + 1 && P.vy >= 0) { P.y = g[1] - P.h; P.vy = 0; P.on = true; }
+  });
+  if (P.y > H) { announce('Fell off the level.'); P.x = 20; P.y = 110; P.vy = 0; }
+  coins.forEach(function (c) {
+    if (!c.got && Math.abs(P.x + 6 - c.x) < 11 && Math.abs(P.y + 8 - c.y) < 13) { c.got = true;
+      playSfx('ding'); pop('DING!', c); announce('Coin grabbed.'); events('coin'); }
+  });
+  // both coins gone: they come back after a moment, so the desk's game never runs out of things to do
+  if (!respawn && coins.every(function (c) { return c.got; })) respawn = setTimeout(function () { coins.forEach(function (c) { c.got = false; }); respawn = null; }, 1500);
+}
+function draw() {
+  var bw = $('gamebody').clientWidth, bh = $('gamebody').clientHeight;
+  if (!bw || !bh) return;
+  if (cv.width !== bw || cv.height !== bh) { cv.width = bw; cv.height = bh; }
+  var k = Math.min(bw / W, bh / H), ox = (bw - W * k) / 2, oy = (bh - H * k) / 2;
+  ctx.setTransform(1, 0, 0, 1, 0, 0); ctx.fillStyle = '#111'; ctx.fillRect(0, 0, bw, bh);
+  ctx.setTransform(k, 0, 0, k, ox, oy);
+  ctx.fillStyle = '#9a9a9a'; ctx.fillRect(0, 0, W, H);                      // still grey: the art pass is Alpha's
+  ctx.fillStyle = '#7c7c7c'; ctx.fillRect(LAVA[0], LAVA[1], LAVA[2], H - LAVA[1]);
+  ctx.strokeStyle = '#8a8a8a'; ctx.lineWidth = 2; ctx.beginPath(); ctx.moveTo(LAVA[0], LAVA[1] + 2);
+  for (var x = LAVA[0]; x <= LAVA[0] + LAVA[2]; x += 7) ctx.lineTo(x, LAVA[1] + (x % 14 ? 0 : 4)); ctx.stroke();
+  GROUND.concat([TILE]).forEach(function (g) { ctx.fillStyle = '#6e6e6e'; ctx.fillRect(g[0], g[1], g[2], 30); ctx.fillStyle = '#858585'; ctx.fillRect(g[0], g[1], g[2], 4); });
+  coins.forEach(function (c) { if (c.got) return; ctx.fillStyle = '#c4c4c4'; ctx.strokeStyle = '#8f8f8f'; ctx.lineWidth = 2;
+    ctx.beginPath(); ctx.arc(c.x, c.y, 6, 0, 7); ctx.fill(); ctx.stroke(); });
+  drawHero();
+}
+/* The robot, as wireframe 04's drawHero() draws it: the only colour in a grey level. */
+function drawHero() {
+  var x = P.x, y = P.y;
+  ctx.fillStyle = '#d9dde6'; ctx.fillRect(x, y + 2, 12, 12); ctx.fillStyle = '#1d2230'; ctx.fillRect(x + 2, y + 5, 8, 4);
+  ctx.fillStyle = '#f5820a'; ctx.fillRect(x + 3, y + 6, 2, 2); ctx.fillRect(x + 7, y + 6, 2, 2); ctx.fillStyle = '#aeb4c2'; ctx.fillRect(x + 1, y + 14, 3, 2); ctx.fillRect(x + 8, y + 14, 3, 2);
+}
+/* Full speed only while the game runs; stopped, about 10 redraws a second, none while hidden (as 04). */
+var frameNo = 0;
+function loop() { frameNo++; step(); if (!document.hidden && (running || frameNo % 6 === 0)) draw(); requestAnimationFrame(loop); }
+/* The sound made visible, for a muted room or a deaf kid (as in wireframes 03 and 04). */
+function pop(text, c) {
+  var r = cv.getBoundingClientRect(), gb = $('gamebody').getBoundingClientRect(), k = Math.min(r.width / W, r.height / H);
+  var ox = (r.width - W * k) / 2, oy = (r.height - H * k) / 2, el = document.createElement('div');
+  el.className = 'pop'; el.textContent = text;
+  el.style.left = (r.left - gb.left + ox + c.x * k) + 'px'; el.style.top = (r.top - gb.top + oy + (c.y - 18) * k) + 'px';
+  $('gamebody').appendChild(el); setTimeout(function () { el.remove(); }, 950);
+}
+/* Play mode, in one place, as in 04. Nothing on the desk changes while playing, so there is nothing
+   to undo on Stop. */
+function setRunning(on) {
+  running = !!on;
+  $('editor').classList.toggle('playmode', running); $('gamebody').classList.toggle('playing', running);
+  $('bPlay').classList.toggle('on', running);
+  $('bPlayIcon').setAttribute('href', running ? '#i-stop' : '#i-play'); $('bPlay').querySelector('span').textContent = running ? 'Stop' : 'Play';
+  $('statusMsg').textContent = running ? 'Play mode' : 'Stopped';
+  if (!running) { keys = {}; $('hint').hidden = true; } else { $('hint').hidden = document.activeElement === cv; }
+  events(running ? 'play' : 'stop');
+}
+$('bPlay').addEventListener('click', function () { setRunning(!running); UI.sound(running ? 'play' : 'stop'); if (running) cv.focus(); });
+
+/* ---------- the Hierarchy: the game's parts, each with what a session did to it ---------- */
+var PARTS = [['floor', 'Floor tile', 'solid · day 1'], ['player', 'Player', 'your robot · normal jump'], ['coin', 'Coin', 'ding · session 4'], ['lava', 'Lava', '']];
+var selected = null;
+function tree() {
+  UI.keepFocus($('tree'), function () {
+    $('tree').innerHTML = PARTS.map(function (p) {
+      return '<li><button data-key="' + p[0] + '" aria-pressed="' + (selected === p[0]) + '"><svg class="i"><use href="#i-cube"/></svg>' + p[1] + (p[2] ? '<small>' + p[2] + '</small>' : '') + '</button></li>'; }).join('');
+    Array.prototype.forEach.call($('tree').querySelectorAll('button'), function (b) { b.addEventListener('click', function () { openPart(b.dataset.key); }); });
+  });
+}
+/* The Inspector shows a part's real knobs, read-only: on the desk the kid looks back at what they
+   made; changing it is what a shift is for. */
+function comp(title) { return '<div class="comp"><svg class="i"><use href="#i-fold"/></svg><strong>' + title + '</strong></div>'; }
+function knob(label, unity, val) { return '<div class="irow"><span class="ilabel">' + label + '<small>' + unity + '</small></span><span class="ival">' + val + '</span></div>'; }
+function openPart(id) {
+  selected = id; unpressCards(); tree();
+  var name = PARTS.filter(function (p) { return p[0] === id; })[0][1], html = '';
+  if (id === 'floor') html = comp('Box Collider 2D') + knob('Solid', 'Unity: collider', 'On: things stand on it') + '<p class="inote">You made it solid on day 1.</p>';
+  if (id === 'player') html = comp('Sprite Renderer') + knob('Hero', 'Unity: Sprite', 'Robot') + comp('Jump (Script)') + knob('Jump', 'Unity: jump force', 'Normal') +
+      comp('Audio Source') + knob('When you jump', 'Unity: AudioClip', 'Springy boing');
+  if (id === 'coin') html = comp('Audio Source') + knob('When you grab it', 'Unity: AudioClip', 'Sparkly ding') + '<p class="inote">You picked it in session 4. Grab a coin to hear it.</p>';
+  if (id === 'lava') html = '<p class="inote">Lava. It doesn’t hurt yet: that’s a job for the Design department.</p>';
+  inspector(name, html);
 }
 
 /* ---------- conversation and Inspector (as in 03–05) ---------- */
-var shown = [], clicks = [];
+var shown = [];
+/* The conversation keeps its history (base.css .msg.old/.new): earlier lines stay, a step quieter, at
+   most eight; the speaker's name shows only when the speaker changes, across calls too (data-from). */
 function say(lines) {
-  shown = lines; var log = $('log'); log.innerHTML = ''; var prev = null;
+  shown = lines; var log = $('log'), last = null;
+  Array.prototype.forEach.call(log.querySelectorAll('.msg'), function (d) { d.classList.remove('new'); d.classList.add('old'); });
+  var prevEl = log.querySelector('.msg:last-of-type'), prev = prevEl ? prevEl.getAttribute('data-from') : null;
   lines.forEach(function (m) {
-    var d = document.createElement('div'); d.className = 'msg' + (m[0] === 'k' ? ' kid' : '');
+    var d = document.createElement('div'); d.className = 'msg new' + (m[0] === 'k' ? ' kid' : m[0] === 'm' ? '' : ' guest'); d.setAttribute('data-from', m[0]);
     if (m[0] !== prev) { var f = document.createElement('span'); f.className = 'from'; f.textContent = m[0] === 'k' ? NAME : 'Mentor'; d.appendChild(f); }
-    prev = m[0]; d.appendChild(document.createTextNode(m[1].replace(/@name/g, NAME))); log.appendChild(d);
+    prev = m[0]; last = m[1].replace(/@name/g, NAME).replace(/<[^>]*>/g, ''); d.appendChild(document.createTextNode(m[1].replace(/@name/g, NAME))); log.appendChild(d);
   });
-  if (lines.length) announce(lines[lines.length - 1][1].replace(/@name/g, NAME));
+  var all = log.querySelectorAll('.msg'); for (var k = 0; k < all.length - 8; k++) all[k].remove();
+  if (last) announce(last);
   requestAnimationFrame(function () { log.scrollTop = log.scrollHeight; });
 }
+/* Shuffled every time. The handler gets its own button, so a wrong answer can shake the one tapped.
+   Focus moves to the first answer when it was in the editor but not in the game. */
 function options(list) {
-  var box = $('opts'), wasInEditor = $('editor').contains(document.activeElement);
+  var box = $('opts'), a = document.activeElement, wasInEditor = $('editor').contains(a) && a !== cv;
   box.innerHTML = ''; list = list.slice();
-  if (!list.noShuffle) for (var k = list.length - 1; k > 0; k--) { var j = Math.floor(Math.random() * (k + 1)), t = list[k]; list[k] = list[j]; list[j] = t; }
-  list.forEach(function (o) { var b = document.createElement('button'); b.className = 'opt'; b.textContent = o[0]; b.addEventListener('click', function () { o[1](); }); box.appendChild(b); });
+  for (var k = list.length - 1; k > 0; k--) { var j = Math.floor(Math.random() * (k + 1)), t = list[k]; list[k] = list[j]; list[j] = t; }
+  list.forEach(function (o) { var b = document.createElement('button'); b.className = 'opt'; b.textContent = o[0]; b.addEventListener('click', function () { o[1](b); }); box.appendChild(b); });
   if (wasInEditor && box.firstChild) box.firstChild.focus({ preventScroll: true });
 }
 function announce(t) { $('announce').textContent = t; }
@@ -224,8 +407,9 @@ function inspector(title, html) {
   el.classList.add('open'); el.setAttribute('aria-hidden', 'false'); el.inert = false;
   requestAnimationFrame(function () { var lg = $('log'); lg.scrollTop = lg.scrollHeight; });   // the Inspector docks below the conversation; keep its newest line in view
 }
-$('inspClose').addEventListener('click', function () { inspector(null); });
-document.addEventListener('keydown', function (e) { if (e.key === 'Escape') inspector(null); });
+function closeInspector() { inspector(null); selected = null; unpressCards(); tree(); }
+$('inspClose').addEventListener('click', closeInspector);
+document.addEventListener('keydown', function (e) { if (e.key === 'Escape' && $('inspector').classList.contains('open')) closeInspector(); });
 /* Floats just above the tab it names and points down at it, as in wireframe 04. */
 function pointAt(text, tab) {
   var el = $('pointer'); if (!text) { el.hidden = true; return; }
@@ -238,39 +422,44 @@ var i = 0;
 function events(a) { var s = STEPS[i]; if (s && s.onEvent) s.onEvent(a); }
 function advance() { go(i + 1); }
 var STEPS = [
-  { beat: 'Stand-up',
+  { beat: 'Stand-up, while you play',
     enter: function () {
-      var ask = function (lines) { say(lines); options([
-        ['Sounds for the coin and the jump', function () { say([['k', 'Sounds for the coin and the jump'], ['m', 'Yes! Your game answers you now. That’s feedback.']]); options([['What else is new?', advance]]); }],
-        ['A new level', function () { ask([['m', 'Not that one. Look at your cards below: the newest ones are from last week.'], ['m', 'So, what did you add?']]); }],
-        ['A faster hero', function () { ask([['m', 'Not that one. Look at your cards below: the newest ones are from last week.'], ['m', 'So, what did you add?']]); }]]); };
-      ask([['m', 'Welcome back, @name! Stand-up time, like a real studio.'], ['m', 'What did you add to your game last week?']]); },
-    what: 'Every session after the first opens with a stand-up. The kid recalls what they added last time, from answers built out of their own history.',
-    gate: 'Remembering is the point (recall beats a recap), so the mentor doesn’t tell them. A wrong answer points at the cards from last week, and asks again.' },
+      if (!running) setRunning(true);
+      var wrong = function (t) { return function (b) { UI.sound('nope'); UI.feel(b, 'nope');
+        say([['k', t], ['m', 'Not that one. Grab a coin in your game and listen. What did we add?']]); }; };
+      say([['m', 'Welcome back, @name! Your game is running: Robot Lava Run.'], ['m', 'Play your game. While you do: what did we add last week?']]);
+      options([
+        ['Sounds for the coin and the jump', function () { UI.sound('good'); UI.feel($('dGame'), 'good');
+          say([['k', 'Sounds for the coin and the jump'], ['m', 'Yes! Your game answers you now. That’s feedback.']]); options([['What else is new?', advance]]); }],
+        ['A new level', wrong('A new level')], ['A faster hero', wrong('A faster hero')]]); },
+    what: 'The kid’s own game, Robot Lava Run, is already running when they arrive: their robot, the floor tile they fixed, the coin’s ding and the jump’s boing from last week. While they play, the mentor asks the stand-up.',
+    gate: 'Recall while doing, not a quiz at the door: the kid can play before, during and after answering. A wrong answer sends them to grab a coin and listen (the answers stay up, so they can try again). The right one names the idea: feedback.' },
   { beat: 'Your studio',
     enter: function () { pointAt('This is your studio: how far it’s come, and what’s next.', document.querySelector('.studio .tab'));
-      say([['m', 'Here’s your studio. Two milestones done!'], ['m', 'Alpha is next: in two sessions your game gets real art.']]); options([['Show my cards', advance]]); },
-    what: 'The Studio dock, in the Quest dock’s place between shifts: the milestone track and the departments (unlocked, today, later).',
-    gate: 'A glimpse, not the map: one line about what’s next. Milestones are real studio words (Prototype, Alpha, Beta), not levels or a score.' },
+      say([['m', 'Here’s your studio. Two milestones done!'], ['m', 'Alpha is next, in session 6: your game gets its art pass.'], ['m', 'Under it is your Hierarchy: every part of your game. Tap one to see its knobs.']]);
+      options([['Show my cards', advance]]); },
+    what: 'The Studio dock, in the Quest dock’s place between shifts: what happened last time, the milestone track and the departments (four open from day one, the rest later). Under it, the Hierarchy lists the game’s parts with what each session added; tapping one opens it in the Inspector, read-only.',
+    gate: 'A glimpse, not the map: one line about last time, one about what’s next. Milestones are real studio words (Prototype, Alpha, Beta), not levels or a score, and departments are what’s open, not a count of what’s done.' },
   { beat: 'Your cards and tools',
     enter: function () { pointAt(null);
       say([['m', 'These are your cards, one for each idea you’ve met. The bars show how well you know it.'], ['m', 'Tap one to see its back.']]); options([]); this.seen = false; },
     onEvent: function (a) { if (a === 'card' && !this.seen) { this.seen = true;
       say([['m', 'That’s its back: your word, the real word, and Unity’s name for it.'], ['m', 'Cards level up when you use the idea again in a later shift.']]); options([['What’s today?', advance]]); } },
-    what: 'The Project drawer, opened: the Sound Mixer tool and 13 cards with their level (new, learning, solid, strong). Tapping a card opens its back in the Inspector.',
+    what: 'The Project drawer, opened: taller, as a wrapping grid, the Sound Mixer tool first and then 13 cards, newest first, with their level (new, learning, solid, strong). Tapping a card opens its back in the Inspector. The drawer opens from its bar at any step.',
     gate: 'The kid has to open one card. Levels come from the skill tracker, which only moves a card up when its evidence is met in a later session. The kid can see their progress; nothing is for sale.' },
   { beat: 'Today',
-    enter: function () { inspector(null); $('today').hidden = false;
+    enter: function () { $('today').hidden = false;
       say([['m', 'Today: Engineering. The programmer is dropping by.'], ['m', 'They want to show you the code behind your coin sound…']]);
       options([['Clock in', function () {
         $('nGate').innerHTML = '<span class="branchnote">Reviewer note:</span> Clock in opens session 5’s first shift (the programmer’s first visit: “Fell through the floor” and <code>Coin.cs</code>), which isn’t built as its own wireframe yet. Its C# step is in the silent-coins wireframe.';
-        $('statusMsg').textContent = 'Clocked in'; $('transport').classList.remove('ghosted'); $('transport').inert = false;
+        $('statusMsg').textContent = 'Clocked in';
         say([['m', 'Clocked in. Have a great shift, @name!']]); options([]); }]]); },
-    what: 'The director’s glimpse of today, as one teaser, and one next step: Clock in.',
-    gate: 'Everything on the desk leads to Clock in. Play is hidden until then, not greyed out: the desk is for looking back and ahead, the shift is for doing.' }
+    what: 'The director’s glimpse of today, as one line in the Studio dock and one teaser, and one next step: Clock in.',
+    gate: 'Everything on the desk leads to Clock in, which starts today’s shift. The game stays playable the whole time: the desk is for looking back and ahead, and playing is how you look back.' }
 ];
 function render() {
-  var s = STEPS[i]; inspector(null); pointAt(null); $('today').hidden = i < 3; $('transport').classList.add('ghosted'); $('transport').inert = true; s.enter.call(s);
+  var s = STEPS[i]; inspector(null); selected = null; unpressCards(); tree(); pointAt(null);
+  $('today').hidden = i < 3; drawer(i === 2); s.enter.call(s);
   $('nBeat').textContent = 'Step ' + (i + 1) + ' · ' + s.beat; $('nWhat').textContent = s.what; $('nGate').textContent = s.gate;
   $('back').disabled = i === 0; $('next').disabled = i === STEPS.length - 1;
   Array.prototype.forEach.call($('dots').children, function (b, k) { if (k === i) b.setAttribute('aria-current', 'step'); else b.removeAttribute('aria-current'); b.classList.toggle('past', k < i); });
@@ -279,10 +468,12 @@ function go(n) { i = Math.max(0, Math.min(STEPS.length - 1, n)); render(); }
 STEPS.forEach(function (s, k) { var b = document.createElement('button'); b.textContent = String(k + 1); b.setAttribute('aria-label', 'Step ' + (k + 1) + ': ' + s.beat); b.addEventListener('click', function () { go(k); }); $('dots').appendChild(b); });
 $('back').addEventListener('click', function () { go(i - 1); });
 $('next').addEventListener('click', function () { go(i + 1); });
+/* "Say something else" is the idea inbox: the idea is pinned for studio time, and the answers stay. */
 $('say').addEventListener('keydown', function (e) {
   if (e.key !== 'Enter' || !this.value.trim()) return;
+  e.preventDefault();   // if focus moves to an answer, this same Enter must not also "click" it (found in 04)
   var text = this.value.trim().slice(0, 120); this.value = '';
-  say(shown.filter(function (m) { return m[0] !== 'k'; }).slice(-1).concat([['k', text], ['m', 'Good thought! For now, tap one of the answers below.']]));
+  say([['k', text], ['m', 'Love that idea! I’ve pinned it to your idea board for studio time.' + ($('opts').children.length ? ' For now, pick one of the answers below.' : '')]]);
 });
 
 (function () {
@@ -296,15 +487,15 @@ $('say').addEventListener('keydown', function (e) {
   }
   function fit() {
     if (embed) { var ke = Math.min(1, s.parentElement.clientWidth / 1366);
-      s.style.transform = 'scale(' + ke + ')'; s.style.height = (650 * ke) + 'px'; s.style.width = (1366 * ke) + 'px'; drawGame(); return; }
+      s.style.transform = 'scale(' + ke + ')'; s.style.height = (650 * ke) + 'px'; s.style.width = (1366 * ke) + 'px'; return; }
     var chrome = doc.offsetHeight + nav.offsetHeight + 12 + 16;
     var k = Math.min(1, (s.parentElement.clientWidth - 32) / 1366, (innerHeight - chrome > 150 ? Math.max(0.5, (innerHeight - chrome) / 650) : 1));
     s.style.transform = 'scale(' + k + ')'; s.style.height = (650 * k) + 'px'; s.style.width = (1366 * k) + 'px';
-    document.documentElement.style.setProperty('--col', Math.round(1366 * k + 32) + 'px'); drawGame();
+    document.documentElement.style.setProperty('--col', Math.round(1366 * k + 32) + 'px');
   }
   window.addEventListener('resize', fit); window.addEventListener('load', fit); fit(); fit();
 })();
-paint(); render(); drawGame();
+paint(); level(); render(); loop();
 </script>
 </body>
 </html>

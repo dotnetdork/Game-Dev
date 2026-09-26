@@ -21,7 +21,7 @@
   .shelf .tabs { height: 32px; }
   .shelf-body { display: flex; gap: 8px; padding: 8px 12px; align-items: stretch; flex: 1; }
   .snd { display: flex; flex-direction: column; justify-content: center; gap: 2px; min-width: 118px; min-height: 60px; padding: 8px 12px;
-         border-radius: 8px; border: 1.5px solid var(--line-soft); background: var(--panel-2); cursor: pointer; text-align: left; }
+         border-radius: 8px; border: 1.5px solid var(--line-soft); background: var(--panel-2); color: var(--ink); cursor: pointer; text-align: left; }
   .snd strong { font-size: 15px; } .snd small { color: var(--ink-2); font-size: 12.5px; }
   .snd[aria-pressed="true"] { border-color: var(--accent); box-shadow: 0 0 0 2px var(--accent); }
   .shelf-note { align-self: center; flex: 1 1 0; min-width: 0; color: var(--ink-2); font-size: 13px; line-height: 1.35; max-width: 300px; margin: 0 0 0 auto; }
@@ -31,28 +31,21 @@
   .slot { min-height: 44px; min-width: 150px; border-radius: 8px; border: 1.5px dashed var(--ink-3); background: transparent; color: var(--ink-2);
           cursor: pointer; font-weight: 600; text-align: left; padding: 0 12px; }
   .slot.filled { border-style: solid; border-color: var(--accent); color: var(--ink); }
+  /* before the sound step the slot is only shown, not offered: a span, so it doesn't look tappable */
+  span.slot { display: inline-flex; align-items: center; cursor: default; }
   .meter { height: 10px; border-radius: 5px; background: var(--panel-2); overflow: hidden; margin-top: 4px; }
   .meter i { display: block; height: 100%; width: 100%; background: var(--accent); transform-origin: left; transition: transform .15s ease-out; }
   /* Play mode: Stop is solid orange (base .tbtn.on) and the game gets the 3px orange ring (DESIGN.md) */
-  /* Hierarchy rows in this shift are a view of the parts, not controls: nothing here is tappable */
-  /* the prize arriving: a tool in the toolbar, where tools live */
-  .toolchip { display: inline-flex; align-items: center; gap: 7px; height: 36px; padding: 0 12px; border-radius: 6px;
-              background: var(--panel-2); color: var(--ink); font-size: 14px; font-weight: 600; }
-  .toolchip small { font-weight: 500; font-size: 12.5px; color: var(--ink-3); }
-  .toolchip.new { animation: arrive 1.2s cubic-bezier(.16,1,.3,1) both; }
-  @keyframes arrive { from { transform: translateY(-10px) scale(.9); opacity: 0; box-shadow: 0 0 0 3px var(--accent); }
-                      60% { box-shadow: 0 0 0 3px var(--accent); } to { transform: none; opacity: 1; box-shadow: 0 0 0 0 transparent; } }
-  .toolchip[hidden] { display: none; }
-  /* "pick a sound first": the shelf itself asks, where the kid's hand needs to go */
+  /* Edits happen only while stopped, the rule the first day teaches. While the game runs, an open
+     Inspector stays on screen (so the kid can still read the mix or the slot) but is inert and says
+     why. Nothing silently refuses a tap. */
+  .inspector.frozen .dock-body > * { opacity: .45; }
+  .inspector.frozen .dock-body::before { content: "Press Stop to change this."; display: block; padding: 6px 2px 2px; color: var(--ink-2); font-size: 13px; }
+  /* "pick a sound": the shelf itself lights up, where the kid's hand needs to go next */
   .shelf.cue .shelf-body { box-shadow: inset 0 0 0 2px var(--accent); border-radius: 8px; }
-  .milestone-big { display: flex; align-items: center; gap: 10px; font-weight: 700; }
-  .milestone-big .pips i { width: 16px; height: 16px; border-radius: 3px; }
   .meter.music i { background: var(--meter-music); }
   /* concept card */
   .card code { font: 12px ui-monospace, "Cascadia Mono", Consolas, "DejaVu Sans Mono", monospace; }
-  .milestone { display: inline-flex; align-items: center; gap: 6px; }
-  .pips { display: inline-flex; gap: 3px; } .pips i { width: 10px; height: 10px; border-radius: 2px; background: var(--panel-2); }
-  .pips i.on { background: var(--accent); }
   /* C# peek + tweak: the script docks beside the game, so the kid plays and reads side by side */
   .game { display: grid; grid-template-columns: minmax(0, 1fr) auto; grid-template-rows: auto minmax(0, 1fr); }
   .game > .tabs { grid-column: 1; grid-row: 1; }
@@ -92,13 +85,15 @@
   <div class="toolbar">
     <div class="brand">
       <img class="wordmark" alt="The League of Amazing Programmers" src="{{LOGO}}">
-      <span class="project">· <b>Captain Byte's Game</b></span>
+      <!-- The kid's own project, named on the first day. The customer's game opens inside it as a
+           ticket (the Game and Hierarchy tabs say whose game is showing), as in wireframe 05. -->
+      <span class="project">· <b>Robot Lava Run</b></span>
     </div>
     <!-- Play only: Pause and Step stay removed until a quest needs them (DESIGN.md, Unity mapping). -->
     <div class="transport" aria-label="Play controls">
       <button class="tbtn" id="bPlay"><svg class="i"><use id="bPlayIcon" href="#i-play"/></svg><span>Play</span></button>
     </div>
-    <div class="tool-right"><span class="toolchip" id="toolchip" hidden><svg class="i"><use href="#i-sliders"/></svg>Sound Mixer <small>your new tool</small></span></div>
+    <div class="tool-right"><span class="toolchip" id="toolchip" hidden><svg class="i"><use href="#i-mixer"/></svg>Sound Mixer <small>your new tool</small></span><button class="snd-toggle" id="bSound" aria-pressed="true"><svg class="i"><use href="#i-sound"/></svg><span>Sound on</span></button></div>
   </div>
 
   <div class="left">
@@ -127,7 +122,9 @@
     <div class="code" id="code" aria-label="Script: Coin.cs">
       <div class="tabs"><span class="tab"><svg class="i"><use href="#i-code"/></svg><span id="codeName">Coin.cs</span> <small>C#, the programmer's view</small></span></div>
       <pre id="codeBody"></pre>
-      <div class="code-foot"><p class="console" id="console" aria-live="polite"></p><button class="save" id="save">Save</button></div>
+      <!-- No live region here: the Console's messages are read out through the one announcer below
+           (critique 2026-09-26: a second live region talked over the conversation). -->
+      <div class="code-foot"><p class="console" id="console"></p><button class="save" id="save">Save</button></div>
     </div>
   </section>
 
@@ -135,15 +132,16 @@
        tab, as Unity stacks docked panels. It never lies over the conversation (Jay, 2026-09-25). -->
   <div class="rightcol">
   <section class="dock inspector" id="inspector" aria-label="Inspector" aria-hidden="true" inert>
-      <div class="tabs"><span class="tab"><svg class="i"><use href="#i-sliders"/></svg>Inspector <small id="inspName"></small></span></div>
+      <div class="tabs"><span class="tab"><svg class="i"><use href="#i-sliders"/></svg>Inspector <small id="inspName"></small></span>
+        <button class="x" id="inspClose" aria-label="Close the Inspector"><svg class="i"><use href="#i-x"/></svg></button></div>
       <div class="dock-body" id="inspBody"></div>
     </section>
 
     <section class="dock right" id="dMentor" aria-label="Conversation">
-      <div class="tabs"><span class="tab"><svg class="i" style="color:var(--accent)"><use href="#i-cube"/></svg><span id="whoTab">Sound designer</span></span></div>
+      <div class="tabs"><span class="tab"><svg class="i"><use href="#i-chat"/></svg><span id="whoTab">Sound designer</span></span></div>
       <div class="who">
         <div class="face" aria-hidden="true">face<br>TBD</div>
-        <div><strong id="whoName">Sound designer <span style="font-weight:500;color:var(--ink-3)">(name TBD)</span></strong><span id="whoRole">Audio department</span></div>
+        <div><strong id="whoName">Sound designer</strong><span id="whoRole">Audio department</span></div>
       </div>
       <div class="log" id="log"></div>
       <div class="opts" id="opts"></div>
@@ -157,9 +155,10 @@
   </section>
 
   <p class="sr" id="announce" aria-live="polite"></p>
+  <!-- One progression model (DESIGN.md): the stars count and a plain status message. No pips. -->
   <div class="status">
     <span id="statusMsg">Shift started</span>
-    <span class="milestone"><span>Alpha</span><span class="pips" id="pips"><i></i><i></i><i></i><i></i></span></span>
+    <span class="stars" id="stars"><svg class="i"><use href="#i-star"/></svg><span id="starCount">3 stars</span></span>
   </div>
 </div>
 </div></div>
@@ -173,9 +172,10 @@
   <div><h2>Why you can't click through this step</h2><p id="nGate"></p></div>
 </section>
 
+<script>{{UI}}</script>
 <script>
 var $ = function (id) { return document.getElementById(id); };
-var NAME = 'Captain Byte';
+var NAME = 'Captain Byte', GAME = 'Robot Lava Run';   // from the first day: sign-in name and the game the kid named
 
 /* ---------- sound: synthesised, so the prototype needs no audio files ---------- */
 var AC = null, sfxGain, musicGain, musicTimer = null;
@@ -188,7 +188,10 @@ function audio() {
   return AC;
 }
 function applyMix() { if (!AC) return; sfxGain.gain.value = mix.sfx; musicGain.gain.value = musicOn ? mix.music * 0.35 : 0; }
+/* The toolbar's Sound switch (ui.js) silences the game too: every tone, sample and music beat stops
+   here. The pops still show, so a muted Chromebook loses nothing. */
 function tone(type, f0, f1, dur, vol, dest) {
+  if (UI.muted()) return;
   var a = audio(); if (!a) return;
   var o = a.createOscillator(), g = a.createGain(), t = a.currentTime;
   o.type = type; o.frequency.setValueAtTime(f0, t); if (f1) o.frequency.exponentialRampToValueAtTime(f1, t + dur);
@@ -210,6 +213,7 @@ function loadSfx() {
   });
 }
 function playSfx(id, p, synth) {
+  if (UI.muted()) return;
   var a = audio(); if (!a) return;
   if (!buffers[id]) { synth(p || 1); return; }
   var src = a.createBufferSource(); src.buffer = buffers[id]; src.playbackRate.value = p || 1;
@@ -233,12 +237,22 @@ function stopMusic() { clearInterval(musicTimer); musicTimer = null; musicOn = f
 var cv = $('cv'), ctx = cv.getContext('2d'), W = 320, H = 180;
 var keys = {}, P, coins, jumpedOnce = false, theme = 'customer', running = false;   // set only through setRunning()
 var assign = { coin: null, jump: null, hurt: null };
-function level() {
-  P = { x: 30, y: 120, vx: 0, vy: 0, w: 12, h: 16, on: false };
-  coins = theme === 'customer' ? [{ x: 170, y: 104, got: false }, { x: 262, y: 136, got: false }]
-                               : [{ x: 216, y: 94, got: false }, { x: 290, y: 136, got: false }];
-}
+/* spookyOk: the kid kept a "hurt" sound on purpose ("Yes, it's a spooky game"). spooky: they then
+   chose to give their own game a spooky night to match. Same level either way; only the look changes. */
+var spookyOk = false, spooky = false;
+/* "yours" is the kid's own game carried over from the first day, exactly as they left it on the
+   Engineering path: 04's GROUND plus the floor tile they made solid ([100,150,40]), its lava pit
+   (x 200 to 240, top 164, made to hurt in session 2, wireframe 05) and its two coins. The customer's
+   level is a different game on purpose: it's a ticket from outside the studio. */
 var ground = [[0, 150, 118], [168, 150, 152]], ledge = [196, 116, 60];
+var YOURS = { floors: [[0, 150, 100], [100, 150, 40], [140, 150, 60], [240, 150, 80]], lava: [200, 164, 40], coins: [[170, 132], [290, 132]] };
+function level() {
+  var mine = theme === 'yours';
+  P = { x: mine ? 20 : 30, y: 120, vx: 0, vy: 0, w: 12, h: 16, on: false };
+  coins = mine ? YOURS.coins.map(function (c) { return { x: c[0], y: c[1], got: false }; })
+               : [{ x: 170, y: 104, got: false }, { x: 262, y: 136, got: false }];
+}
+function respawn() { P.x = theme === 'yours' ? 20 : 30; P.y = 110; P.vy = 0; }
 /* Arrow keys or WASD (A, D move; W jumps), and Space jumps. Mapped by physical key (e.code), so
    it works on any keyboard layout and with Caps Lock on. */
 var KEYMAP = { ArrowLeft: 'ArrowLeft', KeyA: 'ArrowLeft', ArrowRight: 'ArrowRight', KeyD: 'ArrowRight', ArrowUp: 'ArrowUp', KeyW: 'ArrowUp', Space: ' ' };
@@ -254,7 +268,10 @@ cv.addEventListener('pointerdown', function () { cv.focus(); });
 function fire(action) {
   var s = assign[action] && SOUNDS[assign[action]], p = action === 'coin' ? pitch : 1;
   if (s) { s.play(p); pop(s.pop + (p > 1.05 ? ' ↑' : p < 0.95 ? ' ↓' : ''), heard()); }
+  /* Play events are read out, short and plain. A say() for the same event, run just after, replaces
+     this in the one announcer, so the kid never hears both. */
   if (action === 'coin') announce('Coin grabbed. ' + coins.filter(function (c) { return !c.got; }).length + ' left.');
+  if (action === 'hurt') announce('Fell in the lava.');
   events(action, !!s);
 }
 /* How much of a sound effect gets through the music, 0.25–1. The pop is the sound made visible for a
@@ -275,37 +292,57 @@ function pop(text, vis) {
 }
 function step() {
   if (!running) return;
-  var sp = 1.6; P.vx = (keys.ArrowLeft ? -sp : 0) + (keys.ArrowRight ? sp : 0);
+  var mine = theme === 'yours', sp = 1.6; P.vx = (keys.ArrowLeft ? -sp : 0) + (keys.ArrowRight ? sp : 0);
   if ((keys[' '] || keys.Spacebar || keys.ArrowUp) && P.on) { P.vy = -4.6; P.on = false; jumpedOnce = true; fire('jump'); }
   P.vy += 0.22; P.x = Math.max(0, Math.min(W - P.w, P.x + P.vx)); P.y += P.vy; P.on = false;
-  ground.concat([[ledge[0], ledge[1], ledge[2]]]).forEach(function (g) {
+  (mine ? YOURS.floors : ground.concat([[ledge[0], ledge[1], ledge[2]]])).forEach(function (g) {
     if (P.x + P.w > g[0] && P.x < g[0] + g[2] && P.y + P.h >= g[1] && P.y + P.h - P.vy <= g[1] + 1 && P.vy >= 0) { P.y = g[1] - P.h; P.vy = 0; P.on = true; }
   });
-  if (P.y > H) { fire('hurt'); P.x = 30; P.y = 110; P.vy = 0; }
+  var L = YOURS.lava;
+  if (mine && P.y + P.h >= L[1] && P.x + P.w > L[0] && P.x < L[0] + L[2]) { fire('hurt'); respawn(); return; }
+  if (P.y > H) { fire('hurt'); respawn(); return; }
   coins.forEach(function (c) {
     if (!c.got && Math.abs(P.x + 6 - c.x) < 11 && Math.abs(P.y + 8 - c.y) < 13) { c.got = true; fire('coin'); }
   });
 }
 function draw() {
   var bw = $('gamebody').clientWidth, bh = $('gamebody').clientHeight;
+  if (!bw || !bh) return;
   if (cv.width !== bw || cv.height !== bh) { cv.width = bw; cv.height = bh; }
   var k = Math.min(bw / W, bh / H), ox = (bw - W * k) / 2, oy = (bh - H * k) / 2;
   ctx.setTransform(1, 0, 0, 1, 0, 0); ctx.fillStyle = '#111'; ctx.fillRect(0, 0, bw, bh);
   ctx.setTransform(k, 0, 0, k, ox, oy);
-  var cust = theme === 'customer';
+  if (theme === 'yours') { drawYours(); drawRobot(); return; }
   var sky = ctx.createLinearGradient(0, 0, 0, H);
-  sky.addColorStop(0, cust ? '#6fc3ff' : '#2a1f5c'); sky.addColorStop(1, cust ? '#c8ecff' : '#7a4fb8');
+  sky.addColorStop(0, '#6fc3ff'); sky.addColorStop(1, '#c8ecff');
   ctx.fillStyle = sky; ctx.fillRect(0, 0, W, H);
-  if (!cust) { ctx.fillStyle = '#ffe7a8'; ctx.beginPath(); ctx.arc(272, 34, 13, 0, 7); ctx.fill(); }
-  ctx.fillStyle = cust ? '#ff5a1f' : '#ff4d2e'; ctx.fillRect(118, 160, 50, 20);
-  ground.forEach(function (g) { ctx.fillStyle = cust ? '#5aa845' : '#39456a'; ctx.fillRect(g[0], g[1], g[2], 30);
-    ctx.fillStyle = cust ? '#7fd65f' : '#8fd0ff'; ctx.fillRect(g[0], g[1], g[2], 5); });
-  ctx.fillStyle = cust ? '#8a5a33' : '#8fd0ff'; ctx.fillRect(ledge[0], ledge[1], ledge[2], 8);
+  ctx.fillStyle = '#ff5a1f'; ctx.fillRect(118, 160, 50, 20);
+  ground.forEach(function (g) { ctx.fillStyle = '#5aa845'; ctx.fillRect(g[0], g[1], g[2], 30);
+    ctx.fillStyle = '#7fd65f'; ctx.fillRect(g[0], g[1], g[2], 5); });
+  ctx.fillStyle = '#8a5a33'; ctx.fillRect(ledge[0], ledge[1], ledge[2], 8);
   coins.forEach(function (c) { if (c.got) return; ctx.fillStyle = '#ffd23f'; ctx.strokeStyle = '#e8a300'; ctx.lineWidth = 2;
     ctx.beginPath(); ctx.arc(c.x, c.y, 6, 0, 7); ctx.fill(); ctx.stroke(); });
-  if (cust) { ctx.fillStyle = '#3b6fe0'; ctx.fillRect(P.x, P.y, P.w, P.h); }
-  else { ctx.fillStyle = '#d9dde6'; ctx.fillRect(P.x, P.y + 2, P.w, P.h - 4); ctx.fillStyle = '#1d2230'; ctx.fillRect(P.x + 2, P.y + 5, 8, 4);
-         ctx.fillStyle = '#f5820a'; ctx.fillRect(P.x + 3, P.y + 6, 2, 2); ctx.fillRect(P.x + 7, P.y + 6, 2, 2); }
+  ctx.fillStyle = '#3b6fe0'; ctx.fillRect(P.x, P.y, P.w, P.h);
+}
+/* Robot Lava Run as the kid left it: still grey (Art comes later), with the warm lava from session 2,
+   drawn as wireframe 05 draws it. Spooky is the same level at night: a sky, a moon, cold edges. */
+function drawYours() {
+  if (spooky) { var sky = ctx.createLinearGradient(0, 0, 0, H); sky.addColorStop(0, '#2a1f5c'); sky.addColorStop(1, '#7a4fb8'); ctx.fillStyle = sky; }
+  else ctx.fillStyle = '#9a9a9a';
+  ctx.fillRect(0, 0, W, H);
+  if (spooky) { ctx.fillStyle = '#ffe7a8'; ctx.beginPath(); ctx.arc(272, 34, 13, 0, 7); ctx.fill(); }
+  var L = YOURS.lava;
+  ctx.fillStyle = '#c4532b'; ctx.fillRect(L[0], L[1], L[2], H - L[1]); ctx.fillStyle = '#e8894e'; ctx.fillRect(L[0], L[1], L[2], 2);
+  YOURS.floors.forEach(function (f) { ctx.fillStyle = spooky ? '#39456a' : '#6e6e6e'; ctx.fillRect(f[0], f[1], f[2], 30);
+    ctx.fillStyle = spooky ? '#8fd0ff' : '#858585'; ctx.fillRect(f[0], f[1], f[2], 4); });
+  coins.forEach(function (c) { if (c.got) return; ctx.fillStyle = '#c4c4c4'; ctx.strokeStyle = '#8f8f8f'; ctx.lineWidth = 2;
+    ctx.beginPath(); ctx.arc(c.x, c.y, 6, 0, 7); ctx.fill(); ctx.stroke(); });
+}
+/* The robot the kid picked on the first day, drawn exactly as 04's drawHero() draws it. */
+function drawRobot() {
+  var x = P.x, y = P.y;
+  ctx.fillStyle = '#d9dde6'; ctx.fillRect(x, y + 2, 12, 12); ctx.fillStyle = '#1d2230'; ctx.fillRect(x + 2, y + 5, 8, 4);
+  ctx.fillStyle = '#f5820a'; ctx.fillRect(x + 3, y + 6, 2, 2); ctx.fillRect(x + 7, y + 6, 2, 2); ctx.fillStyle = '#aeb4c2'; ctx.fillRect(x + 1, y + 14, 3, 2); ctx.fillRect(x + 8, y + 14, 3, 2);
 }
 /* Full speed only while the game runs. Stopped, it redraws about 10 times a second (enough for a
    slider or a colour change to show at once), and not at all while the page is hidden. It used to
@@ -314,7 +351,7 @@ var frameNo = 0;
 function loop() { frameNo++; step(); if (!document.hidden && (running || frameNo % 6 === 0)) draw(); requestAnimationFrame(loop); }
 
 /* ---------- the shift: steps with gates that only open on evidence ---------- */
-var CHECKS = [['play', 'Play the game'], ['spot', 'Spot what’s wrong'], ['sounds', 'Give each action a sound'],
+var CHECKS = [['play', 'Play the game'], ['spot', 'Spot what’s wrong'], ['sounds', 'Give each part a sound'],
               ['mix', 'Mix it so it can be heard'], ['code', 'Tweak it in the code'], ['yours', 'Put it in your game']];
 var done = {}, got = 0, i = 0, gateOpen = false, clicks = [], spamAt = null;
 
@@ -328,40 +365,109 @@ function setChecks() {
   var now = STEPS[i].check;
   $('checks').innerHTML = CHECKS.map(function (c) {
     var cls = done[c[0]] ? 'done' : (c[0] === now ? 'now' : '');
-    return '<li class="' + cls + '"><span class="box">' + (done[c[0]] ? '<svg class="i"><use href="#i-check"/></svg>' : '') + '</span>' + c[1] + '</li>';
+    return '<li class="' + cls + '" data-check="' + c[0] + '"><span class="box">' + (done[c[0]] ? '<svg class="i"><use href="#i-check"/></svg>' : '') + '</span>' + c[1] + '</li>';
   }).join('');
-  var pips = $('pips').children; for (var k = 0; k < 4; k++) pips[k].classList.toggle('on', k < (done.yours ? 1 : 0));
 }
-function tree(of) {
-  var rows = of === 'yours' ? [['Level 1', 'the level', 1], ['Player', 'your robot'], ['Coin', 'the goal'], ['Lava', 'the danger']]
-                            : [['Coin Game', 'customer’s level', 1], ['Player', 'blue box'], ['Coin', 'the goal'], ['Lava', 'the danger']];
-  /* Plain rows, not buttons: nothing in this shift happens by picking a part, and rows that looked
-     tappable but did nothing were a critique finding. */
-  $('tree').innerHTML = rows.map(function (r) { return '<li class="' + (r[2] ? '' : 'child') + '"><span class="trow">' +
-    (r[2] ? '<svg class="i" style="width:14px;margin-right:-4px"><use href="#i-fold"/></svg>' : '') + '<svg class="i"><use href="#i-cube"/></svg>' + r[0] + '<small>' + r[1] + '</small></span></li>'; }).join('');
+/* A gated step passed: the check ticks, with the UI's "good" sound and a pulse on the ticked line
+   (ui.js says when UI sounds play, and why so few). */
+function tick(id) {
+  done[id] = true; setChecks(); UI.sound('good');
+  UI.feel($('checks').querySelector('[data-check="' + id + '"]'), 'good');
 }
-var shown = [];   // the lines on screen now, so a reply can be added under them without wiping them
+/* A wrong answer: the "not yet" sound and a small shake on the answer the kid tapped. */
+function nope(b) { UI.sound('nope'); if (b) UI.feel(b, 'nope'); }
+
+/* ---------- the Hierarchy and the Inspector ----------
+   The rows are buttons, as on the first day (04's tree()). As in Unity, a sound belongs to the part
+   that makes it: tapping Coin opens the Inspector for Coin, with its Audio Source slot ("When
+   grabbed"); Player has "When jumping"; Lava has "When touched". Before this, one step-owned
+   "Coin Game" Inspector held all three slots, and the Hierarchy was a dead list (critique
+   2026-09-26, P1 "the same patterns behave differently"). */
+var SLOT = { coin: ['coin', 'When grabbed'], player: ['jump', 'When jumping'], lava: ['hurt', 'When touched'] };
+function parts() {
+  return theme === 'yours'
+    // four rows fit under the checklist; a fifth (the Floor tile) hid the Lava row, as in wireframe 05
+    ? [['level', 'Level 1', 'the level'], ['player', 'Player', 'your robot'], ['coin', 'Coin', 'the goal'], ['lava', 'Lava', 'the danger']]
+    : [['level', 'Coin Game', 'customer’s level'], ['player', 'Player', 'blue box'], ['coin', 'Coin', 'the goal'], ['lava', 'Lava', 'the danger']];
+}
+function partName(id) { var p = parts().filter(function (x) { return x[0] === id; })[0]; return p ? p[1] : id; }
+var selected = null, openSlot = null;   // the part in the Inspector, and the part whose sound slot is waiting
+function tree() {
+  UI.keepFocus($('tree'), function () {
+    $('tree').innerHTML = parts().map(function (p) {
+      var s = SLOT[p[0]], note = s && assign[s[0]] ? SOUNDS[assign[s[0]]].label : p[2];
+      return '<li' + (p[0] === 'level' ? '' : ' class="child"') + '><button data-key="' + p[0] + '" aria-pressed="' + (selected === p[0]) + '">' +
+        (p[0] === 'level' ? '<svg class="i" style="width:14px;margin-right:-4px"><use href="#i-fold"/></svg>' : '') + '<svg class="i"><use href="#i-cube"/></svg>' + p[1] + '<small>' + note + '</small></button></li>';
+    }).join('');
+  });
+  Array.prototype.forEach.call($('tree').querySelectorAll('button'), function (b) {
+    b.addEventListener('click', function () { clicks = []; openPart(b.dataset.key); });
+  });
+}
+function comp(title) { return '<div class="comp"><svg class="i"><use href="#i-fold"/></svg><strong>' + title + '</strong></div>'; }
+/* A part's sound slot. Before the sound step it is only shown ("None", a plain span): the shelf is
+   still locked, so offering a slot there would be a control that does nothing. */
+function slotRow(id) {
+  var k = SLOT[id][0], v = assign[k], lab = '<label>' + SLOT[id][1] + '<small>Unity: AudioClip</small></label>';
+  if (i < 3) return '<div class="irow">' + lab + '<span class="slot' + (v ? ' filled' : '') + '">' + (v ? SOUNDS[v].label : 'None') + '</span></div>';
+  return '<div class="irow">' + lab + '<button class="slot' + (v ? ' filled' : '') + '" data-key="slot-' + id + '" data-slot="' + k + '">' +
+    (v ? SOUNDS[v].label : 'Tap to add a sound') + '</button></div>';
+}
+/* Edits happen only while stopped, which the first day teaches (04, "The Play-mode mistake"). A tap
+   on a part while the game runs is answered, not ignored, and the Inspector doesn't open. */
+function openPart(id) {
+  if (running) { say([[STEPS[i].voice || 's', 'Press Stop first. Changes made while playing don’t stick.']]); return; }
+  var html;
+  if (SLOT[id]) html = comp('Audio Source') + slotRow(id);
+  else html = '<p class="inote">The whole level. Its parts are listed under it: tap one to see what it has.</p>';
+  UI.keepFocus($('inspBody'), function () { inspector(partName(id), html); });
+  selected = id; openSlot = SLOT[id] && i >= 3 ? id : null;
+  var sl = $('inspBody').querySelector('button.slot');
+  /* The slot sends the kid's hand (and keyboard focus) to the shelf, where the sounds are. */
+  if (sl) sl.addEventListener('click', function () { clicks = []; $('shelf').classList.add('cue'); var f = $('shelfBody').querySelector('.snd'); if (f) f.focus(); });
+  tree(); shelf();
+}
+function closePart() {
+  inspector(null); tree(); shelf();
+  var s = STEPS[i]; if (s.owned) s.owned();   // a step-owned Inspector (the Audio Mixer) comes back
+}
+$('inspClose').addEventListener('click', closePart);
+document.addEventListener('keydown', function (e) { if (e.key === 'Escape' && $('inspector').classList.contains('open') && !$('inspClose').hidden) closePart(); });
+
+var shown = [];   // the lines most recently said
+function speaker(f) { return f === 'k' ? NAME : f === 'm' ? 'Mentor' : f === 'p' ? 'Programmer' : 'Sound designer'; }
+/* The conversation keeps its history: new lines are added under the old ones (which dim), and the
+   log keeps the last eight. It used to clear on every line, so an instruction vanished the moment
+   anything else was said (critique 2026-09-26, "recognition rather than recall"). Bubbles follow
+   DESIGN.md: mentor plain, the kid right-aligned, visiting characters in the guest bubble. */
 function say(lines) {
-  shown = lines; var log = $('log'); log.innerHTML = ''; var prev = null;
+  shown = lines; var log = $('log');
+  Array.prototype.forEach.call(log.querySelectorAll('.msg'), function (d) { d.classList.remove('new'); d.classList.add('old'); });
+  var lastEl = log.lastElementChild, prev = lastEl ? lastEl.getAttribute('data-from') : null;
   lines.forEach(function (m) {
-    var d = document.createElement('div'); d.className = 'msg' + (m[0] === 'k' ? ' kid' : m[0] === 'm' ? ' guest' : '');
+    var d = document.createElement('div'); d.className = 'msg new' + (m[0] === 'k' ? ' kid' : m[0] === 'm' ? '' : ' guest');
+    d.setAttribute('data-from', m[0]);
     // The speaker's name only when the speaker changes: a second line in a row doesn't repeat it.
-    if (m[0] !== prev) { var f = document.createElement('span'); f.className = 'from';
-      f.textContent = m[0] === 'k' ? NAME : m[0] === 'm' ? 'Mentor' : m[0] === 'p' ? 'Programmer' : 'Sound designer'; d.appendChild(f); }
+    if (m[0] !== prev) { var f = document.createElement('span'); f.className = 'from'; f.textContent = speaker(m[0]); d.appendChild(f); }
     prev = m[0];
     var txt = m[1].replace(/@name/g, NAME);
     if (m[2] === 'html') { var w = document.createElement('div'); w.innerHTML = txt; d.appendChild(w); } else d.appendChild(document.createTextNode(txt));
     log.appendChild(d);
   });
-  // Read the newest line out once (text only: no speaker glued on, no markup), as wireframes 04–06 do.
-  if (lines.length) announce(String(lines[lines.length - 1][1]).replace(/<[^>]+>/g, ' ').replace(/@name/g, NAME));
+  var all = log.querySelectorAll('.msg');
+  for (var k = 0; k < all.length - 8; k++) all[k].remove();
+  // The oldest line left may have lost its caption with the line above it: give it back.
+  var top = log.firstElementChild;
+  if (top && !top.querySelector('.from')) { var f2 = document.createElement('span'); f2.className = 'from'; f2.textContent = speaker(top.getAttribute('data-from')); top.insertBefore(f2, top.firstChild); }
+  // Read the newest line out once (text only: no speaker glued on, no markup).
+  if (lines.length) announce(String(lines[lines.length - 1][1]).replace(/<[^>]+>/g, ' ').replace(/@name/g, NAME).replace(/\s+/g, ' ').trim());
   // The newest line is the one that matters; after the options below have laid out, keep it in view.
   requestAnimationFrame(function () { log.scrollTop = log.scrollHeight; });
 }
 /* Answers are shuffled every time they're shown. Every question used to list the right answer first,
-   so tapping the top option every time got a kid through without reading. The newest line is also
-   read out, and when focus was already in the editor (not the game) it moves to the first answer, so
-   a keyboard or screen-reader user isn't left behind on a control that no longer matters. */
+   so tapping the top option every time got a kid through without reading. When focus was already in
+   the editor (not the game) it moves to the first answer, so a keyboard or screen-reader user isn't
+   left behind on a control that no longer matters. say() reads the line out; this doesn't. */
 function options(list) {
   var box = $('opts'), wasInEditor = $('editor').contains(document.activeElement) && document.activeElement !== cv;
   box.innerHTML = ''; list = list.slice();
@@ -369,7 +475,7 @@ function options(list) {
   list.forEach(function (o) {
     var b = document.createElement('button'); b.className = 'opt'; b.textContent = o[0];
     if (o[2]) { var sm = document.createElement('small'); sm.textContent = o[2]; b.appendChild(sm); }
-    b.addEventListener('click', function () { if (spamCheck()) return; o[1](); });
+    b.addEventListener('click', function () { if (spamCheck()) return; o[1](b); });
     box.appendChild(b);
   });
   if (wasInEditor && box.firstChild && !running) box.firstChild.focus({ preventScroll: true });
@@ -378,51 +484,48 @@ function announce(text) { $('announce').textContent = text; }
 /* Three option clicks inside 1.8 s = clicking without reading. Stop and ask for a prediction. */
 function spamCheck() {
   var t = Date.now(); clicks.push(t); clicks = clicks.filter(function (x) { return t - x < 1800; });
-  if (clicks.length < 3 || spamAt === i || i === 0) return false;   // step 1 is a sound check, not a question
+  if (clicks.length < 3 || spamAt === i || i === 0 || STEPS[i].noSpam) return false;   // step 1 is a sound check, not a question; noSpam: quick choices, not a test
   spamAt = i; clicks = [];
   var v = STEPS[i].voice || 's';   // whoever is talking in this step asks, not a new voice
   say([[v, "Whoa, speedy! Quick guess before we go on: what happens to a game when grabbing a coin makes no sound at all?"]]);
   options([["It feels dead, like nothing happened", function () { render(); }],
-           ["It gets faster", function () { say([[v, "Not quite. Nothing changes except the game stops answering you. That's what feels dead."]]); options([['Got it', render]]); }]]);
+           ["It gets faster", function (b) { nope(b); say([[v, "Not quite. Nothing changes except the game stops answering you. That's what feels dead."]]); options([['Got it', render]]); }]]);
   return true;
 }
-function inspector(title, html) {
+/* owned: the step opened this Inspector for its job (the Audio Mixer), so it has no close button: a
+   kid who closed it early could not get it back (DESIGN.md, "One narrow exception"). */
+function inspector(title, html, owned) {
   var el = $('inspector');
-  if (!title) { el.classList.remove('open'); el.setAttribute('aria-hidden', 'true'); el.inert = true; $('dMentor').classList.remove('inspecting'); return; }
-  $('inspName').textContent = title; $('inspBody').innerHTML = html;
+  if (!title) { el.classList.remove('open', 'frozen'); el.setAttribute('aria-hidden', 'true'); el.inert = true; $('dMentor').classList.remove('inspecting'); selected = null; openSlot = null; return; }
+  $('inspName').textContent = title; $('inspBody').innerHTML = html; $('inspClose').hidden = !!owned;
   $('dMentor').classList.add('inspecting');
   el.classList.add('open'); el.setAttribute('aria-hidden', 'false'); el.inert = false;
+  el.classList.toggle('frozen', running); $('inspBody').inert = running;
   requestAnimationFrame(function () { var lg = $('log'); lg.scrollTop = lg.scrollHeight; });   // the Inspector docks below the conversation; keep its newest line in view
 }
-var picked = null;
-function shelf(on) {
-  if (!on) picked = null;   // a locked shelf keeps no orange selection ring
-  $('shelf').classList.toggle('locked', !on); $('shelf').classList.remove('cue');
+/* The Project shelf. The order is now part first, sound second: tap a part, its slot waits, and a
+   tap on a sound here puts it in that slot (and plays it). Unity's version is dragging a clip from
+   Project onto the component. The old order (pick up a sound, then find a slot) was invisible to a
+   first-timer (critique 2026-09-26, Jordan), and with the slots on three parts it would have been
+   three taps across three panels. The shelf says what it's waiting for in every state. */
+function shelf() {
+  var st = i < 3 ? 'soon' : running ? 'playing' : openSlot ? 'ready' : 'nopart';
+  var cur = openSlot ? assign[SLOT[openSlot][0]] : null, on = st === 'ready';
+  $('shelf').classList.toggle('locked', !on); $('shelf').classList.toggle('cue', on && !cur);
+  var note = { soon: 'Your sounds live here. They unlock when you need them.', playing: 'Press Stop to change sounds.',
+               nopart: 'Tap a part in the Hierarchy to give it a sound.',
+               ready: 'Tap a sound to put it on the ' + (openSlot ? partName(openSlot) : '') + '.' }[st];
   $('shelfBody').innerHTML = Object.keys(SOUNDS).map(function (id) {
-    var s = SOUNDS[id]; return '<button class="snd" data-id="' + id + '" aria-pressed="' + (picked === id) + '"><strong>' + s.label + '</strong><small>' + s.note + '</small></button>';
-  }).join('') + '<p class="shelf-note">' + (on ? 'Tap a sound to hear it and pick it up. Then tap a slot in the Inspector.' : 'Your sounds live here. They unlock when you need them.') + '</p>';
+    var s = SOUNDS[id]; return '<button class="snd" data-id="' + id + '" data-key="' + id + '" aria-pressed="' + (on && cur === id) + '"' + (on ? '' : ' disabled') + '><strong>' + s.label + '</strong><small>' + s.note + '</small></button>';
+  }).join('') + '<p class="shelf-note">' + note + '</p>';
   Array.prototype.forEach.call($('shelfBody').querySelectorAll('.snd'), function (b) {
-    b.addEventListener('click', function () { clicks = []; picked = b.dataset.id; SOUNDS[picked].play(); shelf(true);
-      $('statusMsg').textContent = 'Picked: ' + SOUNDS[picked].label; });
-  });
-}
-function slotsHtml() {
-  function row(k, label, why) {
-    var v = assign[k];
-    return '<div class="irow"><label>' + label + '<small>' + why + '</small></label><button class="slot' + (v ? ' filled' : '') + '" data-slot="' + k + '">' +
-      (v ? SOUNDS[v].label : 'Tap to add a sound') + '</button></div>';
-  }
-  return '<div class="comp"><svg class="i"><use href="#i-fold"/></svg><strong>Audio Source</strong></div>' +
-    row('coin', 'When you grab a coin', 'Unity: AudioClip') + row('jump', 'When you jump', 'Unity: AudioClip') + row('hurt', 'When you fall in lava', 'Unity: AudioClip');
-}
-function wireSlots() {
-  Array.prototype.forEach.call($('inspBody').querySelectorAll('.slot'), function (b) {
     b.addEventListener('click', function () {
       clicks = [];   // hands-on work, not mindless clicking
-      /* Nothing picked yet: the shelf lights up where the kid's hand needs to go, rather than an
-         error in the status bar at the far corner of the screen. */
-      if (!picked) { $('shelf').classList.add('cue'); $('statusMsg').textContent = 'Pick a sound from the shelf first'; return; }
-      assign[b.dataset.slot] = picked; SOUNDS[picked].play(); inspector('Coin Game', slotsHtml()); wireSlots(); STEPS[i].onEvent('assign');
+      if (!openSlot || running) return;
+      var id = openSlot, snd = b.dataset.id; assign[SLOT[id][0]] = snd; SOUNDS[snd].play();
+      $('statusMsg').textContent = SOUNDS[snd].label + ' on the ' + partName(id);
+      UI.keepFocus($('shelfBody'), function () { openPart(id); });
+      if (STEPS[i].onEvent) STEPS[i].onEvent('assign', id);
     });
   });
 }
@@ -450,7 +553,7 @@ function codeHtml() {
     '  <span class="kw">public</span> AudioSource source;',
     '  <span class="cm">// your Inspector slot: ' + snd + '</span>',
     '  <span class="kw">public</span> AudioClip coinSound;',
-    '  <span class="kw">public float</span> pitch = <input class="tw" id="tw" value="' + pitchSaved + '" aria-label="pitch value" spellcheck="false" autocomplete="off">f;', '',
+    '  <span class="kw">public float</span> pitch = <input class="tw" id="tw" value="' + pitchSaved + '" aria-label="pitch, line 8 of Coin.cs. Type a number, then Save." spellcheck="false" autocomplete="off">f;', '',
     '  <span class="kw">void</span> OnTriggerEnter2D(Collider2D other)', '  {',
     '    source.pitch = pitch;', '    source.PlayOneShot(coinSound);', '  }', '}'];
   return L.map(function (t, k) { return '<span class="ln' + (k + 1 === hlLine ? ' hl' : '') + '"><span class="n">' + (k + 1) + '</span>' + t + '</span>'; }).join('');
@@ -462,47 +565,54 @@ function code(on) {
   $('tw').addEventListener('input', function () { clicks = []; $('codeName').classList.add('unsaved'); });
   $('tw').addEventListener('keydown', function (e) { if (e.key === 'Enter') saveCode(); });
 }
+/* The Console speaks through the one announcer, like everything else on screen. */
+function consoleMsg(html, err) { var c = $('console'); c.classList.toggle('err', !!err); c.innerHTML = html; announce(c.textContent); }
 function saveCode() {
-  var raw = $('tw').value.trim().replace(/f$/i, ''), c = $('console');
-  c.classList.remove('err');
-  if (!/^\d+(\.\d+)?$/.test(raw)) { c.classList.add('err'); c.innerHTML = '<b>Coin.cs line 8:</b> “' + $('tw').value.replace(/[<>&"]/g, '') + '” isn’t a number. <b>pitch</b> needs one, like 1.5'; return; }
+  var raw = $('tw').value.trim().replace(/f$/i, '');
+  // Unity only recompiles in Edit mode; a save while playing is refused and says so.
+  if (running) { consoleMsg('<b>Coin.cs:</b> Press Stop first. Unity rebuilds your script only while the game is stopped.', true); return; }
+  if (!/^\d+(\.\d+)?$/.test(raw)) { consoleMsg('<b>Coin.cs line 8:</b> “' + $('tw').value.replace(/[<>&"]/g, '') + '” isn’t a number. <b>pitch</b> needs one, like 1.5', true); return; }
   var v = parseFloat(raw);
-  if (v < 0.5 || v > 2) { c.classList.add('err'); c.innerHTML = '<b>Coin.cs line 8:</b> ' + raw + ' is too far for this sound. Try between 0.5 and 2'; return; }
+  if (v < 0.5 || v > 2) { consoleMsg('<b>Coin.cs line 8:</b> ' + raw + ' is too far for this sound. Try between 0.5 and 2', true); return; }
   pitch = v; pitchSaved = raw.indexOf('.') < 0 ? raw + '.0' : raw; $('tw').value = pitchSaved; $('codeName').classList.remove('unsaved');
-  c.innerHTML = 'Saved. Unity rebuilt the game: <b>pitch = ' + pitchSaved + 'f</b>'; $('statusMsg').textContent = 'Compiled Coin.cs';
+  consoleMsg('Saved. Unity rebuilt the game: <b>pitch = ' + pitchSaved + 'f</b>'); $('statusMsg').textContent = 'Compiled Coin.cs';
   if (STEPS[i].onEvent) STEPS[i].onEvent('save');
 }
 $('save').addEventListener('click', function () { clicks = []; saveCode(); });
 /* Who is talking: the panel header follows the voice of the step (sound designer, programmer, or the
-   mentor for the kid's own game), so the tab never names someone other than the speaker. */
+   mentor for the kid's own game), so the tab never names someone other than the speaker. The role
+   alone: no "(name TBD)" in anything a kid reads. */
 function who(kind) {
   var W = { s: ['Sound designer', 'Audio department'], p: ['Programmer', 'Engineering department, dropping by'],
             m: ['Mentor', 'The studio’s AI, and proud of it'] }[kind] || ['Sound designer', 'Audio department'];
-  $('whoTab').textContent = W[0];
-  $('whoName').innerHTML = W[0] + ' <span style="font-weight:500;color:var(--ink-3)">(name TBD)</span>';
-  $('whoRole').textContent = W[1];
+  $('whoTab').textContent = W[0]; $('whoName').textContent = W[0]; $('whoRole').textContent = W[1];
 }
 function audibleCoin() { return mix.sfx >= mix.music + 0.15; }
 /* The one place the game starts and stops, so the toolbar can never disagree with the game: Play turns
-   into a solid orange Stop, the chrome takes the Play-mode tint, and the game gets its orange ring. */
+   into a solid orange Stop, the chrome takes the Play-mode tint, and the game gets its orange ring.
+   Play starts the scene fresh and Stop puts it back, as Unity does. While it runs, the Inspector and
+   the shelf are locked and say so. A step with music (the mixer) plays it only while the game runs. */
 function setRunning(on) {
-  running = !!on;
+  var was = running; running = !!on;
+  if (running !== was) level();
   $('editor').classList.toggle('playmode', running); $('gamebody').classList.toggle('playing', running);
-  $('bPlay').classList.toggle('on', running); $('bPlayIcon').setAttribute('href', running ? '#i-stop' : '#i-play');
+  $('bPlay').classList.toggle('on', running); $('bPlay').classList.remove('cue'); $('bPlayIcon').setAttribute('href', running ? '#i-stop' : '#i-play');
   $('bPlay').querySelector('span').textContent = running ? 'Stop' : 'Play';
   $('statusMsg').textContent = running ? 'Play mode' : 'Stopped';
   if (!running) { keys = {}; $('hint').hidden = true; } else $('hint').hidden = document.activeElement === cv;
+  var ins = $('inspector'); if (ins.classList.contains('open')) { ins.classList.toggle('frozen', running); $('inspBody').inert = running; }
+  shelf();
+  var s = STEPS[i]; if (s && s.music) { if (running) startMusic(); else stopMusic(); }
 }
 /* Play is real: on the ticket it starts the job, anywhere else it runs or stops the game. */
 $('bPlay').addEventListener('click', function () {
-  if (i === 0) { advance(); return; }
-  setRunning(!running); if (running) cv.focus();
+  if (i === 0) { advance(); UI.sound('play'); return; }
+  setRunning(!running); UI.sound(running ? 'play' : 'stop'); if (running) cv.focus();
 });
 function setGame(which) {
-  theme = which; level(); setRunning(true); tree(which);
-  $('gameOf').textContent = which === 'yours' ? NAME + "'s game" : "customer's game";
+  theme = which; level(); tree();
+  $('gameOf').textContent = which === 'yours' ? 'your game' : "customer's game";
   $('hierOf').textContent = which === 'yours' ? 'your parts' : "customer's game";
-  $('hint').hidden = document.activeElement === cv;
 }
 function advance() { go(i + 1); }
 /* Move on after a pause, but only if the kid (or a reviewer's step button) hasn't already gone elsewhere. */
@@ -513,7 +623,7 @@ var STEPS = [
     /* A sound check first. This is an Audio shift in a room of Chromebooks that are often muted, and
        the original app mutes game sound by default (app/public/js/game-runner.js:468). A kid who can't
        hear still goes on: the pops on the game show every sound and how loud it is. */
-    enter: function () { setGame('customer'); setRunning(false); $('hint').hidden = true; shelf(false);
+    enter: function () { setRunning(false); $('hint').hidden = true;
       var ticket = function (lines) {
         say(lines.concat([['s', "Now, the job: a customer says their coin game feels dead. Can you play it and tell me what's wrong?"]]));
         options([["Let's play it", advance]]); };
@@ -527,25 +637,32 @@ var STEPS = [
     what: 'A sound check, then the sound designer brings a real problem from a customer. Pressing Play also starts the job.',
     gate: 'Nothing to gate yet: this is the hook. A kid who can’t hear goes on anyway, with the pops as their sound.' },
   { beat: 'Play it', check: 'play',
-    enter: function () { setRunning(true); level(); got = 0; $('hint').hidden = false;
+    enter: function () { setRunning(true); got = 0; $('hint').hidden = false;
       say([['s', 'Click the game, then use the arrow keys or A, D and W. Grab both coins.']]); options([]); },
-    onEvent: function (a) { if (a === 'coin' && got >= 2) { done.play = true; setChecks(); advanceLater(500); } },
+    onEvent: function (a) { if (a === 'coin' && got >= 2) { tick('play'); advanceLater(500); } },
     what: 'The kid plays the customer’s game with the keyboard. Grabbing a coin makes no sound and nothing happens.',
     gate: 'There is no button. The only way on is to actually grab both coins in the game.' },
   { beat: 'Spot what’s wrong', check: 'spot',
     enter: function () { setRunning(false);
       say([['s', 'So, what felt off?']]);
-      options([['Nothing happened when I grabbed a coin', function () { done.spot = true; setChecks();
+      options([['Nothing happened when I grabbed a coin', function () { tick('spot');
                   say([['s', "Exactly! You did something and the game didn't answer. Let's fix that."]]); options([['How?', advance]]); }],
                ['The player is too slow', wrongSpot], ['The colours are boring', wrongSpot]]); },
     what: 'The kid names the problem, in their own terms, before anyone names the concept.',
     gate: 'A wrong answer doesn’t move on. It sends the kid back to play once more and watch closely.' },
-  { beat: 'Give each action a sound', check: 'sounds',
-    enter: function () { setRunning(true); level(); shelf(true); this.okBad = false; this.tried = null;
-      say([['s', 'Every action should answer the player. Tap a sound on the shelf below, then tap a slot to put it there.']]);
-      options([]); inspector('Coin Game', slotsHtml()); wireSlots(); },
-    onEvent: function (a) {
-      if (a !== 'assign' || !(assign.coin && assign.jump && assign.hurt)) return;
+  { beat: 'Give each part a sound', check: 'sounds',
+    /* Stopped: this step edits, and edits happen only while stopped. The kid gives each part its
+       sound, then presses Play to test, as on the first day. */
+    enter: function () { setRunning(false); this.okBad = false; this.tried = null;
+      say([['s', 'Every action should answer the player. Tap each part in the Hierarchy and give it a sound.'],
+           ['s', 'The Coin, the Player and the Lava each have a slot. The sounds are on the shelf below.']]);
+      options([]); },
+    onEvent: function (a, id) {
+      if (a !== 'assign') return;
+      if (!(assign.coin && assign.jump && assign.hurt)) {
+        var left = ['coin', 'player', 'lava'].filter(function (p) { return !assign[SLOT[p][0]]; }).map(partName);
+        say([['s', SOUNDS[assign[SLOT[id][0]]].label + ' on the ' + partName(id) + '. Still silent: ' + left.join(' and ') + '.']]); return;
+      }
       /* Every good or neutral action is challenged if it sounds like failure, not only the coin:
          a blind reviewer put the buzz on the jump and nothing said a word, while the later return
          question marks that exact choice wrong. The lava slot is allowed to sound bad. */
@@ -554,108 +671,129 @@ var STEPS = [
         say([['s', off === 'coin' ? 'Hmm. Grabbing a coin now sounds like getting hurt. Is that what you want players to feel?'
                                   : 'Hmm. Jumping now sounds like something went wrong. Is that what you want players to feel?']]);
         var self = this;
-        options([['Oops, let me change it', function () { say([['s', off === 'coin' ? 'Pick a happier sound for the coin.' : 'Pick a sound that fits jumping up.']]); options([]); inspector('Coin Game', slotsHtml()); wireSlots(); }],
-                 ["Yes, it's a spooky game", function () { self.okBad = true; STEPS[i].onEvent('assign'); }]]);
-        inspector(null); return;
+        options([['Oops, let me change it', function () { say([['s', off === 'coin' ? 'Tap Coin and pick it a happier sound.' : 'Tap Player and pick a sound that fits jumping up.']]); options([]); }],
+                 ["Yes, it's a spooky game", function () { self.okBad = true; spookyOk = true; say([['k', "Yes, it's a spooky game."], ['s', 'Spooky it is. Your game, your call.']]); options([]); self.onEvent('assign', id); }]]);
+        inspector(null); tree(); shelf(); return;
       }
-      done.sounds = true; setChecks(); inspector(null); level();
-      say([['s', 'Now play it. Grab a coin and jump, and listen.']]); options([]); this.tried = { coin: false, jump: false };
+      if (done.sounds) return;
+      tick('sounds'); inspector(null); tree(); shelf();
+      say([['s', 'Every part has a sound. Now press Play. Grab a coin and jump, and listen.']]); options([]); this.tried = { coin: false, jump: false };
+      $('bPlay').classList.add('cue');
     },
     onPlay: function (a, aud) { if (!done.sounds || !this.tried) return; if (aud && (a === 'coin' || a === 'jump')) this.tried[a] = true;
       /* Hold the first success: a line of praise, then a pause long enough to enjoy it. It used to move
          on after half a second, stepping on the kid's first "DING!". */
-      if (this.tried.coin && this.tried.jump) { this.tried = null;
+      if (this.tried.coin && this.tried.jump) { this.tried = null; UI.sound('good'); UI.feel($('gamebody'), 'good');
         say([['s', 'Hear that? Now the game answers you every time you do something.']]); advanceLater(1800); } },
-    what: 'The kid picks sounds from the Project window and places them in the Inspector, the same way Unity works.',
-    gate: 'The kid has to fill all three slots. A "hurt" sound on the coin gets challenged: it has a real consequence, and the kid decides.' },
-  { beat: 'Mix it so it can be heard', check: 'mix',
-    enter: function () { startMusic(); coins.forEach(function (c) { c.got = false; }); setRunning(true); shelf(false);
-      say([['s', 'Players have music on. Grab a coin and listen: can you still hear it?'],
-           ['s', 'If the music is drowning it out, turn the music down or the sound effects up.']]);
-      options([]); inspector('Audio Mixer', mixerHtml()); wireMixer(); this.heard = false; },
+    what: 'Stopped, the kid taps each part in the Hierarchy. Its Inspector opens with its own Audio Source slot (Coin: when grabbed; Player: when jumping; Lava: when touched), and a tap on a sound in the Project shelf puts it there, as in Unity, where clips live in Project and each sound belongs to the object that makes it. Then the kid presses Play to test.',
+    gate: 'All three parts need a sound. A “hurt” sound on the coin or the jump gets challenged, and the kid decides: “it’s a spooky game” is a real answer. Then only hearing (or seeing) the coin and the jump in play moves on. A part tapped while playing doesn’t open: changes made in Play mode don’t stick.' },
+  { beat: 'Mix it so it can be heard', check: 'mix', music: true,
+    /* Stopped, with the mixer open: the kid mixes, then plays to hear it. The mixer is the step's own
+       Inspector (DESIGN.md's exception), so it comes back if the kid looks at a part and closes it. */
+    owned: function () { if (done.mix) return; inspector('Audio Mixer', mixerHtml(), true); wireMixer(); },
+    enter: function () { setRunning(false); shelf(); this.owned();
+      say([['s', 'Players have music on. Press Play and grab a coin: can you still hear it?'],
+           ['s', 'If the music drowns it out, press Stop and mix: music down, or sound effects up.']]); options([]); },
     onEvent: function (a, aud) {
       if (a === 'mix') { $('statusMsg').textContent = audibleCoin() ? 'Sound effects are louder than the music' : 'The music is drowning out the sound effects'; }
       if (a === 'coin' && !done.mix) {   // once: a second coin inside the 400 ms would advance twice
         if (!audibleCoin()) { say([['s', "Did you hear it? Neither did the players. The music's burying it."],
-                                   ['s', 'Turn the music down or the sound effects up, then grab a coin again.']]); options([]); coins.forEach(function (c) { c.got = false; }); return; }
-        done.mix = true; setChecks(); inspector(null);
+                                   ['s', 'Press Stop, turn the music down or the sound effects up, then play and grab a coin again.']]); options([]); return; }
+        tick('mix'); inspector(null);
         say([['s', 'Now it cuts right through the music. That’s mixing!']]); var at = i; setTimeout(function () { if (i === at) { stopMusic(); advance(); } }, 1800);
       }
     },
-    what: 'Music plays over the game. The kid tunes a real mixer until the coin cuts through, then proves it by grabbing a coin.',
-    gate: 'A slider target: grabbing a coin while the music is louder doesn’t count. The kid has to mix, then play.' },
+    what: 'The kid tunes a real mixer while stopped, then presses Play: music plays over the game, and the coin has to cut through it.',
+    gate: 'A slider target: grabbing a coin while the music is louder doesn’t count, and the mixer is locked while the game runs. The kid has to stop, mix, play and grab a coin.' },
   { beat: 'Peek and tweak the code', check: 'code', voice: 'p',
-    enter: function () { who('p'); setRunning(true); coins.forEach(function (c) { c.got = false; }); hlLine = 0; code(true);
-      $('console').textContent = 'Console: no errors'; this.found = false; this.heard = null;
+    enter: function () { who('p'); setRunning(false); hlLine = 0; code(true);
+      consoleMsg('Console: no errors'); this.found = false; this.heard = null;
       say([['p', "Hi @name, I'm a programmer. This is your coin fix the way I see it: real C#, the language Unity uses."],
            ['p', 'Which line plays the coin sound?']]);
       var self = this;
       options([['source.PlayOneShot(coinSound);', function () { self.find(true); }],
-               ['public float pitch = 1.0f;', function () { self.find(false, 'That line only holds a number. It doesn’t play anything. Look for the word “Play”.'); }],
-               ['public class Coin : MonoBehaviour', function () { self.find(false, 'That’s the name of the whole script. Look inside it for the word “Play”.'); }]]); },
+               ['public float pitch = 1.0f;', function (b) { nope(b); self.find(false, 'That line only holds a number. It doesn’t play anything. Look for the word “Play”.'); }],
+               ['public class Coin : MonoBehaviour', function (b) { nope(b); self.find(false, 'That’s the name of the whole script. Look inside it for the word “Play”.'); }]]); },
     find: function (ok, why) {
       if (!ok) { say([['p', why], ['p', 'Which line plays the coin sound?']]); return; }
-      this.found = true; hlLine = 13; code(true); $('console').textContent = 'Console: no errors';
-      say([['p', 'Yes! PlayOneShot plays it once. coinSound is the ' + (assign.coin ? SOUNDS[assign.coin].label : 'sound') + ' you put in the Inspector slot: same thing, two views.'],
-           ['p', 'Now make the coin sound higher: change pitch on line 8 to a bigger number.'],
-           ['p', 'Then press Save, and grab a coin to hear it.']]);
+      this.found = true; hlLine = 13; code(true); consoleMsg('Console: no errors');
+      say([['p', 'Yes! PlayOneShot plays it once. coinSound is the ' + (assign.coin ? SOUNDS[assign.coin].label : 'sound') + ' you put in the Coin’s slot: same thing, two views.'],
+           ['p', 'Now make the coin sound higher: change pitch on line 8 to a bigger number, and press Save.'],
+           ['p', 'Then press Play and grab a coin to hear it.']]);
       options([]);
     },
     onEvent: function (a) {
       if (a === 'save' && !this.found) { say([['p', 'Nice edit! First, find the line that plays the sound.']]); return; }
+      if (a === 'save' && pitch > 1) $('bPlay').classList.add('cue');
       if (a !== 'coin' || !this.found) return;
-      if (pitch === 1) { say([['p', 'Sounds the same, right? pitch is still 1.0. Change the number, then press Save.']]); coins.forEach(function (c) { c.got = false; }); return; }
-      if (pitch < 1) { say([['p', 'Did that sound lower? Numbers under 1 go lower. Try one bigger than 1.']]); coins.forEach(function (c) { c.got = false; }); return; }
-      done.code = true; setChecks(); setRunning(false);
+      if (pitch === 1) { say([['p', 'Sounds the same, right? pitch is still 1.0. Press Stop, change the number, then Save.']]); return; }
+      if (pitch < 1) { say([['p', 'Did that sound lower? Numbers under 1 go lower. Press Stop and try one bigger than 1.']]); return; }
+      tick('code'); setRunning(false);
       say([['p', 'Higher! You just changed a game by editing real C#. That’s my whole job.']]);
       options([['Back to the sound designer', advance]]);
     },
-    what: 'A programmer drops by (meet the roles) and shows the real Unity C# behind the fix. The kid finds the line that plays the sound, then edits one value, saves, and hears the change in the game. In the course this starts mid-course in Engineering shifts (see curriculum-map.md); it is shown in this early shift so it can be judged.',
-    gate: 'The kid must pick the right line (wrong picks explain and ask again), then save a pitch above 1 and grab a coin. Not a number, or out of range, gets a Console error and changes nothing. A lower pitch is heard and explained, and doesn’t count.' },
+    what: 'A programmer drops by (meet the roles) and shows the real Unity C# behind the fix. The kid finds the line that plays the sound, then, while stopped, edits one value and saves, and presses Play to hear the change. In the course this starts mid-course in Engineering shifts (see curriculum-map.md); it is shown in this early shift so it can be judged.',
+    gate: 'The kid must pick the right line (wrong picks explain and ask again), then save a pitch above 1 and grab a coin in play. Not a number, out of range, or a save while playing gets a Console message and changes nothing. A lower pitch is heard and explained, and doesn’t count.' },
   { beat: 'Name it', check: 'yours',
     /* The card keeps one engine's names. Godot and Unreal rows put about eight new terms in front of a
        kid who is still learning Unity's; they can come back as an extra later. The prize arrives on
-       screen, in the toolbar where tools live, instead of only being promised. */
+       screen, in the toolbar where tools live, instead of only being promised. The card and the tool
+       are two moments, a beat apart, so each gets its own sound. */
     enter: function () { setRunning(false);
       say([['s', 'That’s it! Game makers call this feedback.'],
            ['s', '<div class="card"><b>Feedback</b><p>When you do something, the game answers you.</p><dl><dt>Unity</dt><dd>Audio Source, Audio Mixer</dd><dt>C#</dt><dd><code>source.PlayOneShot(coinSound);</code></dd></dl></div>', 'html'],
            ['s', 'And here’s a surprise: my Sound Mixer tool is yours to keep. Look up in your toolbar!']]);
-      var chip = $('toolchip'); chip.hidden = false; chip.classList.remove('new'); void chip.offsetWidth; chip.classList.add('new');
-      $('statusMsg').textContent = 'New tool: Sound Mixer';
+      UI.sound('card');
+      var at = i; setTimeout(function () { if (i !== at) return;
+        var chip = $('toolchip'); chip.hidden = false; chip.classList.remove('new'); void chip.offsetWidth; chip.classList.add('new');
+        UI.sound('tool'); $('statusMsg').textContent = 'New tool: Sound Mixer'; }, 700);
       options([['Put it in my game', advance]]); },
     what: 'The concept is named only after the kid has felt it and fixed it. The card carries the real Unity names; the Sound Mixer tool arrives in the toolbar.',
     gate: 'The card only exists because the kid earned it. The prize is a surprise, not a price.' },
   { beat: 'Put it in your game', check: 'yours', voice: 'm',
-    enter: function () { setGame('yours'); coins.forEach(function (c) { c.got = false; });
-      say([['m', 'Your turn, @name. Your game gets the same sounds. Grab a coin in YOUR game.']]); options([]); },
-    onEvent: function (a, aud) { if (a === 'coin' && aud) { done.yours = true; setChecks(); setRunning(false);
-      say([['m', 'Hear that? Your game answers you now.'],
-           ['m', '<div class="milestone-big">Alpha milestone <span class="pips"><i class="on"></i><i></i><i></i><i></i></span></div>1 of 4 departments done. Audio is finished!', 'html']]);
+    /* The kid's real game, carried over from the first day: Robot Lava Run, the same level, the robot.
+       A kid who kept a spooky sound gets the choice to make their game spooky too: the same level at
+       night, never a different one. */
+    enter: function () { setRunning(false); this.got = false;
+      var ready = function (lines) { say(lines.concat([['m', 'Press Play and grab a coin in YOUR game.']])); options([]); $('bPlay').classList.add('cue'); };
+      if (spookyOk && !spooky) {
+        say([['m', 'Your turn, @name. ' + GAME + ' gets the same sounds.'], ['m', 'You went spooky with them. Want ' + GAME + ' spooky too?']]);
+        options([['Make it spooky', function () { spooky = true; ready([['k', 'Make it spooky!'], ['m', 'Lights down, moon up. Spooky it is.']]); }],
+                 ['Keep it as it is', function () { ready([['k', 'Keep it as it is.'], ['m', 'Your call. It stays the way you built it.']]); }]]);
+      } else ready([['m', 'Your turn, @name. ' + GAME + ' gets the same sounds.']]); },
+    onEvent: function (a, aud) { if (a === 'coin' && aud && !this.got) { this.got = true; tick('yours'); setRunning(false);
+      $('starCount').textContent = '4 stars'; $('statusMsg').textContent = 'New star';
+      setTimeout(function () { UI.sound('tool'); UI.feel($('stars'), 'good'); }, 450);
+      say([['m', 'Hear that? ' + GAME + ' answers you now.'],
+           ['m', 'That’s a new star, and the Sound Mixer stays in your toolbar.']]);
       options([['Done for today', advance]]); } },
-    what: 'The fix lands in the kid’s own game, and they prove it by playing.',
+    what: 'The fix lands in Robot Lava Run, the kid’s own game from the first day: the same level with the floor tile they made solid, and the robot. A kid who kept a spooky sound can make it spooky too, on the same level. They prove it by pressing Play and grabbing a coin, and a star arrives.',
     gate: 'Only grabbing a coin in their own game, and hearing it, finishes the shift.' },
   { beat: 'Later: it comes back', check: null,
-    enter: function () { setRunning(false); inspector(null); shelf(false);
+    enter: function () { setRunning(false); inspector(null);
       say([['s', 'Three shifts later…'],
            ['s', 'QA found a bug in your game: jumping makes no sound. Which sound fits a jump?']]);
       /* No hint text under the options: "bouncy, up" and "harsh, wrong" gave the answer away. */
       options([['Springy boing', function () { say([['s', "Yes! A jump goes up, so the sound goes up too. Feedback that matches the action."]]);
                   options([['Play the shift again', function () { go(0); }]]); }],
-               ['Angry buzz', function () { say([['s', "Hmm, a buzz says \"wrong!\" Your player didn't do anything wrong by jumping. Try another."]]); }],
-               ['No sound is fine', function () { say([['s', "Remember the customer's game? No answer feels dead. Pick one that fits a jump."]]); }]]); },
+               ['Angry buzz', function (b) { nope(b); say([['s', "Hmm, a buzz says \"wrong!\" Your player didn't do anything wrong by jumping. Try another."]]); }],
+               ['No sound is fine', function (b) { nope(b); say([['s', "Remember the customer's game? No answer feels dead. Pick one that fits a jump."]]); }]]); },
     what: 'The idea returns weeks later as a decision in a new situation. Code scores the choice, and the director uses it to decide whether to re-teach.',
     gate: 'Wrong answers get explained and asked again. The result updates the skill tracker; it never moves the kid forward by itself.' }
 ];
-function wrongSpot() {
+function wrongSpot(b) {
+  nope(b);
   say([['s', "Maybe! But play once more, grab a coin, and pay attention to what happens right when you get it."]]);
   options([["OK, I'll play again", function () { go(1); }]]);
 }
 
 function render() {
   clicks = [];   // spam is fast tapping within one step; moving on to a new step starts the count again
-  var s = STEPS[i]; inspector(null); code(false); who(s.voice || 's'); shelf(false);   // each step unlocks what it needs
-  $('toolchip').hidden = i < 6; $('toolchip').classList.remove('new');   // the Sound Mixer is earned at step 7
-  s.enter.call(s); setChecks();
+  var s = STEPS[i]; inspector(null); code(false); who(s.voice || 's');
+  var want = i >= 7 ? 'yours' : 'customer'; if (theme !== want) setGame(want); else tree();   // steps 8 and 9 are in the kid's own game
+  $('toolchip').hidden = i < 7; $('toolchip').classList.remove('new');   // the Sound Mixer arrives in step 7 and stays
+  $('starCount').textContent = done.yours ? '4 stars' : '3 stars';
+  s.enter.call(s); setChecks(); shelf();
   if (!running) $('hint').hidden = true;
   $('nBeat').textContent = 'Step ' + (i + 1) + ' · ' + s.beat; $('nWhat').textContent = s.what; $('nGate').textContent = s.gate;
   $('back').disabled = i === 0; $('next').disabled = i === STEPS.length - 1;
@@ -672,17 +810,19 @@ $('next').addEventListener('click', function () {
   var finishes = [null, 'play', 'spot', 'sounds', 'mix', 'code', null, 'yours', null];
   finishes.slice(0, i + 1).forEach(function (c) { if (c) done[c] = true; });
   if (i >= 5 && pitch === 1) { pitch = 1.5; pitchSaved = '1.5'; }
-  if (!assign.coin) { assign = { coin: 'ding', jump: 'boing', hurt: 'thud' }; } if (i >= 3) mix = { music: 0.4, sfx: 0.8 };
+  if (!assign.coin) { assign = { coin: 'ding', jump: 'boing', hurt: 'thud' }; }
+  if (i >= 4) mix = { music: 0.4, sfx: 0.8 };   // skipping the mixer step fills in a good mix, not skipping into it
   go(i + 1);
 });
-/* "Say something else" answers instead of swallowing what was typed. This shift needs no AI call, so
-   the reply is written here: it hears the kid and points back to what to do. With the AI wired in,
-   this is where the character would answer for real. */
+/* "Say something else" is the idea inbox. This shift needs no AI call, so the reply is written here:
+   the idea is heard and kept for studio time, not deflected (critique 2026-09-26, "typed ideas are
+   deflected"). Earlier lines stay on screen, so nothing is re-shown. With the AI wired in, this is
+   where the character would answer for real. */
 $('say').addEventListener('keydown', function (e) {
   if (e.key !== 'Enter' || !this.value.trim()) return;
+  e.preventDefault();   // if the reply ever brings new answers, focus moves to one, and this Enter must not "click" it
   var v = STEPS[i].voice || 's', text = this.value.trim().slice(0, 120); this.value = '';
-  var keep = shown.filter(function (m) { return m[0] !== 'k'; }).slice(-1);
-  say(keep.concat([['k', text], [v, $('opts').children.length ? 'Good thought! For now, tap one of the answers below.' : 'Good thought! Keep going: ' + (keep.length ? keep[0][1] : 'the game is waiting.')]]));
+  say([['k', text], [v, 'Love that idea! I’ve pinned it to your idea board for studio time.' + ($('opts').children.length ? ' For now, pick one of the answers below.' : '')]]);
 });
 
 /* Scale the 1366×650 frame to fit the window's width and its height, less the header and the step

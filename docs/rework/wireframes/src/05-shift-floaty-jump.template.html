@@ -26,6 +26,7 @@
   /* two components, two sliders: rows at the 44px target (not 48) so both fit without scrolling */
   .inspector .irow { min-height: 44px; }
   .inspector .comp { min-height: 32px; margin-bottom: 2px; }
+  /* (The Inspector keeping its height against the longer log, found here, now lives in base.css.) */
 
 </style>
 </head>
@@ -44,12 +45,14 @@
   <div class="toolbar">
     <div class="brand">
       <img class="wordmark" alt="The League of Amazing Programmers" src="{{LOGO}}">
-      <span class="project">· <b>Captain Byte’s Game</b></span>
+      <!-- The kid's own project, named on the first day. The customer's game opens inside it as a
+           ticket (the Game and Hierarchy tabs say whose game is showing). -->
+      <span class="project">· <b>Robot Lava Run</b></span>
     </div>
     <div class="transport" aria-label="Play controls">
       <button class="tbtn" id="bPlay"><svg class="i"><use id="bPlayIcon" href="#i-play"/></svg><span>Play</span></button>
     </div>
-    <div class="tool-right"></div>
+    <div class="tool-right"><button class="snd-toggle" id="bSound" aria-pressed="true"><svg class="i"><use href="#i-sound"/></svg><span>Sound on</span></button></div>
   </div>
 
   <div class="left">
@@ -85,7 +88,7 @@
     </section>
 
     <section class="dock right" id="dMentor" aria-label="Conversation">
-      <div class="tabs"><span class="tab"><svg class="i" style="color:var(--accent)"><use href="#i-cube"/></svg><span id="whoTab">Lead programmer</span></span></div>
+      <div class="tabs"><span class="tab"><svg class="i"><use href="#i-chat"/></svg><span id="whoTab">Lead programmer</span></span></div>
       <div class="who">
         <div class="face" aria-hidden="true">face<br>TBD</div>
         <div><strong id="whoName">Lead programmer</strong><span id="whoRole">Engineering department</span></div>
@@ -118,23 +121,28 @@
   <div><h2>Why you can’t click through this step</h2><p id="nGate"></p></div>
 </section>
 
+<script>{{UI}}</script>
 <script>
 var $ = function (id) { return document.getElementById(id); };
-var NAME = 'Captain Byte', HERO = 'robot';   // from the first day: sign-in name and hero pick
+var NAME = 'Captain Byte', HERO = 'robot', GAME = 'Robot Lava Run';   // from the first day: sign-in name, hero pick, the game's name
 
 /* ---------- the game: one hero, two numbers that matter ----------
    gravity = 0.05 × the Gravity slider; jump speed = 1.2 + 0.35 × the Jump height slider. The
    customer's values (1.2, 6.3) float the hero ~96px up into the spikes; something like (4, 6.3)
    clears the 50px gap with the head well under them. */
 var cv = $('cv'), ctx = cv.getContext('2d'), W = 320, H = 180, SPEED = 2.2;
-var keys = {}, P, coin, running = false;   // running: set only through setRunning()
+var keys = {}, P, coins, running = false;   // running: set only through setRunning()
 var theme = 'customer', tune = { G: 1.2, J: 6.3 }, playTune = null;
+/* "yours" is the kid's own game carried over from the first day, exactly as they left it on the
+   Engineering path: 04's GROUND plus the floor tile they made solid ([100,150,40], drawn the same
+   grey), its lava pit (x 200 to 240, top 164) and its two coins. Only the robot and the lava's
+   danger are new here. */
 var LV = {
-  customer: { floors: [[0, 150, 120], [170, 150, 150]], pit: [120, 170], spikes: [150, 230, 96],   /* open sky first, so a jump in place shows the float; spikes over the gap */ coin: [290, 132], lava: null },
-  yours:    { floors: [[0, 150, 200], [240, 150, 80]], pit: null, spikes: null, coin: [290, 132], lava: [200, 240, 164] }
+  customer: { floors: [[0, 150, 120], [170, 150, 150]], pit: [120, 170], spikes: [150, 230, 96],   /* open sky first, so a jump in place shows the float; spikes over the gap */ coins: [[290, 132]], lava: null },
+  yours:    { floors: [[0, 150, 100], [100, 150, 40], [140, 150, 60], [240, 150, 80]], pit: null, spikes: null, coins: [[170, 132], [290, 132]], lava: [200, 240, 164] }
 };
 function g() { return 0.05 * tune.G; } function v() { return 1.2 + 0.35 * tune.J; }
-function level() { P = { x: 20, y: 134, vy: 0, w: 12, h: 16, on: true }; coin = { x: LV[theme].coin[0], y: LV[theme].coin[1], got: false }; }
+function level() { P = { x: 20, y: 134, vy: 0, w: 12, h: 16, on: true }; coins = LV[theme].coins.map(function (c) { return { x: c[0], y: c[1], got: false }; }); }
 /* Arrow keys or WASD (A, D move; W jumps), and Space jumps. Mapped by physical key (e.code), so
    it works on any keyboard layout and with Caps Lock on. */
 var KEYMAP = { ArrowLeft: 'ArrowLeft', KeyA: 'ArrowLeft', ArrowRight: 'ArrowRight', KeyD: 'ArrowRight', ArrowUp: 'ArrowUp', KeyW: 'ArrowUp', Space: ' ' };
@@ -166,8 +174,9 @@ function step() {
   if (L.lava && P.y + P.h >= L.lava[2] && P.x + P.w > L.lava[0] && P.x < L.lava[1]) { events('lava'); respawn(); return; }
   if (P.y > H) { events('fell'); respawn(); return; }
   if (P.on && L.lava && P.x > L.lava[1] && P.jumpFrom !== undefined && P.jumpFrom < L.lava[0]) { P.jumpFrom = undefined; events('cleared'); }
-  if (!coin.got && Math.abs(P.x + 6 - coin.x) < 11 && Math.abs(P.y + 8 - coin.y) < 13) { coin.got = true; events('coin'); }
+  coins.forEach(function (c) { if (!c.got && Math.abs(P.x + 6 - c.x) < 11 && Math.abs(P.y + 8 - c.y) < 13) { c.got = true; lastCoin = c; events('coin'); } });
 }
+var lastCoin = null;   // the coin just grabbed, so a "not yet" can put it back
 /* The jump arc, shown while stopped: where a jump from the edge would go with today's numbers. It
    moves as the sliders move, so the kid sees the change before testing it (feel, see, name). */
 function arcFrom() { return theme === 'customer' ? 106 : 186; }
@@ -197,7 +206,7 @@ function draw() {
   if (L.lava) { ctx.fillStyle = '#c4532b'; ctx.fillRect(L.lava[0], L.lava[2], L.lava[1] - L.lava[0], H - L.lava[2]);
     ctx.fillStyle = '#e8894e'; ctx.fillRect(L.lava[0], L.lava[2], L.lava[1] - L.lava[0], 2); }
   L.floors.forEach(function (f) { ctx.fillStyle = cust ? '#4c7a3a' : '#6e6e6e'; ctx.fillRect(f[0], f[1], f[2], 30); ctx.fillStyle = cust ? '#7fc65a' : '#858585'; ctx.fillRect(f[0], f[1], f[2], 4); });
-  if (!coin.got) { ctx.fillStyle = cust ? '#ffd23f' : '#c4c4c4'; ctx.strokeStyle = cust ? '#e8a300' : '#8f8f8f'; ctx.lineWidth = 2; ctx.beginPath(); ctx.arc(coin.x, coin.y, 6, 0, 7); ctx.fill(); ctx.stroke(); }
+  coins.forEach(function (c) { if (c.got) return; ctx.fillStyle = cust ? '#ffd23f' : '#c4c4c4'; ctx.strokeStyle = cust ? '#e8a300' : '#8f8f8f'; ctx.lineWidth = 2; ctx.beginPath(); ctx.arc(c.x, c.y, 6, 0, 7); ctx.fill(); ctx.stroke(); });
   if (!running && showArc) {
     var pts = arcPoints(), bad = pts.end !== 'lands', fx = arcFrom() + 6;
     // "jump here": where the arc starts, so the dots read as the kid's jump, not decoration
@@ -228,27 +237,47 @@ var frameNo = 0;
 function loop() { frameNo++; step(); if (!document.hidden && (running || frameNo % 6 === 0)) draw(); requestAnimationFrame(loop); }
 
 /* ---------- conversation, Hierarchy, Inspector ---------- */
-var shown = [], clicks = [], spamAt = null;
+var shown = [], clicks = [], spamAt = null, sayN = 0;
+var SPEAKER = { k: NAME, m: 'Mentor', p: 'Lead programmer' };
+/* The log keeps its history (critique 2026-09-26: a replaced line lost its instruction). New lines
+   are appended and marked "new", earlier ones fade to "old", and only the last 8 stay. The speaker's
+   name shows only when the speaker changes, remembered on each bubble as data-from so it works
+   across calls. */
+function caption(d, who) { var f = document.createElement('span'); f.className = 'from'; f.textContent = SPEAKER[who] || 'Lead programmer'; d.insertBefore(f, d.firstChild); }
 function say(lines) {
-  shown = lines; var log = $('log'); log.innerHTML = ''; var prev = null;
+  shown = lines; sayN++; var log = $('log');
+  Array.prototype.forEach.call(log.querySelectorAll('.msg'), function (d) { d.classList.remove('new'); d.classList.add('old'); });
+  var lastEl = log.querySelector('.msg:last-child'), prev = lastEl ? lastEl.getAttribute('data-from') : null;
   lines.forEach(function (m) {
-    var d = document.createElement('div'); d.className = 'msg' + (m[0] === 'k' ? ' kid' : m[0] === 'm' ? '' : ' guest');
-    if (m[0] !== prev) { var f = document.createElement('span'); f.className = 'from'; f.textContent = m[0] === 'k' ? NAME : m[0] === 'm' ? 'Mentor' : 'Lead programmer'; d.appendChild(f); }
-    prev = m[0];
+    var d = document.createElement('div'); d.className = 'msg new' + (m[0] === 'k' ? ' kid' : m[0] === 'm' ? '' : ' guest');
+    d.setAttribute('data-from', m[0]);
     var txt = m[1].replace(/@name/g, NAME);
     if (m[2] === 'html') { var w = document.createElement('div'); w.innerHTML = txt; d.appendChild(w); } else d.appendChild(document.createTextNode(txt));
+    if (m[0] !== prev) caption(d, m[0]);
+    prev = m[0];
     log.appendChild(d);
   });
-  var lastLine = lines.length ? lines[lines.length - 1][1].replace(/<[^>]+>/g, ' ').replace(/@name/g, NAME) : ''; if (lastLine) announce(lastLine);
+  var all = log.querySelectorAll('.msg'); for (var k = 0; k < all.length - 8; k++) log.removeChild(all[k]);
+  var top = log.querySelector('.msg'); if (top && !top.querySelector('.from')) caption(top, top.getAttribute('data-from'));   // the oldest kept line still says who
+  var lastLine = lines.length ? lines[lines.length - 1][1].replace(/<[^>]+>/g, ' ').replace(/\s+/g, ' ').replace(/@name/g, NAME).trim() : ''; if (lastLine) announce(lastLine);
   requestAnimationFrame(function () { log.scrollTop = log.scrollHeight; });
 }
+/* The shared answers to what the kid did (ui.js): a sound and a small visual, only when something
+   changed. passed(): a step or check won, on its checklist line (else the Game dock). nope(): a
+   wrong answer, on the button the kid pressed; then(), if given, swaps the answers after the shake
+   so the kid sees which one it was. */
+function passed(check) { UI.sound('good'); var li = check && $('checks').querySelector('[data-check="' + check + '"]'); UI.feel(li || document.querySelector('.dock.game'), 'good'); }
+function nope(btn, then) { UI.sound('nope'); UI.feel(btn, 'nope');
+  if (then) { var at = i; setTimeout(function () { if (i === at) then(); }, 340); } }
+/* In play, what just happened is read out, unless the conversation already said it. */
+var PLAYLINE = { coin: 'Coin grabbed.', bonk: 'Bonk! Hit the spikes.', fell: 'Fell in the gap.', lava: 'Fell in the lava.', cleared: 'Jumped clear over the lava.' };
 function options(list) {
   var box = $('opts'), wasInEditor = $('editor').contains(document.activeElement) && document.activeElement !== cv;
   box.innerHTML = ''; list = list.slice();
   for (var k = list.length - 1; k > 0; k--) { var j = Math.floor(Math.random() * (k + 1)), t = list[k]; list[k] = list[j]; list[j] = t; }
   list.forEach(function (o) {
     var b = document.createElement('button'); b.className = 'opt'; b.textContent = o[0];
-    b.addEventListener('click', function () { if (spamCheck()) return; o[1](); }); box.appendChild(b);
+    b.addEventListener('click', function () { if (spamCheck()) return; o[1](b); }); box.appendChild(b);   // the button goes along, for nope()
   });
   if (wasInEditor && box.firstChild && !running) box.firstChild.focus({ preventScroll: true });
 }
@@ -260,7 +289,7 @@ function spamCheck() {
   var vv = STEPS[i].voice || 'p';
   say([[vv, 'Whoa, speedy! Quick guess first: what does gravity do to a jump?']]);
   options([['It pulls the hero back down', function () { render(); }],
-           ['It makes the hero walk faster', function () { say([[vv, 'Not quite. Gravity only pulls down. More gravity, faster fall.']]); options([['Got it', render]]); }]]);
+           ['It makes the hero walk faster', function (b) { say([[vv, 'Not quite. Gravity only pulls down. More gravity, faster fall.']]); nope(b, function () { options([['Got it', render]]); }); }]]);
   return true;
 }
 var CHECKS = [['play', 'Play the game'], ['spot', 'Spot what’s wrong'], ['predict', 'Predict what gravity does'], ['tune', 'Tune it in the Inspector'], ['yours', 'Tune your own game']];
@@ -269,33 +298,37 @@ function setChecks() {
   var now = STEPS[i].check;
   $('checks').innerHTML = CHECKS.map(function (c) {
     var cls = done[c[0]] ? 'done' : (c[0] === now ? 'now' : '');
-    return '<li class="' + cls + '"><span class="box">' + (done[c[0]] ? '<svg class="i"><use href="#i-check"/></svg>' : '') + '</span>' + c[1] + '</li>';
+    return '<li class="' + cls + '" data-check="' + c[0] + '"><span class="box">' + (done[c[0]] ? '<svg class="i"><use href="#i-check"/></svg>' : '') + '</span>' + c[1] + '</li>';
   }).join('');
 }
 var selected = null;
 function parts() {
   return theme === 'customer' ? [['Cave Level', 'customer’s level', null, true], ['Player', 'blue hero', 'player'], ['Spikes', 'don’t touch', 'spikes'], ['Coin', 'the goal', 'coin']]
-                              : [['Level 1', 'the level', null, true], ['Player', 'your ' + HERO, 'player'], ['Coin', 'the goal', 'coin'], ['Lava', 'jump over it', 'lava']];   // four rows fit under the checklist; five hid the Lava row this step names
+                              : [['Level 1', 'the level', null, true], ['Player', 'your ' + HERO, 'player'], ['Coins', 'grab them', 'coin'], ['Lava', 'jump over it', 'lava']];   // four rows fit under the checklist; five hid the Lava row this step names
 }
+/* Rebuilt with innerHTML on every pick, so it runs inside UI.keepFocus: keyboard focus goes back to
+   the same row (data-key = the part id) instead of dropping to <body>. */
 function tree() {
-  $('tree').innerHTML = '';
-  parts().forEach(function (p) {
-    var li = document.createElement('li'); if (!p[3]) li.className = 'child';
-    var b = document.createElement(p[2] ? 'button' : 'span'); if (p[2]) b.setAttribute('aria-pressed', String(selected === p[2])); else b.className = 'trow';   // the level row is a heading, not a control
-    b.innerHTML = (p[3] ? '<svg class="i" style="width:14px;margin-right:-4px"><use href="#i-fold"/></svg>' : '') + '<svg class="i"><use href="#i-cube"/></svg>' + p[0] + '<small>' + p[1] + '</small>';
-    b.addEventListener('click', function () { clicks = []; if (p[2]) openPart(p[2], p[0]); });
-    li.appendChild(b); $('tree').appendChild(li);
+  UI.keepFocus($('tree'), function () {
+    $('tree').innerHTML = '';
+    parts().forEach(function (p) {
+      var li = document.createElement('li'); if (!p[3]) li.className = 'child';
+      var b = document.createElement(p[2] ? 'button' : 'span'); if (p[2]) { b.setAttribute('aria-pressed', String(selected === p[2])); b.setAttribute('data-key', p[2]); } else b.className = 'trow';   // the level row is a heading, not a control
+      b.innerHTML = (p[3] ? '<svg class="i" style="width:14px;margin-right:-4px"><use href="#i-fold"/></svg>' : '') + '<svg class="i"><use href="#i-cube"/></svg>' + p[0] + '<small>' + p[1] + '</small>';
+      b.addEventListener('click', function () { clicks = []; if (p[2]) openPart(p[2], p[0]); });
+      li.appendChild(b); $('tree').appendChild(li);
+    });
   });
 }
 function row(id, label, unity, min, max, val) {
-  return '<div class="irow"><label for="' + id + '">' + label + '<small>' + unity + '</small></label><div class="slide"><input id="' + id + '" type="range" min="' + min + '" max="' + max + '" step="0.1" value="' + val + '"><output id="' + id + 'Out">' + val.toFixed(1) + '</output></div></div>';
+  return '<div class="irow"><label for="' + id + '">' + label + '<small>' + unity + '</small></label><div class="slide"><input id="' + id + '" data-key="' + id + '" type="range" min="' + min + '" max="' + max + '" step="0.1" value="' + val + '"><output id="' + id + 'Out">' + val.toFixed(1) + '</output></div></div>';
 }
 function openPart(id, name) {
   selected = id; tree();
   var html;
   if (id === 'player') html = '<div class="comp"><svg class="i"><use href="#i-fold"/></svg><strong>Rigidbody 2D</strong></div>' + row('rG', 'Gravity', 'Unity: Gravity Scale', 0.5, 6, tune.G) +
        '<div class="comp"><svg class="i"><use href="#i-fold"/></svg><strong>Player Controller (Script)</strong></div>' + row('rJ', 'Jump height', 'Unity: jumpForce', 1, 9, tune.J);
-  else html = '<p class="inote">' + ({ spikes: 'Sharp! The hero’s head must stay under these.', coin: 'The goal. Reach it to finish the level.', floor: 'You made this solid on your first day.', lava: 'Jump clear over it.' })[id] + '</p>';
+  else html = '<p class="inote">' + ({ spikes: 'Sharp! The hero’s head must stay under these.', coin: theme === 'yours' ? 'Two coins, where you left them on your first day.' : 'The goal. Reach it to finish the level.', floor: 'You made this solid on your first day.', lava: 'Jump clear over it.' })[id] + '</p>';
   inspector(name, html);
   ['rG', 'rJ'].forEach(function (s) { var el = $(s); if (!el) return;
     var words = function () { el.setAttribute('aria-valuetext', parseFloat(el.value).toFixed(1) + ', ' + arcWords()); };
@@ -304,7 +337,7 @@ function openPart(id, name) {
 function inspector(title, html) {
   var el = $('inspector');
   if (!title) { el.classList.remove('open'); el.setAttribute('aria-hidden', 'true'); el.inert = true; $('dMentor').classList.remove('inspecting'); if (selected) { selected = null; tree(); } return; }
-  $('inspName').textContent = title; $('inspBody').innerHTML = html; $('dMentor').classList.add('inspecting');
+  $('inspName').textContent = title; UI.keepFocus($('inspBody'), function () { $('inspBody').innerHTML = html; }); $('dMentor').classList.add('inspecting');
   el.classList.add('open'); el.setAttribute('aria-hidden', 'false'); el.inert = false;
   requestAnimationFrame(function () { var lg = $('log'); lg.scrollTop = lg.scrollHeight; });   // the Inspector docks below the conversation; keep its newest line in view
 }
@@ -312,7 +345,7 @@ $('inspClose').addEventListener('click', function () { inspector(null); tree(); 
 document.addEventListener('keydown', function (e) { if (e.key === 'Escape' && $('inspector').classList.contains('open')) { inspector(null); tree(); } });
 function who(kind) {
   var Wd = { m: ['Mentor', 'The studio’s AI, and proud of it'], p: ['Lead programmer', 'Engineering department'] }[kind];
-  $('whoTab').textContent = Wd[0]; $('whoName').innerHTML = Wd[0] + (kind === 'm' ? '' : ' <span style="font-weight:500;color:var(--ink-3)">(name TBD)</span>'); $('whoRole').textContent = Wd[1];
+  $('whoTab').textContent = Wd[0]; $('whoName').textContent = Wd[0]; $('whoRole').textContent = Wd[1];   // the role alone: no "(name TBD)" in front of a kid
 }
 
 /* ---------- Play mode: Unity's rule, again. What changes while playing is undone on Stop. ---------- */
@@ -332,23 +365,26 @@ function setRunning(on) {
   level(); if (running) { $('hint').hidden = document.activeElement === cv; } else { keys = {}; $('hint').hidden = true; }
   events(running ? 'play' : 'stop');
 }
-$('bPlay').addEventListener('click', function () { setRunning(!running); if (running) cv.focus(); });
+$('bPlay').addEventListener('click', function () { setRunning(!running); UI.sound(running ? 'play' : 'stop'); if (running) cv.focus(); });
 
 /* ---------- the shift ---------- */
 var i = 0, prediction = null, feel = null;
 var rendering = false;   // while a step is being set up, stopping the game is housekeeping, not the kid's action
-function events(a) { if (rendering) return; var s = STEPS[i]; if (s && s.onEvent) s.onEvent(a); }
+function events(a) { if (rendering) return; var s = STEPS[i], n = sayN; if (s && s.onEvent) s.onEvent(a);
+  if (sayN === n && PLAYLINE[a]) announce(PLAYLINE[a]); }
 function advance() { go(i + 1); }
 function advanceLater(ms) { var at = i; setTimeout(function () { if (i === at) advance(); }, ms); }
 function setGame(which) { theme = which; level(); tree();
-  $('gameOf').textContent = which === 'yours' ? 'your game' : 'customer’s game'; $('hierOf').textContent = which === 'yours' ? 'your parts' : 'customer’s game'; }
+  $('gameOf').textContent = which === 'yours' ? GAME : 'customer’s game'; $('hierOf').textContent = which === 'yours' ? 'your parts' : 'customer’s game'; }
 
 var STEPS = [
   { beat: 'The ticket', check: 'play',
     enter: function () { setGame('customer'); tune = { G: 1.2, J: 6.3 }; showArc = false;
-      say([['p', 'Hi @name! Remember that floor you fixed? I’ve got a new one.'], ['p', 'A customer says their hero jumps like it’s on the moon. Can you try it?']]);
+      /* True for every first-day pick: all four fixed something in the intern's game, and every kid
+         met the lead programmer in the Play-mode step. "That floor you fixed" was true for one. */
+      say([['p', 'Hi @name! Remember the intern’s game you fixed on your first day? It’s ' + GAME + ' now.'], ['p', 'Today a customer needs help. They say their hero jumps like it’s on the moon. Can you try it?']]);
       options([['Let’s try it', advance]]); },
-    what: 'The lead programmer from the first day brings a customer’s ticket. Same department, same character, a new job.',
+    what: 'The lead programmer, whom every kid met in the first day’s Play-mode step, brings a customer’s ticket. The opener points back at the intern’s game, which every kid fixed whichever department they picked.',
     gate: 'Nothing to gate yet: this is the hook.' },
   { beat: 'Play it', check: 'play',
     enter: function () { $('bPlay').classList.add('cue'); say([['p', 'Press Play. Try a jump right where you start, then try to reach the coin.']]); options([]); this.hit = false; },
@@ -356,15 +392,15 @@ var STEPS = [
       if (a === 'play') say([['p', 'Arrow keys or A and D to move, Space or W to jump. Watch how the jump moves.']]);
       if ((a === 'bonk' || a === 'fell') && !this.hit) { this.hit = true;
         say([['p', a === 'bonk' ? 'Bonk! It floated up so high it hit the spikes.' : 'You fell in the gap!'], ['p', 'Press Stop when you’ve seen enough.']]); $('bPlay').classList.add('cue'); }
-      if (a === 'stop' && this.hit) { done.play = true; advance(); }
+      if (a === 'stop' && this.hit) { done.play = true; advance(); passed('play'); }
     },
     what: 'The customer’s moon-jump: the hero floats slowly and far too high, and bonks the ceiling spikes.',
     gate: 'No button moves on. The kid has to press Play and feel the problem: bonk the spikes or miss the landing. Then Stop.' },
   { beat: 'Spot what’s wrong', check: 'spot',
     enter: function () { say([['p', 'So, what felt wrong?']]);
-      var wrong = function () { say([['p', 'Maybe! Play once more and watch the jump, not the walk.']]); options([['OK, I’ll play again', function () { go(1); }]]); };
+      var wrong = function (b) { say([['p', 'Maybe! Play once more and watch the jump, not the walk.']]); nope(b, function () { options([['OK, I’ll play again', function () { go(1); }]]); }); };
       // The right answer is what the kid saw ("way too high"); "floaty" is the diagnosis, named after.
-      options([['The jump goes way too high', function () { done.spot = true; setChecks(); say([['p', 'Exactly. It floats up too high and too slowly. That’s a floaty jump.'], ['p', 'Let’s fix it.']]); options([['How?', advance]]); }],
+      options([['The jump goes way too high', function () { done.spot = true; setChecks(); passed('spot'); say([['p', 'Exactly. It floats up too high and too slowly. That’s a floaty jump.'], ['p', 'Let’s fix it.']]); options([['How?', advance]]); }],
                ['The hero walks too slowly', wrong], ['The coin is too far away', wrong]]); },
     what: 'The kid names the problem in their own words before anyone names the idea.',
     gate: 'A wrong answer sends the kid back to play and watch. Answers are shuffled every time.' },
@@ -388,9 +424,9 @@ var STEPS = [
       /* Lowering Jump height alone also reaches the coin, but the hero still drifts down like on the
          moon, and gravity is the idea this shift teaches. The customer asked for a normal jump. The
          hero goes back to the start, so the coin can't re-fire every frame while it overlaps. */
-      if (a === 'coin' && tune.G < 2.5) { coin.got = false; respawn();
+      if (a === 'coin' && tune.G < 2.5) { lastCoin.got = false; respawn();
         say([['p', 'You made it! But it still floats down slowly, like on the moon.'], ['p', 'The customer wants a normal jump. Stop, turn Gravity up too, and try again.']]); return; }
-      if (a === 'coin') { done.tune = true; setChecks(); inspector(null); setRunning(false);
+      if (a === 'coin') { done.tune = true; setChecks(); passed('tune'); inspector(null); setRunning(false);
         // close the prediction loop: the kid hears whether their guess was right
         say([['p', 'Under the spikes and over the gap. You tuned a real game!'],
              ['p', prediction === 'lower' ? 'And you guessed it: more gravity made the jump lower.' : prediction === 'higher' ? 'You guessed higher, but look: more gravity pulled the jump lower.' : 'More gravity pulled the jump lower.']]); advanceLater(2600); }
@@ -403,6 +439,7 @@ var STEPS = [
            ['p', '<div class="card"><b>Gravity</b><p>The game pretends things fall. It’s a number you can tune.</p><dl><dt>Unity</dt><dd>Rigidbody 2D → Gravity Scale</dd></dl></div>', 'html'],
            ['p', '<div class="card"><b>Inspector</b><p>Click a thing and see all its knobs. Change them here.</p><dl><dt>Unity</dt><dd>Inspector</dd></dl></div>', 'html']]);
       $('cardChip').textContent = '3 cards: Play mode, Gravity, Inspector'; $('starCount').textContent = '2 stars'; $('statusMsg').textContent = 'New cards: Gravity, Inspector';
+      UI.sound('card');   // the cards and the shift's star land together; one sound (ui.js plays one per 250ms anyway)
       options([['Now my game', advance]]); },
     what: 'The ideas are named only after the kid has felt and fixed them, each with its Unity name. No surprise prize this time: prizes are surprises, not a price on every job.',
     gate: 'The cards exist because the kid earned them.' },
@@ -410,9 +447,9 @@ var STEPS = [
     /* A real decision: the kid names the feel first, then has to tune Gravity into that feel's range
        and still clear the lava in play. */
     enter: function () { setGame('yours'); tune = { G: 3, J: 5 }; showArc = false; feel = null; var self = this;
-      say([['m', 'Your turn, @name. How should YOUR ' + HERO + '’s jump feel?']]);
+      say([['m', 'Your turn, @name. Back to ' + GAME + ': same level, same ' + HERO + '. How should your ' + HERO + '’s jump feel?']]);
       var pickFeel = function (f, line) { return function () { feel = f; showArc = true;
-        say([['k', line], ['m', 'Tap Player to open its knobs. Tune Gravity for a ' + f + ' jump, then jump clear over the lava.']]); options([]); }; };
+        say([['k', line], ['m', 'Tap Player to open its knobs. Change Gravity for a ' + f + ' jump, then jump clear over the lava.']]); options([]); }; };
       options([['Floaty, like the moon', pickFeel('moon', 'Floaty, like the moon')], ['Normal', pickFeel('normal', 'Normal')], ['Heavy and snappy', pickFeel('heavy', 'Heavy and snappy')]]); },
     band: { moon: [0.5, 2.4], normal: [2.5, 4.4], heavy: [4.5, 6] },
     onEvent: function (a) {
@@ -420,20 +457,20 @@ var STEPS = [
       var b = this.band[feel], inBand = tune.G >= b[0] && tune.G <= b[1];
       if (a === 'lava') say([['m', 'Over the lava, not through it! Stop, and tune it so you can jump clear.']]);
       if (a === 'cleared' && !inBand) say([['m', 'You cleared it! But that’s not a ' + feel + ' jump yet. Stop and tune Gravity ' + (tune.G < b[0] ? 'up' : 'down') + '.']]);
-      if (a === 'cleared' && inBand) { done.yours = true; setChecks(); setRunning(false); inspector(null);
-        say([['m', { moon: 'A moon jump! Floaty and fun.', normal: 'A nice, normal jump.', heavy: 'A heavy, snappy jump!' }[feel] + ' That’s your game’s feel now.'],
+      if (a === 'cleared' && inBand) { done.yours = true; setChecks(); passed('yours'); setRunning(false); inspector(null);
+        say([['m', { moon: 'A moon jump! Floaty and fun.', normal: 'A nice, normal jump.', heavy: 'A heavy, snappy jump!' }[feel] + ' That’s how ' + GAME + ' feels now.'],
              ['m', '<span class="feelchip">Your jump: ' + feel + '</span>', 'html']]); options([['Done', advance]]); }
     },
-    what: 'The kid picks their own game’s feel (moon, normal or heavy), then tunes it to match and still clears the lava.',
+    what: 'Back in the kid’s own game from the first day: Robot Lava Run, the robot, the same level with its fixed floor tile, lava pit and two coins. The kid picks its jump feel (moon, normal or heavy), then tunes Gravity to match and still clears the lava. Later wireframes assume the pick was normal.',
     gate: 'Gravity has to land in the chosen feel’s range and the jump has to clear the lava in play. The feel goes on the learner card.' },
   { beat: 'Later: it comes back', check: null,
     enter: function () { inspector(null); setGame('yours');
-      var q = [['p', 'Three shifts later…'], ['p', 'QA says: in your game, the hero can’t reach the new ledge. Which knob, which way?']];
-      say(q);
-      // "Which way" is really tested (up and down both offered), and a wrong answer keeps the question on screen.
-      options([['Jump height up', function () { say([['p', 'Yes! A bigger jump reaches higher. And gravity stays how you like it.']]); options([['Play the shift again', function () { go(0); }]]); }],
-               ['Jump height down', function () { say(q.concat([['p', 'That makes the jump smaller. Try another.']])); }],
-               ['Gravity up', function () { say(q.concat([['p', 'That pulls harder, so the jump gets even lower. Try another.']])); }]]); },
+      say([['p', 'Three shifts later…'], ['p', 'QA says: in ' + GAME + ', your ' + HERO + ' can’t reach the new ledge. Which knob, which way?']]);
+      // "Which way" is really tested (up and down both offered). A wrong answer is explained under the
+      // question, which stays in the log above it, and the answers stay for another try.
+      options([['Jump height up', function () { passed(null); say([['p', 'Yes! A bigger jump reaches higher. And gravity stays how you like it.']]); options([['Play the shift again', function () { go(0); }]]); }],
+               ['Jump height down', function (b) { nope(b); say([['p', 'That makes the jump smaller. Try another.']]); }],
+               ['Gravity up', function (b) { nope(b); say([['p', 'That pulls harder, so the jump gets even lower. Try another.']]); }]]); },
     what: 'The idea returns weeks later as a decision in a new situation. Code scores it.',
     gate: 'Wrong answers get explained and asked again. The result updates the skill tracker; it never moves the kid on by itself.' }
 ];
@@ -454,14 +491,19 @@ STEPS.forEach(function (s, k) {
 });
 $('back').addEventListener('click', function () { go(i - 1); });
 $('next').addEventListener('click', function () {
-  ['play', 'spot', 'predict', 'tune', 'yours'].slice(0, i).forEach(function (c) { done[c] = true; });
+  /* Skipping marks the checks of the steps skipped past, except the one the next step works on.
+     (Counting checks by step number ticked "Tune your own game" on entering that step.) */
+  var nextCheck = (STEPS[i + 1] || {}).check;
+  STEPS.slice(0, i + 1).forEach(function (s) { if (s.check && s.check !== nextCheck) done[s.check] = true; });
   go(i + 1);
 });
 $('say').addEventListener('keydown', function (e) {
   if (e.key !== 'Enter' || !this.value.trim()) return;
+  e.preventDefault();   // if a reply ever moves focus to a new answer, this Enter must not also press it (found in 04)
+  /* The idea inbox: a typed idea is kept, not deflected (critique 2026-09-26, P0 "the kid gets almost
+     no say"). Earlier lines stay in the log, so nothing needs re-showing. */
   var vv = STEPS[i].voice || 'p', text = this.value.trim().slice(0, 120); this.value = '';
-  var keep = shown.filter(function (m) { return m[0] !== 'k' && m[2] !== 'html'; }).slice(-1);
-  say(keep.concat([['k', text], [vv, $('opts').children.length ? 'Good thought! For now, tap one of the answers below.' : 'Good thought! Keep going: ' + (keep.length ? keep[0][1] : 'the game is waiting.')]]));
+  say([['k', text], [vv, 'Love that idea! I’ve pinned it to your idea board for studio time.' + ($('opts').children.length ? ' For now, pick one of the answers below.' : '')]]);
 });
 
 /* Scale the 1366×650 frame to the window, as in 03 and 04; #embed for the explainer page. */

@@ -32,11 +32,12 @@ const { chromium } = require(process.env.PW || "playwright");
   await p.click('#bPlay'); log.push('coin size after Stop: '+await p.evaluate(()=>coinScale)+' | '+(await logt()).includes('changed back'));
   await opt('Ha, got it'); log.push(await beat());
   await opt('A knight'); log.push('hero: '+await p.evaluate(()=>hero)+' | echoed: '+(await logt()).includes('The knight!'));
+  await opt('Coin Knight'); log.push('named: '+await p.$eval('#projText', e=>e.textContent));
   await opt('Let me play it'); log.push(await beat());
   await p.evaluate(()=>{ const c=coins[0]; P.x=c.x-6; P.y=c.y-8; P.vy=0; }); await tick(1);
   log.push('first star shown: '+await p.$eval('#stars', e=>!e.classList.contains('closed')));
   await p.screenshot({path:out+'/yours.png'});
-  await opt('Nice!'); await opt('Get a friend'); await opt('Mario'); await opt('That’s me');
+  await opt('Nice!');
   log.push(await beat()+' | quest open: '+await p.$eval('#dQuest', e=>!e.classList.contains('closed')));
   // The other three branches: each fix, tested in play (the hero is moved; the rules are the game's own).
   const branch = async (answer)=>{ await p.evaluate(()=>{ resetAll(); go(2); }); await opt(answer); return p.$eval('#whoTab', e=>e.textContent); };

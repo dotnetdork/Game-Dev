@@ -11,19 +11,22 @@ that opens each session from S2 (`../curriculum-map.md` §6: "what did we add la
 clock in. The wireframe shows the start of **session 5**, after the silent coins.
 
 ## What's on the desk (all in the editor, nothing new to learn)
-- **Game view:** their own game, as they left it: their hero, the sounds they picked.
-- **Studio dock** (where the Quest dock sits during a shift): the milestone track — Hired ✓ ·
+- **Game view:** their own game, as they left it, and **running from the first moment** (Play is live):
+  their hero, the sounds they picked. The stand-up is asked while they play it.
+- **Studio dock** (where the Quest dock sits during a shift): one "Last time" line, the milestone track — Hired ✓ ·
   Prototype ✓ · **Alpha** (session 6) · Beta · Launch party — and the departments: unlocked, next, and
-  "later" (QA, Production, Publishing).
-- **Project drawer, opened:** their **cards** (each idea they've met, with its progress: new ·
-  learning · solid · strong, from the skill tracker) and their **tools** (the Sound Mixer). Tap a
+  "later" (QA, Production, Publishing). Under it, the **Hierarchy**: the game's parts, each with
+  what a session added ("Coin: ding · session 4"); tap one to see its knobs in the Inspector, read-only.
+- **Project drawer, opened:** a wrapping grid (never a sideways scroll) of their **tools**
+  (the Sound Mixer, also in the toolbar) then their **cards** (each idea they've met, with its progress: new ·
+  learning · solid · strong, from the skill tracker). Tap a
   card and its back opens in the **Inspector**: the kid word, the real word, the Unity name.
 - **The mentor's dock:** the stand-up, then a glimpse of today (the director's plan, one teaser).
 
 ## What makes it more than a menu
 | Mechanism | On the desk |
 |---|---|
-| **Recall, not a recap** | The stand-up asks the kid what they added last week, from 3 answers built from their own history. Remembering it is the retrieval; the mentor doesn't tell them. A wrong answer points them at their game to look. |
+| **Recall, not a recap** | The stand-up asks the kid what they added last week, from 3 answers built from their own history. Remembering it is the retrieval; the mentor doesn't tell them. A wrong answer sends them to grab a coin and listen. |
 | **Progress you can see, but quiet** | Milestones and card levels, no leaderboard and no price. Stars stay a small count. |
 | **A glimpse, not the map** | One line about today and one about Alpha. Never the whole syllabus. |
 | **One next step** | Everything ends at **Clock in**. |
