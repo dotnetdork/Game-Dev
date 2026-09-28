@@ -1,0 +1,88 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Your interview · The League Game Studio</title>
+<link rel="icon" type="image/png" sizes="32x32" href="/img/favicon-32x32.png">
+<meta name="theme-color" content="#1b1512">
+<!-- The hiring interview (docs/rework/v2-spec.md §3.2; the beats and the scene are wireframe 07's,
+     docs/rework/wireframes/src/07-hiring-interview.template.html, whose notes say why each is shaped
+     as it is). A new kid lands here straight from "I'm new here" on the sign-in page, and leaves
+     hired, with a name on their card and a handle. It is deliberately its own scene, not the editor
+     (DESIGN.md, the Front Door exception): a studio lobby at dusk, the director a silhouette. -->
+<link rel="stylesheet" href="/studio/interview.css">
+</head>
+<body>
+<svg width="0" height="0" style="position:absolute" aria-hidden="true">
+  <symbol id="i-sound" viewBox="0 0 24 24"><path d="M4.5 9.5h3l4.5-4v13l-4.5-4h-3zM15.5 9a4 4 0 0 1 0 6M18 6.5a7.5 7.5 0 0 1 0 11"/></symbol>
+  <symbol id="i-sound-off" viewBox="0 0 24 24"><path d="M4.5 9.5h3l4.5-4v13l-4.5-4h-3zM16 9.5l5 5M21 9.5l-5 5"/></symbol>
+  <symbol id="i-send" viewBox="0 0 24 24"><path d="M4.5 12h13M12.5 6.5l5.5 5.5-5.5 5.5"/></symbol>
+  <symbol id="p-rocket" viewBox="0 0 24 24"><path d="M12 3c3 2 5 5.5 5 9.5l-2 3.5H9l-2-3.5C7 8.5 9 5 12 3zM12 9.5a1.5 1.5 0 1 0 0 .01M9 16l-2.5 4M15 16l2.5 4"/></symbol>
+  <symbol id="p-cat" viewBox="0 0 24 24"><path d="M5 20V9l3-4 2 4h4l2-4 3 4v11zM9.5 13h.01M14.5 13h.01M10.5 16.5h3"/></symbol>
+  <symbol id="p-bolt" viewBox="0 0 24 24"><path d="M13.5 3L6 13.5h5.5L10.5 21 18 10.5h-5.5z"/></symbol>
+  <symbol id="p-ghost" viewBox="0 0 24 24"><path d="M6 20V10a6 6 0 0 1 12 0v10l-2-1.5-2 1.5-2-1.5-2 1.5-2-1.5zM10 10.5h.01M14 10.5h.01"/></symbol>
+  <symbol id="f-1" viewBox="0 0 24 24"><circle cx="12" cy="12" r="8.5"/><path d="M9 10h.01M15 10h.01M8.5 16.5c2-2 5-2 7 0"/></symbol>
+  <symbol id="f-2" viewBox="0 0 24 24"><circle cx="12" cy="12" r="8.5"/><path d="M9 10h.01M15 10h.01M9 16c1.8-1 4.2-1 6 0"/></symbol>
+  <symbol id="f-3" viewBox="0 0 24 24"><circle cx="12" cy="12" r="8.5"/><path d="M9 10h.01M15 10h.01M9 15.5h6"/></symbol>
+  <symbol id="f-4" viewBox="0 0 24 24"><circle cx="12" cy="12" r="8.5"/><path d="M9 10h.01M15 10h.01M9 14.5c1.8 1.2 4.2 1.2 6 0"/></symbol>
+  <symbol id="f-5" viewBox="0 0 24 24"><circle cx="12" cy="12" r="8.5"/><path d="M9 9.5h.01M15 9.5h.01M8 13.5c2 3.5 6 3.5 8 0z"/></symbol>
+</svg>
+
+<div class="scene" id="scene">
+  <svg class="room" viewBox="0 0 1366 650" preserveAspectRatio="xMidYMin slice" aria-hidden="true">
+    <defs>
+      <linearGradient id="dusk" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="#27335a"/><stop offset=".55" stop-color="#6d4a6e"/><stop offset="1" stop-color="#e08a4c"/></linearGradient>
+      <radialGradient id="glow" cx=".5" cy=".75" r=".6"><stop offset="0" stop-color="#ffb46a" stop-opacity=".35"/><stop offset="1" stop-color="#ffb46a" stop-opacity="0"/></radialGradient>
+      <linearGradient id="wall" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="#2d2420"/><stop offset="1" stop-color="#1f1916"/></linearGradient>
+    </defs>
+    <rect width="1366" height="650" fill="url(#wall)"/>
+    <rect x="433" y="36" width="500" height="266" rx="6" fill="url(#dusk)"/>
+    <path d="M433 302V232h36v-30h28v48h22v-70h34v78h20v-40h30v58h24v-88h36v104h32v-52h30v58h28v-36h34v44h26v-66h32v82h28v-34h40v70z" fill="#1a1426" opacity=".85"/>
+    <rect x="433" y="36" width="500" height="266" rx="6" fill="none" stroke="#3a2f29" stroke-width="10"/>
+    <path d="M683 36v266M433 168h500" stroke="#3a2f29" stroke-width="6"/>
+    <ellipse cx="683" cy="300" rx="420" ry="140" fill="url(#glow)"/>
+    <path d="M1188 300c-10-50 8-86 30-104-4 36 6 70-8 104zM1210 300c4-44 30-70 56-78-16 30-18 58-34 78z" fill="#1d2a1f"/>
+    <rect x="1182" y="296" width="60" height="10" rx="3" fill="#2a221d"/>
+    <path d="M180 24v60" stroke="#3a2f29" stroke-width="3"/><path d="M150 84h60l-12 26h-36z" fill="#3a2f29"/>
+    <ellipse cx="180" cy="116" rx="70" ry="24" fill="#ffb46a" opacity=".12"/>
+    <g id="ivAll"><g id="iv">
+      <path class="sil" d="M548 312c0-86 58-136 135-136s135 50 135 136z"/>
+      <path class="lany" d="M650 186l33 58 33-58"/>
+      <g id="ivHead"><ellipse class="sil" cx="683" cy="118" rx="54" ry="60"/><path class="sil" d="M628 104c2-46 30-66 56-66 30 0 56 22 56 64-10-22-32-32-56-32s-46 12-56 34z"/></g>
+      <g id="ivArm"><path class="sil" d="M790 238c26 10 42 36 46 70h-34c-4-24-14-40-28-50z"/>
+        <rect x="806" y="232" width="62" height="80" rx="5" fill="#0c0908" transform="rotate(-10 837 272)"/>
+        <line id="ivPen" x1="860" y1="282" x2="878" y2="254" stroke="#0c0908" stroke-width="5" stroke-linecap="round"/></g>
+    </g></g>
+    <rect x="0" y="302" width="1366" height="16" fill="#4a3a2f"/><rect x="0" y="302" width="1366" height="3" fill="#5c4a3c"/>
+    <rect x="0" y="318" width="1366" height="400" fill="#2a201b"/>
+  </svg>
+
+  <header class="top">
+    <img class="wordmark" alt="The League of Amazing Programmers" src="/img/wordmark.png">
+    <button type="button" class="snd-toggle" id="bSound" aria-pressed="true"><svg class="i" aria-hidden="true"><use href="#i-sound"/></svg><span>Sound on</span></button>
+  </header>
+
+  <aside class="clip" aria-label="The director's notes about you"><h2>Notes</h2><ul id="notes"><li class="empty">(nothing yet)</li></ul></aside>
+
+  <main class="talk" id="talk">
+    <!-- in the conversation's flow so a narrow window stacks it above the bubble; on a wide one it
+         sits on the desk to the director's right (absolute, against the scene) -->
+    <aside class="tablet off" id="tablet" aria-label="The director's tablet"><div class="screen" id="screen"></div></aside>
+    <div id="badgeOut"></div>
+    <div class="echo" id="echo" aria-hidden="true"></div>
+    <div class="bubble" id="bubble"><span class="who">Studio director</span><p id="words"></p></div>
+    <div class="qcard" id="qcard" role="group" aria-labelledby="qText" hidden></div>
+    <form class="sayline" id="sayForm">
+      <input id="say" type="text" autocomplete="off" maxlength="120" placeholder="Answer, or ask the director anything…" aria-label="Type to the director">
+      <button type="submit" class="send" id="sendBtn" aria-label="Send"><svg class="i" aria-hidden="true"><use href="#i-send"/></svg></button>
+    </form>
+  </main>
+  <p class="sr" id="announce" aria-live="polite"></p>
+</div>
+
+<!-- ui.js: sounds and feel (shared with the studio). interview.js: the beats. -->
+<script src="/studio/ui.js"></script>
+<script src="/studio/interview.js"></script>
+</body>
+</html>

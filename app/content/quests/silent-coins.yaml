@@ -15,25 +15,24 @@ beats:
   - id: meet
     do: { reveal: [hierarchy], point: hierarchy, stop: true }
     say:
-      - Hi @name, I’m the sound designer. Grab a coin and nothing happens, so it doesn’t feel like you did anything.
-      - Tap Coins in the Hierarchy.
+      - Hi @name, I’m the sound designer! A silent coin doesn’t feel like anything. Tap Coins in the Hierarchy.
     skip_if: { state: { coins.sound: set } }
     wait_for: { select: coins }
 
   - id: fix
     say:
-      - See the Audio Source in the Inspector? It holds the sound this part makes. Pick one for when you grab a coin.
+      - Its Audio Source holds its sound. Pick one!
     skip_if: { state: { coins.sound: set } }
     wait_for: { state: { coins.sound: set } }
 
   - id: test
     do: { cue: play }
     say:
-      - Good choice! Now press Play and grab a coin. Listen!
+      - Now press Play, grab a coin, and listen.
     wait_for: { event: coin, state: { coins.sound: set } }
     pass: true
     done_say:
-      - Hear that? Now the game answers you. That’s my whole job.
+      - Hear that? Now the game answers you.
 
   - id: name-it
     do: { stop: true }

@@ -44,7 +44,7 @@ const CTX = {
   lessonTitle: S('lessontitle'),
   lessonContext: S('lessoncontext'),
   practiceTask: { title: S('practicetitle'), task: S('practicetask'), steps: [S('practicestep')] },
-  where: S('where'),
+  where: S('where'), studio: S('studio'),
   lab: { title: S('labtitle'), task: S('labtask'), goal: S('labgoal'), code: S('labcode'), log: S('lablog') },
   assets: [{ key: S('assetkey'), type: 'image' }],
   files: [{ name: 'player.js', code: S('filecode') }],
@@ -67,7 +67,7 @@ const CTX = {
    value actually arrived". Mirrors the fill() call in loader.js. */
 const SLOT_SENTINEL = {
   gameCode: S('gamecode'), lessonTitle: S('lessontitle'), lessonContext: S('lessoncontext'),
-  practiceTask: S('practicetask'), whereTheyAre: S('where'),
+  practiceTask: S('practicetask'), whereTheyAre: S('where'), studio: S('studio'),
   labTitle: S('labtitle'), labTask: S('labtask'), labGoal: S('labgoal'), labCode: S('labcode'), labLog: S('lablog'),
   ownedAssets: S('assetkey'), files: S('filecode'), gameLog: S('gamelog'),
   line: S('line'), snippet: S('snippet'),

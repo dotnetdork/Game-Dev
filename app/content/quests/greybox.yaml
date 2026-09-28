@@ -15,31 +15,30 @@ beats:
   - id: meet
     do: { reveal: [hierarchy], point: hierarchy, stop: true }
     say:
-      - Hi @name, I’m the art director. This level is a greybox, plain grey blocks. Studios test levels like that before Art arrives.
-      - But in grey nothing stands out. You can’t tell the coins from the lava! Tap Coins in the Hierarchy.
+      - Hi @name, I’m the art director! This is a greybox, a level made of plain grey blocks for testing. Nothing stands out. Tap Coins in the Hierarchy.
     skip_if: { state: { coins.look: set, lava.look: set } }
     wait_for: { select: coins }
 
   - id: fix
     say:
-      - The Sprite Renderer in the Inspector is the picture a part is drawn with. Give the coins a sprite, then do the Lava too.
+      - Its Sprite Renderer is the picture it’s drawn with. Give the coins a sprite, then the Lava.
     on:
       - when: { set: { part: coins, key: look }, state: { lava.look: null } }
         say:
-          - "Nice! Now tap Lava and give it a sprite too, so it looks dangerous."
+          - "Nice! Now give the Lava a sprite."
       - when: { set: { part: lava, key: look }, state: { coins.look: null } }
         say:
-          - "Scary! Now tap Coins and give them a sprite too."
+          - "Scary! Now give the Coins a sprite."
     wait_for: { state: { coins.look: set, lava.look: set } }
 
   - id: test
     do: { cue: play }
     say:
-      - Much better. Press Play. Can you spot the coins now?
+      - Press Play. Can you spot the coins now?
     wait_for: { event: coin }
     pass: true
     done_say:
-      - See how they pop? Art tells players what matters. That’s my whole job.
+      - See how they pop? Art shows players what matters.
 
   - id: name-it
     do: { stop: true }

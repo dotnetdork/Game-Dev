@@ -15,14 +15,13 @@ beats:
   - id: meet
     do: { reveal: [hierarchy], point: hierarchy, stop: true }
     say:
-      - Hi @name, I’m the lead programmer. That floor tile is just a picture. Nothing tells the game it’s solid.
-      - Tap Floor tile in the Hierarchy.
+      - Hi @name, I’m the lead programmer! That floor tile is only a picture, so nothing holds you up. Tap Floor tile in the Hierarchy.
     skip_if: { state: { tile.solid: true } }
     wait_for: { select: tile }
 
   - id: fix
     say:
-      - This is the Inspector, the settings of whatever you tapped. Its Box Collider 2D is what makes a part solid. Turn Solid on.
+      - That’s the Inspector, its settings. Turn on Solid in the Box Collider 2D.
     skip_if: { state: { tile.solid: true } }
     on:
       - when: { set: { part: tile, key: solid, value: false } }
@@ -30,17 +29,17 @@ beats:
           - "That turned it off again. Turn Solid on, then test it."
       - when: { set: { part: ground, key: solid, value: false } }
         say:
-          - "Ha, now the Ground is only a picture too! Turn it back on before you test."
+          - "Ha, now the Ground is a picture too! Turn it back on."
     wait_for: { state: { tile.solid: true } }
 
   - id: test
     do: { cue: play }
     say:
-      - Solid is on. Now press Play and walk across it.
+      - Now press Play and walk across it.
     wait_for: { event: crossed }
     pass: true
     done_say:
-      - It holds! You just fixed a bug. That’s my whole job.
+      - It holds! You just fixed a bug.
 
   - id: name-it
     do: { stop: true }

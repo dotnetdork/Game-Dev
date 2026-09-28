@@ -126,7 +126,7 @@ app.use((req, res, next) => {
 
    Mounted BEFORE the static middleware on purpose: express.static answers and returns, so a gate
    installed after it would guard the API and hand out the whole course to anyone. */
-auth.mount(app, { limit: store.bump });
+auth.mount(app, { limit: store.bump, store: store });
 
 /* ---------- the browser has to know this is a real deployment ----------
    js/dev.js decides three things: whether the course is unlocked, whether the footer carries a

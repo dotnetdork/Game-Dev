@@ -580,6 +580,8 @@ function mount(app, opts) {
     res.redirect(next);
   });
 
+  mountStudio(app, opts && opts.store);
+
   app.get('/auth/logout', function (req, res) {
     clearSession(res);
     res.redirect('/login.html?e=out');
@@ -593,8 +595,125 @@ function mount(app, opts) {
          left behind when the local pseudo-user was removed, so this reported `false` to every
          caller for every session. Gone rather than kept: a field that is always false is worse than
          no field, because a reader reasonably assumes something somewhere sets it. */
-      ? { signedIn: true, email: u.email, name: u.name || '', via: u.via || '' }
-      : { signedIn: false, enabled: enabled(), providers: providerStatus(), testers: testersReady() });
+      ? { signedIn: true, email: u.email, name: u.name || '', via: u.via || '', studio: u.via === 'studio' }
+      : { signedIn: false, enabled: enabled(), providers: providerStatus(), testers: testersReady(),
+          /* The studio door (V2): open when the class password is set, or on a laptop with nothing
+             configured, where the password step is skipped. */
+          studio: !DEMO && (BYPASS || testersReady()), noPassword: BYPASS });
+  });
+}
+
+/* ---------------------------------------------------------------------------------------------
+   THE STUDIO DOOR (V2): the class password, then "Who's here?"
+   docs/rework/v2-spec.md §3.1 and prototype-plan.md §7. Approved by Jay, 2026-09-28.
+
+   1. The class password (TESTER_PASSWORD: long, shared, sent with the link) buys a PASS: a signed,
+      HttpOnly cookie good for two hours. It is not a sign-in. It only lets this browser see the
+      class list and pick from it, so a stranger without the password never sees a single name.
+   2. The list is the accounts kids have made, nothing typed in ahead: first name and last initial,
+      the handle, the game's name and hero. A returning kid taps their card and confirms "Is this
+      your game?"; a new kid taps I'm new here, which makes an account at once (so the interview
+      can use the AI, which needs a session) and fills it in as the interview goes.
+   3. Each account has a random id, `k-<hex>@studio`, which is what the session and the saves are
+      keyed on. The handle is what everyone sees and can be re-rolled in the interview without
+      moving anybody's work.
+
+   The list lives in the store as one record. Kids join in a burst at the start of class, so every
+   change to it goes through one queue: two read-modify-writes interleaving would lose a kid. That
+   is safe because this is one long-lived process (CLAUDE.md, constraint 6).
+--------------------------------------------------------------------------------------------- */
+const PASS_COOKIE = 'league_pass';
+const ROSTER = 'studio:roster:v1';
+let STORE = null, rosterQueue = Promise.resolve();
+
+function hasPass(req) { const d = unsign(readCookie(req, PASS_COOKIE)); return !!(d && d.pass); }
+function readRoster() { return STORE ? STORE.read(ROSTER).then(function (r) { return (r && r.accounts) || []; }) : Promise.resolve([]); }
+function changeRoster(fn) {
+  const run = rosterQueue.then(function () {
+    return readRoster().then(function (list) {
+      const out = fn(list);
+      return STORE.write(ROSTER, { accounts: list }).then(function () { return out; });
+    });
+  });
+  rosterQueue = run.catch(function () {});
+  return run;
+}
+/* What a card shows. Never the id, and nothing but these fields. */
+function card(a) { return { id: a.id, first: a.first || '', initial: a.initial || '', handle: a.handle || '', game: a.game || '', hero: a.hero || '' }; }
+const clean = (s, n) => String(s || '').replace(/[^\p{L}\p{N} '’-]/gu, '').trim().slice(0, n);
+
+function mountStudio(app, store) {
+  STORE = store || null;
+  const json = function (res, code, body) { res.status(code).json(body); };
+
+  app.post('/auth/studio/pass', async function (req, res) {
+    if (!STORE || !STORE.enabled()) return json(res, 503, { error: 'Saving is switched off on this server, so the class list can’t be kept.' });
+    if (!BYPASS) {
+      if (!TESTERS_ON || !secret()) return json(res, 403, { error: 'The class sign-in isn’t switched on here.' });
+      if (LIMIT && (await LIMIT('login:' + (req.ip || 'anon'), 600)) > 100) return json(res, 429, { error: 'Too many tries. Wait a few minutes, then try again.' });
+      const h = (s) => crypto.createHash('sha256').update(s).digest();
+      if (!crypto.timingSafeEqual(h(String((req.body && req.body.password) || '')), h(TESTER_PASSWORD))) {
+        return json(res, 401, { error: 'That’s not the class password. Check the one your teacher sent.' });
+      }
+    }
+    setCookie(res, PASS_COOKIE, sign({ pass: 1, exp: Date.now() + 2 * 3600 * 1000 }), 2 * 3600);
+    json(res, 200, { ok: true });
+  });
+
+  app.get('/auth/studio/roster', async function (req, res) {
+    if (!hasPass(req)) return json(res, 401, { error: 'Enter the class password first.' });
+    const list = await readRoster();
+    json(res, 200, { accounts: list.filter(function (a) { return a.handle; }).map(card) });
+  });
+
+  app.post('/auth/studio/join', async function (req, res) {
+    if (!hasPass(req)) return json(res, 401, { error: 'Enter the class password first.' });
+    const id = String((req.body && req.body.id) || '');
+    const a = (await readRoster()).filter(function (x) { return x.id === id && x.handle; })[0];
+    if (!a) return json(res, 404, { error: 'That account isn’t on the list any more. Ask your teacher.' });
+    setSession(res, { email: a.id, name: a.handle, via: 'studio', exp: Date.now() + SESSION_DAYS * 86400000 });
+    json(res, 200, { ok: true, next: '/' });
+  });
+
+  app.post('/auth/studio/new', async function (req, res) {
+    if (!hasPass(req)) return json(res, 401, { error: 'Enter the class password first.' });
+    const id = 'k-' + crypto.randomBytes(8).toString('hex') + '@studio';
+    await changeRoster(function (list) { list.push({ id: id, created: Date.now() }); });
+    setSession(res, { email: id, name: '', via: 'studio', exp: Date.now() + SESSION_DAYS * 86400000 });
+    json(res, 200, { ok: true, next: '/interview.html' });
+  });
+
+  /* The interview (and later the studio) fills in the signed-in kid's own card: their name, the
+     handle they chose, their game. Only their own: the id comes from the session, never the body.
+     A handle already taken by someone else is refused, so two cards never look the same. */
+  app.post('/auth/studio/profile', async function (req, res) {
+    const me = currentUser(req);
+    if (!me || me.via !== 'studio') return json(res, 401, { error: 'Not signed in.' });
+    const b = req.body || {};
+    const want = {};
+    if (b.first !== undefined) want.first = clean(b.first, 20);
+    if (b.initial !== undefined) want.initial = clean(b.initial, 1).toUpperCase();
+    if (b.handle !== undefined) { want.handle = String(b.handle).replace(/[^A-Za-z0-9]/g, '').slice(0, 24); if (want.handle.length < 4) return json(res, 400, { error: 'That handle is too short.' }); }
+    if (b.game !== undefined) want.game = clean(b.game, 40);
+    if (b.hero !== undefined) want.hero = String(b.hero).replace(/[^a-z]/g, '').slice(0, 12);
+    const result = await changeRoster(function (list) {
+      const mine = list.filter(function (x) { return x.id === me.email; })[0];
+      if (!mine) return { error: 'Your account isn’t on the list. Ask your teacher.' };
+      if (want.handle && list.some(function (x) { return x !== mine && x.handle && x.handle.toLowerCase() === want.handle.toLowerCase(); })) return { taken: true };
+      Object.assign(mine, want, { last: Date.now() });
+      return { ok: true, card: card(mine) };
+    });
+    if (result.taken) return json(res, 409, { error: 'Someone already has that handle.', taken: true });
+    if (result.error) return json(res, 404, result);
+    if (want.handle) setSession(res, { email: me.email, name: want.handle, via: 'studio', exp: Date.now() + SESSION_DAYS * 86400000 });
+    json(res, 200, result);
+  });
+
+  app.get('/auth/studio/me', async function (req, res) {
+    const me = currentUser(req);
+    if (!me || me.via !== 'studio') return json(res, 200, { studio: false });
+    const a = (await readRoster()).filter(function (x) { return x.id === me.email; })[0];
+    json(res, 200, { studio: true, card: a ? card(a) : null, interviewed: !!(a && a.handle) });
   });
 }
 

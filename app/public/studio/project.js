@@ -11,8 +11,8 @@
    the way a studio blocks a level out before Art arrives) with three things wrong with it. Each
    one belongs to a department, which is how the first day's "what should we fix first?" works.
 
-   Saved to this browser under one key. The server copy comes with the sign-in work (see
-   docs/rework/prototype-plan.md §7-8); until then a cleared browser starts the day again. */
+   Saved to this browser under one key, and to the server by save.js, so a kid's game is waiting
+   for them on any Chromebook they sign in on. */
 var Project = (function () {
   var KEY = 'studio.v2';
 
@@ -37,10 +37,13 @@ var Project = (function () {
     if (!state || state.v !== 3) state = fresh();
     return state;
   }
-  var saveTimer = null;
+  var saveTimer = null, onSave = [];
   function save() {
     clearTimeout(saveTimer);
-    saveTimer = setTimeout(function () { try { localStorage.setItem(KEY, JSON.stringify(state)); } catch (e) {} }, 300);
+    saveTimer = setTimeout(function () {
+      try { localStorage.setItem(KEY, JSON.stringify(state)); } catch (e) {}
+      onSave.forEach(function (fn) { fn(state); });   // save.js sends the server its copy
+    }, 300);
   }
   function reset() { state = fresh(); try { localStorage.removeItem(KEY); } catch (e) {} return state; }
 
@@ -57,6 +60,6 @@ var Project = (function () {
   function part(id) { return state.parts.filter(function (p) { return p.id === id; })[0] || null; }
   function clone(parts) { return JSON.parse(JSON.stringify(parts)); }
 
-  return { load: load, save: save, reset: reset, code: code, part: part, clone: clone,
+  return { load: load, save: save, onSave: function (fn) { onSave.push(fn); }, KEY: KEY, reset: reset, code: code, part: part, clone: clone,
            get: function () { return state; }, internsParts: internsParts };
 })();

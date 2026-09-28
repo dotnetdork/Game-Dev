@@ -118,7 +118,13 @@ var Chat = (function () {
   function say(lines) {
     hideCard();
     quieten();
-    lines.forEach(function (l) { queue.push(l); });
+    /* One speaker's lines in one go are ONE paragraph, not a line each (Jay, 2026-09-28: a stream of
+       one-line messages is hard to follow at 10). They arrive together after one typing beat. */
+    lines.forEach(function (l) {
+      var last = queue[queue.length - 1];
+      if (last && last[0] === l[0] && l[0] !== 'k') last[1] = last[1] + ' ' + l[1];
+      else queue.push([l[0], l[1]]);
+    });
     pump();
   }
   function pump() {
@@ -127,7 +133,7 @@ var Chat = (function () {
     if (!next) { if (pendingQ) { var q = pendingQ; pendingQ = null; showCard(q); } return; }
     if (next[0] === 'k') { line('k', next[1]); pump(); return; }
     busy = true;
-    var wait = reduced() ? 120 : Math.min(1200, 320 + String(next[1]).length * 10);
+    var wait = reduced() ? 120 : Math.min(1100, 450 + String(next[1]).length * 4);   // snappy, but long enough to see someone is typing
     var d = dots();
     setTimeout(function () { d.remove(); line(next[0], next[1]); busy = false; pump(); }, wait);
   }

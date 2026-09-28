@@ -15,14 +15,13 @@ beats:
   - id: meet
     do: { reveal: [hierarchy], point: hierarchy, stop: true }
     say:
-      - Hi @name, I’m the lead designer. Lava that doesn’t hurt isn’t danger, so there’s nothing to be careful of.
-      - Tap Lava in the Hierarchy.
+      - Hi @name, I’m the lead designer! Lava that doesn’t hurt isn’t scary. Tap Lava in the Hierarchy.
     skip_if: { state: { lava.hurts: true } }
     wait_for: { select: lava }
 
   - id: fix
     say:
-      - A designer wrote a rule for this, the Hazard script in the Inspector. Turn on Hurts player.
+      - Its Hazard script is a designer’s rule. Turn on Hurts player.
     skip_if: { state: { lava.hurts: true } }
     on:
       - when: { set: { part: lava, key: hurts, value: false } }
@@ -33,18 +32,18 @@ beats:
   - id: feel-it
     do: { cue: play }
     say:
-      - Hurts player is on. Press Play and step in the lava. Carefully!
+      - Press Play and step in the lava. Carefully!
     wait_for: { event: hurt }
     done_say:
-      - Ouch! Back to the start. Now it’s real danger.
+      - Ouch! Back to the start.
 
   - id: beat-it
     say:
-      - Can you jump over it and grab the far coin?
+      - Now jump over it and grab the far coin.
     wait_for: { event: coin }
     pass: true
     done_say:
-      - You made it past! Danger is what makes a game exciting. That’s my whole job.
+      - You made it! Danger makes a game exciting.
 
   - id: name-it
     do: { stop: true }

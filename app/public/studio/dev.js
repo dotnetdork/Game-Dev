@@ -37,7 +37,8 @@
     if (a === 'skip') Quest.dev.skip();
     if (a === 'jump') Quest.dev.jump($('#devQuest').value, 0);
     if (a === 'fire') { var v = $('#devEvent').value; Quest.dev.fire(v === 'stop' || v === 'reverted' ? { type: v } : { type: 'event', name: v }); }
-    if (a === 'reset') { Project.reset(); location.reload(); }
+    // the server's copy too, or the next load would adopt it straight back (save.js)
+    if (a === 'reset') { Project.reset(); fetch('/api/state', { method: 'DELETE' }).catch(function () {}).then(function () { location.reload(); }); }
     paint();
   });
   document.addEventListener('keydown', function (e) {

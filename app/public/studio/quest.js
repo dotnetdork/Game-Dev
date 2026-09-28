@@ -189,7 +189,7 @@ var Quest = (function () {
     if (d.close_inspector) Editor.closeInspector();
     if (d.allow) { d.allow.forEach(function (c) { if (S.taught.indexOf(c) < 0) S.taught.push(c); }); allow(frame()); }
     if (d.cue) Editor.cue(true);
-    if (d.point) { var el = document.querySelector('#' + (PANEL[d.point] || '') + ' .tab') || $(PANEL[d.point]); if (el) setTimeout(function () { if (!Editor.selected()) Editor.point(pointText(d.point), el); }, 500); }
+    if (d.point) { var el = document.querySelector('#' + (PANEL[d.point] || '') + ' .tab') || $(PANEL[d.point]); if (el) setTimeout(function () { if (!Editor.selected() && !Runner.isPlaying()) Editor.point(pointText(d.point), el); }, 500); }
   }
   function pointText(p) {
     return { game: 'The Game view: where games run.', hierarchy: 'The Hierarchy: every part of the level.', tickets: 'Your tickets: everything that needs fixing.', play: 'Play runs the game.' }[p] || '';
@@ -255,7 +255,7 @@ var Quest = (function () {
   }
   function setHero(id, word) {
     var p = Project.part('player'); p.lookWord = word;
-    S.hero = id; save();
+    S.hero = id; save(); card({ hero: id });
     Editor.set('player', 'look', id);
     if (!word) say(['Great pick. There’s your hero!']);
     next();
@@ -267,8 +267,10 @@ var Quest = (function () {
     } });
     Chat.ask(fill(a.text), list, { who: who, keepOrder: true });
   }
+  /* The class list shows each kid's game and hero, so a returning kid can spot theirs. */
+  function card(fields) { if (!window.__studioKid) return; fetch('/auth/studio/profile', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(fields) }).catch(function () {}); }
   function setName(n) {
-    S.name = n; save();
+    S.name = n; save(); card({ game: n });
     Editor.reveal('projName', true); Editor.setProjectName(n);
     $('hierOf').textContent = 'your parts';
     say([n + '. Love it. It’s up in the toolbar now.']);
@@ -278,6 +280,7 @@ var Quest = (function () {
   /* ---------- everything that happens comes through here ---------- */
   function handle(ev) {
     if (!S || !COURSE) return;
+    if (ev.type === 'play' || ev.type === 'select') Editor.point(null);   // the pointer's job is done once they act
     if (ev.type === 'event' || ev.type === 'set' || ev.type === 'play') checkTickets(ev);
     var f = frame(); if (!f) return;
     var q = quest(f), b = beat(f);

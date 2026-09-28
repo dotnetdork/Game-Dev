@@ -108,6 +108,7 @@
 <!-- Plain scripts sharing globals, in dependency order (CLAUDE.md: no bundler, no modules).
      ui.js       sounds, focus keeping, feel. Needs nothing.
      project.js  the kid's game as data, and saving it. Needs nothing.
+     save.js     the server's copy of it. Needs Project.
      runner.js   the game frame and Play mode. Needs Project.
      chat.js     the conversation. Needs Runner (it won't steal focus from a running game).
      editor.js   docks, Hierarchy, Inspector, Play. Needs UI, Project, Runner.
@@ -116,6 +117,7 @@
      dev.js      localhost only (the server refuses it on a deployment): the dev panel. -->
 <script src="/studio/ui.js"></script>
 <script src="/studio/project.js"></script>
+<script src="/studio/save.js"></script>
 <script src="/studio/runner.js"></script>
 <script src="/studio/chat.js"></script>
 <script src="/studio/editor.js"></script>

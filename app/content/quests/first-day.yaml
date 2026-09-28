@@ -9,8 +9,7 @@ character: mentor
 beats:
   - id: clock-in
     say:
-      - Welcome to the studio, @name! I’m the studio’s AI.
-      - Our last intern left a game half-finished. Let’s see how bad it is.
+      - Welcome to the studio, @name! Our last intern left a game half-broken. Let’s see how bad it is.
     ask:
       text: Ready to see it?
       answers:
@@ -18,35 +17,34 @@ beats:
   - id: press-play
     do: { reveal: [game, play], point: game, cue: play }
     say:
-      - This is the Game view, where games run. Press Play up top to run it.
+      - Press Play up top to test the game.
     on:
       - when: { play: true }
         once: true
         say:
-          - "Use the arrow keys, or A, D and W. Find what’s broken!"
+          - "Arrow keys to move, Space to jump. Find what’s broken!"
       - when: { filed: floor }
         say:
-          - "Whoa, you fell right through the floor! That’s going on the ticket board."
+          - "Whoa, you fell right through the floor!"
       - when: { filed: silent-coins }
         say:
-          - "You grabbed a coin… and nothing happened. No sound at all. Ticket!"
+          - "You grabbed a coin and… nothing. No sound at all."
       - when: { filed: harmless-lava }
         say:
-          - "You walked into the lava and… nothing. It doesn’t even hurt. Another ticket."
+          - "That lava doesn’t even hurt!"
       - when: { stop: true, found_none: true }
         say:
-          - "Press Play again and look for what’s broken. Try walking from left to right."
+          - "Press Play again and walk to the right. Something’s broken."
     hints_after: 25
     hint:
       - "Try walking over that floor on the left. Carefully…"
     wait_for: { stop: true, found_at_least: 1 }
     done_say:
-      - "Nice detective work. Everything you found is a ticket now."
+      - "Nice detective work!"
   - id: what-first
     do: { file_tickets: true, reveal: [tickets] }
     say:
-      - Every studio keeps a list like this. I added the ones you didn’t bump into.
-      - You’re the new developer, so you choose.
+      - Everything that needs fixing is on your ticket board now. You pick!
     ask:
       text: What should we fix first?
       from: tickets
@@ -55,8 +53,7 @@ beats:
     character: department
     do: { reveal: [hierarchy], allow: [coinSize], play: true }
     say:
-      - One more thing, while it’s running. Make the coins bigger.
-      - Tap Coins in the Hierarchy, then slide Size.
+      - Quick test while it’s running. Tap Coins and slide Size to make them bigger.
     on:
       - when: { set: { part: coins, key: size, gt: 1.2 }, playing: true, not_flag: grew }
         flag: grew
@@ -71,21 +68,20 @@ beats:
           - "Press Play again, then make the coins bigger while it runs."
     wait_for: { reverted: true, flag: grew }
     done_say:
-      - They shrank back! Changes made while the game is playing don’t stick.
-      - Every developer does that once. Now you know.
+      - They shrank back! Changes made in Play mode don’t stick. Every developer learns that once.
     ask:
       text: Make sense?
       answers:
         - { text: "Ha, got it", goto: next }
         - text: Why does it do that?
           say:
-            - "Play mode is a test run. When you stop, the game goes back to how it was before you pressed Play. Unity does it too."
+            - "Play mode is just a test run, so Stop puts everything back. Unity works the same way."
           goto: again
 
   - id: its-yours
     do: { stop: true, close_inspector: true }
     say:
-      - This level is yours now, @name, tickets and all. Every fix you make lands in YOUR game.
+      - This level is yours now, @name. Every fix goes into YOUR game.
     ask:
       text: Every game needs a hero. Pick yours
       from: heroes
@@ -98,11 +94,11 @@ beats:
   - id: play-yours
     do: { play: true }
     say:
-      - That’s YOUR game, @name. Grab a coin!
+      - Your game, @name! Grab a coin.
     wait_for: { event: coin }
     award: { stars: 1, card: play-mode }
     done_say:
-      - Got it! Your first star, and your first card, Play mode.
+      - "Your first star, and your first card: Play mode!"
     ask:
       text: Ready for your next ticket?
       answers:
@@ -110,7 +106,7 @@ beats:
   - id: next-ticket
     do: { stop: true, reveal: [tickets, stars] }
     say:
-      - Pick the next ticket. Each one is a job with a different department.
+      - Pick your next ticket.
     ask:
       text: What should we fix next?
       from: tickets
