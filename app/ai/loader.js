@@ -167,6 +167,7 @@ function buildPrompt(agent, ctx) {
        student's GAME — and confidently answered questions about game.js and Phaser while the
        student was looking at a canvas exercise that contains neither. */
     whereTheyAre: c.where || '(not known)',
+    studio: c.studio || '(no studio context)',
     labTitle: (c.lab && c.lab.title) || '(untitled lab)',
     labTask: (c.lab && c.lab.task) || '(no task given)',
     labGoal: (c.lab && c.lab.goal) || '(no goal given)',

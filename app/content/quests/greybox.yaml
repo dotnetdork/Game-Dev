@@ -1,0 +1,62 @@
+# Art's first shift: everything is grey (ticket: greybox). Concept: readability. The level is a
+# greybox, the grey blockout studios test with before Art; giving parts sprites makes it readable.
+id: greybox
+title: The greybox
+department: art
+character: art-director
+ticket: greybox
+concept: readability
+allow: [coinArt, lavaArt]
+on:
+  - when: { reverted: true }
+    say:
+      - "It changed back! Changes made while playing are undone on Stop. Pick sprites while it’s stopped."
+beats:
+  - id: meet
+    do: { reveal: [hierarchy], point: hierarchy, stop: true }
+    say:
+      - Hi @name, I’m the art director. This level is a greybox, plain grey blocks. Studios test levels like that before Art arrives.
+      - But in grey nothing stands out. You can’t tell the coins from the lava! Tap Coins in the Hierarchy.
+    skip_if: { state: { coins.look: set, lava.look: set } }
+    wait_for: { select: coins }
+
+  - id: fix
+    say:
+      - The Sprite Renderer in the Inspector is the picture a part is drawn with. Give the coins a sprite, then do the Lava too.
+    on:
+      - when: { set: { part: coins, key: look }, state: { lava.look: null } }
+        say:
+          - "Nice! Now tap Lava and give it a sprite too, so it looks dangerous."
+      - when: { set: { part: lava, key: look }, state: { coins.look: null } }
+        say:
+          - "Scary! Now tap Coins and give them a sprite too."
+    wait_for: { state: { coins.look: set, lava.look: set } }
+
+  - id: test
+    do: { cue: play }
+    say:
+      - Much better. Press Play. Can you spot the coins now?
+    wait_for: { event: coin }
+    pass: true
+    done_say:
+      - See how they pop? Art tells players what matters. That’s my whole job.
+
+  - id: name-it
+    do: { stop: true }
+    award: { card: readability }
+    ask:
+      text: What did the sprites do for the player?
+      answers:
+        - text: Showed what matters
+          correct: true
+          say:
+            - "Right. Artists call that readability, seeing at a glance what’s good and what’s dangerous."
+          goto: next
+        - text: Made it faster
+          say:
+            - "Speed didn’t change. The sprites show what’s good and what’s dangerous. That’s readability."
+          goto: next
+        - text: Nothing, just pretty
+          say:
+            - "Pretty helps, but the real job is showing what’s good and what’s dangerous. That’s readability."
+          goto: next

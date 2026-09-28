@@ -2,497 +2,125 @@
 <html lang="en">
 <head>
 <meta charset="utf-8">
-<!-- Every asset path below is relative, and lessons now live at /lesson/<id> — two segments deep,
-     where "js/course.js" would resolve to "/lesson/js/course.js" and 404 the whole app. One base
-     tag fixes all 34 of them at once, which is better than 34 chances to miss one. It must stay
-     ABOVE the first relative URL in the document to have any effect. See js/router.js. -->
-<base href="/">
 <meta name="viewport" content="width=device-width, initial-scale=1">
-<title>LEAGUE - Game Dev</title>
-<!-- League branding assets, self-hosted under public/img/. -->
-<link rel="icon" type="image/png" sizes="32x32" href="img/favicon-32x32.png">
-<link rel="icon" type="image/png" sizes="16x16" href="img/favicon-16x16.png">
-<link rel="apple-touch-icon" href="img/apple-touch-icon.png">
-<link rel="manifest" href="manifest.webmanifest">
-<meta name="theme-color" content="#102a49">
-<!-- Libraries are vendored under public/vendor/ so the app keeps working on filtered
-     school networks with no CDN access. See public/vendor/VENDORED.md to refresh them. -->
-<!-- CodeMirror core + theme are eager: lesson run cells, challenges and the syntax highlighter all
-     use them on the Learn tab. The Code tab's own addons (hint, lint, fold, search, dialog) load
-     from js/lazy.js the first time that tab is opened. -->
-<link rel="stylesheet" href="vendor/codemirror/lib/codemirror.css">
-<link rel="stylesheet" href="vendor/codemirror/theme/material-darker.css">
-<!-- The 70 icons the app draws, not the 7,000 in the library: 733 KB -> 8 KB. Rebuild with
-     `node app/tools/subset-icons.js` after adding an icon; `npm test` fails if you forget. -->
-<link rel="stylesheet" href="vendor/mdi/css/mdi-subset.css">
-<link rel="stylesheet" href="styles.css">
+<title>Game Dev · The League</title>
+<link rel="icon" type="image/png" sizes="32x32" href="/img/favicon-32x32.png">
+<link rel="icon" type="image/png" sizes="16x16" href="/img/favicon-16x16.png">
+<link rel="apple-touch-icon" href="/img/apple-touch-icon.png">
+<meta name="theme-color" content="#232323">
+<!-- The studio (V2, branch claude/prototype-v2). The design system is DESIGN.md at the repo root;
+     the old app's front end lives on main and is not loaded here. -->
+<link rel="stylesheet" href="/studio/studio.css">
+</head>
 <body>
-  <a class="skiplink" href="#view-learn">Skip to the lesson</a>
-  <header class="topbar">
-    <div class="brand"><img class="brand-logo" src="img/wordmark.png" alt="The League of Amazing Programmers"><span class="brand-tag">Game Dev</span></div>
-    <nav class="topnav" aria-label="Sections">
-      <button class="navitem on" data-page="courses"><span class="mdi mdi-school"></span>Courses</button>
-      <button class="navitem" data-page="store"><span class="mdi mdi-cart-outline"></span>Store</button>
-      <button class="navitem" data-page="gallery"><span class="mdi mdi-view-grid"></span>Gallery</button>
-      <button class="navitem" data-page="leaderboards"><span class="mdi mdi-podium"></span>Leaderboards</button>
-    </nav>
-    <nav class="topright" aria-label="Reference">
-      <button class="navitem" data-page="docs"><span class="mdi mdi-book-open-variant"></span>Docs</button>
-      <!-- Credits is a real page with a real address, reached from the link on Help rather than from
-           up here: it is a page people go to on purpose, not one of the six places the course is
-           lived in. This button exists ONLY so the router can tell where it is — currentRoute() asks
-           the nav which page is open, and without a button to mark, navigating to Credits left the
-           address bar pointing at the lesson behind it and broke the back button. Hidden, so it is
-           never a seventh thing to press. -->
-      <button class="navitem" data-page="credits" hidden aria-hidden="true" tabindex="-1">Credits</button>
-      <button class="navitem" data-page="help"><span class="mdi mdi-help-circle-outline"></span>Help</button>
-    </nav>
+<!-- One authored icon set: 24-unit grid, drawn at 18px, stroke 1.75 (DESIGN.md, Shapes). -->
+<svg width="0" height="0" style="position:absolute" aria-hidden="true">
+  <symbol id="i-play" viewBox="0 0 24 24"><path d="M8 5.5v13l10.5-6.5z"/></symbol>
+  <symbol id="i-stop" viewBox="0 0 24 24"><rect x="6.5" y="6.5" width="11" height="11" rx="1.5"/></symbol>
+  <symbol id="i-tree" viewBox="0 0 24 24"><path d="M5 5h6M8 5v14M8 11h6M8 17h6M15 9h4v4h-4zM15 15h4v4h-4z"/></symbol>
+  <symbol id="i-pad" viewBox="0 0 24 24"><path d="M7 8h10a4 4 0 0 1 4 4v1a3 3 0 0 1-5.4 1.8L14.6 14H9.4l-1 .8A3 3 0 0 1 3 13v-1a4 4 0 0 1 4-4zM8 10.5v3M6.5 12h3M16 11.2h.01M17.8 12.8h.01"/></symbol>
+  <symbol id="i-flag" viewBox="0 0 24 24"><path d="M6 20V4M6 4h10l-2 4 2 4H6"/></symbol>
+  <symbol id="i-cube" viewBox="0 0 24 24"><path d="M12 3l8 4.5v9L12 21l-8-4.5v-9zM12 12l8-4.5M12 12v9M12 12L4 7.5"/></symbol>
+  <symbol id="i-sliders" viewBox="0 0 24 24"><path d="M5 7h9M18 7h1M5 17h3M12 17h7M16 5v4M10 15v4"/></symbol>
+  <symbol id="i-cards" viewBox="0 0 24 24"><path d="M8 4h9a2 2 0 0 1 2 2v11M5 7h9a2 2 0 0 1 2 2v9a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V9a2 2 0 0 1 2-2z"/></symbol>
+  <symbol id="i-star" viewBox="0 0 24 24"><path d="M12 3.5l2.6 5.3 5.9.9-4.3 4.1 1 5.8L12 16.9l-5.2 2.7 1-5.8-4.3-4.1 5.9-.9z"/></symbol>
+  <symbol id="i-fold" viewBox="0 0 24 24"><path d="M8 10l4 4 4-4"/></symbol>
+  <symbol id="i-x" viewBox="0 0 24 24"><path d="M6 6l12 12M18 6L6 18"/></symbol>
+  <symbol id="i-check" viewBox="0 0 24 24"><path d="M5 12.5l4.5 4.5L19 7.5"/></symbol>
+  <symbol id="i-chat" viewBox="0 0 24 24"><path d="M5 5.5h14a1.5 1.5 0 0 1 1.5 1.5v8a1.5 1.5 0 0 1-1.5 1.5h-7l-4.5 3.5v-3.5H5A1.5 1.5 0 0 1 3.5 15V7A1.5 1.5 0 0 1 5 5.5z"/></symbol>
+  <symbol id="i-send" viewBox="0 0 24 24"><path d="M4.5 12h13M12.5 6.5l5.5 5.5-5.5 5.5"/></symbol>
+  <symbol id="i-sound" viewBox="0 0 24 24"><path d="M4.5 9.5h3l4.5-4v13l-4.5-4h-3zM15.5 9a4 4 0 0 1 0 6M18 6.5a7.5 7.5 0 0 1 0 11"/></symbol>
+  <symbol id="i-sound-off" viewBox="0 0 24 24"><path d="M4.5 9.5h3l4.5-4v13l-4.5-4h-3zM16 9.5l5 5M21 9.5l-5 5"/></symbol>
+  <symbol id="i-person" viewBox="0 0 24 24"><path d="M12 11.5a3.75 3.75 0 1 0 0-7.5 3.75 3.75 0 0 0 0 7.5zM4.5 20a7.5 7.5 0 0 1 15 0"/></symbol>
+  <!-- the mentor: the studio's AI, so a friendly screen-faced bot rather than a person -->
+  <symbol id="i-bot" viewBox="0 0 24 24"><path d="M6.5 8h11A2.5 2.5 0 0 1 20 10.5v6a2.5 2.5 0 0 1-2.5 2.5h-11A2.5 2.5 0 0 1 4 16.5v-6A2.5 2.5 0 0 1 6.5 8zM12 8V5M12 4.5h.01M9 13h.01M15 13h.01M10 16h4"/></symbol>
+</svg>
+
+<div class="editor" id="editor">
+  <header class="toolbar">
+    <div class="brand">
+      <img class="wordmark" alt="The League of Amazing Programmers" src="/img/wordmark.png">
+      <span class="project reveal" id="projName">· <b id="projText">The intern’s game</b></span>
+    </div>
+    <div class="transport reveal closed" id="transport" aria-label="Play controls">
+      <button type="button" class="tbtn" id="bPlay" aria-label="Play the game"><svg class="i" aria-hidden="true"><use href="#i-play"/></svg><span>Play</span></button>
+    </div>
+    <div class="tool-right">
+      <button type="button" class="snd-toggle" id="bSound" aria-pressed="true"><svg class="i" aria-hidden="true"><use href="#i-sound"/></svg><span>Sound on</span></button>
+    </div>
   </header>
 
-  <div class="stage-wrap">
-    <div class="editor" id="editor">
-      <aside class="dock left" aria-labelledby="leftTitle">
-        <div class="res r" id="resLeft"></div>
-        <div class="dock-head">
-          <span id="leftTitle">Course Outline</span>
-          <!-- Hides the column, the same way the assistant's chevron hides its own. Bringing it
-               back is the button in the view bar, which only appears while it is hidden. -->
-          <button class="dock-collapse" id="outlineCollapse" title="Hide the course outline"><span class="mdi mdi-chevron-right" aria-hidden="true"></span></button>
-        </div>
-        <div class="dock-body">
-          <div id="panel-outline"><div id="tree"></div></div>
-          <div id="panel-files" hidden>
-            <div id="fileList"></div>
-            <div class="fileactions">
-              <button class="iconbtn" id="newFileBtn" title="New script"><span class="mdi mdi-file-plus-outline"></span>New</button>
-              <button class="iconbtn" id="saveBtn" title="Save"><span class="mdi mdi-content-save-outline"></span>Save</button>
-              <button class="iconbtn" id="runBtn" title="Save & run"><span class="mdi mdi-play"></span>Run</button>
-            </div>
-          </div>
-          <div id="panel-info" hidden>
-            <!-- Names the file it is editing, because that is the whole point of it: these rows are
-                 a view onto config.js, not a second place where the numbers live. Filled in by
-                 loadSettings(), since an older project keeps CONFIG in game.js. -->
-            <div class="info-hd" id="infoHd">Settings</div>
-            <div id="infoSettings"></div>
-            <!-- What a drag actually does, which changes depending on whether the game is running.
-                 Written by paintSettingsNote() in js/files.js rather than sitting here as fixed
-                 text, because a note that is only true half the time is worse than none. -->
-            <p class="info-note" id="infoNote"></p>
-            <!-- Reset moved to the transport row at the top, beside play/pause/stop, where the other
-                 run controls are. A destructive button sitting alone under a panel of tuning sliders
-                 was easy to hit by accident and hard to find on purpose. -->
-          </div>
-        </div>
-      </aside>
-
-      <main class="center">
-        <div class="viewbar">
-          <!-- Only on screen while the outline is NOT: hidden by its own chevron, or narrow enough
-               that it has become a slide-over. Otherwise it would be a button for a thing already
-               in front of you, and it would push the breadcrumb off centre for no reason. -->
-          <!-- Grouped, so the bar is three parts — left, centre, right — rather than a flex row of
-               four things. The centred transport has to be kept off the breadcrumb, and a cap on the
-               crumb alone would have to know the width of the outline button beside it, which
-               changes with the tier. A cap on the group starts at the bar's own edge and does not. -->
-          <div class="vb-left">
-            <button class="outline-btn" id="outlineBtn" aria-expanded="false" aria-controls="panel-outline" hidden><span class="mdi mdi-book-open-page-variant" aria-hidden="true"></span><span class="sr-only">Course outline</span></button>
-            <span class="crumb" id="crumb">Welcome</span>
-          </div>
-          <div class="vtabs" role="tablist" aria-label="Lesson view">
-            <button class="vtab on" data-view="learn" role="tab" aria-selected="true" aria-controls="view-learn"><span class="mdi mdi-book-open-page-variant"></span>Learn</button>
-            <button class="vtab" data-view="design" role="tab" aria-selected="false" aria-controls="view-design"><span class="mdi mdi-lightbulb-on-outline"></span>Design</button>
-            <button class="vtab" data-view="code" role="tab" aria-selected="false" aria-controls="view-code"><span class="mdi mdi-code-block-braces"></span>Code</button>
-            <button class="vtab" data-view="play" role="tab" aria-selected="false" aria-controls="view-play"><span class="mdi mdi-controller"></span>Play</button>
-          </div>
-          <!-- The transport. Which view you are looking at and whether the game is running are two
-               different questions, and every engine keeps them apart: Scene/Game is a tab, Play/Stop
-               is a toolbar control. Fusing them meant you could not watch your code and your game at
-               the same time — the single most common thing anyone does in an engine.
-               Centred in the bar, the way every engine's transport is, and shown only on the Game
-               view — switchView owns that. Last in source order because it is positioned rather than
-               laid out in the flow, so it must not take a slot between the crumb and the tabs. -->
-          <!-- Symbols, not words: ▶ / ↻ / ■ are the same three shapes on a games console, a music
-               player and every engine's toolbar, so they need no reading. The label survives for
-               anyone who cannot see them, as aria-label and as the tooltip — paintTransport() keeps
-               both in step with the icon, since a button that says "Play" while showing ↻ is worse
-               than either alone. -->
-          <!-- Play, pause, stop, reset — the same four, in the same order, as the lab bench, so the
-               controls do not change shape between the two places a student runs code. Reset is
-               destructive (it restores the starter files) and always asks first. -->
-          <div class="transport" role="group" aria-label="Game" hidden>
-            <button class="tp tp-play" id="gamePlay" title="Run your game" aria-label="Play"><span class="mdi mdi-play" aria-hidden="true"></span></button>
-            <button class="tp" id="gamePause" title="Freeze the game where it is" aria-label="Pause" disabled><span class="mdi mdi-pause" aria-hidden="true"></span></button>
-            <button class="tp tp-stop" id="gameStop" title="Stop the game" aria-label="Stop" disabled><span class="mdi mdi-stop" aria-hidden="true"></span></button>
-            <!-- Throws away everything the student has written and restores the starter files, so it
-                 is a testing control too — see the footer's Reset everything. Hidden in a student's
-                 build; the lesson that teaches undoing a change teaches Ctrl+Z, not this. -->
-            <button class="tp tp-reset" id="gameReset" data-dev-only title="Restore the original starter game" aria-label="Reset"><span class="mdi mdi-restore" aria-hidden="true"></span></button>
-          </div>
-          <!-- The assistant's twin of #outlineBtn, at the opposite end of the bar from it, and on
-               screen only while the assistant is not.
-               A glyph, not the assistant's avatar: that picture is a detailed little robot with a
-               ring, and at the 19px this button allows it was mud. mdi-robot is the shorthand the
-               Help page already uses for the assistant, and it is a flat shape that survives being
-               small — which is the whole job here. -->
-          <button class="outline-btn ai-btn" id="aiBtn" aria-expanded="false" aria-controls="panel-ai" title="Show the assistant" hidden><span class="mdi mdi-robot" aria-hidden="true"></span><span class="sr-only">Assistant</span></button>
-        </div>
-        <!-- How far through the lesson you are. A lesson is about six screens tall and the only
-             progress readout used to sit at the very bottom of it, so for the whole scroll there was
-             no answer to "how much of this is left". Outside the scrolling view on purpose: it is
-             always visible without needing position:sticky, and it survives the lesson body being
-             rebuilt on every navigation. -->
-        <div class="lesson-rail" id="lessonRail" hidden>
-          <i id="lessonRailFill"></i>
-          <span class="rail-count" id="lessonRailCount"></span>
-        </div>
-        <div class="viewbody">
-          <div class="view" id="view-learn" role="tabpanel" tabindex="-1"><div class="lesson" id="lessonBody"></div></div>
-          <!-- The DESIGN tab: the student's own board, open at any point in the course.
-               This used to be a full-window overlay behind a CHECKPOINT - a gated lesson at the
-               end of every module. The gate is gone (2026-09-09) and the board stayed, because the
-               board was the good half: somewhere to arrange what your game is, that you can get
-               back to on any lesson instead of six times behind a wall. See js/board.js.
-
-               A tab rather than a dialog, so it is not modal, nothing goes inert behind it, and
-               the student can leave it and come back mid-sentence. -->
-          <div class="view" id="view-design" role="tabpanel" tabindex="-1" hidden>
-            <!-- Notes and regions live in here, in board coordinates, and pan and zoom together.
-                 There is no chat on the board: the Design tab uses the shell's AI panel like every
-                 other tab, with Build off and the Tutor answering as the design coach. -->
-            <div class="board-canvas-wrap" id="boardCanvasWrap">
-              <div class="board-canvas" id="boardCanvas"></div>
-              <div class="board-palette" id="boardPalette"></div>
-          <!-- Tool options, beside the rail: the colour the armed tool will use, and for the pen
-               its thickness. Canva and Miro both put the tool's settings next to the tool rather
-               than in a menu, and a pen with one colour and one width is not a pen. -->
-          <div class="board-toolopts" id="boardToolOpts" hidden></div>
-              <div class="board-zoom">
-                <button id="boardZoomOut" title="Zoom out" aria-label="Zoom out">&minus;</button>
-                <span id="boardZoomAt">100%</span>
-                <button id="boardZoomIn" title="Zoom in" aria-label="Zoom in">+</button>
-                <span class="board-zoom-gap"></span>
-          <button id="boardFit" title="Fit the whole board on screen" aria-label="Fit the whole board on screen"><span class="mdi mdi-overscan"></span></button>
-              </div>
-            </div>
-          </div>
-          <div class="view" id="view-code" role="tabpanel" tabindex="-1" hidden>
-            <!-- Above the code and below the tabs, which is where the decision belongs: the diff
-                 fills the rest of the view, so anything below it is off the bottom of a change of
-                 any size. The second row is the overview — a student should not have to read a
-                 diff to find out what the change is FOR. -->
-            <div class="review-bar" id="reviewBar" hidden>
-              <div class="rv-top">
-                <span class="mdi mdi-file-compare"></span>
-                <span class="rv-title">Suggested change</span>
-                <span class="rv-stat" id="reviewStat"></span>
-                <button class="rv-apply" id="reviewApply"><span class="mdi mdi-check"></span>Apply it</button>
-                <button class="rv-skip" id="reviewSkip">No thanks</button>
-              </div>
-              <div class="rv-why" id="reviewWhy"></div>
-            </div>
-            <div class="editor-wrap" id="editorWrap">
-              <textarea id="codeeditor"></textarea><div class="cm-statusbar" id="cmStatus">Ln 1, Col 1</div>
-            </div>
-
-                        <!-- Phones read; they do not build. Shown by a media query alone, with no JavaScript
-                 state to fall out of step with the width. The tab still works and still arrives
-                 somewhere that explains itself, which beats a dead tab or a 320px code editor. -->
-            <div class="build-gate" role="status">
-              <span class="mdi mdi-laptop" aria-hidden="true"></span>
-              <b>Open this on a computer to build your game.</b>
-              <span>Lessons and quizzes work fine on a phone — tap <b>Learn</b> to keep reading.
-                Writing code needs a bigger screen and a keyboard.</span>
-            </div>
-          </div>
-          <div class="view" id="view-play" role="tabpanel" tabindex="-1" hidden>
-            <div class="stage" id="gameStage">
-              <div class="stage-frame">
-                <!-- The sandbox attribute is applied at runtime by game-runner.js, not here, so it
-                     can be toggled without an edit. See SANDBOX_GAME there for why. -->
-                <iframe id="gameFrame" title="Game viewport"></iframe>
-                <div class="game-loading hidden" id="gameLoading"><span class="spin"></span>Building your game…</div>
-                <!-- Shown when the game never started at all — a syntax error stops the whole file
-                     running, so Phaser never boots and the stage would otherwise just be black. -->
-                <div class="game-failed hidden" id="gameFailed" role="status">
-                  <!-- mdi-bug, not an alert triangle: this is a bug to find, not an emergency, and
-                       the course already calls it that ("Bug Hunter"). Also already in the icon
-                       subset, so it needs no font rebuild. -->
-                  <span class="mdi mdi-bug" aria-hidden="true"></span>
-                  <b>Your game did not start.</b>
-                  <span>There is a typo somewhere in your code — the log below says where. Nothing
-                    you wrote is lost: fix it and press Play again.</span>
-                  <code class="gf-detail" hidden></code>
-                </div>
-                <!-- The game is no longer started by arriving on this tab, so there is a state where
-                     the stage is legitimately empty. Saying so beats a black rectangle. -->
-                <div class="game-idle" id="gameIdle">
-                  <span class="mdi mdi-play-circle" aria-hidden="true"></span>
-                  <b>Your game is not running.</b>
-                  <span>Press <b>Play</b> in the bar above to start it. It keeps running while you edit,
-                    so you can watch a change land without coming back here.</span>
-                </div>
-              </div>
-            </div>
-            <div class="build-gate" role="status">
-              <span class="mdi mdi-laptop" aria-hidden="true"></span>
-              <b>Open this on a computer to play your game.</b>
-              <span>Lessons and quizzes work fine on a phone — tap <b>Learn</b> to keep reading.
-                Your game needs a bigger screen and a keyboard to play.</span>
-            </div>
-          </div>
-        </div>
-        <div class="console" id="console" hidden>
-          <!-- Same idea as the docks' .res handles, turned ninety degrees. Not focusable for the
-               same reason those are not: it adjusts a size, and the size it adjusts has a keyboard
-               equivalent already in the collapse toggle beside it. -->
-          <div class="res-v" id="resConsole" aria-hidden="true"></div>
-          <div class="console-head">
-            <button class="con-toggle" id="conToggle" title="Show or hide the log"><span class="mdi mdi-chevron-down"></span></button>
-            <span class="con-title"><span class="mdi mdi-console-line"></span>Console</span>
-            <div class="game-audio" id="gameAudio" title="Game sound"><button id="muteBtn" title="Sound is off — click to turn it on"><span class="mdi mdi-volume-off"></span></button><input type="range" id="volSlider" aria-label="Game volume" min="0" max="100" value="50" disabled></div>
-            <button class="con-clear" id="conClear" title="Clear the log">Clear</button>
-          </div>
-          <div class="console-body" id="consoleBody"></div>
-        </div>
-      </main>
-
-      <aside class="dock right" aria-label="AI assistant">
-        <div class="res l" id="resRight"></div>
-        <div class="dock-head">
-          <!-- First, not last: both docks now put their collapse control on their INNER edge, so the
-               outline's sits against the centre column on its right and this one on its left. They
-               read as one pair of shutters closing inwards rather than two unrelated buttons. -->
-          <button class="ai-collapse" id="aiCollapse" title="Hide the assistant"><span class="mdi mdi-chevron-right"></span></button>
-          <span class="ai-title"><span class="mdi mdi-robot ai-ava" aria-hidden="true"></span>AI Assistant</span>
-          <button class="ai-toggle coder" id="modeToggle" title="Build mode — click to switch to Tutor"><span class="mdi mdi-code-tags"></span></button>
-          <span class="tag" id="aiModelTag">model…</span>
-        </div>
-        <!-- One thin row: start a fresh conversation, or go back to one. New chat is not just
-             housekeeping — chatHistory() resends the last six turns, so a conversation that has gone
-             wrong stays wrong, and this is the only way to clear it. See js/ai.js. -->
-        <div class="chatbar">
-          <button class="chat-new" id="chatNew" title="Start a new chat"><span class="mdi mdi-plus" aria-hidden="true"></span><span class="sr-only">New chat</span></button>
-          <button class="chat-pick" id="chatPick" aria-haspopup="listbox" aria-expanded="false">
-            <span class="chat-title" id="chatTitle">New chat</span>
-            <span class="mdi mdi-chevron-down" aria-hidden="true"></span>
-          </button>
-          <div class="chat-list" id="chatList" role="listbox" hidden></div>
-        </div>
-        <div class="ai">
-          <div class="ai-msgs" id="aiMsgs"></div>
-          <div class="ai-input">
-            <!-- A textarea, not an input. A one-line input put a whole paste on a single scrolling
-                 line, could not hold a newline at all, and gave no way to write a second sentence.
-                 Enter sends, Shift+Enter starts a line, and it grows with what is in it. -->
-            <textarea id="aiText" rows="1" placeholder="Ask the AI to change your game..."></textarea>
-            <button id="aiSend" title="Send"><span class="mdi mdi-send"></span></button>
-          </div>
-        </div>
-      </aside>
-    </div>
-
-    <!-- Dims and closes whichever dock is floating over the content at a narrow width. -->
-    <div class="dock-scrim" id="dockScrim" hidden></div>
-
-    <div class="page" id="page" hidden></div>
-
-    <!-- The lab, full window. A lab is the course's example on a bench, and it needs the room:
-         the lesson column is ~760px on a school Chromebook, which cannot hold code beside a
-         running game. This covers the stage (both docks and the viewport) but not the top bar or
-         the status bar, so the student can see they are still inside the same app and the way
-         back is one obvious button. Built by openLab() in js/widgets.js. -->
-    <div class="lab-view" id="labView" hidden role="dialog" aria-modal="true" aria-labelledby="labTitle">
-      <!-- One horizontal band, like the shell: everything the student works in on the left, the
-           help panel full-height beside it. The panel used to start BELOW the lab bar and the task,
-           which made it read as a box dropped in the corner rather than part of the bench. Its
-           header now sits on the same line as the lab bar, exactly as the assistant's header sits
-           on the same line as the Learn / Code / Game tabs. -->
-      <div class="lab-split">
-      <div class="lab-left">
-      <div class="lab-bar">
-        <!-- The lesson's own icon rather than a back arrow: it names where the button goes. -->
-        <button class="lab-back" id="labBack"><span class="mdi mdi-book-open-page-variant" aria-hidden="true"></span>Back</button>
-        <span class="lab-flask mdi mdi-flask-outline" aria-hidden="true"></span>
-        <span class="lab-title" id="labTitle"></span>
-        <!-- Was Reset, which put the example back and threw the student's work away — a destructive
-             button in the one place a stuck child is most likely to click something. What they
-             actually need there is help, so that is what is there now. Restart lives in the
-             transport row at the bottom with the other run controls, where it belongs. -->
-        <!-- Two controls, not one that changes job. The counter is the ladder; the robot beside it
-             is the tutor, locked until the ladder is used up, and it opens the panel from here. -->
-        <!-- Play, pause, stop, reset — at the TOP, in the same order and the same shape as the Game
-             tab's transport, so the controls do not move between the two places a student runs code.
-             Reset restores the starter code and always asks first. -->
-        <div class="lab-transport" role="group" aria-label="Run controls">
-          <button class="tp tp-play" id="labRun" title="Run it" aria-label="Play"><span class="mdi mdi-play" aria-hidden="true"></span></button>
-          <button class="tp" id="labPause" title="Freeze it where it is" aria-label="Pause" disabled><span class="mdi mdi-pause" aria-hidden="true"></span></button>
-          <button class="tp tp-stop" id="labStop" title="Stop and clear the screen" aria-label="Stop" disabled><span class="mdi mdi-stop" aria-hidden="true"></span></button>
-          <button class="tp tp-reset" id="labReset" title="Put the starter code back" aria-label="Reset"><span class="mdi mdi-restore" aria-hidden="true"></span></button>
-        </div>
-        <!-- Same button as the shell's collapsed assistant: same classes, same mdi-robot glyph, same
-             job. It was the avatar image, which made the one control a student presses for help
-             look like two different things depending on which screen they were on. -->
-        <button class="outline-btn ai-btn lab-tutor-btn" id="labTutorBtn" aria-expanded="false" aria-controls="labTutor" title="Show the tutor"><span class="mdi mdi-robot" aria-hidden="true"></span><span class="sr-only">Tutor</span></button>
-      </div>
-      <div class="lab-brief" id="labBrief"></div>
-      <!-- Horizontal split: the working area on the left, the tutor beside it on the right — the
-           same side, shape and behaviour as the AI assistant dock in the main shell, so a student
-           meets one chat panel in this app rather than two that sit in different places. -->
-      <div class="lab-panes">
-        <!-- Short nouns, matching the Code and Play tabs in the shell. The chrome is a tool and
-             names its panels the way a tool does; the lesson prose is where the friendly voice
-             belongs. Saying "The code" here while the tab two inches away says "Code" made them
-             read as two different products. -->
-        <section class="lab-pane lab-pane-code" aria-label="Code">
-          <h2 class="lab-pane-hd"><span class="mdi mdi-code-tags" aria-hidden="true"></span>Code</h2>
-          <div class="lab-editor" id="labEditor"></div>
-          <!-- The cursor position belongs in the editor, the same way it does on the Code tab, and
-               uses that tab's own statusbar class so the two look identical. A sibling rather than
-               a child of #labEditor, because building the editor clears that element's contents. -->
-          <div class="cm-statusbar" id="labCursor">Ln 1, Col 1</div>
-        </section>
-        <section class="lab-pane lab-pane-game" aria-label="Game">
-          <!-- The verdict sits in the header of the thing it is a verdict ABOUT. It used to live in
-               the bottom-left corner of the window, diagonally opposite the screen the student was
-               watching and next to nothing it referred to. -->
-          <h2 class="lab-pane-hd"><span class="mdi mdi-play-circle" aria-hidden="true"></span>Game
-            <span class="lab-status" id="labStatus" aria-live="polite"></span>
-          </h2>
-          <div class="lab-stage" id="labStage">
-            <div class="lab-screen" id="labScreen"></div>
-          </div>
-        </section>
-      </div>
-      <!-- Shared by both panes, because what the code printed belongs to the whole bench and not
-           to one side of it. Same markup and classes as the game console under the Play tab, so
-           a student meets one console in this app rather than two that look different. -->
-      <div class="lab-console collapsed" id="labConsole">
-        <div class="console-head">
-          <button class="con-toggle" id="labConToggle" title="Show or hide the log"><span class="mdi mdi-chevron-down" aria-hidden="true"></span></button>
-          <span class="con-title"><span class="mdi mdi-console-line" aria-hidden="true"></span>Console</span>
-          <span class="lab-con-count" id="labConCount"></span>
-          <button class="con-clear" id="labConClear">Clear</button>
-        </div>
-        <div class="console-body" id="labConBody"></div>
-      </div>
-      </div><!-- /lab-left -->
-      <!-- The tutor, inside the bench and on the right, where the AI assistant lives everywhere
-           else in this app. It unlocks after three hints and stays here: sending a stuck student
-           back to the lesson to find a chat panel asks them to leave the thing they are stuck on,
-           and the bench makes the rest of the app inert anyway. It sees the task, the code actually
-           in the editor, and what the last run printed. -->
-      <aside class="lab-tutor dock right" id="labTutor" aria-label="AI Assistant" hidden>
-        <!-- The same drag handle as the assistant dock in the shell, wired to the same limits. -->
-        <div class="res l" id="labRes"></div>
-        <div class="dock-head">
-          <span class="ai-title"><span class="mdi mdi-robot ai-ava" aria-hidden="true"></span>AI Assistant</span>
-          <span class="tag" id="labTutorTag">model…</span>
-          <button class="ai-collapse" id="labTutorHide" title="Hide the assistant"><span class="mdi mdi-chevron-right" aria-hidden="true"></span></button>
-        </div>
-        <div class="ai">
-          <div class="ai-msgs" id="labTutorBody"></div>
-          <form class="ai-input" id="labTutorForm">
-            <textarea id="labTutorText" rows="1" placeholder="Ask about this lab..." aria-label="Ask the tutor about this lab"></textarea>
-            <button type="submit" id="labTutorSend" title="Send"><span class="mdi mdi-send" aria-hidden="true"></span></button>
-          </form>
-        </div>
-      </aside>
-      </div><!-- /lab-split -->
-    </div>
-
+  <div class="left">
+    <section class="dock closed" id="dTickets" aria-label="Tickets">
+      <div class="tabs"><span class="tab"><svg class="i" aria-hidden="true"><use href="#i-flag"/></svg>Tickets <small>what needs fixing</small></span></div>
+      <div class="dock-body"><ul class="tickets" id="ticketList"></ul></div>
+    </section>
+    <section class="dock closed" id="dHier" aria-label="Hierarchy">
+      <div class="tabs"><span class="tab"><svg class="i" aria-hidden="true"><use href="#i-tree"/></svg>Hierarchy <small id="hierOf">the intern’s game</small></span></div>
+      <div class="dock-body"><ul class="tree" id="tree"></ul></div>
+    </section>
   </div>
 
-  <footer class="statusbar">
-    <span class="sb-left">Game Dev — v0.1.0<!--
-      Reset everything, as an icon beside the version, and ONLY on a laptop. It puts the browser back
-      to a brand-new account — XP, Stars, unlocked assets, finished lessons, the student's game and
-      their design board — so it is a testing control and never a thing a student should come across
-      while looking for something else. It used to sit on the Help page under a heading, which is
-      exactly where a curious twelve-year-old goes.
-      `data-dev-only` is hidden by default and revealed by the attribute js/dev.js puts on <html>,
-      so a control that forgets to ask stays hidden in a student's build rather than appearing in it.
-   --><button class="sb-dev" id="resetAllBtn" data-dev-only
-        title="Reset everything — put this browser back to a brand-new account (testing only)"
-        aria-label="Reset everything (testing only)"><span class="mdi mdi-restart-alert" aria-hidden="true"></span></button></span>
-    <div class="sb-mid">
-      <!-- The trophy case. A badge is earned by doing a technique in your own game, so it sits
-           beside the Stars it deliberately cannot be bought with. -->
-      <button class="sb-badges" id="badgeBtn" title="Your badges"><span class="mdi mdi-medal" aria-hidden="true"></span> <b id="badgeVal">0</b></button>
-      <span><span class="mdi mdi-star st"></span> <b id="starVal">0</b></span>
-      <div class="progress" title="XP to next level"><div id="xpBar"></div></div>
-      <span class="xp"><img class="xp-bolt" src="img/bolt.png" alt="XP"> <b id="xpVal">0</b> XP</span>
-      <span>Lvl <b id="lvlVal">1</b></span>
+  <section class="dock game closed" id="dGame" aria-label="Game">
+    <div class="tabs"><span class="tab"><svg class="i" aria-hidden="true"><use href="#i-pad"/></svg>Game <small id="gameOf">the intern’s game</small></span></div>
+    <div class="gamebody" id="gamebody">
+      <div class="stage" id="stage"></div>
+      <div class="focus-hint" id="hint" hidden>Click the game, then <span class="keys"><span class="key">←</span><span class="key">→</span></span> or <span class="keys"><span class="key">A</span><span class="key">D</span></span> to move · <span class="key">Space</span> or <span class="key">W</span> to jump</div>
+      <p class="game-status" id="gameStatus" role="status"></p>
     </div>
-    <span class="sb-right">© The League of Amazing Programmers</span>
+  </section>
+
+  <div class="rightcol">
+    <section class="dock inspector" id="inspector" aria-label="Inspector" aria-hidden="true" inert>
+      <div class="tabs"><span class="tab"><svg class="i" aria-hidden="true"><use href="#i-sliders"/></svg>Inspector <small id="inspName"></small></span>
+        <button type="button" class="x" id="inspClose" aria-label="Close the Inspector"><svg class="i" aria-hidden="true"><use href="#i-x"/></svg></button></div>
+      <div class="dock-body" id="inspBody"></div>
+    </section>
+    <section class="dock right" id="dMentor" aria-label="Conversation">
+      <div class="tabs"><span class="tab"><svg class="i" aria-hidden="true"><use href="#i-chat"/></svg><span id="whoTab">Mentor</span></span></div>
+      <div class="who">
+        <div class="face" id="face" data-who="m" aria-hidden="true"><svg class="i fm"><use href="#i-bot"/></svg><svg class="i fp"><use href="#i-person"/></svg></div>
+        <div><strong id="whoName">Mentor</strong><span id="whoRole">The studio’s AI, and proud of it</span></div>
+      </div>
+      <div class="log" id="log" role="log" aria-label="Conversation history"></div>
+      <!-- the question card: one multiple-choice question at a time, above the text box (chat.js) -->
+      <div class="qcard" id="qcard" role="group" aria-labelledby="qText" hidden></div>
+      <form class="say" id="sayForm">
+        <input id="say" type="text" autocomplete="off" maxlength="200" placeholder="Type to the studio…" aria-label="Type a message to the studio">
+        <button type="submit" class="send" id="sendBtn" aria-label="Send"><svg class="i" aria-hidden="true"><use href="#i-send"/></svg></button>
+      </form>
+    </section>
+  </div>
+
+  <div class="proj reveal closed" id="proj">
+    <svg class="i" aria-hidden="true"><use href="#i-cards"/></svg><b>Project</b><span>your cards</span>
+    <span class="chip" id="cardChip">no cards yet</span>
+  </div>
+
+  <div class="pointer" id="pointer" hidden><span id="pointerText"></span></div>
+  <p class="sr" id="announce" aria-live="polite"></p>
+  <footer class="status">
+    <span id="statusMsg">Welcome to the studio</span>
+    <span class="stars reveal closed" id="stars"><svg class="i" aria-hidden="true"><use href="#i-star"/></svg><span id="starCount">0 stars</span></span>
   </footer>
+</div>
 
-  <div class="toast" id="toast"></div>
-  <div class="modal-backdrop" id="modalBack" hidden></div>
-
-<!-- Eager: everything the Learn tab needs. The Code tab's ~2 MB of linter, formatter and editor
-     addons is listed in js/lazy.js and fetched when that tab is first opened. -->
-<script src="vendor/codemirror/lib/codemirror.js"></script>
-<script src="vendor/codemirror/mode/javascript/javascript.js"></script>
-<script src="vendor/codemirror/addon/edit/matchbrackets.js"></script>
-<script src="vendor/codemirror/addon/edit/closebrackets.js"></script>
-<script src="vendor/js-yaml/js-yaml.min.js"></script>
-<script src="vendor/marked/marked.min.js"></script>
-<script src="vendor/dompurify/purify.min.js"></script>
-<script src="assets-manifest.js"></script>
-<!-- First, because everything below assumes $ and esc already exist. esc in particular is the
-     fallback inside project.js's mdToSafeHTML, and it used to live in pages.js — thirteen tags
-     further down. See the note in js/dom.js. -->
-<script src="js/dom.js"></script>
-<script src="js/lazy.js"></script>
-<script src="js/events.js"></script>
-<script src="js/storage.js"></script>
-<!-- Straight after storage, because it hooks storage's write callback and has to be in place before
-     project.js starts saving. It never blocks the page: the app loads on the local copy, and on the
-     one occasion the server turns out to hold newer work it adopts that and reloads once. See the
-     note at the top of sync.js for why it cannot simply be awaited. -->
-<script src="js/sync.js"></script>
-<script src="js/dev.js"></script>
-<script src="js/starter-code.js"></script>
-<script src="js/highlight.js"></script>
-<script src="js/project.js"></script>
-<!-- Both read `project` and SCHEMA from project.js at call time, so they follow it. -->
-<script src="js/ops.js"></script>
-<script src="js/progress.js"></script>
-<script src="js/course.js"></script>
-<!-- Before widgets.js: buildRunCell reads DEMOS when a cell carries an @demo directive. -->
-<script src="js/demos.js"></script>
-<!-- Above lab.js and game-runner.js, which both build their injected frame shims from it. They
-     only call it when a lab or a game is started, so order is not load-bearing — but a shared file
-     below its users reads like a mistake. -->
-<script src="js/console-panel.js"></script>
-<script src="js/sandbox-shims.js"></script>
-<script src="js/widgets.js"></script>
-<!-- After widgets.js, though nothing forces it: every name lab.js exports is a top-level function
-     or const, and renderChallengeCells in widgets.js only reaches them when a card is clicked —
-     long after both files have run. Kept adjacent because that is where a reader will look for it. -->
-<script src="js/lab.js"></script>
-<!-- Same reasoning as lab.js: renderQuizCells is called by paintLesson2 when a lesson renders,
-     which is long after load. It uses blockHeader and inlineMd from widgets.js. -->
-<script src="js/quiz.js"></script>
-<!-- After widgets.js because a checkpoint's cover is painted by paintLesson2, and before ai.js
-     because the board borrows wireChatBox at RUNTIME rather than at load — see wireBoardChatBox. -->
-<script src="js/board.js"></script>
-<script src="js/editor.js"></script>
-<script src="js/game-runner.js"></script>
-<script src="js/files.js"></script>
-<script src="js/ai.js"></script>
-<script src="js/console-dock.js"></script>
-<script src="js/pages.js"></script>
-<!-- After pages.js: it uses docSections and esc() from there, and pages.js calls into it only when
-     a page is being rendered, which is long after both files have run. -->
-<script src="js/docs.js"></script>
-<!-- Last but one, on purpose. It only listens: to the event bus from events.js, to clicks on the
-     whole document, and to the messages the game frame posts. Everything it needs exists by now,
-     and nothing else needs it at load — ai.js calls telAIResponse at request time and guards the
-     call, so a broken telemetry file can never take the assistant down with it. -->
-<script src="js/telemetry.js"></script>
-<script src="js/router.js"></script>
-<script src="js/ui.js"></script>
+<!-- Plain scripts sharing globals, in dependency order (CLAUDE.md: no bundler, no modules).
+     ui.js       sounds, focus keeping, feel. Needs nothing.
+     project.js  the kid's game as data, and saving it. Needs nothing.
+     runner.js   the game frame and Play mode. Needs Project.
+     chat.js     the conversation. Needs Runner (it won't steal focus from a running game).
+     editor.js   docks, Hierarchy, Inspector, Play. Needs UI, Project, Runner.
+     quest.js    the quest engine and tickets. Needs all of the above.
+     boot.js     loads the course and starts it. Last.
+     dev.js      localhost only (the server refuses it on a deployment): the dev panel. -->
+<script src="/studio/ui.js"></script>
+<script src="/studio/project.js"></script>
+<script src="/studio/runner.js"></script>
+<script src="/studio/chat.js"></script>
+<script src="/studio/editor.js"></script>
+<script src="/studio/quest.js"></script>
+<script src="/studio/boot.js"></script>
+<script src="/studio/dev.js" onerror="this.remove()"></script>
 </body>
 </html>

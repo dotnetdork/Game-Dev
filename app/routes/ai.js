@@ -141,7 +141,7 @@ function mount(app, deps) {
        should be tidied in its own commit, the way `studentId` still needs to be. */
     const history = sanitizeHistory(req.body && req.body.history);
     let agent = (req.body && req.body.agent) || 'coder';
-    if (['coder', 'tutor', 'lab-tutor', 'quiz', 'grader', 'design-coach'].indexOf(agent) < 0) agent = 'coder';   // controller: keep to known agents
+    if (['coder', 'tutor', 'lab-tutor', 'quiz', 'grader', 'design-coach', 'mentor'].indexOf(agent) < 0) agent = 'coder';   // controller: keep to known agents
     const spec = resolveModel(agent);
     /* The whole-request deadline every provider call measures itself against, stamped on this
        request's own spec so the retry chain cannot outlive it however many times it goes round — and
@@ -204,6 +204,9 @@ function mount(app, deps) {
       /* Which screen the student is actually looking at. "Why isn't it working?" is three different
          questions on the Learn, Code and Game tabs, and both agents were answering it blind. */
       where: (b.where || '').toString().slice(0, 400),
+      /* The studio's (V2) own context for the mentor: the question on screen, the parts and their
+         settings, and what the mentor may change. One block, written by the browser for the prompt. */
+      studio: (b.studio || '').toString().slice(0, 4000),
       aiMode: ['full', 'guided', 'off'].indexOf(b.aiMode) >= 0 ? b.aiMode : 'full',
       hasAssetList: Array.isArray(b.ownedAssets),   // only validate keys when the client actually told us what it owns
       assets: Array.isArray(b.ownedAssets) ? b.ownedAssets.slice(0, 300).map(function (a) {
@@ -273,6 +276,28 @@ function mount(app, deps) {
        CODER branch at the bottom — so the lab's tutor was being run on the coder's prompt, which is
        built entirely around game.js, and it answered a student staring at a canvas exercise with
        advice about their Phaser game being empty. Adding an agent means adding it to this list. */
+    /* MENTOR: the studio's (V2) voice for whatever a kid types (ai/agents/mentor.md). A typed line can
+       be an answer to the question on screen, a question, or a request to change the game, so the
+       mentor answers in JSON: what to say, which on-screen answer the kid meant (if any), and the
+       Inspector settings to change (if any). Only the shape is checked here; the browser checks each
+       change against the settings that exist and applies it the way a tap would, so the AI can never
+       set anything the kid couldn't. */
+    if (agent === 'mentor') {
+      let raw;
+      const mentorSystem = promptFor('mentor', ctx, res);
+      if (!mentorSystem) return;
+      try { raw = await callAI(spec, mentorSystem, message, true, history, null, onTool); }
+      catch (e) { return res.status(502).json({ reply: 'The mentor is not reachable right now (' + e.message + ').' }); }
+      const m = extractJSON(raw) || { reply: String(raw || '').trim() };
+      const choose = Number.isInteger(m.choose) && m.choose >= 1 && m.choose <= 8 ? m.choose : null;
+      const actions = Array.isArray(m.actions) ? m.actions.slice(0, 6).map(function (a) {
+        const v = a && a.value;
+        return { part: String((a && a.part) || '').slice(0, 24), key: String((a && a.key) || '').slice(0, 24),
+          value: (typeof v === 'boolean' || typeof v === 'number' || v === null) ? v : String(v).slice(0, 40) };
+      }).filter(function (a) { return a.part && a.key; }) : [];
+      return res.json({ reply: String(m.reply || '').trim().slice(0, 800) || 'Hmm, say that another way?', choose: choose, actions: actions });
+    }
+
     if (agent === 'tutor' || agent === 'lab-tutor') {
       let raw;
       const tutorSystem = promptFor(agent, Object.assign({ gameCode: gameCode }, ctx), res);

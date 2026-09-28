@@ -4,7 +4,7 @@ Written 2026-09-26 from five investigations run the same day:
 - a whole-course design critique (Nielsen score 24/40);
 - an inventory of the old app's capabilities;
 - a review of the plans, goals and gaps;
-- web export and C#;
+- web export and C# (C# since dropped, see §0);
 - game-design theory, and what makes games fun.
 
 Their claims were spot-checked against the code before going in here. Line references are to this branch.
@@ -17,6 +17,28 @@ in what to build, and the open decisions are collected at the end.
 - **Test telemetry:** it is deliberate, and it is stripped before release.
 - **The AI:** it is not held back. Kids learn what AI can and can't do by building with it.
 - **Age range:** kids 10–13 (`PRODUCT.md`). CLAUDE.md and the MCP description still say 11–14, which needs one fix.
+
+---
+
+## 0. Decisions from Jed's review (2026-09-28)
+
+These override anything below that disagrees with them.
+
+- **Show real Phaser code where the wireframes showed C#.** Jed's objection was to the C# code, not to Unity. Kids see the JavaScript that actually runs, and there is no C# view and no translator (§10).
+- **Unity names and habits stay.** That includes edits made during Play resetting on Stop, which is how most engines work. Our own names are fine where they read better.
+- **The engineering department's "which line did that?" tasks work as they are.** Swap C# for Phaser; leave the rest alone for now.
+- **Chat style everywhere.** The interview should feel like a real chat:
+  - scrolling history and a typing indicator;
+  - suggested replies above a text box;
+  - typed answers get a real reply.
+
+  Every other area keeps premade answers plus questions the kid can ask, where they fit.
+- **Sign-up asks for first name and last initial.** Jed approved it. The handle is still generated and is what other kids see.
+- **No picture password.** Sign-in is a class list (§7).
+- **The arc:** guided first. Kids learn how our engine works, what tools they have, and how to adjust things. The second half is free building, where the AI opens up and works more agentically. The guidance tapers off as each kid shows they're ready.
+- **Jed's three goals:** game design, game mechanics, fun. They finish with a game they can show at home.
+- **Nothing is cut for a deadline.** Work is ordered by priority (§13), and lower tiers are done if there's time.
+- **Every screen goes through impeccable** (shape, critique, polish, detect). The bar is professional, fun and comfortable for ages 10–15.
 
 ---
 
@@ -172,7 +194,7 @@ Other ways to keep it fresh:
   - fell through the floor;
   - the unfair spike (§5);
   - a frame-step tunnelling bug;
-  - the first C# peek.
+  - the first code peek (real Phaser).
 - **S6:**
   - art pass;
   - "fix one, fix fifty" (prefabs);
@@ -188,7 +210,7 @@ Other ways to keep it fresh:
 - **S8:**
   - the Door Problem as four short visits;
   - Beta reviews from three bot players;
-  - `Door.cs` for keen kids.
+  - `door.js` for keen kids.
 - **S9:**
   - "which department fixes this?" tickets;
   - write a bug report;
@@ -298,7 +320,7 @@ course-only control for the real Unity one, with tapping always kept as an alter
 | 2 | Pause and Step (the frame shift); the Stats frame counter; from here the **Inspector stays docked** and shows "nothing selected" when empty |
 | 3 | **Scene tab** beside Game; click a thing in the view to select it; the Move tool |
 | 4 | Project gets real folders (Assets › Sounds); drag a sound into a slot on the Coin itself; the Audio Mixer as its own tab |
-| 5 | **Console tab** beside Project; `Scripts/Coin.cs` in Project; Transform X/Y; **each component's on/off checkbox** replaces the invented "Solid" and "Hurts player" switches |
+| 5 | **Console tab** beside Project; `scripts/coin.js` in Project (real Phaser); Transform X/Y; **each component's on/off checkbox** replaces the invented "Solid" and "Hurts player" switches |
 | 6 | **Add Component**; Sprites and Prefabs folders; prefab rows shown blue in the Hierarchy |
 | 7 | Animation window tab; Particle System as a component |
 | 8 | Rotate and Scale tools; **+ Create** in the Hierarchy; parent/child |
@@ -323,10 +345,31 @@ There are four ways in:
 - **GitHub:** an allowlist.
 - **The tester door:** any name plus one shared password, marked temporary.
 
-**For the prototype:**
-- **Students:** keep the tester door for playtests, but have kids type a **handle** rather than a name (the sign-in page suggests one). The handle is the display name everywhere. CodeServer OAuth replaces the tester door when it is ready.
-- **Add a role (student / teacher) and a handle to the session.** Teachers sign in with Google. This is what unlocks the teacher view and publish approval. It touches `auth.js`'s session code, which is ask-first.
-- **Optional:** class codes, so a teacher's view shows only their class.
+**The problem with today's tester door:** the typed name *is* the identity. "maya" and "Maya R" become two kids with two saves.
+
+**For the prototype (decided 2026-09-28):**
+
+1. **Class password.** It's the same kind of shared password as the tester door: long and secure (at least 12 characters, rate-limited), sent in the chat with the link. It keeps strangers off the paid AI relay. A short code like `LAVA25` would be brute-forceable on a public URL, so it isn't used.
+2. **"Who's here?"** A grid of name cards for the accounts made so far, with **I'm new here** first. Nothing is set up ahead of time: the list starts empty and fills as kids sign up. Each card shows the first name and initial, the handle and the game ("Maya R. · SpookyJumper42 · Robot Lava Run").
+3. **Returning kid:** tap your card, then "Is this your game?" shows a picture of their game, with **Yes** and **Not me**. This catches mis-taps and makes pranks obvious, with nothing to remember. It won't stop a kid who deliberately picks a friend; the teacher in the room and Undo cover that.
+4. **New kid:** **I'm new here** opens the hiring interview (wireframe 07). It asks for first name and last initial and generates the handle. If the name matches an existing card, it asks "Is this you?" and shows that card, so there are no duplicate accounts.
+5. **Most returns skip the list.** The signed cookie lasts 14 days, and school Chromebooks usually have per-student logins. The list is for a new device or a cleared browser.
+
+**The page keeps the original sign-in's look:**
+- the League logo, GAME DEV and CLASS ACCESS ONLY;
+- the navy card and the orange button.
+
+The copy and the card's contents change, and the steps slide within the one card instead of moving to new pages.
+
+**Behind it:**
+- **The handle is the identity.** It's generated and guaranteed unique, and saves are keyed on it instead of on a typed name. The first name and initial are a display field.
+- **The list of accounts is stored with the saves** on the `gamedev_state` volume.
+- **After the password check, one of two things happens:**
+  - "create my account", which saves the name and handle and signs in;
+  - "I'm this one", which signs in as an existing handle.
+- **No teacher role for Sunday.** It's added later, with Google sign-in, for the teacher view.
+
+This goes in `auth.js`. Jay approved it on 2026-09-28. The signed-cookie code itself is reused unchanged. When CodeServer OAuth is ready it replaces the password and the list; the interview stays as the first-time experience.
 
 ---
 
@@ -404,19 +447,16 @@ The server can now keep this up to date in the background.
 
 ---
 
-## 10. Where finished games go (web play, and the C# question)
+## 10. Where finished games go (web play, and the code kids see)
 
-**C# doesn't need to be converted to JavaScript, because the game already is JavaScript.** The game is Phaser. The C# a kid sees is a view generated from the game, and a small translator reads their edits back into the game's values.
+**Kids see the real Phaser code** (Jed's review, §0). Nothing is translated: the code in the code panel is the code that runs, and the game plays anywhere a browser does. There's no C# view. The teacher can explain the reason as an engineering decision:
+- the constraint: school Chromebooks can't install a game engine;
+- the asset: JavaScript runs anywhere on the web.
 
-The translator is plain JS, about 500–1,000 lines, added in layers as the sessions need them:
-- **Tweak (S5–S9):** read the numbers back, and reject anything else with a Unity-style Console message.
-- **Arrange (S8):** a small parser for `if` and whitelisted calls.
-- **Write one line (S10):** one whitelisted call becomes its JS equivalent.
-
-**Why not real C#?**
-- **.NET in the browser:** 7–30 MB downloads on Chromebooks.
-- **Real Unity WebGL builds:** the editor doesn't run on ChromeOS.
-- **A compile service on the League server:** now possible, but it would run kids' and AI-written code on the server, only to end up in the same browser game anyway.
+Code tasks stay at reading level, with a line or a number here and there:
+- "Which line made you faster?";
+- "Change this number";
+- the AI writes the rest.
 
 **Publishing:**
 - **"Ship it" (S10, the Build Settings prize):** freezes a copy of the game (files, the art keys it uses, the Phaser version) as its own record, so later edits don't change it.
@@ -425,10 +465,10 @@ The translator is plain JS, about 500–1,000 lines, added in layers as the sess
   - kids' and AI-written code runs there away from logins. That separate address is also the real fix `game-runner.js:16` asks for;
   - its headers allow the League site to embed games.
 - **The player page** is the same page builder without the development shims. It adds an end card: "Made by ‹handle› at The League of Amazing Programmers — build your own →".
-- **Gallery page and embeddable player,** plus link previews for sharing and an optional "See the C# behind it" panel for parents.
+- **Gallery page and embeddable player,** plus link previews for sharing and an optional "See the code behind it" panel for parents.
 - **Before anything is public:**
   - a teacher approves each game and can take it down;
-  - games carry the handle only;
+  - games carry the handle, or the first name and initial if the teacher allows it;
   - there's a check of in-game text for real names;
   - no trackers.
 - **Marketing use needs signed parental consent.** School permission doesn't cover advertising. Keep a consent flag in the student record, fed by the League.
@@ -442,7 +482,7 @@ The translator is plain JS, about 500–1,000 lines, added in layers as the sess
 ## 11. Consistency fixes before the prototype (from the critique)
 
 1. **The Hierarchy is always tappable.** Selecting a row opens the Inspector, including in the silent-coins shift.
-2. **Edits happen only while stopped.** The silent-coins shift currently edits during play, which contradicts the first day.
+2. **Edits during Play reset on Stop, everywhere (the Unity habit, kept on purpose).** Every shift must behave the same way. Where a shift needs a change to stick, it says "Stop first", as Unity does.
 3. **One progress model:** stars, milestones and departments done, written down once. In the current wireframes they disagree (Art is a first-day pick, but the desk says it "unlocks at Alpha").
 4. **The same bubble colours and the same status-bar markers** in every shift.
 5. **Keyboard focus comes back** to the control after the Inspector or Hierarchy is redrawn.
@@ -487,6 +527,50 @@ Both are flagged for Jay.
 ---
 
 ## 13. Build order
+
+### The first playtest of V2: Sunday 2026-10-04, about 2 hours
+
+V2 is built on branch `claude/prototype-v2`. On that branch it replaces the old app's front end outright. V1 stays as it is on `main`. The server, AI relay, saves, Phaser and art are kept and reused. V2 is the real app, not the wireframes. Every day ends with something a kid could use. Nothing is cut; lower priorities are done if there's time.
+
+**Priority 1, for Sunday:**
+1. The sign-in (§7) and the hiring interview as a real chat.
+2. The first day: the mentor, the real game, and Play/Stop with Unity's reset. The chat has premade answers plus questions the kid can ask.
+3. The Engineering shift as now, with Phaser code in place of C#.
+4. The Audio/Feel shift.
+5. Guided "make it yours":
+   - pick a hero and name the game;
+   - the mentor suggests changes that use the tools just learned;
+   - the kid can ask for anything.
+6. Saves, the in-app feedback form, test logging, and the teacher list mapping names to handles.
+
+**Priority 2, if there's time before Sunday:**
+- tool cards and the badge;
+- the growth snapshot;
+- a third department.
+
+**Priority 3, after Sunday:**
+- the remaining departments and Unity panel arrivals;
+- the gradual step into agentic building;
+- mentor characters (ask the kids in the feedback form first);
+- publishing.
+
+| Day | Working by the end of the day |
+|---|---|
+| Mon 9/28 | V2 shell: the first day's chat, the real game, and Play/Stop with reset |
+| Tue 9/29 (show Jed) | The first day playable, plus the Engineering shift with Phaser code |
+| Wed 9/30 | The Audio/Feel shift, plus guided "make it yours" |
+| Thu 10/1 | The sign-in, the chat-style interview, saves, and the teacher list |
+| Fri 10/2 | The feedback form and logging, then Priority 2 |
+| Sat 10/3 | A full 2-hour dry run on a filtered Chromebook, 20 kids' worth of AI requests at once, and `check:release` |
+
+**The session:**
+1. 0:00: interview, then hired.
+2. 0:10: Engineering shift.
+3. 0:35: Audio/Feel shift.
+4. 1:00: make it yours. This block stretches so fast and slow kids both fill it.
+5. 1:45: show the person next to you, then the feedback form.
+
+### The longer order
 
 1. **Foundations:**
    - the shared editor components (one script that all shifts use);
@@ -540,7 +624,7 @@ Both are flagged for Jay.
    - is advertising use a marketing use needing parental consent (yes, per the privacy brief), and who collects it?
    - the play subdomain name;
    - teacher approval every time, or only for public?
-5. **Roles in `auth.js`** (ask-first): OK to add role and handle to the session?
+5. **`auth.js` changes:** approved 2026-09-28 (the handle as identity, plus create-or-pick after the password; §7). A teacher role comes later.
 6. **Read-aloud** for the mentor's line: add it or not?
 7. **Age range:** fix CLAUDE.md and the MCP description to 10–13?
-8. **Who checks the Unity names and C# calls** (14 still unverified) before cards reach kids?
+8. **Who checks the Unity names** before cards reach kids? (The C# calls no longer apply; code is Phaser, and can be checked against `search_phaser_docs`.)

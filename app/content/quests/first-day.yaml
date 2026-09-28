@@ -1,0 +1,117 @@
+# The first day: the studio's first shift (docs/rework/v2-spec.md §4; the beats are wireframe 04's).
+# The kid plays the intern's broken greybox level, and everything they find becomes a ticket. They
+# pick one and its department fixes it with them (the ticket's own quest runs inside this one). Then
+# they make the Play-mode mistake, and the level becomes their own game.
+id: first-day
+title: Your first day
+department: studio
+character: mentor
+beats:
+  - id: clock-in
+    say:
+      - Welcome to the studio, @name! I’m the studio’s AI.
+      - Our last intern left a game half-finished. Let’s see how bad it is.
+    ask:
+      text: Ready to see it?
+      answers:
+        - { text: "Let’s see it", goto: next }
+  - id: press-play
+    do: { reveal: [game, play], point: game, cue: play }
+    say:
+      - This is the Game view, where games run. Press Play up top to run it.
+    on:
+      - when: { play: true }
+        once: true
+        say:
+          - "Use the arrow keys, or A, D and W. Find what’s broken!"
+      - when: { filed: floor }
+        say:
+          - "Whoa, you fell right through the floor! That’s going on the ticket board."
+      - when: { filed: silent-coins }
+        say:
+          - "You grabbed a coin… and nothing happened. No sound at all. Ticket!"
+      - when: { filed: harmless-lava }
+        say:
+          - "You walked into the lava and… nothing. It doesn’t even hurt. Another ticket."
+      - when: { stop: true, found_none: true }
+        say:
+          - "Press Play again and look for what’s broken. Try walking from left to right."
+    hints_after: 25
+    hint:
+      - "Try walking over that floor on the left. Carefully…"
+    wait_for: { stop: true, found_at_least: 1 }
+    done_say:
+      - "Nice detective work. Everything you found is a ticket now."
+  - id: what-first
+    do: { file_tickets: true, reveal: [tickets] }
+    say:
+      - Every studio keeps a list like this. I added the ones you didn’t bump into.
+      - You’re the new developer, so you choose.
+    ask:
+      text: What should we fix first?
+      from: tickets
+
+  - id: play-mode
+    character: department
+    do: { reveal: [hierarchy], allow: [coinSize], play: true }
+    say:
+      - One more thing, while it’s running. Make the coins bigger.
+      - Tap Coins in the Hierarchy, then slide Size.
+    on:
+      - when: { set: { part: coins, key: size, gt: 1.2 }, playing: true, not_flag: grew }
+        flag: grew
+        say:
+          - "Bigger! Now press Stop."
+        cue: play
+      - when: { set: { part: coins, key: size }, playing: false }
+        say:
+          - "That one stuck, because the game wasn’t running. Press Play and try it again."
+      - when: { stop: true, not_flag: grew }
+        say:
+          - "Press Play again, then make the coins bigger while it runs."
+    wait_for: { reverted: true, flag: grew }
+    done_say:
+      - They shrank back! Changes made while the game is playing don’t stick.
+      - Every developer does that once. Now you know.
+    ask:
+      text: Make sense?
+      answers:
+        - { text: "Ha, got it", goto: next }
+        - text: Why does it do that?
+          say:
+            - "Play mode is a test run. When you stop, the game goes back to how it was before you pressed Play. Unity does it too."
+          goto: again
+
+  - id: its-yours
+    do: { stop: true, close_inspector: true }
+    say:
+      - This level is yours now, @name, tickets and all. Every fix you make lands in YOUR game.
+    ask:
+      text: Every game needs a hero. Pick yours
+      from: heroes
+
+  - id: name-it
+    ask:
+      text: What’s your game called?
+      from: names
+
+  - id: play-yours
+    do: { play: true }
+    say:
+      - That’s YOUR game, @name. Grab a coin!
+    wait_for: { event: coin }
+    award: { stars: 1, card: play-mode }
+    done_say:
+      - Got it! Your first star, and your first card, Play mode.
+    ask:
+      text: Ready for your next ticket?
+      answers:
+        - { text: "Let’s go", goto: next }
+  - id: next-ticket
+    do: { stop: true, reveal: [tickets, stars] }
+    say:
+      - Pick the next ticket. Each one is a job with a different department.
+    ask:
+      text: What should we fix next?
+      from: tickets
+      then: again          # back here after each ticket, until the board is clear

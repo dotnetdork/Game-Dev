@@ -1,0 +1,63 @@
+# Engineering's first shift: the floor tile is only a picture (ticket: floor). Concept: collider.
+# Wireframe 04's Engineering branch, plus the "which line did that?" check Jay and Jed agreed on
+# (the real Phaser line that makes a floor solid).
+id: floor-is-a-picture
+title: The floor is a picture
+department: engineering
+character: lead-programmer
+ticket: floor
+concept: collider
+on:
+  - when: { reverted: true }
+    say:
+      - "It changed back! Changes made while playing are undone on Stop. Make the fix while it’s stopped."
+beats:
+  - id: meet
+    do: { reveal: [hierarchy], point: hierarchy, stop: true }
+    say:
+      - Hi @name, I’m the lead programmer. That floor tile is just a picture. Nothing tells the game it’s solid.
+      - Tap Floor tile in the Hierarchy.
+    skip_if: { state: { tile.solid: true } }
+    wait_for: { select: tile }
+
+  - id: fix
+    say:
+      - This is the Inspector, the settings of whatever you tapped. Its Box Collider 2D is what makes a part solid. Turn Solid on.
+    skip_if: { state: { tile.solid: true } }
+    on:
+      - when: { set: { part: tile, key: solid, value: false } }
+        say:
+          - "That turned it off again. Turn Solid on, then test it."
+      - when: { set: { part: ground, key: solid, value: false } }
+        say:
+          - "Ha, now the Ground is only a picture too! Turn it back on before you test."
+    wait_for: { state: { tile.solid: true } }
+
+  - id: test
+    do: { cue: play }
+    say:
+      - Solid is on. Now press Play and walk across it.
+    wait_for: { event: crossed }
+    pass: true
+    done_say:
+      - It holds! You just fixed a bug. That’s my whole job.
+
+  - id: name-it
+    do: { stop: true }
+    award: { card: collider }
+    ask:
+      text: So what made the tile solid?
+      answers:
+        - text: Its Box Collider
+          correct: true
+          say:
+            - "Yes! A collider is what the game checks when things touch. No collider, no floor."
+          goto: next
+        - text: Its colour
+          say:
+            - "Not quite. It looked the same the whole time. It was the Box Collider switch in the Inspector."
+          goto: next
+        - text: Pressing Play
+          say:
+            - "Play only tests it. The fix was the Box Collider in the Inspector."
+          goto: next

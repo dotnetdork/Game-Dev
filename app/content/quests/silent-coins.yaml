@@ -1,0 +1,56 @@
+# Audio's first shift: coins make no sound (ticket: silent-coins). Concept: feedback. The sound
+# belongs to the part (an Audio Source on the Coins), as in Unity, and is tested in play.
+id: silent-coins
+title: The silent coins
+department: audio
+character: sound-designer
+ticket: silent-coins
+concept: feedback
+allow: [coinSound]
+on:
+  - when: { reverted: true }
+    say:
+      - "It changed back! Changes made while playing are undone on Stop. Pick the sound while it’s stopped."
+beats:
+  - id: meet
+    do: { reveal: [hierarchy], point: hierarchy, stop: true }
+    say:
+      - Hi @name, I’m the sound designer. Grab a coin and nothing happens, so it doesn’t feel like you did anything.
+      - Tap Coins in the Hierarchy.
+    skip_if: { state: { coins.sound: set } }
+    wait_for: { select: coins }
+
+  - id: fix
+    say:
+      - See the Audio Source in the Inspector? It holds the sound this part makes. Pick one for when you grab a coin.
+    skip_if: { state: { coins.sound: set } }
+    wait_for: { state: { coins.sound: set } }
+
+  - id: test
+    do: { cue: play }
+    say:
+      - Good choice! Now press Play and grab a coin. Listen!
+    wait_for: { event: coin, state: { coins.sound: set } }
+    pass: true
+    done_say:
+      - Hear that? Now the game answers you. That’s my whole job.
+
+  - id: name-it
+    do: { stop: true }
+    award: { card: feedback }
+    ask:
+      text: Why does a coin need a sound?
+      answers:
+        - text: So you know you got it
+          correct: true
+          say:
+            - "Exactly. Game designers call that feedback, the game telling you what just happened."
+          goto: next
+        - text: To make it louder
+          say:
+            - "Louder isn’t the point. The sound tells you that you got it. That’s called feedback."
+          goto: next
+        - text: Coins always ding
+          say:
+            - "Only if someone adds it! The sound tells you that you got it. That’s called feedback."
+          goto: next

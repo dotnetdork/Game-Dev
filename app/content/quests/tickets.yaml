@@ -1,0 +1,34 @@
+# The problems a kid can find in the intern's level (docs/rework/v2-spec.md §2.2).
+#
+# A ticket is filed the FIRST time the game shows the problem, whatever the kid is doing at the time,
+# and is never lost: the first V2 build forgot a floor the kid had fallen through because they
+# reported the coins first. `found_by` is checked against every event from the game; `quest` is the
+# department shift that fixes it; `fixed_when` closes it early if the kid (or the AI) fixes it first.
+tickets:
+  - id: floor
+    title: I fell through a floor tile
+    department: engineering
+    quest: floor-is-a-picture
+    found_by: { event: fell }
+    fixed_when: { state: { tile.solid: true } }
+
+  - id: silent-coins
+    title: Grabbing a coin makes no sound
+    department: audio
+    quest: silent-coins
+    found_by: { event: coin, state: { coins.sound: null } }
+    fixed_when: { state: { coins.sound: set } }
+
+  - id: greybox
+    title: Everything is grey
+    department: art
+    quest: greybox
+    # Not found by an event: it is plain to see, so the board lists it when tickets are first filed.
+    fixed_when: { state: { coins.look: set, lava.look: set } }
+
+  - id: harmless-lava
+    title: Touching the lava does nothing
+    department: design
+    quest: harmless-lava
+    found_by: { event: lava }
+    fixed_when: { state: { lava.hurts: true } }

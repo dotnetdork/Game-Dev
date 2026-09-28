@@ -158,6 +158,12 @@ app.use(auth.requireAuth);
 const corsOpen = (res) => { res.setHeader('Access-Control-Allow-Origin', '*'); res.setHeader('Cross-Origin-Resource-Policy', 'cross-origin'); };
 app.use('/assets', express.static(path.join(ROOT, 'public', 'assets'), { setHeaders: corsOpen }));
 app.use('/vendor', express.static(path.join(ROOT, 'public', 'vendor'), { setHeaders: corsOpen }));
+/* The studio's dev panel (docs/rework/v2-spec.md §3.5) is for whoever is building the course, on
+   their own machine. It is not served to a real deployment at all, not merely hidden. */
+app.get('/studio/dev.js', (req, res, next) => {
+  if (auth.isHosted()) return res.status(404).end();
+  next();
+});
 app.use(express.static(path.join(ROOT, 'public')));
 /* Authored course content: YAML, Markdown and the lesson diagrams (read-only).
    `no-cache` means "revalidate before reusing", not "do not store" — the ETag comes back with it,
@@ -326,6 +332,27 @@ app.get('/api/lessons', (req, res) => {
   }
 });
 
+/* ---- the studio's quests (V2) ----
+   Parsed and checked by quests.js, the same code tools/check-quests.js runs, so the browser only
+   ever gets a course the checker passed. Re-read when a file changes, because quests are authored
+   while the server runs. A course with problems is refused whole, with the problems listed:
+   a half-valid course is how a kid ends up waiting on a beat that can never finish. */
+const quests = require('./quests');
+let questCache = null;
+function questStamp() {
+  let newest = 0;
+  try { fs.readdirSync(path.join(CONTENT, 'quests')).forEach((f) => { const m = fs.statSync(path.join(CONTENT, 'quests', f)).mtimeMs; if (m > newest) newest = m; }); } catch (e) {}
+  return newest;
+}
+app.get('/api/quests', (req, res) => {
+  const stamp = questStamp();
+  if (!questCache || questCache.stamp !== stamp) questCache = { stamp: stamp, body: quests.load() };
+  const q = questCache.body;
+  if (q.problems.length) return res.status(500).json({ error: 'The course has problems.', problems: q.problems });
+  res.setHeader('Cache-Control', 'no-cache');
+  res.json({ tickets: q.tickets, quests: q.quests });
+});
+
 /* ---- which models are running, and whether they can look anything up ----
    The models were the whole of this, and the lookups were the thing that silently broke. A tutor
    deployed with TUTOR_TOOLS=0 in its environment does not fail: it answers from memory, tells the
@@ -337,7 +364,7 @@ app.get('/api/lessons', (req, res) => {
    completely different reasons — an environment variable, and a missing file in the bundle. */
 app.get('/api/info', (req, res) => {
   const agents = {};
-  ['coder', 'tutor', 'lab-tutor', 'quiz', 'grader', 'design-coach'].forEach(function (a) { const m = resolveModel(a); agents[a] = m.provider + ':' + m.model; });
+  ['coder', 'tutor', 'lab-tutor', 'quiz', 'grader', 'design-coach', 'mentor'].forEach(function (a) { const m = resolveModel(a); agents[a] = m.provider + ':' + m.model; });
   res.json({
     agents: agents,
     provider: DEFAULT_PROVIDER,

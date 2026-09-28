@@ -33,7 +33,7 @@ function check(name, ok, detail) {
 
 /* Every agent the server will dispatch to. Kept here rather than imported so that adding an agent
    to the whitelist without adding its .md fails here rather than at 4pm on a Sunday. */
-const AGENTS = ['coder', 'tutor', 'lab-tutor', 'quiz', 'grader', 'design-coach'];
+const AGENTS = ['coder', 'tutor', 'lab-tutor', 'quiz', 'grader', 'design-coach', 'mentor'];
 
 /* A request with every field the server can send, each carrying a sentinel we can look for. The
    values are deliberately unmistakable — a real lesson title could occur by accident; SENTINEL_LESSON
