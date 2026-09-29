@@ -299,6 +299,12 @@ async function launch() {
     check('Put back what worked puts the code back', await p.evaluate(function () { return document.querySelector('#codeHost .CodeMirror').CodeMirror.getValue().indexOf('notAThing') < 0 && !/notAThing/.test(Project.get().code || ''); }));
     await p.click('#codeClose');
     check('closing game.js goes back to the Game view', await p.evaluate(function () { return Views.current(); }) === 'game' && await p.isHidden('#vtCode'));
+    where = 'a panel made big';
+    await p.click('#dProject .maxb');
+    const big = await p.evaluate(function () { var d = document.getElementById('dProject'), r = d.getBoundingClientRect(); return { max: d.classList.contains('max'), w: r.width, h: r.height, under: document.getElementById('dHier').inert, chat: document.getElementById('dMentor').inert }; });
+    check('the Project window can be made big, with the Chat still beside it', big.max && big.w > 800 && big.h > 500 && big.under && !big.chat, JSON.stringify(big));
+    await p.keyboard.press('Escape');
+    check('Escape puts it back', await p.evaluate(function () { return !document.querySelector('.dock.max') && !document.getElementById('dHier').inert; }));
     const rows = await p.evaluate(function () { Chat.event('A test row', 'i-flag'); Chat.event('A test row', 'i-flag'); Chat.event('A test row', 'i-flag'); var r = document.querySelectorAll('#log .evt[data-text="A test row"]'); return r.length + ' ' + (r[0] && r[0].textContent); });
     check('the same event again is one row with a count, not spam', rows === '1 A test row×3', rows);
     const firstAt = await p.evaluate(function () { return Quest.dev.where() + ' / floor ' + Quest.dev.state().tickets.floor.status; });

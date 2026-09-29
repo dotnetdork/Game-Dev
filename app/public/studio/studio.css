@@ -127,6 +127,16 @@ svg.i { width: 18px; height: 18px; fill: none; stroke: currentColor; stroke-widt
 .area.right { grid-area: right; }
 .area.bottom { grid-area: bottom; flex-direction: row; }
 .area > .dock { flex: 1 1 0; }
+/* one panel made big (editor.js, maximize): over everything from the toolbar to the status bar, or
+   beside the Chat column when that is on the right */
+.dock.max { position: fixed; z-index: 20; top: 98px; bottom: 27px; left: 0; right: 0; flex: none !important;
+            box-shadow: var(--lift); animation: maxIn .3s var(--ease); }
+.dock.max.side { right: calc(var(--rw) + 1px); }
+.inspector.max { max-height: none; }
+@keyframes maxIn { from { opacity: .6; transform: scale(.985); } to { opacity: 1; transform: none; } }
+.maxb { margin-left: auto; align-self: center; min-width: 36px; min-height: 32px; }
+.paused-tag:not([hidden]) + .maxb { margin-left: 0; }
+.inspector .maxb { margin-right: -6px; }
 .area:not(.bottom) > .inspector { flex: 0 0 50%; }   /* one height whichever part is picked, so the chat below doesn't jump */
 .area > .inspector[style*="flex"] { max-height: none; }
 .inspector:not(.open) { display: none; }
@@ -634,8 +644,10 @@ output.nbox { display: inline-grid; align-items: center; justify-content: end; b
   .area.right { min-height: 420px; }
   .area.bottom { flex-direction: column; min-height: 180px; }
   .split { display: none !important; }
+  .dock.max, .dock.max.side { top: 0; bottom: 0; right: 0; }
   .dock:not(.closed) [data-drag] { cursor: default; }
   .toolbar { grid-template-columns: auto 1fr auto; padding: 4px 8px; }
+  .transport { justify-self: center; }   /* Play in the middle, not at the start of the wide column */
   .tbtn span { display: none; }
   .transport .tbtn span, #bPlay span { display: inline; }
   .project { display: none; }

@@ -32,6 +32,7 @@ var Editor = (function () {
 
   function openDock(id, open) {
     var d = $(id); if (!d) return;
+    if (open && maxed && maxed !== d) unmaximize();   // a panel arriving is shown, not hidden under a big one
     d.classList.toggle('closed', !open); d.inert = !open; d.setAttribute('aria-hidden', String(!open));
     // Undo and Layout arrive with the first panel whose contents the kid can change or move.
     if (id === 'dHier' && open) { reveal('editTools', true); reveal('layoutTools', true); }
@@ -411,6 +412,7 @@ var Editor = (function () {
   }
   function togglePlay() {
     var st = Project.get();
+    if (maxed && maxed.id !== 'dGame' && !Runner.isPlaying()) unmaximize();   // Play shows the game
     if (Runner.isPlaying()) {
       Runner.stop(st, UI.muted()); UI.sound('stop'); Project.save();
       undos.length = Math.min(undos.length, playMark); redos = [];   // Stop just undid those
@@ -435,6 +437,7 @@ var Editor = (function () {
   function point(text, target) {
     var el = $('pointer');
     if (!text) { el.hidden = true; return; }
+    if (maxed && !maxed.contains(target)) unmaximize();
     $('pointerText').textContent = text; el.hidden = false;
     var ed = $('editor').getBoundingClientRect(), r = target.getBoundingClientRect();
     el.style.left = Math.max(8, Math.round(r.left - ed.left)) + 'px';
@@ -807,6 +810,50 @@ var Editor = (function () {
   }
   function nudgeRaw(area, d) { var dir = area === 'left' ? 1 : -1; L[SIZE[area]] = clamp(L[SIZE[area]] + d * dir, limits(area)); sizes(); }
 
+  /* ---------- one panel made big (Jay, 2026-09-29: "the project tab should be expandable") ----------
+     Every panel's tab row has a button that lays it over the editor, from the toolbar down to the
+     status bar; the button again, a double-click on its tab, or Escape puts it back. Nothing in the
+     layout moves (.dock.max is laid on top), so putting it back is exact. The Chat column stays
+     showing beside a big panel when it is where it starts, on the right: the story talks there. What
+     the story does next that needs the rest of the screen (a panel arriving, a pointer, Play from
+     another panel) puts the big one back first. The panels under it are inert while it's up. */
+  var maxed = null;
+  function panelName(d) { return d.getAttribute('aria-label') || 'panel'; }
+  function paintMax(d) {
+    var b = d.querySelector('.maxb'); if (!b) return;
+    var on = d === maxed, n = panelName(d);
+    b.setAttribute('aria-pressed', String(on));
+    b.setAttribute('aria-label', on ? 'Put the ' + n + ' back' : 'Make the ' + n + ' big');
+    b.setAttribute('data-tip', on ? 'Put it back (Esc)' : 'Make it big (or double-click its tab)');
+    b.querySelector('use').setAttribute('href', on ? '#i-shrink' : '#i-grow');
+  }
+  function cover(on) {
+    Array.prototype.forEach.call($('editor').querySelectorAll('.dock, .split'), function (el) {
+      if (el === maxed) return;
+      if (on) { el.inert = true; return; }
+      // worked out again, not remembered: the story may have opened a panel while this one was big
+      el.inert = el.id === 'inspector' ? !el.classList.contains('open') : el.classList.contains('closed');
+    });
+  }
+  function maximize(d) {
+    var was = maxed; unmaximize();
+    if (!d || was === d) return;
+    maxed = d;
+    var chat = $('dMentor'), side = !narrow() && d !== chat && L.right.indexOf('chat') >= 0 && L.right.indexOf(d.getAttribute('data-panel')) < 0;
+    d.classList.add('max'); d.classList.toggle('side', side);
+    cover(true);
+    if (side) Array.prototype.forEach.call($('aRight').querySelectorAll('.dock'), function (el) {   // the column left showing
+      el.inert = el.id === 'inspector' ? !el.classList.contains('open') : el.classList.contains('closed');
+    });
+    paintMax(d);
+    status(panelName(d) + ' is big now. Press Esc to put it back');
+  }
+  function unmaximize() {
+    if (!maxed) return;
+    var d = maxed; maxed = null;
+    d.classList.remove('max', 'side'); cover(false); paintMax(d);
+  }
+
   /* Dragging a panel by its tab into another area (or to another place in its own). The drop place
      shows as an orange line; Escape or dropping anywhere else puts it back. Not in the narrow,
      stacked layout, where there is only one column to be in. */
@@ -885,6 +932,7 @@ var Editor = (function () {
     if (e.key === 'Escape' && openMenu) { closeMenu(true); return; }
     if (e.key === 'Escape' && pickerEl) { closePicker(true); return; }
     if (e.key === 'Escape' && held) { drop(); status('Put it down'); return; }
+    if (e.key === 'Escape' && maxed) { var m = maxed; unmaximize(); var mb = m.querySelector('.maxb'); if (mb) mb.focus(); return; }
     if (e.key === 'Escape' && $('inspector').classList.contains('open')) { closeInspector(); return; }
     var t = e.target, typing = t && (t.tagName === 'INPUT' || t.tagName === 'TEXTAREA' || t.isContentEditable);
     if (!(e.ctrlKey || e.metaKey) || typing) return;
@@ -913,6 +961,15 @@ var Editor = (function () {
     });
     $('bLayout').addEventListener('keydown', function (e) { if (e.key === 'ArrowDown') { e.preventDefault(); popup($('bLayout'), LAYOUT_ITEMS(), true, false); } });
     $('inspClose').addEventListener('click', function () { closeInspector(); });
+    Array.prototype.forEach.call($('editor').querySelectorAll('.dock'), function (d) {
+      var row = d.querySelector(':scope > .tabs'); if (!row) return;
+      var b = document.createElement('button'); b.type = 'button'; b.className = 'x maxb';
+      b.innerHTML = '<svg class="i" aria-hidden="true"><use href="#i-grow"/></svg>';
+      b.addEventListener('click', function () { maximize(d); });
+      row.insertBefore(b, row.querySelector(':scope > .x'));
+      row.addEventListener('dblclick', function (e) { if (e.target.closest('.tab')) maximize(d); });
+      paintMax(d);
+    });
     $('pFolders').addEventListener('keydown', folderKeys);
     paintProject();
     Runner.on(function (name) { if (name === 'thumbs') { paintProject(); if (selected) inspect(selected); } });
