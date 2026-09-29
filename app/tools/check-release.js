@@ -83,7 +83,7 @@ async function signedUp(s) {
   const j = jar();
   await get(s, j, '/login.html');
   const p = await post(s, j, '/auth/studio/pass', { mode: 'signup', code: CODE });
-  const n = await post(s, j, '/auth/studio/new', {});
+  const n = await post(s, j, '/auth/studio/new', { first: 'Maya', initial: 'R' });   // the name is asked at sign-up while the interview is off (auth.js, INTERVIEW)
   return { j: j, ok: p.status === 200 && n.status === 200, detail: 'pass ' + p.status + ', new ' + n.status };
 }
 

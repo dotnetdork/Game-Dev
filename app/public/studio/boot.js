@@ -42,7 +42,7 @@
          the studio greets them by the first name the interview learned. */
       if (m && m.studio) {
         return fetch('/auth/studio/me').then(function (r) { return r.json(); }).then(function (s) {
-          if (!s.interviewed) { location.replace('/interview.html'); return new Promise(function () {}); }
+          if (!s.interviewed && s.interview) { location.replace('/interview.html'); return new Promise(function () {}); }
           Chat.setKid(s.card && s.card.first); Editor.me(s.card && s.card.first);
           window.__studioKid = true;   // a class-list kid: the quests keep their card up to date (quest.js card())
           return course;

@@ -277,6 +277,11 @@ const DEMO = /^(1|true|yes|on)$/i.test(process.env.DEMO_LOGIN || '');
    and configProblem must let it boot rather than refusing as an open door. */
 const TESTERS_ON = !!TESTER_PASSWORD;
 const CLASS_CODE_SET = !!process.env.CLASS_CODE;
+/* THE INTERVIEW IS OFF unless STUDIO_INTERVIEW=on (Jay, 2026-09-29: "disable the interview for
+   now"). Off, Sign Up asks for the kid's first name and last initial on its own form and hires them
+   there, so they are on the class list and go straight to the studio. The interview's code and page
+   are untouched; the playthrough turns it on to keep testing it. */
+const INTERVIEW = /^(1|true|yes|on)$/i.test(process.env.STUDIO_INTERVIEW || '');
 const ANY_CONFIGURED = TESTERS_ON || Object.keys(PROVIDERS).some(function (k) { return PROVIDERS[k].ready(); });
 const BYPASS = !DEMO && !ANY_CONFIGURED && !IS_HOSTED;
 
@@ -604,7 +609,7 @@ function mount(app, opts) {
       : { signedIn: false, enabled: enabled(), providers: providerStatus(), testers: testersReady(),
           /* The studio door (V2): open when the class password is set, or on a laptop with nothing
              configured, where the password step is skipped. */
-          studio: !DEMO && (BYPASS || testersReady()), noPassword: BYPASS });
+          studio: !DEMO && (BYPASS || testersReady()), noPassword: BYPASS, interview: INTERVIEW });
   });
 }
 
@@ -694,10 +699,17 @@ function mountStudio(app, store) {
 
   app.post('/auth/studio/new', async function (req, res) {
     if (!pass(req)) return json(res, 401, { error: 'Enter today’s code first.' });
-    const id = 'k-' + crypto.randomBytes(8).toString('hex') + '@studio';
-    await changeRoster(function (list) { list.push({ id: id, created: Date.now() }); });
-    setSession(res, { email: id, name: '', via: 'studio', exp: Date.now() + SESSION_DAYS * 86400000 });
-    json(res, 200, { ok: true, next: '/interview.html' });
+    const b = req.body || {}, kid = { created: Date.now() };
+    if (!INTERVIEW) {   // no interview to learn the name, so the form asks for it
+      kid.first = clean(b.first, 20); kid.initial = clean(b.initial, 1).toUpperCase();
+      if (!kid.first) return json(res, 400, { error: 'Type your first name.', field: 'first' });
+      if (!kid.initial) return json(res, 400, { error: 'Type the first letter of your last name.', field: 'initial' });
+      kid.hired = true;
+    }
+    const id = kid.id = 'k-' + crypto.randomBytes(8).toString('hex') + '@studio';
+    await changeRoster(function (list) { list.push(kid); });
+    setSession(res, { email: id, name: display(kid), via: 'studio', exp: Date.now() + SESSION_DAYS * 86400000 });
+    json(res, 200, { ok: true, next: INTERVIEW ? '/interview.html' : '/' });
   });
 
   /* The interview (and later the studio) fills in the signed-in kid's own card: their name, their
@@ -730,7 +742,7 @@ function mountStudio(app, store) {
     const me = currentUser(req);
     if (!me || me.via !== 'studio') return json(res, 200, { studio: false });
     const a = (await readRoster()).filter(function (x) { return x.id === me.email; })[0];
-    json(res, 200, { studio: true, card: a ? card(a) : null, name: a ? display(a) : '', interviewed: !!(a && a.hired) });
+    json(res, 200, { studio: true, card: a ? card(a) : null, name: a ? display(a) : '', interviewed: !!(a && a.hired), interview: INTERVIEW });
   });
 }
 

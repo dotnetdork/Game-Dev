@@ -86,6 +86,10 @@
   .yours b{display:block;font-size:18px;}
   .yours span{color:var(--ink2);font-size:14px;}
   .two{display:grid;grid-template-columns:1fr 1fr;gap:10px;}
+  /* the name at sign-up, while the interview is off: first name wide, the initial narrow */
+  .names{display:grid;grid-template-columns:minmax(0,1fr) 130px;gap:10px;}
+  .names[hidden],#suCodeRow[hidden]{display:none;}
+  @media (max-width:420px){ .names{grid-template-columns:1fr;} }
 
   .msg{margin:0 0 16px;padding:12px 14px;border-radius:10px;font-size:14px;text-align:left;background:#3a2416;border:1px solid #7a4a1c;color:#ffd9a8;}
   .msg[hidden]{display:none;}
@@ -121,9 +125,18 @@
     <form class="step" id="sSignup" hidden>
       <button type="button" class="back" data-back>← Back</button>
       <h2>Sign up</h2>
-      <p class="hint">Type today’s code. It came with the link to this page.</p>
-      <label for="suCode">Today’s code</label>
-      <input id="suCode" autocomplete="off" autocapitalize="characters" spellcheck="false" required>
+      <p class="hint" id="suHint">Type today’s code. It came with the link to this page.</p>
+      <div id="suCodeRow">
+        <label for="suCode">Today’s code</label>
+        <input id="suCode" autocomplete="off" autocapitalize="characters" spellcheck="false" required>
+      </div>
+      <!-- with the interview off (auth.js, INTERVIEW), the name is asked for here instead -->
+      <div class="names" id="suNames" hidden>
+        <div><label for="suFirst">First name</label>
+          <input id="suFirst" autocomplete="off" maxlength="20" spellcheck="false"></div>
+        <div><label for="suInitial">Last initial</label>
+          <input id="suInitial" autocomplete="off" maxlength="1" autocapitalize="characters" spellcheck="false"></div>
+      </div>
       <button type="submit" class="btn primary" id="suGo">Start my interview</button>
     </form>
 
@@ -206,11 +219,13 @@
       .then(function (r) { return r.json().catch(function () { return {}; }).then(function (j) { if (!r.ok) { var e = new Error(j.error || 'Something went wrong. Try again.'); e.field = j.field; throw e; } return j; }); });
   }
   var noCodes = false;   // a laptop with nothing configured: no codes to ask for (auth.js BYPASS)
+  var interview = true;  // off: the sign-up form asks for the name (auth.js, INTERVIEW)
 
   /* The two doors. Each code field is told which one was wrong (auth.js sends `field`). */
   function newKid() {
-    return post('/auth/studio/pass', { mode: 'signup', code: $('suCode').value })
-      .then(function () { return post('/auth/studio/new'); })
+    var who = interview ? {} : { first: $('suFirst').value, initial: $('suInitial').value };
+    return (noCodes ? Promise.resolve() : post('/auth/studio/pass', { mode: 'signup', code: $('suCode').value }))
+      .then(function () { return post('/auth/studio/new', who); })
       .then(function (j) { location.replace(j.next || '/interview.html'); });
   }
   function returning() {
@@ -218,8 +233,8 @@
   }
   $('goSignup').addEventListener('click', function () {
     say('');
-    if (noCodes) { $('goSignup').disabled = true; newKid().catch(function (err) { say(err.message); $('goSignup').disabled = false; }); return; }
-    show('sSignup'); $('suCode').focus();
+    if (noCodes && interview) { $('goSignup').disabled = true; newKid().catch(function (err) { say(err.message); $('goSignup').disabled = false; }); return; }
+    show('sSignup'); $(noCodes ? 'suFirst' : 'suCode').focus();
   });
   $('goLogin').addEventListener('click', function () {
     say('');
@@ -231,7 +246,7 @@
   });
   $('sSignup').addEventListener('submit', function (e) {
     e.preventDefault(); say(''); $('suGo').disabled = true;
-    newKid().catch(function (err) { say(err.message); $('suCode').select(); $('suGo').disabled = false; });
+    newKid().catch(function (err) { say(err.message); $(err.field === 'first' ? 'suFirst' : err.field === 'initial' ? 'suInitial' : 'suCode').select(); $('suGo').disabled = false; });
   });
   $('sLogin').addEventListener('submit', function (e) {
     e.preventDefault(); say(''); $('liGo').disabled = true;
@@ -276,6 +291,13 @@
     if (d && d.studio) {
       $('studio').hidden = false;
       noCodes = !!d.noPassword;
+      interview = d.interview !== false;
+      if (!interview) {
+        $('suNames').hidden = false; $('suFirst').required = $('suInitial').required = true;
+        $('suGo').textContent = 'Start';
+        $('suHint').textContent = noCodes ? 'Type your first name and the first letter of your last name.' : 'Type today’s code, then your first name and the first letter of your last name. The code came with the link to this page.';
+      }
+      if (noCodes) { $('suCodeRow').hidden = true; $('suCode').required = false; }
       show('sChoose'); $('goSignup').focus();
     }
     var p = (d && d.providers && d.providers.google) || null, host = $('btns');

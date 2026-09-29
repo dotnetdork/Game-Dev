@@ -57,7 +57,7 @@ const STATE = fs.mkdtempSync(path.join(os.tmpdir(), 'studio-playthrough-'));
 const server = spawn(process.execPath, [path.join(ROOT, 'server.js')], {
   cwd: ROOT,
   env: Object.assign({}, process.env, {
-    PORT: String(PORT), STATE_DIR: STATE, NODE_ENV: 'test',
+    PORT: String(PORT), STATE_DIR: STATE, NODE_ENV: 'test', STUDIO_INTERVIEW: 'on',   // this test walks the interview
     TESTER_PASSWORD: CODE, CLASS_CODE: CLASS, SESSION_SECRET: require('crypto').randomBytes(32).toString('hex'),
     // no AI: the interview's scripted fallback runs, the same every time
     AI_PROVIDER: 'ollama', OLLAMA_URL: 'http://127.0.0.1:9/api/chat', TUTOR_MODEL: 'ollama:none', CODER_MODEL: 'ollama:none',
