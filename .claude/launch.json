@@ -14,7 +14,8 @@
       "env": {
         "TESTER_PASSWORD": "",
         "SESSION_SECRET": "",
-        "CLASS_CODE": ""
+        "CLASS_CODE": "",
+        "STUDIO_INTERVIEW": "on"
       }
     },
     {
@@ -31,7 +32,8 @@
         "NODE_ENV": "production",
         "TESTER_PASSWORD": "local-student-build-check",
         "SESSION_SECRET": "fe15d8aecb2311477984fc960b31f1557abf2862691e9b6378e4f2ec9517bab8",
-        "CLASS_CODE": "LOCALCLASS"
+        "CLASS_CODE": "LOCALCLASS",
+        "STUDIO_INTERVIEW": "on"
       }
     }
   ]
