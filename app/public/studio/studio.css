@@ -310,9 +310,10 @@ body.resizing-x iframe, body.resizing-y iframe { pointer-events: none; }   /* th
 .face svg { width: 26px; height: 26px; }
 .area:has(.inspector.open) .who { display: none; }
 
-/* The task: what this step wants, always in view. Not a button and not orange; the Hint is quiet */
+/* The task: what this step wants, always in view. Not a button and not orange; the Hint is quiet.
+   Whose task it is shows in its flag and a faint edge in their colour, not a side stripe. */
 .task { display: flex; align-items: center; gap: 10px; margin: 0 12px 6px; padding: 8px 8px 8px 12px; border-radius: 8px;
-        background: var(--ground); border-left: 3px solid var(--who, var(--ink-3)); flex: none; }
+        background: var(--ground); border: 1px solid color-mix(in srgb, var(--who, var(--ink-3)) 45%, transparent); flex: none; }
 .task[hidden] { display: none; }
 .task > svg { width: 18px; height: 18px; flex: none; color: var(--who, var(--ink-3)); }
 .task p { flex: 1; min-width: 0; margin: 0; font-size: 14px; line-height: 1.35; color: var(--ink); font-weight: 600; }
