@@ -21,8 +21,21 @@
      with an icon, not a bubble, and it also goes to the Console, where every event is kept with its
      time. The same event again, straight after, is the same row with a count ("×4"), not a new row:
      falling off the level ten times read as spam.
-   - ONE IDEA PER BUBBLE (review §4, rule 4). Lines are never joined into one long paragraph; a run
-     of lines from one speaker is grouped the way a messaging app groups them, with the name once.
+   - ONE SPEAKER, ONE MESSAGE (Jay, 2026-09-29, which replaced "one idea per bubble", review §4
+     rule 4: his first-day screenshot showed the Mentor's welcome as four bubbles). The lines said
+     together land as one bubble after one typing beat; lines caused by something the kid did are a
+     new message. A run of messages from one speaker still shows the name once.
+   - THE CHAT IS THE CONVERSATION (Jay, 2026-09-29: "I just dont think the hint should appear in
+     the chat"). Four things live here and each looks like what it is:
+       talk          a bubble, under the speaker's name
+       instructions  what to do now ("Press Play up top"): a row with an arrow and no bubble, so it
+                     reads as the step, not as chatter (a quest's `instruct`)
+       events        what happened (a ticket filed, a star): a thin dashed row with an icon, below
+       hints         NOT in the log at all: the Hint button opens a callout under the task line,
+                     which closes on its ×, Esc, a click elsewhere, typing, or a new task
+   - KEYS ARE DRAWN AS KEYS. A keyboard key in square brackets, [Space], [←], [A] or [Ctrl+Z], is
+     drawn as a keycap wherever the studio shows words (a line, the task, a hint, a question). Only
+     real key names count, so any other bracketed text is left as it is.
    - A character "types" before speaking: a short dots bubble, longer for more words, never long.
    - The card: a tap, a number key, or the arrow keys and Enter to pick. Nothing on it is lit until
      the kid points at it or moves to it (the first build lit option 1, which read as "already
@@ -80,11 +93,40 @@ var Chat = (function () {
     box.addEventListener('dragstart', function (e) { e.preventDefault(); });
     var hb = $('taskHint');
     if (hb) hb.addEventListener('click', function () { if (hintHandler) hintHandler(); });
+    $('hintX').addEventListener('click', function () { hideHint(); hb.focus(); });
+    input.addEventListener('input', hideHint);
+    document.addEventListener('pointerdown', function (e) {
+      if ($('hintBox').hidden) return;
+      if (e.target.closest && e.target.closest('#hintBox, #taskHint, [data-key="hint"]')) return;
+      hideHint();
+    }, true);
+    document.addEventListener('keydown', function (e) {
+      if (e.key === 'Escape' && !$('hintBox').hidden) { hideHint(); e.stopPropagation(); }
+    }, true);
     header('m'); active = 'm';
   }
 
   function setKid(n) { kidName = n || 'new developer'; kidLabel = n || 'You'; }
   function fill(text) { return String(text).replace(/@name/g, kidName); }
+
+  /* Words into an element, with [Key] drawn as keycaps. Built as nodes, never as HTML: some of these
+     words come from the model. */
+  var KEY = /^(Space|Enter|Esc|Tab|Shift|Ctrl|Alt|Cmd|Backspace|Delete|[←→↑↓]|Left|Right|Up|Down|[A-Z0-9])$/;
+  var ARROW = { Left: '←', Right: '→', Up: '↑', Down: '↓' };
+  function rich(el, text) {
+    el.textContent = '';
+    String(text).split(/(\[[^\]\s]{1,16}\])/).forEach(function (bit) {
+      var inner = /^\[(.+)\]$/.exec(bit), keys = inner && inner[1].split('+');
+      if (keys && keys.every(function (k) { return KEY.test(k); })) {
+        keys.forEach(function (k, n) {
+          if (n) el.appendChild(document.createTextNode('+'));
+          var kb = document.createElement('kbd'); kb.className = 'key'; kb.textContent = ARROW[k] || k;
+          el.appendChild(kb);
+        });
+      } else if (bit) el.appendChild(document.createTextNode(bit));
+    });
+    return el;
+  }
 
   /* ---------- who's talking ---------- */
   function header(k) {
@@ -131,18 +173,40 @@ var Chat = (function () {
     if (!taskEl) return;
     opts = opts || {};
     hintHandler = opts.hint || null;
-    if (!text) { taskEl.hidden = true; return; }
-    var t = $('taskText'), changed = t.textContent !== fill(text);
-    t.textContent = fill(text);
+    if (!text) { taskEl.hidden = true; hideHint(); return; }
+    var t = $('taskText'), changed = t.getAttribute('data-text') !== fill(text);
+    t.setAttribute('data-text', fill(text)); rich(t, fill(text));
+    if (changed) hideHint();
     $('taskHint').hidden = !hintHandler;
     taskEl.hidden = false;
     if (changed) { taskEl.classList.remove('fresh'); void taskEl.offsetWidth; taskEl.classList.add('fresh'); announcer.textContent = 'Your task: ' + fill(text); }
   }
 
+  /* ---------- the hint: a callout under the task line, never a line in the log ---------- */
+  /* hint(text, n, total) opens it (or swaps in the next hint); it closes on its ×, Esc, a click
+     anywhere but the callout and the Hint buttons, typing in the box, or a new task. */
+  function hint(text, n, total) {
+    var hb = $('hintBox'); if (!hb) return;
+    rich($('hintText'), fill(text));
+    $('hintN').textContent = total > 1 ? 'Hint ' + n + ' of ' + total : 'Hint';
+    var was = !hb.hidden;
+    hb.hidden = false;
+    if (was) { hb.classList.remove('fresh'); void hb.offsetWidth; }
+    hb.classList.add('fresh');
+    $('taskHint').classList.remove('nudge');
+    announcer.textContent = 'Hint: ' + fill(text);
+  }
+  function hideHint() { var hb = $('hintBox'); if (hb) hb.hidden = true; }
+  /* Stuck for a while: the Hint button asks to be pressed, once. Nothing is said for them. */
+  function nudge() {
+    var b = $('taskHint'); if (!b || b.hidden || !$('hintBox').hidden) return;
+    b.classList.remove('nudge'); void b.offsetWidth; b.classList.add('nudge');
+  }
+
   /* ---------- lines ---------- */
   /* What was said before steps back a shade. The kid's own latest line stays bright with the reply. */
   function quieten() {
-    Array.prototype.forEach.call(box.querySelectorAll('.msg:not(.old)'), function (m) { m.classList.add('old'); });
+    Array.prototype.forEach.call(box.querySelectorAll('.msg:not(.old), .step:not(.old)'), function (m) { m.classList.add('old'); });
   }
   function line(k, text) {
     var last = box.lastElementChild;
@@ -155,7 +219,7 @@ var Chat = (function () {
       f.textContent = k === 'k' ? kidLabel : who(k)[0];
       b.appendChild(f);
     } else b.classList.add('more');
-    var p = document.createElement('p'); p.textContent = fill(text);
+    var p = rich(document.createElement('p'), fill(text));
     b.appendChild(p);
     box.appendChild(b); trim();
     history.push({ role: k === 'k' ? 'user' : 'assistant', content: (k === 'k' || k === active ? '' : who(k)[0] + ': ') + fill(text) });
@@ -235,8 +299,26 @@ var Chat = (function () {
      question waits until the queue is empty, so the card never sits under half a message. */
   function say(lines) {
     hideCard(true);
-    lines.forEach(function (l) { if (l && l[1]) queue.push([l[0], l[1]]); });
+    var mine = [];
+    lines.forEach(function (l) {
+      if (!l || !l[1]) return;
+      var last = mine[mine.length - 1];
+      // one speaker's lines, said together, are one message
+      if (last && !last[2] && !l[2] && last[0] === l[0] && l[0] !== 'k') last[1] += ' ' + l[1];
+      else mine.push([l[0], l[1], l[2] || null]);
+    });
+    mine.forEach(function (l) { queue.push(l); });
     pump();
+  }
+  /* An instruction: what to do now, as a row that isn't a bubble (the header says why). */
+  function step(k, text) {
+    var r = document.createElement('div'); r.className = 'step'; r.setAttribute('data-from', k);
+    r.innerHTML = '<svg class="i" aria-hidden="true"><use href="#i-next"/></svg><p></p>';
+    rich(r.querySelector('p'), fill(text));
+    box.appendChild(r); trim();
+    history.push({ role: 'assistant', content: (k === active ? '' : who(k)[0] + ': ') + fill(text) });
+    if (history.length > 16) history.shift();
+    scroll();
   }
   function pump() {
     if (busy) return;
@@ -249,6 +331,7 @@ var Chat = (function () {
     if (next[0] === '@to') { busy = true; handover(next[1], function () { busy = false; pump(); }); return; }
     if (next[0] === 'k') { line('k', next[1]); pump(); return; }
     busy = true;
+    if (next[2] === 'step') { setTimeout(function () { step(next[0], next[1]); busy = false; pump(); }, reduced() ? 60 : 380); return; }
     var wait = reduced() ? 80 : Math.min(900, 320 + String(next[1]).length * 3);   // snappy, but long enough to see someone is typing
     var d = dots(next[0]);
     setTimeout(function () { d.remove(); line(next[0], next[1]); busy = false; pump(); }, wait);
@@ -277,7 +360,7 @@ var Chat = (function () {
     card.innerHTML = '';
     card.setAttribute('data-who', q.who);
     card.classList.toggle('typed', !!q.typed);
-    var h = document.createElement('p'); h.className = 'q'; h.id = 'qText'; h.textContent = fill(q.text);
+    var h = rich(document.createElement('p'), fill(q.text)); h.className = 'q'; h.id = 'qText';
     card.appendChild(h);
     if (q.options.length) {
       var ol = document.createElement('ol'); ol.setAttribute('aria-labelledby', 'qText');
@@ -285,7 +368,7 @@ var Chat = (function () {
         var li = document.createElement('li'), b = document.createElement('button');
         b.type = 'button'; b.className = 'qopt'; b.setAttribute('data-key', 'q:' + n);
         b.innerHTML = '<span class="n" aria-hidden="true">' + (n + 1) + '</span><span class="t"></span><svg class="i go" aria-hidden="true"><use href="#i-send"/></svg>';
-        b.querySelector('.t').textContent = o.text;
+        rich(b.querySelector('.t'), o.text);
         if (o.sub) { var s = document.createElement('small'); s.textContent = o.sub; b.querySelector('.t').appendChild(s); }
         b.addEventListener('click', function () { pick(n); });
         li.appendChild(b); ol.appendChild(li);
@@ -417,5 +500,5 @@ var Chat = (function () {
            thinking: thinking, hide: function () { hideCard(true); }, question: function () { return question; },
            event: event, expecting: expectingNow, active: function () { return active; }, pick: function (n) { pick(n); },
            send: function (t) { if (t) typed(String(t).slice(0, 240)); },
-           history: turns, WHO: WHO };
+           history: turns, WHO: WHO, hint: hint, hideHint: hideHint, nudge: nudge, rich: rich };
 })();

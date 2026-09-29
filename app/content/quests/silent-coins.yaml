@@ -11,14 +11,13 @@ on:
   - when: { reverted: true }
     say:
       - It changed back! Changes made while playing are undone on Stop.
-      - Pick the sound while the game is stopped.
+    instruct: Pick the sound while the game is stopped.
 beats:
   - id: meet
     goal: Find the part that should make the sound
     do: { reveal: [hierarchy], point: hierarchy, stop: true }
     say:
-      - Hi @name, I’m the sound designer!
-      - A silent coin doesn’t feel like anything. Let’s fix that.
+      - Hi @name, I’m the sound designer! A silent coin doesn’t feel like anything, so let’s fix that.
     skip_if: { state: { coins.sound: set } }
     hints_after: 20
     hints:
@@ -29,7 +28,8 @@ beats:
   - id: fix
     goal: Give the coins a sound
     say:
-      - In Unity a sound lives on the part that makes it. Find where the coin’s would go.
+      - In Unity a sound lives on the part that makes it.
+    instruct: Find where the coin’s sound would go.
     skip_if: { state: { coins.sound: set } }
     hints_after: 25
     hints:
@@ -41,8 +41,7 @@ beats:
   - id: test
     goal: Play, grab a coin, and listen
     do: { cue: play }
-    say:
-      - Now press Play, grab a coin, and listen.
+    instruct: Now press Play, grab a coin, and listen.
     wait_for: { event: coin, state: { coins.sound: set } }
     pass: true
     done_say:
@@ -58,8 +57,7 @@ beats:
         - text: So you know you got it
           correct: true
           say:
-            - Exactly. Game designers call that feedback.
-            - The game telling you what just happened.
+            - Exactly. Game designers call that feedback, the game telling you what just happened.
         - text: To make it louder
           say:
             - Loud isn’t the point. What does the sound tell you? Try again!

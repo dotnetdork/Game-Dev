@@ -40,14 +40,20 @@ const PICKERS = ['tickets', 'findings', 'heroes', 'names', 'feedback'];
    2026-09-29: "There is no way for them to know whats happening"). Short, in the kid's terms, and
    never the answer: "Find out why the tile doesn't hold you", not "Tick the Box Collider". A beat
    that waits for something or asks something needs one. */
-const BEAT_KEYS = ['id', 'character', 'goal', 'say', 'do', 'ask', 'wait_for', 'on', 'hints', 'hints_after', 'done_say', 'pass', 'award', 'skip_if', 'next'];
+const BEAT_KEYS = ['id', 'character', 'goal', 'say', 'instruct', 'do', 'ask', 'wait_for', 'on', 'hints', 'hints_after', 'done_say', 'pass', 'award', 'skip_if', 'next'];
 const GOAL_WORDS = 12;
 const DO_KEYS = ['reveal', 'point', 'cue', 'play', 'stop', 'allow', 'close_inspector', 'file', 'recap'];
 const ANSWER_KEYS = ['text', 'sub', 'say', 'goto', 'correct'];
-const HANDLER_KEYS = ['when', 'say', 'once', 'flag', 'cue'];
+const HANDLER_KEYS = ['when', 'say', 'instruct', 'once', 'flag', 'cue'];
 const COND_KEYS = ['event', 'set', 'select', 'play', 'stop', 'reverted', 'state', 'flag', 'not_flag', 'seen_at_least', 'seen_none', 'playing', 'filed', 'built'];
 const ASK_KEYS = ['text', 'answers', 'from', 'then', 'if_none', 'examples'];
-const SAY_WORDS = 22;   // one idea per bubble (review §4, rule 4): a line longer than this is two lines
+/* One speaker, one message (Jay, 2026-09-29; chat.js says why): the lines of one `say` land as ONE
+   bubble, so the whole list is what's counted. A hint is shown alone, so each hint is counted alone.
+   An instruction (`instruct`) is one short line of what to do now. */
+const SAY_WORDS = 22;       // a hint
+const MESSAGE_WORDS = 28;   // a whole say list
+const INSTRUCT_WORDS = 14;
+const CUES = ['play', 'stop'];
 
 function problem(list, where, msg) { list.push(where + ': ' + msg); }
 
@@ -69,15 +75,23 @@ function checkCond(list, where, c) {
   if (c.state) Object.keys(c.state).forEach(function (pk) { checkPartKey(list, where, pk); });
 }
 
-function checkLines(list, where, lines) {
+function words(l) { return l.trim().split(/\s+/).length; }
+function checkLines(list, where, lines, each) {
   if (!Array.isArray(lines) || !lines.length || lines.some(function (l) { return typeof l !== 'string' || !l.trim(); })) {
     return problem(list, where, 'lines must be a list of sentences');
   }
-  lines.forEach(function (l) {
-    const n = l.trim().split(/\s+/).length;
-    if (n > SAY_WORDS) problem(list, where, 'a line of ' + n + ' words is too long for one bubble (at most ' + SAY_WORDS + '); split it: "' + l.slice(0, 40) + '…"');
+  if (each) return lines.forEach(function (l) {
+    if (words(l) > SAY_WORDS) problem(list, where, 'a hint of ' + words(l) + ' words is too long (at most ' + SAY_WORDS + '): "' + l.slice(0, 40) + '…"');
   });
+  const n = lines.reduce(function (t, l) { return t + words(l); }, 0);
+  if (n > MESSAGE_WORDS) problem(list, where, 'these lines are one message of ' + n + ' words (at most ' + MESSAGE_WORDS + '); say less, or move the "do this" part to instruct: "' + lines[0].slice(0, 40) + '…"');
 }
+function checkInstruct(list, where, x) {
+  if (x.instruct === undefined) return;
+  if (typeof x.instruct !== 'string' || !x.instruct.trim()) return problem(list, where, 'instruct is one line of what to do now');
+  if (words(x.instruct) > INSTRUCT_WORDS) problem(list, where, 'instruct is at most ' + INSTRUCT_WORDS + ' words: "' + x.instruct.slice(0, 40) + '…"');
+}
+function checkCue(list, where, c) { if (c !== undefined && CUES.indexOf(c) < 0) problem(list, where, 'cue must be ' + CUES.join(' or ')); }
 
 function checkAsk(list, where, ask, beatIds) {
   if (!ask || typeof ask.text !== 'string') return problem(list, where, 'ask needs text');
@@ -128,19 +142,25 @@ function checkQuest(q, file, ticketIds) {
   if (!Array.isArray(q.beats) || !q.beats.length) { problem(list, w0, 'needs beats'); return list; }
   const ids = q.beats.map(function (b) { return b && b.id; });
   ids.forEach(function (id, n) { if (!id) problem(list, w0, 'beat ' + (n + 1) + ' needs an id'); else if (ids.indexOf(id) !== n) problem(list, w0, 'two beats are called "' + id + '"'); });
-  (q.on || []).forEach(function (h, n) { checkCond(list, w0 + ' on ' + (n + 1), h.when); if (h.say) checkLines(list, w0 + ' on ' + (n + 1), h.say); });
+  (q.on || []).forEach(function (h, n) {
+    const w = w0 + ' on ' + (n + 1);
+    Object.keys(h || {}).forEach(function (k) { if (HANDLER_KEYS.indexOf(k) < 0) problem(list, w, 'unknown key "' + k + '"'); });
+    checkCond(list, w, h.when); if (h.say) checkLines(list, w, h.say); checkInstruct(list, w, h); checkCue(list, w, h.cue);
+  });
   q.beats.forEach(function (b) {
     const w = w0 + ' beat "' + (b && b.id) + '"';
     Object.keys(b || {}).forEach(function (k) { if (BEAT_KEYS.indexOf(k) < 0) problem(list, w, 'unknown key "' + k + '"'); });
     if (b.character && CHARACTERS.indexOf(b.character) < 0) problem(list, w, 'unknown character "' + b.character + '"');
     if (b.say) checkLines(list, w, b.say);
+    checkInstruct(list, w, b);
     if (b.done_say) checkLines(list, w, b.done_say);
     if ((b.wait_for || b.ask) && !b.goal) problem(list, w, 'needs a goal: the task line the kid sees while this step runs');
     if (b.goal !== undefined && (typeof b.goal !== 'string' || b.goal.trim().split(/\s+/).length > GOAL_WORDS)) problem(list, w, 'goal is one line of at most ' + GOAL_WORDS + ' words');
-    if (b.hints) checkLines(list, w + ' hints', b.hints);
+    if (b.hints) checkLines(list, w + ' hints', b.hints, true);
     if (b.hints_after !== undefined && !(b.hints_after >= 5)) problem(list, w, 'hints_after is seconds, at least 5');
     if (b.do) {
       Object.keys(b.do).forEach(function (k) { if (DO_KEYS.indexOf(k) < 0) problem(list, w, 'do: unknown action "' + k + '"'); });
+      checkCue(list, w, b.do.cue);
       (b.do.reveal || []).forEach(function (p) { if (PANELS.indexOf(p) < 0) problem(list, w, 'reveal: unknown panel "' + p + '"'); });
       if (b.do.point && PANELS.indexOf(b.do.point) < 0) problem(list, w, 'point: unknown panel "' + b.do.point + '"');
       (b.do.allow || []).forEach(function (c) { if (COMPONENTS.indexOf(c) < 0) problem(list, w, 'allow: unknown component "' + c + '"'); });
@@ -153,6 +173,7 @@ function checkQuest(q, file, ticketIds) {
       Object.keys(h || {}).forEach(function (k) { if (HANDLER_KEYS.indexOf(k) < 0) problem(list, w + ' on ' + (n + 1), 'unknown key "' + k + '"'); });
       checkCond(list, w + ' on ' + (n + 1), h.when);
       if (h.say) checkLines(list, w + ' on ' + (n + 1), h.say);
+      checkInstruct(list, w + ' on ' + (n + 1), h); checkCue(list, w + ' on ' + (n + 1), h.cue);
     });
     if (b.next && b.next !== 'end' && ids.indexOf(b.next) < 0) problem(list, w, 'next "' + b.next + '" is not a beat');
     // A beat with neither wait_for nor ask moves straight on once its lines are said: "say, then next".
@@ -217,4 +238,4 @@ function load() {
   return out;
 }
 
-module.exports = { load: load, checkQuest: checkQuest, checkTickets: checkTickets, VOCAB: { DEPARTMENTS, CHARACTERS, PANELS, EVENTS, PARTS, COMPONENTS, PICKERS, SAY_WORDS } };
+module.exports = { load: load, checkQuest: checkQuest, checkTickets: checkTickets, VOCAB: { DEPARTMENTS, CHARACTERS, PANELS, EVENTS, PARTS, COMPONENTS, PICKERS, SAY_WORDS, MESSAGE_WORDS, INSTRUCT_WORDS } };

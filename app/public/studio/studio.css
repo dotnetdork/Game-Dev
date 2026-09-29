@@ -327,12 +327,23 @@ body.resizing-x iframe, body.resizing-y iframe { pointer-events: none; }   /* th
 .codeerr .tbtn { height: 36px; }
 .codeerr .tbtn[hidden] { display: none; }
 
-.focus-hint { position: absolute; inset: auto 0 18px 0; margin: 0 auto; width: max-content; max-width: 86%;
-              background: rgba(6, 16, 29, .9); color: var(--ink); padding: 10px 14px; border-radius: 10px; font-size: 15px;
-              pointer-events: none; box-shadow: 0 6px 18px rgba(2, 8, 18, .45); }
+/* the game's keys (editor.js, hint): a strip at the bottom centre of the game that the pointer goes
+   straight through, so it can't be clicked or get in the way */
+.focus-hint { position: absolute; inset: auto 0 16px 0; margin: 0 auto; width: max-content; max-width: calc(100% - 24px);
+              display: flex; flex-wrap: wrap; align-items: center; justify-content: center; gap: 6px 18px;
+              background: rgba(6, 16, 29, .88); color: var(--ink); padding: 8px 16px; border-radius: 10px;
+              font-size: 14px; font-weight: 600; pointer-events: none; box-shadow: 0 6px 18px rgba(2, 8, 18, .45);
+              transition: opacity .45s ease-out, transform .45s var(--ease); animation: msgIn .3s var(--ease) backwards; }
+.focus-hint.gone { opacity: 0; transform: translateY(6px); }
 .focus-hint[hidden] { display: none; }
-.keys { display: inline-flex; gap: 4px; margin: 0 4px; }
-.key { border: 1px solid var(--grip); border-bottom-width: 3px; border-radius: 5px; padding: 0 7px; font-size: 13px; }
+#hintLead { color: var(--ink-2); font-weight: 500; }
+#hintLead[hidden] { display: none; }
+.kgroup { display: inline-flex; align-items: center; gap: 7px; }
+.keys { display: inline-flex; gap: 4px; }
+.key { display: inline-block; min-width: 1.9em; text-align: center; font: 700 13px/1.5 inherit; color: var(--ink);
+       background: var(--ground); border: 1px solid var(--grip); border-bottom-width: 3px; border-radius: 5px; padding: 0 7px; }
+/* a key inside words (chat.js, rich): sits on the line without pushing it apart */
+p .key, .t .key, .tnow .key { margin: 0 1px; font-size: .86em; line-height: 1.35; vertical-align: 1px; }
 .game-status { position: absolute; inset: auto 0 50% 0; margin: 0; text-align: center; color: var(--ink-3); font-size: 14px; pointer-events: none; }
 .game-status:empty { display: none; }
 
@@ -354,6 +365,27 @@ body.resizing-x iframe, body.resizing-y iframe { pointer-events: none; }   /* th
 .task small { display: block; font-size: 12px; font-weight: 600; color: var(--ink-2); margin-bottom: 1px; }
 .task .tbtn { flex: none; min-height: 36px; }
 .task.fresh { animation: taskIn .5s var(--ease); }
+/* stuck for a while: the Hint button asks to be pressed, twice over, then rests (chat.js, nudge) */
+#taskHint.nudge { animation: nudge 1.1s var(--ease) 2; }
+@keyframes nudge { 40% { box-shadow: 0 0 0 4px color-mix(in srgb, var(--who, var(--accent)) 45%, transparent); background: var(--hover); } }
+
+/* the hint: a callout hanging from the task line, never a line in the conversation (chat.js, hint) */
+.hintbox { position: relative; display: flex; align-items: flex-start; gap: 10px; margin: 2px 12px 8px; padding: 9px 6px 9px 12px;
+           border-radius: 8px; flex: none; color: var(--ink);
+           background: var(--panel-2); background: color-mix(in srgb, var(--who, var(--accent)) 14%, var(--ground));
+           box-shadow: 0 6px 16px rgba(2, 8, 18, .3); }
+.hintbox[hidden] { display: none; }
+.hintbox::before { content: ""; position: absolute; top: -6px; right: 34px; width: 12px; height: 12px; transform: rotate(45deg);
+                   background: inherit; border-radius: 2px 0 0 0; }   /* the notch, up at the Hint button */
+.hintbox > svg { width: 18px; height: 18px; flex: none; margin-top: 1px; color: var(--who, var(--accent)); }
+.hintbox p { flex: 1; min-width: 0; margin: 0; font-size: 14.5px; line-height: 1.4; }
+.hintbox small { display: block; font-size: 12px; font-weight: 700; color: var(--who, var(--ink-2)); margin-bottom: 1px; }
+.hintbox .x { flex: none; width: 32px; height: 32px; margin: -4px 0 -4px 0; display: grid; place-items: center; border: 0; border-radius: 6px;
+              background: transparent; color: var(--ink-2); cursor: pointer; }
+.hintbox .x:hover { background: var(--hover); color: var(--ink); }
+.hintbox .x svg { width: 16px; height: 16px; }
+.hintbox.fresh { animation: hintIn .3s var(--ease) both; }
+@keyframes hintIn { from { opacity: 0; transform: translateY(-6px); } to { opacity: 1; transform: none; } }
 @keyframes taskIn { from { background: color-mix(in srgb, var(--who, var(--ink-3)) 22%, var(--ground)); } }
 
 .log { flex: 1; min-height: 72px; overflow: auto; padding: 4px 12px 8px; display: flex; flex-direction: column; gap: 8px; overscroll-behavior: contain;
@@ -379,6 +411,15 @@ body.resizing-x iframe, body.resizing-y iframe { pointer-events: none; }   /* th
 .msg.kid.more { border-top-right-radius: 4px; }
 .msg.kid .from { color: var(--ink-2); }
 @keyframes msgIn { from { opacity: 0; transform: translateY(6px); } to { opacity: 1; transform: none; } }
+
+/* an instruction: what to do now (a quest's `instruct`). No bubble and no name, so it reads as the
+   step, not as more chatter; the speaker's colour on its arrow says whose step it is */
+.step { align-self: stretch; display: flex; align-items: flex-start; gap: 9px; margin: 0; padding: 6px 8px 6px 4px;
+        font-size: 15px; line-height: 1.4; font-weight: 600; color: var(--ink); animation: msgIn .3s var(--ease) both; }
+.step > svg { width: 18px; height: 18px; flex: none; margin-top: 1px; color: var(--who, var(--accent)); }
+.step p { margin: 0; flex: 1; min-width: 0; }
+.step.old { color: var(--ink-2); }
+.step.old > svg { color: var(--ink-3); }
 
 /* an event: what happened, not what someone said. A row across the thread, no bubble, no name */
 .evt { align-self: stretch; display: flex; align-items: center; gap: 8px; margin: 2px 0; padding: 5px 8px; border-radius: 6px;

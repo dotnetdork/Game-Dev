@@ -195,6 +195,7 @@ async function launch() {
     await waitLog('Welcome to the studio');
     check('the studio greets them by first name', /Welcome to the studio, Maya/.test(await log()));
     await waitLog('Press Play');
+    check('the welcome is one message, and what to do is a step row, not a bubble', await p.$$eval('#log .msg', function (x) { return x.length; }) === 1 && /Press Play up top/.test(await p.$eval('#log .step', function (e) { return e.textContent; })));
     check('one conversation, not a tab per character', !(await p.$('.ctab')) && await p.$eval('#dMentor .tabs', function (e) { return e.textContent.trim(); }) === 'Chat');
     check('the task line says what this step wants', await task() === 'Play the game and look for anything broken', await task());
     await p.waitForFunction(function () { return Runner.isReady(); }, null, { timeout: 20000 });
@@ -253,7 +254,7 @@ async function launch() {
     where = 'the first day: play mode';
     await row('Coins');
     await p.$eval('#r-size', function (el) { el.value = 2.2; el.dispatchEvent(new Event('input', { bubbles: true })); });
-    await waitLog('Bigger! Now press Stop.'); await p.click('#bStop'); await waitLog('They shrank back');
+    await waitLog('Now press Stop.'); await p.click('#bStop'); await waitLog('They shrank back');
     check('a change made while playing is undone on Stop', await p.evaluate(function () { return Project.part('coins').size; }) === 1);
     where = 'the first day: her hero and her game';
     await waitLog('What’s yours?', 9000);
@@ -269,7 +270,9 @@ async function launch() {
     await p.click('#ticketList [data-key="ticket:floor"]'); await p.click('#ticketPage [data-key="fix"]');   // picked from its page, not the card
     await waitLog('talking to the lead programmer');
     check('the floor\'s first task, with a Hint button', await task() === 'Find the part you fell through' && await p.isVisible('#taskHint'), await task());
-    await p.click('#taskHint'); await waitLog('Every part of the level is listed in the Hierarchy');
+    await p.click('#taskHint');
+    await p.waitForFunction(function () { return !document.getElementById('hintBox').hidden && /Every part of the level is listed in the Hierarchy/.test(document.getElementById('hintText').textContent); }, null, { timeout: 9000 });
+    check('the hint opens under the task line, and is not a line in the chat', !/Every part of the level/.test(await log()));
     check('the ticket\'s page shows it in progress, with the task and a hint', /In progress.*Your task now.*Find the part you fell through.*Stuck\? Get a hint/.test(await p.$eval('#ticketPage', function (e) { return e.textContent; })));
     await p.click('#ticketPage .back');
     check('the Scene view arrives with the Hierarchy', await p.isVisible('#vtScene'));

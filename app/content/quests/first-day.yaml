@@ -12,22 +12,21 @@ next_quest: own-game
 beats:
   - id: clock-in
     say:
-      - Welcome to the studio, @name! I’m the Mentor, the studio’s AI.
-      - Our last intern left a game half-broken. Let’s see how bad it is.
+      - Welcome to the studio, @name! Our last intern left this game half-broken, so let’s see how bad it is.
 
   - id: press-play
     goal: Play the game and look for anything broken
-    do: { reveal: [game, play], cue: play }
-    say:
-      - Press Play up top to test it.
+    do: { reveal: [game, play], point: game, cue: play }
+    instruct: Press Play up top to test it.
     on:
+      # the keys are on the game itself while it starts (editor.js, hint), not a line in the chat
       - when: { play: true }
         once: true
-        say:
-          - Arrow keys to move, Space to jump. Look for anything broken!
+        instruct: Look for anything broken. Press Stop when you’ve found something.
       - when: { stop: true, seen_none: true }
         say:
-          - Nothing broken yet? Press Play and explore a bit further.
+          - Nothing broken yet?
+        instruct: Press Play and explore a bit further.
     hints_after: 30
     hints:
       - Explore the whole level, left to right.
@@ -47,7 +46,7 @@ beats:
     # Art files the grey itself if the kid didn't: it's plain to see, and a colleague would say so.
     do: { file: [greybox], reveal: [tickets] }
     say:
-      - Each ticket goes to a department. You pick which we fix first.
+      - Each ticket goes to a department, and you pick which we fix first.
     ask:
       text: What should we fix first?
       from: tickets
@@ -57,19 +56,21 @@ beats:
     character: mentor
     do: { reveal: [hierarchy], allow: [coinSize], play: true }
     say:
-      - Quick test while it’s running. Tap Coins and make them bigger.
+      - Quick test while it’s running.
+    instruct: Tap Coins, then make them bigger.
     on:
       - when: { set: { part: coins, key: size, gt: 1.2 }, playing: true, not_flag: grew }
         flag: grew
         say:
-          - Bigger! Now press Stop.
+          - Bigger!
+        instruct: Now press Stop.
         cue: stop
       - when: { set: { part: coins, key: size }, playing: false }
         say:
-          - That one stuck, because the game wasn’t running. Press Play and try again.
+          - That one stuck, because the game wasn’t running.
+        instruct: Press Play and try again.
       - when: { stop: true, not_flag: grew }
-        say:
-          - Press Play again, then make the coins bigger while it runs.
+        instruct: Press Play again, then make the coins bigger while it runs.
     hints_after: 25
     hints:
       - Coins is in the Hierarchy, on the left.
@@ -77,15 +78,13 @@ beats:
     wait_for: { reverted: true, flag: grew }
     award: { card: play-mode }
     done_say:
-      - They shrank back!
-      - Play mode is a test run. Stop puts everything back, the same as in Unity.
-      - Every developer learns that once.
+      - They shrank back! Play mode is a test run, and Stop puts everything back, the same as in Unity.
 
   - id: its-yours
     goal: Describe your game’s hero
     do: { stop: true, close_inspector: true }
     say:
-      - This level is yours now, @name. Every fix goes into YOUR game.
+      - This level is yours now, @name, and every fix goes into YOUR game.
     ask:
       text: Every game needs a hero. What’s yours? A dragon, a robot, a pizza… anything!
       from: heroes
@@ -101,7 +100,8 @@ beats:
     goal: Play your game and grab a coin
     do: { play: true }
     say:
-      - Your game, @name! Grab a coin.
+      - Your game, @name!
+    instruct: Grab a coin.
     wait_for: { event: coin }
     award: { stars: 1 }
     done_say:
@@ -110,8 +110,6 @@ beats:
   - id: next-ticket
     goal: Pick your next ticket
     do: { stop: true, reveal: [tickets, stars] }
-    say:
-      - Pick your next ticket.
     ask:
       text: What should we fix next?
       from: tickets

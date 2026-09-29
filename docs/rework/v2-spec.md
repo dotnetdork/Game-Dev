@@ -82,13 +82,14 @@ beats:
 
 | Key | What it does |
 |---|---|
-| `say` | key lines; the meaning is kept, the AI voices them |
+| `say` | key lines, said as one message; the meaning is kept, the AI voices them |
+| `instruct` | what to do now, a row with an arrow and no bubble (D37) |
 | `ask` | a question card |
 | `do` | reveal a panel, point at it, open the Inspector or Script, start Play |
 | `wait_for` | a game event, an Inspector set, a selection, Play or Stop, or an answer |
 | `award` | a card, a star, a tool |
 | `ticket` | file, close or reopen a ticket |
-| `hints_after` | the nudge timer |
+| `hints_after` | when the Hint button pulses (D40) |
 
 Because a beat only ever waits on evidence, a kid doing things out of order can't break a quest.
 
@@ -470,14 +471,27 @@ the Mentor had said it. He picked the options below from a list of ideas.
     it again shows the next hint there. The callout closes on its ×, Esc, a click elsewhere, typing
     in the chat, or the task changing. When the kid has been stuck for `hints_after` seconds, the Hint
     button pulses once instead of a hint being posted for them. The Console still logs each hint.
-34. **The chat holds conversation.** Speech is a bubble. What happened (Play and Stop, tickets,
-    stars, builds) is a row with an icon and a time and no bubble, and most game events stay in the
-    Console only.
+34. **The chat holds conversation.** Speech is a bubble. What happened (tickets, stars, builds) is
+    a row with an icon and a time and no bubble. Play, Stop, hints and most game events are logged in
+    the Console only.
 35. **Play, Pause and Stop are three buttons**, as in Unity and Unreal. Play stays lit while the game
     runs and carries on after a pause; Step still waits for the story.
 36. **One bar, not two** (Jay, 2026-09-29: items in it were redundant). The menus sit left, with Play,
     Pause and Stop as icons in the centre, then Sound and a circle with the kid's initial on the right.
     Undo and Redo moved into Edit, and the layouts into Window. The GameObject menu is gone, and so
     are the menu items that repeated a button. The circle opens the kid's own menu: their name, their
-    stars, tickets and cards, what they're working on, Clock out, and Sign out. The first day no
-    longer points at the Game view with a bubble.
+    stars, tickets and cards, what they're working on, Clock out, and Sign out.
+37. **Instructions are not talk** (Jay, 2026-09-29: "can you have instructions render differently
+    than chat stuff?"). A quest step's `instruct:` is what to do now ("Press Play up top to test
+    it"). It shows as a row with an arrow and no bubble, after the speaker's talk. The task line still
+    names the step's goal, so an instruction adds how or what comes first rather than repeating it.
+38. **The game's keys are on the game** (Jay, 2026-09-29: "I'd rather that not be in the chat"). The
+    keys show as keycaps in a strip at the bottom centre of the Game view. It is up before the first
+    Play, stays a moment after Play or a click in the game, then fades. It comes back whenever the
+    game is running without the keyboard, as "Click the game, then". Clicks pass through it.
+39. **Pointer callouts are off by default** (Jay, 2026-09-29: "hide them by default, we may have use
+    for them later"). The quests still say where they would point (`point:`). `POINTERS` in
+    editor.js turns them back on, and `?pointers=1` shows them for a look.
+40. **Nothing is said on a timer.** The hint timer used to post the next hint every `hints_after`
+    seconds, so a kid who didn't answer got a message every half-minute (Jay: "the robot will
+    repetitively spam you"). Now it pulses the Hint button, once for each hint.

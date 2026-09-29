@@ -12,15 +12,13 @@ on:
   - when: { reverted: true }
     say:
       - It changed back! Changes made while playing are undone on Stop.
-      - Pick sprites while the game is stopped.
+    instruct: Pick sprites while the game is stopped.
 beats:
   - id: meet
     goal: Find the coins in the Hierarchy
     do: { reveal: [hierarchy], point: hierarchy, stop: true }
     say:
-      - Hi @name, I’m the art director!
-      - This is a greybox, plain blocks for testing. A player can’t tell good from dangerous.
-      - Let’s start with the coins.
+      - Hi @name, I’m the art director! This greybox is plain blocks for testing, so a player can’t tell good from dangerous.
     skip_if: { state: { coins.look: set, lava.look: set } }
     hints_after: 20
     hints:
@@ -31,14 +29,17 @@ beats:
   - id: fix
     goal: Give the coins and the lava a picture
     say:
-      - The Sprite Renderer draws a part’s picture. Give the coins one, then the Lava.
+      - The Sprite Renderer draws a part’s picture.
+    instruct: Give the coins a sprite, then the Lava.
     on:
       - when: { set: { part: coins, key: look }, state: { lava.look: null } }
         say:
-          - Nice! Now the Lava.
+          - Nice!
+        instruct: Now the Lava.
       - when: { set: { part: lava, key: look }, state: { coins.look: null } }
         say:
-          - Scary! Now the Coins.
+          - Scary!
+        instruct: Now the Coins.
     hints_after: 25
     hints:
       - Look for the Sprite Renderer in the Inspector.
@@ -50,7 +51,8 @@ beats:
     goal: Play and grab a coin
     do: { cue: play }
     say:
-      - Press Play. Can you spot the coins now?
+      - Can you spot the coins now?
+    instruct: Press Play and grab one.
     wait_for: { event: coin }
     pass: true
     done_say:
@@ -66,8 +68,7 @@ beats:
         - text: Showed what matters
           correct: true
           say:
-            - Right. Artists call that readability.
-            - Seeing at a glance what’s good and what’s dangerous.
+            - Right. Artists call that readability, seeing at a glance what’s good and what’s dangerous.
         - text: Made it faster
           say:
             - Speed didn’t change. Think about what a player can see now. Try again!

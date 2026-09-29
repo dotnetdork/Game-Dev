@@ -68,6 +68,13 @@ var Quest = (function () {
   function voice() { return frame() ? (VOICE[character(beat())] || 'm') : (Chat.active() || 'm'); }
   function fill(t) { return String(t).replace(/\{game\}/g, S.name || 'your game'); }
   function say(lines, who) { if (lines && lines.length) Chat.say(lines.map(function (l) { return [who || voice(), fill(l)]; })); }
+  /* A step's words: its talk, then its instruction (`instruct`), which the chat draws as a step row
+     rather than a bubble (chat.js, "the chat is the conversation"). */
+  function speak(x) {
+    var lines = (x.say || []).map(function (l) { return [voice(), fill(l)]; });
+    if (x.instruct) lines.push([voice(), fill(x.instruct), 'step']);
+    if (lines.length) Chat.say(lines);
+  }
 
   /* ---------- what happened, for whoever runs the playtest (telemetry.js on the server) ---------- */
   var outbox = [], outTimer = null;
@@ -246,7 +253,7 @@ var Quest = (function () {
         h.appendChild(icon('i-bulb')); h.appendChild(el('span', '', 'Stuck? Get a hint'));
         h.addEventListener('click', function () { hintNow('ticket'); });
         act.appendChild(h);
-        act.appendChild(el('p', 'tnote', 'The hint shows up in the chat. You can ask ' + asker + ' anything there too.'));
+        act.appendChild(el('p', 'tnote', 'The hint opens under your task. You can ask ' + asker + ' anything in the chat too.'));
       } else act.appendChild(el('p', 'tnote', 'Stuck? Ask ' + asker + ' in the chat.'));
     } else {
       var q = COURSE.quests[t.quest], c = q && q.concept && S.cards.indexOf(q.concept) >= 0 ? cardOf(q.concept) : null;
@@ -294,8 +301,8 @@ var Quest = (function () {
     go(f, b);
   }
   function go(f, b) {
-    say(b.say);
-    f.rung = 0; hints();
+    speak(b);
+    f.rung = 0; f.nudged = null; hints();
     paintDev();
     if (b.wait_for) { if (matches(b.wait_for, null, f)) complete(); return; }
     if (b.ask) return ask(b.ask);
@@ -354,7 +361,7 @@ var Quest = (function () {
     else if (f.beat === 0) Chat.task(null);
     if (openTicket) paintTickets();   // its page shows the task too
   }
-  function hintNow(why) { Chat.hide(); giveHint(why); Chat.reask(); }
+  function hintNow(why) { giveHint(why); }
   /* No quest running: the kid's own game. Whoever they talk to answers; the Builder builds. */
   function free() {
     Chat.speaker('m');
@@ -372,14 +379,19 @@ var Quest = (function () {
     hintTimer = setTimeout(function () {
       var g = frame(); if (!g || g.quest !== q || g.beat !== at || g.completing) return;
       if (!Chat.settled() || Chat.expecting()) { hints(); return; }   // not over a line being said, or a typed answer
-      giveHint('timer');
+      /* The Hint button asks, once for each hint; the hint itself waits to be asked for. It used to
+         post the next hint into the chat on this timer, and a kid who didn't answer was sent one
+         every half-minute (Jay, 2026-09-29: "the robot will repetitively spam you"). */
+      if (g.nudged === g.rung) return;
+      g.nudged = g.rung; Chat.nudge();
     }, (b.hints_after || 30) * 1000);
   }
   function giveHint(why) {
     var f = frame(), b = beat(f);
     if (!b || !b.hints) return false;
     var n = Math.min(f.rung || 0, b.hints.length - 1);
-    say([b.hints[n]]);
+    Chat.hint(fill(b.hints[n]), n + 1, b.hints.length);
+    Chat.event('Hint ' + (n + 1) + ' of ' + b.hints.length, 'i-bulb', { consoleOnly: true });
     track('stuck', { rung: n + 1, why: why });
     f.rung = n + 1; hints();
     return true;
@@ -660,7 +672,7 @@ var Quest = (function () {
       f.fired[key] = true;
       if (h.flag) f.flags[h.flag] = true;
       if (h.cue) Editor.cue(h.cue);
-      say(h.say);
+      speak(h);
     });
     if (b && b.wait_for && !f.completing && matches(b.wait_for, ev, f)) complete();
     paintDev();
@@ -707,7 +719,7 @@ var Quest = (function () {
         + (tk ? ' It fixes the ticket ' + titleOf(tk) + ': ' + tk.detail : '')
         + (idea ? ' The idea it teaches: ' + idea[0] + ' (' + idea[1] + ')' : ''));
       if (b && b.goal) out.push('The task line on their screen: "' + fill(b.goal) + '".');
-      if (b && b.say) out.push('This step just said: ' + b.say.map(fill).join(' '));
+      if (b && b.say) out.push('This step just said: ' + b.say.map(fill).join(' ') + (b.instruct ? ' Then: ' + fill(b.instruct) : ''));
       if (b && b.wait_for) {
         var rung = Math.min(f.rung || 0, (b.hints || []).length);
         out.push('The step is done when they ' + describe(b.wait_for) + '. THIS IS THEIR JOB TO FIGURE OUT: do not do it for them, and do not name the exact setting before the last hint.');
@@ -796,7 +808,7 @@ var Quest = (function () {
     track('typed', { to: who, text: text.slice(0, 200) });
     busyKid();
     // help, instantly and with no AI: the next rung of the ladder
-    if (HELP.test(text) && frame() && beat() && beat().hints && Chat.active() === voice()) { Chat.hide(); giveHint('asked'); Chat.reask(); return; }
+    if (HELP.test(text) && frame() && beat() && beat().hints && Chat.active() === voice()) { giveHint('asked'); return; }
     if (!aiUp()) {
       if (ASKS_FOR.test(text)) { say(['I can’t reach the studio’s AI right now, so I can’t build that yet.', 'I saved it to your Ideas so we don’t forget it.'], who); idea(text); }
       else if (frame() && beat() && beat().hints) giveHint('offline');

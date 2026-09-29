@@ -12,14 +12,13 @@ on:
   - when: { reverted: true }
     say:
       - It changed back! Changes made while playing are undone on Stop.
-      - Make the fix while the game is stopped.
+    instruct: Make the fix while the game is stopped.
 beats:
   - id: meet
     goal: Find the part you fell through
     do: { reveal: [hierarchy], point: hierarchy, stop: true }
     say:
-      - Hi @name, I’m the lead programmer!
-      - You fell through part of the floor. Let’s find out why.
+      - Hi @name, I’m the lead programmer! You fell through part of the floor, so let’s find out why.
     skip_if: { state: { tile.solid: true } }
     hints_after: 20
     hints:
@@ -31,16 +30,17 @@ beats:
   - id: fix
     goal: Find out why the tile doesn’t hold you, and fix it
     say:
-      - Its settings are in the Inspector now.
-      - The Ground holds you up and this tile doesn’t. What’s different?
+      - Its settings are in the Inspector now. The Ground holds you up and this tile doesn’t, so what’s different?
     skip_if: { state: { tile.solid: true } }
     on:
       - when: { set: { part: tile, key: solid, value: false } }
         say:
-          - That turned it off again. Turn it back on, then test it.
+          - That turned it off again.
+        instruct: Turn it back on, then test it.
       - when: { set: { part: ground, key: solid, value: false } }
         say:
-          - Ha, now the Ground lets you fall too! Turn it back on.
+          - Ha, now the Ground lets you fall too!
+        instruct: Turn it back on.
     hints_after: 25
     hints:
       - Tap the Ground and look at its Inspector. Then tap the tile again.
@@ -51,8 +51,7 @@ beats:
   - id: test
     goal: Play and walk across the tile
     do: { cue: play }
-    say:
-      - Now press Play and walk across it.
+    instruct: Now press Play and walk across it.
     hints_after: 30
     hints:
       - Walk right from the start and stand on the tile.
@@ -71,8 +70,7 @@ beats:
         - text: Its Box Collider
           correct: true
           say:
-            - Yes! A collider is what the game checks when things touch.
-            - No collider, no floor.
+            - Yes! A collider is what the game checks when things touch. No collider, no floor.
         - text: Its colour
           say:
             - Not that. It looked the same the whole time. Try again!

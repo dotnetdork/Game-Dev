@@ -415,7 +415,7 @@ var Editor = (function () {
       Runner.stop(st, UI.muted()); UI.sound('stop'); Project.save();
       undos.length = Math.min(undos.length, playMark); redos = [];   // Stop just undid those
       if (selected) inspect(selected); tree();
-    } else { playMark = undos.length; Runner.play(st.parts, UI.muted()); UI.sound('play'); }
+    } else { playMark = undos.length; Runner.play(st.parts, UI.muted()); UI.sound('play'); played = true; linger(LINGER); }
     cue(false);
     paintPlay();
   }
@@ -427,18 +427,35 @@ var Editor = (function () {
   /* cue('play') or cue('stop') pulses that button (the quest's `cue`); anything else stops both. */
   function cue(which) { $('bPlay').classList.toggle('cue', which === 'play' || which === true); $('bStop').classList.toggle('cue', which === 'stop'); }
 
-  /* The key hint sits over the game while it runs and doesn't have the keyboard. */
-  var keysUntil = 0;
+  /* The game's keys, as keycaps in a strip at the bottom of the Game view (Jay, 2026-09-29: the keys
+     were a line in the chat, "I'd rather that not be in the chat"). It is up before the first Play,
+     and whenever the game is running without the keyboard; Play, or a click in the game, lets it
+     stay LINGER more so it is seen, then it fades. Clicks go through it to the game (CSS
+     pointer-events), so it never gets in the way. Help › Game keys brings it back for a moment.
+     Play focuses the game, which is why the old rule (shown only while the game lacks the
+     keyboard) hid it the instant it appeared. */
+  var keysUntil = 0, played = false, LINGER = 2600;
   function hint() {
-    var f = Runner.frame(), has = f && document.activeElement === f;
-    $('hint').hidden = !(Date.now() < keysUntil) && (!Runner.isPlaying() || Runner.isPaused() || has);
+    var f = Runner.frame(), has = f && document.activeElement === f, on = Runner.isPlaying() && !Runner.isPaused();
+    var show = Date.now() < keysUntil || (!played && !Runner.isPlaying()) || (on && !has);
+    $('hintLead').hidden = !(on && !has);
+    var el = $('hint');
+    if (show) { el.hidden = false; el.classList.remove('gone'); }
+    else if (!el.hidden) {   // fades, then hides (transitionend, init); at once when motion is off
+      if (window.matchMedia && matchMedia('(prefers-reduced-motion: reduce)').matches) el.hidden = true; else el.classList.add('gone');
+    }
   }
-  function showKeys() { keysUntil = Date.now() + 5000; hint(); setTimeout(hint, 5100); }
+  function linger(ms) { keysUntil = Date.now() + ms; hint(); setTimeout(hint, ms + 50); }
+  function showKeys() { linger(5000); }
 
-  /* ---------- the pointer: a callout just above a panel's tab, pointing down at it ---------- */
+  /* ---------- the pointer: a callout just above a panel's tab, pointing down at it ----------
+     Off for now (Jay, 2026-09-29: "hide them by default, we may have use for them later"). The
+     quests still say where to point (`point:`), so turning POINTERS back on brings every one back;
+     ?pointers=1 on the URL shows them for a look. */
+  var POINTERS = /[?&]pointers=1\b/.test(location.search);
   function point(text, target) {
     var el = $('pointer');
-    if (!text) { el.hidden = true; return; }
+    if (!text || !POINTERS) { el.hidden = true; return; }
     if (maxed && !maxed.contains(target)) unmaximize();
     $('pointerText').textContent = text; el.hidden = false;
     var ed = $('editor').getBoundingClientRect(), r = target.getBoundingClientRect();
@@ -1021,7 +1038,9 @@ var Editor = (function () {
     });
     $('editor').addEventListener('pointerdown', tabDown);
     $('gamebody').addEventListener('pointerdown', function () { Runner.focusGame(); });
-    window.addEventListener('blur', function () { if (openMenu) closeMenu(false); setTimeout(hint, 0); });   // a click into the game frame blurs the page
+    // a click into the game frame blurs the page; the keys stay a moment longer, then go
+    window.addEventListener('blur', function () { if (openMenu) closeMenu(false); setTimeout(function () { if (!$('hint').hidden && !$('hint').classList.contains('gone')) linger(LINGER); else hint(); }, 0); });
+    $('hint').addEventListener('transitionend', function () { if (this.classList.contains('gone')) { this.hidden = true; this.classList.remove('gone'); } });
     window.addEventListener('focus', function () { setTimeout(hint, 0); });
     window.addEventListener('resize', function () { if (L) { L.lw = clamp(L.lw, limits('left')); L.rw = clamp(L.rw, limits('right')); L.bh = clamp(L.bh, limits('bottom')); sizes(); } });
     document.addEventListener('focusin', function () { setTimeout(hint, 0); });

@@ -12,14 +12,13 @@ on:
   - when: { reverted: true }
     say:
       - It changed back! Changes made while playing are undone on Stop.
-      - Turn the rule on while the game is stopped.
+    instruct: Turn the rule on while the game is stopped.
 beats:
   - id: meet
     goal: Find the lava
     do: { reveal: [hierarchy], point: hierarchy, stop: true }
     say:
-      - Hi @name, I’m the lead designer!
-      - Lava that doesn’t hurt isn’t scary. Let’s give it a rule.
+      - Hi @name, I’m the lead designer! Lava that doesn’t hurt isn’t scary, so let’s give it a rule.
     skip_if: { state: { lava.hurts: true } }
     hints_after: 20
     hints:
@@ -35,7 +34,8 @@ beats:
     on:
       - when: { set: { part: lava, key: hurts, value: false } }
         say:
-          - That turned it off. Turn it back on, then test it.
+          - That turned it off.
+        instruct: Turn it back on, then test it.
     hints_after: 25
     hints:
       - Look through the Lava’s components in the Inspector.
@@ -46,20 +46,18 @@ beats:
   - id: feel-it
     goal: Play and step in the lava
     do: { cue: play }
-    say:
-      - Press Play and step in the lava. Carefully!
+    instruct: Press Play and step in the lava. Carefully!
     wait_for: { event: hurt }
     done_say:
       - Ouch! Back to the start.
 
   - id: beat-it
     goal: Get past the lava and grab every coin
-    say:
-      - Now get past it and grab every coin.
+    instruct: Now get past it and grab every coin.
     hints_after: 40
     hints:
       - Get a running start, then jump.
-      - Hold the arrow key while you jump, so you keep moving.
+      - "Hold [→] while you press [Space], so you keep moving."
     wait_for: { event: cleared }
     pass: true
     done_say:
@@ -75,8 +73,7 @@ beats:
         - text: There was a risk to beat
           correct: true
           say:
-            - Yes! Designers call it risk.
-            - Something to lose makes getting past it feel good.
+            - Yes! Designers call it risk. Something to lose makes getting past it feel good.
         - text: The lava looked cooler
           say:
             - It looked the same! Think about what changed when you touched it. Try again!

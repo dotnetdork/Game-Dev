@@ -12,9 +12,8 @@ beats:
     goal: Ask for something new in your game
     do: { stop: true, reveal: [project, console] }
     say:
-      - The board is clear. Now the fun part.
-      - Tell me anything you want in your game, and I’ll build it with you.
-      - Coins that spin? A jump pad? A second level?
+      - "The board is clear, so now the fun part. Coins that spin, a jump pad, a second level: anything you like."
+    instruct: Tell me what you want in your game, and I’ll build it with you.
     hints_after: 45
     hints:
       - Type an idea in the box below. Anything you’d like to see.
@@ -25,8 +24,7 @@ beats:
   - id: try-it
     goal: Play and try it out, then press Stop
     do: { cue: play }
-    say:
-      - Press Play and try it out!
+    instruct: Press Play and try it out!
     wait_for: { stop: true }
 
   - id: more

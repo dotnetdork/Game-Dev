@@ -70,6 +70,7 @@
   <symbol id="i-script" viewBox="0 0 24 24"><path d="M6 22a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h8a2.4 2.4 0 0 1 1.704.706l3.588 3.588A2.4 2.4 0 0 1 20 8v12a2 2 0 0 1-2 2zM14 2v5a1 1 0 0 0 1 1h5M10 12.5 8 15l2 2.5M14 12.5l2 2.5-2 2.5"/></symbol>
   <symbol id="i-doc" viewBox="0 0 24 24"><path d="M6 22a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h8a2.4 2.4 0 0 1 1.704.706l3.588 3.588A2.4 2.4 0 0 1 20 8v12a2 2 0 0 1-2 2zM14 2v5a1 1 0 0 0 1 1h5M10 9H8M16 13H8M16 17H8"/></symbol>
   <symbol id="i-pick" viewBox="0 0 24 24"><circle cx="12" cy="12" r="1"/><circle cx="12" cy="12" r="10"/></symbol>
+  <symbol id="i-next" viewBox="0 0 24 24"><path d="M15 10l5 5-5 5M4 4v7a4 4 0 0 0 4 4h12"/></symbol>
   <symbol id="i-search" viewBox="0 0 24 24"><path d="m21 21-4.34-4.34"/><circle cx="11" cy="11" r="8"/></symbol>
 </svg>
 
@@ -127,7 +128,12 @@
       <span class="paused-tag" id="pausedTag" hidden>Paused</span></div>
     <div class="gamebody" id="gamebody">
       <div class="stage" id="stage"></div>
-      <div class="focus-hint" id="hint" hidden>Click the game, then <span class="keys"><span class="key">←</span><span class="key">→</span></span> or <span class="keys"><span class="key">A</span><span class="key">D</span></span> to move · <span class="key">Space</span> or <span class="key">W</span> to jump</div>
+      <!-- the game's keys, drawn as keys: a strip that comes with Play and goes (editor.js, hint) -->
+      <div class="focus-hint" id="hint" hidden>
+        <span id="hintLead">Click the game, then</span>
+        <span class="kgroup"><span class="keys"><kbd class="key">←</kbd><kbd class="key">→</kbd></span>Move</span>
+        <span class="kgroup"><kbd class="key">Space</kbd>Jump</span>
+      </div>
       <p class="game-status" id="gameStatus" role="status"></p>
     </div>
     <div class="view scene" id="sceneView" role="tabpanel" aria-labelledby="vtScene" hidden>
@@ -163,6 +169,12 @@
         <svg class="i" aria-hidden="true"><use href="#i-flag"/></svg>
         <p><small>Your task</small><span id="taskText"></span></p>
         <button type="button" class="tbtn quiet" id="taskHint" hidden data-tip="Stuck? Get a clue"><svg class="i" aria-hidden="true"><use href="#i-bulb"/></svg><span>Hint</span></button>
+      </div>
+      <!-- the hint: a callout under the task line, not a line in the conversation (chat.js, hint) -->
+      <div class="hintbox" id="hintBox" role="status" hidden>
+        <svg class="i" aria-hidden="true"><use href="#i-bulb"/></svg>
+        <p><small id="hintN">Hint</small><span id="hintText"></span></p>
+        <button type="button" class="x" id="hintX" aria-label="Close the hint" data-tip="Close the hint"><svg class="i" aria-hidden="true"><use href="#i-x"/></svg></button>
       </div>
       <div class="log" id="log" role="log" aria-label="Conversation"></div>
       <!-- the question card: one multiple-choice question at a time, above the text box (chat.js) -->
