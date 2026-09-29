@@ -54,14 +54,23 @@ var Project = (function () {
     else migrate(state);
     return state;
   }
-  var saveTimer = null, onSave = [];
+  var saveTimer = null, onSave = [], frozen = false;
   function save() {
+    if (frozen) return;
     clearTimeout(saveTimer);
     saveTimer = setTimeout(function () {
       try { localStorage.setItem(KEY, JSON.stringify(state)); } catch (e) {}
       onSave.forEach(function (fn) { fn(state); });   // save.js sends the server its copy
     }, 300);
   }
+  /* Signing out (save.js, leave): write now rather than in 300ms, then never again on this page, so
+     nothing puts the game back in this browser after it has been cleared. */
+  function flush() {
+    if (frozen || !state) return;
+    clearTimeout(saveTimer);
+    try { localStorage.setItem(KEY, JSON.stringify(state)); } catch (e) {}
+  }
+  function freeze() { flush(); frozen = true; clearTimeout(saveTimer); }
   function reset() { state = fresh(); try { localStorage.removeItem(KEY); } catch (e) {} return state; }
 
   /* The starter code. It becomes the kid's own copy the moment it is edited (codeEdited); until then
@@ -77,6 +86,6 @@ var Project = (function () {
   function part(id) { return state.parts.filter(function (p) { return p.id === id; })[0] || null; }
   function clone(parts) { return JSON.parse(JSON.stringify(parts)); }
 
-  return { load: load, save: save, onSave: function (fn) { onSave.push(fn); }, KEY: KEY, reset: reset, code: code, part: part, clone: clone,
+  return { load: load, save: save, onSave: function (fn) { onSave.push(fn); }, KEY: KEY, reset: reset, flush: flush, freeze: freeze, code: code, part: part, clone: clone,
            get: function () { return state; }, internsParts: internsParts, migrate: migrate };
 })();

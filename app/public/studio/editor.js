@@ -665,7 +665,7 @@ var Editor = (function () {
     var doneDay = window.Quest && Quest.doneFirstDay && Quest.doneFirstDay();
     return [{ node: head }, { node: st }, today && { node: today }, { sep: true },
       doneDay && { label: 'Clock out', icon: 'i-clapper', tip: 'End today’s shift. The Studio Director sums it up', run: function () { Quest.clockOut(); } },
-      { label: 'Sign out', icon: 'i-exit', tip: 'Sign out of the studio. Your game stays saved', run: function () { saveNow(); setTimeout(function () { location.href = '/auth/logout'; }, 300); } }
+      { label: 'Sign out', icon: 'i-exit', tip: 'Sign out of the studio. Your game stays saved in your account', run: function () { status('Saving, then signing out…'); Save.leave(function () { location.href = '/auth/logout'; }); } }
     ].filter(Boolean);
   }
   function LAYOUT_ITEMS() {

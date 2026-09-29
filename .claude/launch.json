@@ -2,25 +2,6 @@
   "version": "0.0.1",
   "configurations": [
     {
-      "name": "wireframes",
-      "runtimeExecutable": "node",
-      "runtimeArgs": [
-        "-e",
-        "const h=require('http'),f=require('fs'),p=require('path'),r=p.resolve('docs/rework/wireframes');h.createServer((q,s)=>{const u=p.join(r,decodeURIComponent(q.url.split('?')[0]));if(!u.startsWith(r)||!f.existsSync(u)||f.statSync(u).isDirectory()){s.writeHead(404);return s.end(f.readdirSync(r).filter(n=>n.endsWith('.html')).join('\\n'))}s.writeHead(200,{'content-type':u.endsWith('.html')?'text/html; charset=utf-8':'text/plain'});f.createReadStream(u).pipe(s)}).listen(3993)"
-      ],
-      "port": 3993
-    },
-    {
-      "name": "app",
-      "runtimeExecutable": "npm",
-      "runtimeArgs": [
-        "start",
-        "--prefix",
-        "app"
-      ],
-      "port": 3000
-    },
-    {
       "name": "app-nologin",
       "runtimeExecutable": "npm",
       "runtimeArgs": [

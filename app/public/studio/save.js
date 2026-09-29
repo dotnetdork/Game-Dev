@@ -13,7 +13,12 @@
      write the old kid's game into the new kid's account.
    - "Always start fresh" (the dev panel) skips the server copy, so a test starts clean.
    - Saving is debounced (every change would be a request per slider step) and also sent when the
-     page is hidden, which is the last moment a Chromebook reliably gives us. */
+     page is hidden, which is the last moment a Chromebook reliably gives us.
+   - SIGNING OUT CLEARS THIS BROWSER'S COPY (Jay, 2026-09-29: "shouldn't we make it so that it's
+     saved in the account?"). It was kept until the next kid signed in, never shown to them but
+     sitting on a shared Chromebook. leave() sends the last save and clears the copy only once the
+     server has it; if the server can't be reached, the copy stays, because then it's the only one,
+     and the owner check above still keeps it from the next kid. */
 var Save = (function () {
   var OWNER = 'studio.owner', me = null, timer = null, enabled = false, lastSent = '';
 
@@ -61,5 +66,24 @@ var Save = (function () {
     document.addEventListener('visibilitychange', function () { if (document.visibilityState === 'hidden') { clearTimeout(timer); send(true); } });
   }
 
-  return { adopt: adopt, start: start, now: send };
+  var KEPT = [Project.KEY, 'studio.interview', 'studio.savedAt', OWNER];
+  function leave(then) {
+    var gone = false, go = function (saved) {
+      if (gone) return; gone = true;
+      if (saved) KEPT.forEach(function (k) { write(k, null); });
+      then();
+    };
+    clearTimeout(timer);
+    Project.freeze();                      // the game as it is now, and no more writes after it
+    if (!enabled || !me) return go(false);  // no server copy: this browser's is the only one
+    var body = JSON.stringify({ who: me, data: blob() });
+    enabled = false;                       // nothing sends again from this page (the hidden-page save)
+    fetch('/api/state', { method: 'PUT', credentials: 'same-origin', keepalive: true, headers: { 'Content-Type': 'application/json' }, body: body })
+      .then(function (r) { return r.ok ? r.json() : null; })
+      .then(function (j) { go(!!(j && j.at)); })
+      .catch(function () { go(false); });
+    setTimeout(function () { go(false); }, 5000);   // a slow network doesn't hold the kid here
+  }
+
+  return { adopt: adopt, start: start, now: send, leave: leave };
 })();
