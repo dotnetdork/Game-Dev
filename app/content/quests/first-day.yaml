@@ -63,7 +63,7 @@ beats:
         flag: grew
         say:
           - Bigger! Now press Stop.
-        cue: play
+        cue: stop
       - when: { set: { part: coins, key: size }, playing: false }
         say:
           - That one stuck, because the game wasn’t running. Press Play and try again.

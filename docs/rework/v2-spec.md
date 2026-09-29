@@ -4,7 +4,7 @@
 
 It sits on top of `prototype-plan.md` (what to build, and in what order). This file is *how V2
 works*: the architecture, the course flow, and the interaction rules. The spec comes first; the
-decision log it was built from (Jay's answers, rounds 1–8) is below it, numbered so the spec can
+decision log it was built from (Jay's answers, rounds 1–9) is below it, numbered so the spec can
 cite it as (D12).
 
 ---
@@ -453,3 +453,25 @@ to it, numbered so the spec can cite them.
     amends D15.
 29. **R4: inline Lucide icons, at stroke 1.75.**
 30. **The Builder is needed for Sunday** (review §9, open question 2; Jay: "Needed for Sunday").
+
+### Round 9: the chat and the transport (2026-09-29)
+
+Jay's playthrough screenshot showed the Mentor's opening as four bubbles and a hint arriving as if
+the Mentor had said it. He picked the options below from a list of ideas.
+
+31. **One speaker, one message.** Lines said together land as one bubble after one typing beat, and
+    each is written as one or two sentences that fit together. Lines caused by something the kid did
+    are a new message. This replaces "one idea per bubble" (review §4, rule 4). The AI is held to
+    the same length in `ai/agents/mentor.md`.
+32. **Keys are drawn as keys.** Quest text and the AI write a keyboard key in square brackets
+    (`[Space]`, `[←]`, `[A]`, `[Ctrl+Z]`), and the studio draws it as a keycap. Only real key names
+    count; any other bracketed text stays text.
+33. **Hints are not chat.** The Hint button opens the hint in a callout under the task line; pressing
+    it again shows the next hint there. The callout closes on its ×, Esc, a click elsewhere, typing
+    in the chat, or the task changing. When the kid has been stuck for `hints_after` seconds, the Hint
+    button pulses once instead of a hint being posted for them. The Console still logs each hint.
+34. **The chat holds conversation.** Speech is a bubble. What happened (Play and Stop, tickets,
+    stars, builds) is a row with an icon and a time and no bubble, and most game events stay in the
+    Console only.
+35. **Play, Pause and Stop are three buttons**, as in Unity and Unreal. Play stays lit while the game
+    runs and carries on after a pause; Step still waits for the story.

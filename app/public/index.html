@@ -87,10 +87,11 @@
       <button type="button" class="tbtn quiet" id="bRedo" disabled data-tip="Redo: do it again (Ctrl+Y)"><svg class="i" aria-hidden="true"><use href="#i-redo"/></svg><span>Redo</span></button>
     </div>
     <div class="transport reveal closed" id="transport" role="group" aria-label="Play controls">
-      <button type="button" class="tbtn" id="bPlay" aria-label="Play the game" data-tip="Play: run your game (Ctrl+P)"><svg class="i" aria-hidden="true"><use href="#i-play"/></svg><span>Play</span></button>
+      <button type="button" class="tbtn" id="bPlay" aria-pressed="false" data-tip="Play: run your game (Ctrl+P)"><svg class="i" aria-hidden="true"><use href="#i-play"/></svg><span>Play</span></button>
+      <button type="button" class="tbtn" id="bPause" disabled aria-pressed="false" data-tip="Pause: freeze the game where it is (Ctrl+Shift+P)"><svg class="i" aria-hidden="true"><use href="#i-pause"/></svg><span>Pause</span></button>
+      <button type="button" class="tbtn" id="bStop" disabled data-tip="Stop: end the game. Changes made while playing are undone (Ctrl+P)"><svg class="i" aria-hidden="true"><use href="#i-stop"/></svg><span>Stop</span></button>
       <span class="reveal closed stepper" id="stepTools">
-        <button type="button" class="tbtn" id="bPause" disabled aria-pressed="false" data-tip="Pause: freeze the game where it is"><svg class="i" aria-hidden="true"><use href="#i-pause"/></svg><span>Pause</span></button>
-        <button type="button" class="tbtn" id="bStep" disabled data-tip="Step: while paused, move the game one frame"><svg class="i" aria-hidden="true"><use href="#i-step"/></svg><span>Step</span></button>
+        <button type="button" class="tbtn" id="bStep" disabled data-tip="Step: while paused, move the game one frame (Ctrl+Alt+P)"><svg class="i" aria-hidden="true"><use href="#i-step"/></svg><span>Step</span></button>
       </span>
     </div>
     <div class="tool-right">

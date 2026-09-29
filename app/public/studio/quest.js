@@ -396,7 +396,7 @@ var Quest = (function () {
     if (d.play && !Runner.isPlaying()) Editor.togglePlay();
     if (d.close_inspector) Editor.closeInspector();
     if (d.allow) { d.allow.forEach(function (c) { if (S.taught.indexOf(c) < 0) S.taught.push(c); }); allow(frame()); }
-    if (d.cue) Editor.cue(true);
+    if (d.cue) Editor.cue(d.cue);
     if (d.point) { var el = document.querySelector(d.point === 'game' ? '#vtGame' : '#' + (PANEL[d.point] || '') + ' .tab') || $(PANEL[d.point]); if (el) setTimeout(function () { if (!Editor.selected() && !Runner.isPlaying()) Editor.point(pointText(d.point), el); }, 500); }
   }
   function pointText(p) {
@@ -659,7 +659,7 @@ var Quest = (function () {
       lastFired[sig] = Date.now();
       f.fired[key] = true;
       if (h.flag) f.flags[h.flag] = true;
-      if (h.cue) Editor.cue(true);
+      if (h.cue) Editor.cue(h.cue);
       say(h.say);
     });
     if (b && b.wait_for && !f.completing && matches(b.wait_for, ev, f)) complete();

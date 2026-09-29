@@ -12,7 +12,10 @@
    - Which components the Inspector shows is up to the story (allow()): on the first day each
      department's job has exactly one knob to find, so a kid isn't handed six.
    - Play works as Unity's does, including the undo on Stop (runner.js says why), and so do Pause
-     and Step.
+     and Step. Play, Pause and Stop are three buttons, as in Unity and Unreal (Jay, 2026-09-29): one
+     Play button that turned into Stop left a kid who wanted to stop hunting for a button that had
+     changed its name. Play stays lit while the game runs, and pressed while paused it carries on.
+     Step is the one that waits for the story (stepTools).
    - Undo and Redo cover what the kid changed in the Inspector. What was changed in Play mode is
      undone by Stop anyway, so Stop drops those steps rather than offering to undo them twice.
    - DOCKS. Every panel but the Game view can be dragged by its tab into the left, right or bottom
@@ -393,15 +396,13 @@ var Editor = (function () {
     $('bRedo').setAttribute('data-tip', canRedo() ? 'Redo: ' + what(r) + ' again (Ctrl+Y)' : 'Redo: nothing to do again');
   }
 
-  /* ---------- Play, Pause, Step ---------- */
+  /* ---------- Play, Pause, Stop, Step ---------- */
   function paintPlay() {
     var on = Runner.isPlaying(), paused = Runner.isPaused(), b = $('bPlay');
-    b.classList.toggle('on', on);
-    b.querySelector('use').setAttribute('href', on ? '#i-stop' : '#i-play');
-    b.querySelector('span').textContent = on ? 'Stop' : 'Play';
-    b.setAttribute('aria-label', on ? 'Stop the game' : 'Play the game');
-    b.setAttribute('data-tip', on ? 'Stop: end the game. Changes made while playing are undone (Ctrl+P)' : 'Play: run your game (Ctrl+P)');
+    b.classList.toggle('on', on && !paused); b.setAttribute('aria-pressed', String(on));
+    b.setAttribute('data-tip', paused ? 'Play: carry on from where it paused' : on ? 'Playing. Stop ends the game' : 'Play: run your game (Ctrl+P)');
     $('bPause').disabled = !on; $('bPause').setAttribute('aria-pressed', String(paused)); $('bPause').classList.toggle('on', paused);
+    $('bStop').disabled = !on;
     $('bStep').disabled = !paused;
     $('pausedTag').hidden = !paused;
     $('editor').classList.toggle('playmode', on);
@@ -421,9 +422,13 @@ var Editor = (function () {
     cue(false);
     paintPlay();
   }
+  /* The buttons: Play starts (or carries on after Pause), Stop ends. Ctrl+P is Unity's toggle. */
+  function play() { if (!Runner.isPlaying()) togglePlay(); else if (Runner.isPaused()) togglePause(); else Runner.focusGame(); }
+  function stop() { if (Runner.isPlaying()) togglePlay(); }
   function togglePause() { if (!Runner.isPlaying()) return; Runner.pause(!Runner.isPaused()); paintPlay(); }
   function stepFrame() { Runner.step(); status('One frame on. Press Step again, or Pause to carry on'); }
-  function cue(on) { $('bPlay').classList.toggle('cue', !!on); }
+  /* cue('play') or cue('stop') pulses that button (the quest's `cue`); anything else stops both. */
+  function cue(which) { $('bPlay').classList.toggle('cue', which === 'play' || which === true); $('bStop').classList.toggle('cue', which === 'stop'); }
 
   /* The key hint sits over the game while it runs and doesn't have the keyboard. */
   var keysUntil = 0;
@@ -590,8 +595,9 @@ var Editor = (function () {
         isOpen('editTools') && { label: 'Undo', icon: 'i-undo', keys: 'Ctrl+Z', disabled: !canUndo(), run: undo },
         isOpen('editTools') && { label: 'Redo', icon: 'i-redo', keys: 'Ctrl+Y', disabled: !canRedo(), run: redo },
         isOpen('transport') && { sep: true },
-        isOpen('transport') && { label: playing ? 'Stop' : 'Play', icon: playing ? 'i-stop' : 'i-play', keys: 'Ctrl+P', run: togglePlay },
-        isOpen('stepTools') && { label: Runner.isPaused() ? 'Carry on' : 'Pause', icon: 'i-pause', keys: 'Ctrl+Shift+P', disabled: !playing, run: togglePause },
+        isOpen('transport') && { label: 'Play', icon: 'i-play', keys: 'Ctrl+P', disabled: playing && !Runner.isPaused(), run: play },
+        isOpen('transport') && { label: Runner.isPaused() ? 'Carry on' : 'Pause', icon: 'i-pause', keys: 'Ctrl+Shift+P', disabled: !playing, run: togglePause },
+        isOpen('transport') && { label: 'Stop', icon: 'i-stop', keys: 'Ctrl+P', disabled: !playing, run: stop },
         isOpen('stepTools') && { label: 'Step', icon: 'i-step', keys: 'Ctrl+Alt+P', disabled: !Runner.isPaused(), run: stepFrame }
       ] },
       { id: 'gameobject', label: 'GameObject', items: hier ? [
@@ -943,7 +949,7 @@ var Editor = (function () {
     if (k === 'p' && isOpen('transport')) {
       e.preventDefault();
       if (e.altKey) { if (isOpen('stepTools')) stepFrame(); }
-      else if (e.shiftKey) { if (isOpen('stepTools')) togglePause(); }
+      else if (e.shiftKey) togglePause();
       else togglePlay();
     }
   }
@@ -951,7 +957,8 @@ var Editor = (function () {
   function init() {
     loadLayout(); applyLayout();
     paintBar();
-    $('bPlay').addEventListener('click', togglePlay);
+    $('bPlay').addEventListener('click', play);
+    $('bStop').addEventListener('click', stop);
     $('bPause').addEventListener('click', togglePause);
     $('bStep').addEventListener('click', stepFrame);
     $('bUndo').addEventListener('click', undo);

@@ -205,7 +205,12 @@ async function launch() {
     let st = await state();
     check('playing, the studio notices what she ran into but files nothing: she has to say it', !!st.seen.floor && !!st.seen['silent-coins'] && !Object.keys(st.tickets).length, JSON.stringify(st.seen));
     check('and the chat doesn\'t narrate it (it is in the Console)', !/fell|no sound/i.test(await log()) && await p.$eval('#consoleList', function (e) { return e.children.length; }) > 0);
+    await p.click('#bPause');
+    check('Play, Pause and Stop are three buttons: Pause freezes the game, Play stays down', await p.evaluate(function () { return Runner.isPaused() && Runner.isPlaying(); }) && await p.getAttribute('#bPlay', 'aria-pressed') === 'true' && await p.isEnabled('#bStop'));
     await p.click('#bPlay');
+    check('and Play carries on after a pause', await p.evaluate(function () { return !Runner.isPaused() && Runner.isPlaying(); }));
+    await p.click('#bStop');
+    check('Stop stops', await p.evaluate(function () { return !Runner.isPlaying(); }) && await p.isDisabled('#bStop'));
     await waitLog('What did you find?');
     where = 'the first day: the report';
     await p.waitForSelector('#qcard.typed .qopt', { timeout: 6000 });
@@ -248,7 +253,7 @@ async function launch() {
     where = 'the first day: play mode';
     await row('Coins');
     await p.$eval('#r-size', function (el) { el.value = 2.2; el.dispatchEvent(new Event('input', { bubbles: true })); });
-    await waitLog('Bigger! Now press Stop.'); await p.click('#bPlay'); await waitLog('They shrank back');
+    await waitLog('Bigger! Now press Stop.'); await p.click('#bStop'); await waitLog('They shrank back');
     check('a change made while playing is undone on Stop', await p.evaluate(function () { return Project.part('coins').size; }) === 1);
     where = 'the first day: her hero and her game';
     await waitLog('What’s yours?', 9000);
