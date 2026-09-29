@@ -134,9 +134,9 @@ var Quest = (function () {
      wasn't the kid (the art director, the game itself), for the row in the chat. */
   function file(id, words, by) {
     var t = ticketOf(id); if (!t || S.tickets[id]) return false;
-    S.tickets[id] = { status: 'open', words: words ? String(words).slice(0, 80) : null };
+    S.tickets[id] = { status: 'open', words: words ? String(words).slice(0, 80) : null, by: by || null, n: Object.keys(S.tickets).length + 1 };
     save(); paintTickets();
-    Chat.event((by ? by + ' filed a ticket: ' : 'Ticket filed: ') + (words ? '“' + S.tickets[id].words + '”' : t.title), 'i-ticket', { kind: 'ticket' });
+    Chat.event((by ? by + ' filed ' : 'You filed ') + 'ticket #' + S.tickets[id].n + ': ' + t.title, 'i-ticket', { kind: 'ticket' });
     UI.feel($('dTickets'), 'good');
     track('ticket-filed', { ticket: id, words: words || null, by: by || 'kid' });
     handle({ type: 'filed', name: id });
@@ -151,48 +151,128 @@ var Quest = (function () {
       var mine = S.tickets[t.id];
       if (mine && mine.status === 'open' && t.fixed_when && matches(t.fixed_when, null, { flags: {} })) {
         mine.status = 'done'; mine.early = true; save(); paintTickets();
-        Chat.event('Ticket fixed: ' + titleOf(t), 'i-check', { kind: 'good' });
+        Chat.event('Ticket #' + number(t.id) + ' fixed: ' + t.title, 'i-check', { kind: 'good' });
       }
     });
   }
-  function titleOf(t) { var mine = S.tickets[t.id]; return mine && mine.words ? '“' + mine.words + '”' : t.title; }
-  /* The Tickets dock. An open ticket is a button: tapping it picks it, when picking is what's
-     happening, or starts it when nothing else is running. */
+  /* A ticket's name for the AI and the Director: the board's title, with the kid's words when they
+     reported it, so the AI can tell "the floor thing" means this one. */
+  function titleOf(t) { var mine = S.tickets[t.id]; return t.title + (mine && mine.words ? ' (they reported it as “' + mine.words + '”)' : ''); }
+  function number(id) { var mine = S.tickets[id]; return (mine && mine.n) || Object.keys(S.tickets).indexOf(id) + 1; }
+  var STATUS = { open: 'Open', doing: 'In progress', done: 'Fixed' };
+  function lead(t) { var q = COURSE.quests[t.quest]; return VOICE[(q && q.character) || 'mentor'] || 'm'; }
+  function el(tag, cls, text) { var e = document.createElement(tag); if (cls) e.className = cls; if (text !== undefined) e.textContent = text; return e; }
+  function icon(id) { var ns = 'http://www.w3.org/2000/svg', svg = document.createElementNS(ns, 'svg'), use = document.createElementNS(ns, 'use'); svg.setAttribute('class', 'i'); svg.setAttribute('aria-hidden', 'true'); use.setAttribute('href', '#' + id); svg.appendChild(use); return svg; }
+  function pill(status) { var p = el('span', 'pill ' + status, STATUS[status]); if (status === 'done') p.insertBefore(icon('i-check'), p.firstChild); return p; }
+
+  /* The Tickets dock: a board, the way a studio's bug tracker looks (Jay, 2026-09-29: "more
+     professional, clear title, clicking it should provide further details on the problem, or help if
+     they get stuck"). Each row is a number, a department, a status and the ticket's title; tapping one
+     opens its page (below) in the same dock, with a way back. Picking and starting a ticket happen on
+     its page, so a tap always does the same thing. */
+  var openTicket = null;
   function paintTickets() {
-    var ul = $('ticketList'); if (!ul) return;
+    var ul = $('ticketList'), page = $('ticketPage'); if (!ul) return;
+    var ids = Object.keys(S.tickets);
+    var open = ids.filter(function (id) { return S.tickets[id].status !== 'done'; }).length;
+    $('ticketCount').textContent = open ? String(open) : '';
+    if (openTicket && !S.tickets[openTicket]) openTicket = null;
+    ul.hidden = !!openTicket; if (page) page.hidden = !openTicket;
+    if (openTicket) return paintTicket(ticketOf(openTicket));
     UI.keepFocus(ul, function () {
       ul.innerHTML = '';
-      var ids = Object.keys(S.tickets);
-      var open = ids.filter(function (id) { return S.tickets[id].status !== 'done'; }).length;
-      $('ticketCount').textContent = open ? String(open) : '';
       if (!ids.length) { ul.innerHTML = '<li class="empty">Nothing yet. Play the game and tell the Mentor what’s broken.</li>'; return; }
-      ids.forEach(function (id) {
+      ids.slice().sort(function (a, b) { return number(a) - number(b); }).forEach(function (id) {
         var t = ticketOf(id), mine = S.tickets[id]; if (!t) return;
-        var li = document.createElement('li'), b = document.createElement('button');
-        b.type = 'button'; b.className = 'tk ' + mine.status; b.setAttribute('data-key', 'ticket:' + id);
-        b.setAttribute('data-dept', t.department);
-        b.innerHTML = '<span class="st" aria-hidden="true">' + (mine.status === 'done' ? '<svg class="i"><use href="#i-check"/></svg>' : '') + '</span>'
-          + '<span class="tt"></span><small></small>';
-        b.querySelector('.tt').textContent = titleOf(t);
-        var sub = mine.status === 'done' ? 'Fixed · ' + DEPT[t.department] : mine.status === 'doing' ? 'Working on it · ' + DEPT[t.department] : DEPT[t.department];
-        b.querySelector('small').textContent = sub;
-        b.setAttribute('aria-label', titleOf(t) + ', ' + sub);
-        if (mine.status === 'done') b.setAttribute('aria-disabled', 'true');
-        b.addEventListener('click', function () { tapTicket(t); });
+        var li = el('li'), b = el('button', 'tk ' + mine.status);
+        b.type = 'button'; b.setAttribute('data-key', 'ticket:' + id); b.setAttribute('data-dept', t.department);
+        var top = el('span', 'tmeta');
+        top.appendChild(el('span', 'tid', '#' + number(id)));
+        top.appendChild(el('span', 'tdept', DEPT[t.department]));
+        top.appendChild(pill(mine.status));
+        b.appendChild(top);
+        b.appendChild(el('span', 'tt', t.title));
+        b.setAttribute('aria-label', 'Ticket ' + number(id) + ': ' + t.title + '. ' + DEPT[t.department] + ', ' + STATUS[mine.status] + '. Open its page.');
+        b.addEventListener('click', function () { showTicket(t.id); });
         li.appendChild(b); ul.appendChild(li);
       });
     });
   }
-  function tapTicket(t) {
-    var mine = S.tickets[t.id]; if (!mine) return;
-    if (mine.status === 'done') return status('That one’s fixed already.');
-    if (mine.status === 'doing') return status('You’re working on that one now.');
-    var q = Chat.question();
-    if (q && q.picker === 'tickets') {
-      var n = q.options.map(function (o) { return o.ticket; }).indexOf(t.id);
-      if (n >= 0) return Chat.pick(n);
+  function showTicket(id) {
+    openTicket = id; paintTickets(); $('ticketPage').parentNode.scrollTop = 0;
+    var back = $('ticketPage').querySelector('.back'); if (back) back.focus({ preventScroll: true });
+  }
+  function closeTicket() {
+    var id = openTicket; openTicket = null; paintTickets();
+    var row = $('ticketList').querySelector('[data-key="ticket:' + id + '"]'); if (row) row.focus({ preventScroll: true });
+  }
+  /* A ticket's page: what's wrong, who reported it, how you'll know it's fixed, and what to do now:
+     "Fix this one" when it's open and the kid may start it, the task and a Hint while they work on
+     it, and what they learned once it's fixed. */
+  function paintTicket(t) {
+    var page = $('ticketPage'), mine = S.tickets[t.id], who = lead(t), W = Chat.WHO[who], asker = NAME[BY_VOICE[who]];
+    var focused = page.contains(document.activeElement) ? document.activeElement.getAttribute('data-key') : null;
+    page.innerHTML = ''; page.setAttribute('data-dept', t.department);
+    var back = el('button', 'tbtn quiet back'); back.type = 'button'; back.setAttribute('data-key', 'back');
+    back.appendChild(icon('i-undo')); back.appendChild(el('span', '', 'All tickets'));
+    back.addEventListener('click', closeTicket);
+    page.appendChild(back);
+    var top = el('p', 'tmeta');
+    top.appendChild(el('span', 'tid', '#' + number(t.id)));
+    top.appendChild(el('span', 'tdept', DEPT[t.department]));
+    top.appendChild(pill(mine.status));
+    page.appendChild(top);
+    page.appendChild(el('h3', '', t.title));
+    var owner = el('p', 'towner'); owner.setAttribute('data-who', who);
+    var face = el('span', 'face'); face.appendChild(icon(W[2])); owner.appendChild(face);
+    owner.appendChild(el('span', '', W[0] + ' · ' + (mine.status === 'done' ? 'fixed it with you' : 'will help you fix it')));
+    page.appendChild(owner);
+    function part(label, text, cls) { var sec = el('section', 'tsec' + (cls ? ' ' + cls : '')); sec.appendChild(el('h4', '', label)); sec.appendChild(el('p', '', text)); page.appendChild(sec); }
+    part('What’s wrong', t.detail);
+    if (mine.words) part('You reported', '“' + mine.words + '”', 'quote');
+    else part('Reported by', mine.by === 'The game' ? 'The game, when you ran into it' : (mine.by || 'The studio'));
+    part('Fixed when', t.done);
+    var act = el('div', 'tact');
+    if (mine.status === 'open') {
+      var why = whyNot(t), go = el('button', 'tbtn on'); go.type = 'button'; go.setAttribute('data-key', 'fix');
+      go.appendChild(icon('i-hammer')); go.appendChild(el('span', '', 'Fix this one'));
+      if (why) { go.disabled = true; act.appendChild(go); act.appendChild(el('p', 'tnote', why)); }
+      else { go.addEventListener('click', function () { fixTicket(t); }); act.appendChild(go); }
+    } else if (mine.status === 'doing') {
+      var f = frame(), here = f && f.quest === t.quest, b = here && beat(f);
+      if (b && b.goal) { var now = el('p', 'tnow'); now.appendChild(el('small', '', 'Your task now')); now.appendChild(document.createTextNode(fill(b.goal))); act.appendChild(now); }
+      if (b && b.hints) {
+        var h = el('button', 'tbtn'); h.type = 'button'; h.setAttribute('data-key', 'hint');
+        h.appendChild(icon('i-bulb')); h.appendChild(el('span', '', 'Stuck? Get a hint'));
+        h.addEventListener('click', function () { hintNow('ticket'); });
+        act.appendChild(h);
+        act.appendChild(el('p', 'tnote', 'The hint shows up in the chat. You can ask ' + asker + ' anything there too.'));
+      } else act.appendChild(el('p', 'tnote', 'Stuck? Ask ' + asker + ' in the chat.'));
+    } else {
+      var q = COURSE.quests[t.quest], c = q && q.concept && S.cards.indexOf(q.concept) >= 0 ? cardOf(q.concept) : null;
+      var fixed = el('p', 'tnote good'); fixed.appendChild(icon('i-check'));
+      fixed.appendChild(document.createTextNode(c ? 'Fixed. You earned the ' + c.name + ' card (Project › Cards).' : 'Fixed. Nice work.'));
+      act.appendChild(fixed);
     }
-    if (busyWithQuest()) return status('Finish the ticket you’re on first.');
+    page.appendChild(act);
+    if (focused) { var again = page.querySelector('[data-key="' + focused + '"]'); if (again) again.focus({ preventScroll: true }); }
+  }
+  /* Why "Fix this one" can't start it now, in words; null when it can. */
+  function whyNot(t) {
+    if (pickable(t) >= 0) return null;
+    var on = S.stack.map(function (f) { return quest(f).ticket; }).filter(Boolean)[0];
+    if (on) return 'Finish ticket #' + number(on) + ' first.';
+    if (busyWithQuest()) return 'You’ll pick one to fix when the Mentor asks.';
+    return null;
+  }
+  function pickable(t) {
+    var q = Chat.question();
+    return q && q.picker === 'tickets' ? q.options.map(function (o) { return o.ticket; }).indexOf(t.id) : -1;
+  }
+  function fixTicket(t) {
+    var n = pickable(t);
+    if (n >= 0) return Chat.pick(n);
+    if (whyNot(t)) return status(whyNot(t));
     startTicket(t);
   }
   function busyWithQuest() { var f = frame(); return !!(f && (quest(f).ticket || S.done.indexOf('first-day') < 0)); }
@@ -270,9 +350,11 @@ var Quest = (function () {
      it has hints. A beat with no goal only says its lines and moves on, so the last task stays up,
      except at a quest's start, where it would belong to the quest before. */
   function setTask(f, b) {
-    if (b.goal) Chat.task(b.goal, { hint: b.hints ? function () { Chat.hide(); giveHint('button'); Chat.reask(); } : null });
+    if (b.goal) Chat.task(b.goal, { hint: b.hints ? function () { hintNow('button'); } : null });
     else if (f.beat === 0) Chat.task(null);
+    if (openTicket) paintTickets();   // its page shows the task too
   }
+  function hintNow(why) { Chat.hide(); giveHint(why); Chat.reask(); }
   /* No quest running: the kid's own game. Whoever they talk to answers; the Builder builds. */
   function free() {
     Chat.speaker('m');
@@ -380,7 +462,7 @@ var Quest = (function () {
     var open = COURSE.tickets.filter(function (t) { return S.tickets[t.id] && S.tickets[t.id].status === 'open'; });
     if (!open.length) { var f = frame(); f.completing = false; return next(beat(f).next); }
     Chat.ask(fill(a.text), open.map(function (t) {
-      return { text: titleOf(t), sub: DEPT[t.department], ticket: t.id, run: function () { startTicket(t); } };
+      return { text: t.title, sub: '#' + number(t.id) + ' · ' + DEPT[t.department], ticket: t.id, run: function () { startTicket(t); } };
     }), { who: who, picker: 'tickets' });
   }
   function startTicket(t) {
@@ -603,7 +685,7 @@ var Quest = (function () {
   function visible(p, key) {
     var shown = Editor.allowed();
     return Schema.components(p.kind).length === 0 || Schema.components(p.kind).some(function (c) {
-      return (!c.gate || shown[c.gate]) && (c.toggle === key || (c.fields || []).some(function (x) { return x.key === key; }));
+      return (!c.gate || shown[c.gate]) && (c.toggle === key || (c.fields || []).some(function (x) { return x.key === key && !x.readonly && (!x.gate || shown[x.gate]); }));
     });
   }
   function allowed(a) {
@@ -673,7 +755,8 @@ var Quest = (function () {
     if (last && last[1].replace(/ ×\d+$/, '') === w) { last[2]++; last[1] = w + ' ×' + last[2]; last[0] = Date.now(); return; }
     recent.push([Date.now(), w, 1]);
     if (recent.length > 8) recent.shift();
-  }  function describe(c) {
+  }
+  function describe(c) {
     if (c.event) return { fell: 'fall through a floor', coin: 'grab a coin', lava: 'touch the lava', hurt: 'get hurt by the lava', crossed: 'stand on the fixed floor tile in Play mode', cleared: 'grab every coin' }[c.event] || c.event;
     if (c.select) return 'tap ' + c.select + ' in the Hierarchy';
     if (c.state) return 'set ' + Object.keys(c.state).map(function (k) { return k + ' to ' + JSON.stringify(c.state[k]); }).join(' and ');

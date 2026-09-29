@@ -172,10 +172,11 @@ function checkTickets(t, file) {
     if (k.words !== undefined) { try { new RegExp(k.words, 'i'); } catch (e) { problem(list, w, 'words is not a valid pattern (' + e.message + ')'); } }
     if (k.fixed_when) checkCond(list, w + ' fixed_when', k.fixed_when);
     /* `says` is the finding in a kid's words, offered on the "What did you find?" card once the kid
-       has run into it (never before: that would be narrating it). `detail` is the ticket's
-       description, shown when the kid opens it. */
+       has run into it (never before: that would be narrating it). `detail` and `done` are the
+       ticket's page: what is wrong, and how the kid will know it's fixed. */
     if (!k.says) problem(list, w, 'needs says: the finding as a kid would put it');
     if (!k.detail) problem(list, w, 'needs detail: what is wrong, for the ticket\'s page');
+    if (!k.done) problem(list, w, 'needs done: how the kid will know it is fixed, for the ticket\'s page');
   });
   return list;
 }

@@ -12,8 +12,15 @@
    COMPONENTS ARE UNITY'S, with Unity's names (Jed, 2026-09-28: the Unity words and habits stay), and
    the plain words go in the tooltip. A component with `toggle` has Unity's on/off checkbox in its
    header, and that IS the setting (a Box Collider that's off lets things fall through). `gate` is
-   the name a quest uses to let a component show (quest `allow:`): on the first day each department's
-   job has exactly one component to find; after it, every gate is open (quest.js).
+   the name a quest uses to open a component (quest `allow:`), or one field of it: on the first day
+   each department's job has exactly one thing to find; after it, every gate is open (quest.js).
+
+   EVERY PART HAS THE SAME SHAPE (Jay, 2026-09-29: flipping between parts, the Inspector "looks wildly
+   different from one area to the next"). So every game object starts with a Transform, Position X
+   and Y, the way Unity's always does; components run Transform, Sprite Renderer, physics, sound,
+   scripts; and a component the story hasn't opened is drawn as a locked header, not left out.
+   A `readonly` field is shown and never set: the level's code places the floor, so its position is
+   read from the part (`get`) and is not in rules(), where nothing (the AI included) can change it.
 
    THE ART IS CODE-DRAWN (Jay, 2026-09-28: lay off the Kenney sprites). Each sprite here is drawn by
    the game's own code (starter/game.js, SPRITES), so the kid's code owns its look and the Builder can
@@ -35,6 +42,13 @@ var Schema = (function () {
   };
 
   function num(key, label, tip, min, max, step, unit) { return { key: key, type: 'number', label: label, tip: tip, min: min, max: max, step: step, unit: unit || '' }; }
+  function gated(f, gate) { f.gate = gate; return f; }
+  function ro(key, label, get) { return { key: key, type: 'number', readonly: true, label: label, step: 1, get: get, tip: label + ': set by the level. Ask the Builder to move it' }; }
+  function least(list, i) { return Math.min.apply(null, list.map(function (q) { return q[i]; })); }
+  var PLACED = {
+    x: ro('x', 'Position X', function (p) { return p.pieces ? least(p.pieces, 0) : p.spots ? least(p.spots, 0) : p.x; }),
+    y: ro('y', 'Position Y', function (p) { return p.spots ? least(p.spots, 1) : p.y; })
+  };
   var KINDS = {
     level: [
       { name: 'Scene', icon: 'i-pad', fields: [
@@ -60,6 +74,7 @@ var Schema = (function () {
       ] }
     ],
     floor: [
+      { name: 'Transform', icon: 'i-cube', fields: [PLACED.x, PLACED.y] },
       { name: 'Sprite Renderer', icon: 'i-image', gate: 'floorArt', fields: [
         { key: 'look', type: 'sprite', of: 'floor', label: 'Sprite', tip: 'Sprite: the picture this part is drawn with' },
         { key: 'tint', type: 'color', label: 'Color', tip: 'Color: tints the picture' }
@@ -68,8 +83,8 @@ var Schema = (function () {
         on: 'Things stand on it.', off: 'Things fall through.' }
     ],
     lava: [
-      { name: 'Transform', icon: 'i-cube', gate: 'lavaSize', fields: [
-        num('w', 'Width', 'Width: how wide the lava is, in pixels', 32, 320, 16)
+      { name: 'Transform', icon: 'i-cube', fields: [PLACED.x, PLACED.y,
+        gated(num('w', 'Width', 'Width: how wide the lava is, in pixels', 32, 320, 16), 'lavaSize')
       ] },
       { name: 'Sprite Renderer', icon: 'i-image', gate: 'lavaArt', fields: [
         { key: 'look', type: 'sprite', of: 'lava', label: 'Sprite', tip: 'Sprite: the picture this part is drawn with' },
@@ -79,8 +94,8 @@ var Schema = (function () {
         on: 'Touching it sends you back.', off: 'It’s just a floor.' }
     ],
     coin: [
-      { name: 'Transform', icon: 'i-cube', gate: 'coinSize', fields: [
-        num('size', 'Scale', 'Scale: how big the part is. 1 is its normal size', 0.5, 3, 0.1, '×')
+      { name: 'Transform', icon: 'i-cube', fields: [PLACED.x, PLACED.y,
+        gated(num('size', 'Scale', 'Scale: how big the part is. 1 is its normal size', 0.5, 3, 0.1, '×'), 'coinSize')
       ] },
       { name: 'Sprite Renderer', icon: 'i-image', gate: 'coinArt', fields: [
         { key: 'look', type: 'sprite', of: 'coin', label: 'Sprite', tip: 'Sprite: the picture this part is drawn with' },
@@ -104,7 +119,7 @@ var Schema = (function () {
     var out = {};
     components(p.kind).forEach(function (c) {
       if (c.toggle) out[c.toggle] = { type: 'bool' };
-      (c.fields || []).forEach(function (f) { out[f.key] = f; });
+      (c.fields || []).forEach(function (f) { if (!f.readonly) out[f.key] = f; });
     });
     if (!KINDS[p.kind]) Object.keys(p).forEach(function (k) {
       if (/^(id|name|kind|note)$/.test(k)) return;

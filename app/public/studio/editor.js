@@ -80,8 +80,10 @@ var Editor = (function () {
        drag is hard, and a touch screen has no drag at all). A slot that can take the held asset
        glows.
      - a colour: a swatch that opens the palette.
-     Which components show is up to the story (allow()): on the first day each department's job has
-     exactly one to find, so a kid isn't handed six. After it, all of them. */
+     Which components open is up to the story (allow()): on the first day each department's job has
+     exactly one to find, so a kid isn't handed six. After it, all of them. The rest are LOCKED
+     headers, not missing ones, and every part opens with its name and a Transform, so the Inspector
+     has the same shape whichever part is picked (schema.js, "every part has the same shape"). */
   function allow(list) { allowed = {}; (list || []).forEach(function (c) { allowed[c] = true; }); if (selected) inspect(selected); }
 
   var folded = {};
@@ -133,8 +135,17 @@ var Editor = (function () {
       + '<button type="button" class="cfield' + (v ? '' : ' none') + '" data-key="color:' + f.key + '" data-color="' + f.key + '" aria-label="' + esc(f.label) + ': ' + (v || 'none') + '. Pick a colour">'
       + '<i style="background:' + (v || 'transparent') + '"></i><span>' + (v ? v.toUpperCase() : 'None') + '</span></button></div>';
   }
+  /* A number that can't be changed here: placed by the level (readonly), or on a gate the story
+     hasn't opened. Its value, and a tooltip saying why; no slider, no id, nothing to set. */
+  function fixedField(f, p, why) {
+    var v = f.get ? f.get(p) : p[f.key];
+    return '<div class="irow num fixed"><span class="lbl" data-tip="' + esc(why) + '" tabindex="0">' + esc(f.label) + '</span>'
+      + '<div class="rng"><output class="nbox" aria-label="' + esc(f.label) + '">' + fmt(f, v) + '</output></div></div>';
+  }
   function fields(c, p) {
     return (c.fields || []).map(function (f) {
+      if (f.readonly) return fixedField(f, p, f.tip);
+      if (f.gate && !allowed[f.gate]) return fixedField(f, p, f.label + ': you’ll unlock this on a later shift');
       if (f.type === 'number') return numberField(f, p);
       if (f.type === 'sprite' || f.type === 'sound') return objectField(f, p);
       if (f.type === 'color') return colorField(f, p);
@@ -153,14 +164,26 @@ var Editor = (function () {
       return numberField({ key: k, label: k, min: Math.max(r[k].min, Math.min(0, p[k] - span)), max: Math.min(r[k].max, p[k] + span), step: Number.isInteger(p[k]) ? 1 : 0.1 }, p);
     }).join('') + '</div>';
   }
+  /* The top of every Inspector: the part's icon, its name, and what it is, as Unity's has. */
+  var KIND_WORDS = { level: 'Level · holds every part', player: 'Game Object · Player', floor: 'Game Object · Floor', lava: 'Game Object · Hazard', coin: 'Game Object · Pickups' };
+  function objectHeader(p) {
+    return '<div class="ohead"><svg class="i" aria-hidden="true"><use href="#' + (p.kind === 'level' ? 'i-layout' : 'i-cube') + '"/></svg>'
+      + '<p><strong>' + esc(p.name) + '</strong><small>' + esc(KIND_WORDS[p.kind] || 'Game Object · Built by the Builder') + '</small></p></div>';
+  }
+  /* A component the story hasn't opened yet: its header, locked, with nothing in it to find. */
+  function lockedHeader(c) {
+    return '<div class="comp locked" tabindex="0" data-tip="' + esc(c.name) + ': you’ll unlock this on a later shift" aria-label="' + esc(c.name) + ', locked for now">'
+      + '<span class="lock" aria-hidden="true"><svg class="i"><use href="#i-lock"/></svg></span>'
+      + '<svg class="i cicon" aria-hidden="true"><use href="#' + (c.icon || 'i-cube') + '"/></svg><strong class="cname">' + esc(c.name) + '</strong></div>';
+  }
   function body(p) {
-    var h = '';
-    Schema.components(p.kind).forEach(function (c) {
-      if (c.gate && !allowed[c.gate]) return;
+    var h = objectHeader(p), comps = Schema.components(p.kind);
+    comps.forEach(function (c) {
+      if (c.gate && !allowed[c.gate]) { h += lockedHeader(c); return; }
       h += header(c, p) + fields(c, p) + '</div>';
     });
-    if (!Schema.components(p.kind).length) h = generic(p);
-    return h || '<p class="inote">Nothing on ' + esc(p.name) + ' to change yet.</p>';
+    if (!comps.length) h += generic(p) || '<p class="inote">Nothing on ' + esc(p.name) + ' to change yet.</p>';
+    return h;
   }
 
   function select(id) {
@@ -178,7 +201,6 @@ var Editor = (function () {
     selected = id;
     closePicker();
     UI.keepFocus($('inspector'), function () {
-      $('inspName').textContent = p.name;
       $('inspBody').innerHTML = body(p);
       wire(p);
     });
@@ -187,7 +209,6 @@ var Editor = (function () {
   }
   /* Window › Inspector with nothing picked: Unity's empty Inspector, saying what to do. */
   function inspectNothing() {
-    $('inspName').textContent = '';
     $('inspBody').innerHTML = '<p class="inote">Nothing picked. Tap a part in the Hierarchy to see its components here.</p>';
     openInspector();
   }

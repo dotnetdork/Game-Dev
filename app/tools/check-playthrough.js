@@ -220,10 +220,17 @@ async function launch() {
     st = await state();
     check('what she said became tickets, in her words, and Art filed the grey', st.tickets['silent-coins'].words === 'the coins dont make any sound' && st.tickets.floor.words === 'I fell through the floor' && !!st.tickets.greybox,
       Object.keys(st.tickets).join(', '));
-    check('the Tickets dock lists them as buttons', await p.$$eval('#ticketList button.tk', function (x) { return x.length; }) === 3);
+    const board = await p.$$eval('#ticketList button.tk', function (x) { return x.map(function (e) { return e.textContent; }); });
+    check('the Tickets dock lists them as buttons, numbered, with a clear title and a status', board.length === 3
+      && board.some(function (t) { return /^#\d.*Open.*The player falls through a floor tile$/.test(t); }), board.join(' | '));
+    await p.click('#ticketList [data-key="ticket:floor"]');
+    const tpage = await p.$eval('#ticketPage', function (e) { return e.hidden ? '(hidden)' : e.textContent; });
+    check('a ticket opens its page: what is wrong, what she said, how she will know it is fixed', /What’s wrong.*drops right through.*You reported.*I fell through the floor.*Fixed when/.test(tpage), tpage.slice(0, 160));
+    await p.click('#ticketPage .back');
+    check('Back goes back to the board', await p.isVisible('#ticketList') && await p.isHidden('#ticketPage'));
     const before = await p.$eval('#log', function (e) { return e.textContent; });
     where = 'the first day: the coins first';
-    await opt('the coins dont make any sound'); await waitLog('talking to the sound designer');
+    await opt('Coins make no sound when grabbed'); await waitLog('talking to the sound designer');
     check('the hand-over clears the chat: the Mentor\'s lines are gone, the sound designer\'s start', /What did you find/.test(before) && !/What did you find/.test(await p.$eval('#log', function (e) { return e.textContent; }))
       && await p.$eval('#dMentor', function (e) { return e.getAttribute('data-who'); }) === 'u');
     await row('Coins');
@@ -250,10 +257,12 @@ async function launch() {
     await runJump(3000); await waitLog('first star', 9000);
     await p.waitForSelector('#qcard .qopt', { timeout: 9000 });
     where = 'the first day: the floor, later';
-    check('the floor ticket is still on the board after the coins were fixed first', /I fell through the floor/.test(await options()), await options());
-    await opt('I fell through the floor'); await waitLog('talking to the lead programmer');
+    check('the floor ticket is still on the board after the coins were fixed first', /falls through a floor tile/.test(await options()), await options());
+    await p.click('#ticketList [data-key="ticket:floor"]'); await p.click('#ticketPage [data-key="fix"]');   // picked from its page, not the card await waitLog('talking to the lead programmer');
     check('the floor\'s first task, with a Hint button', await task() === 'Find the part you fell through' && await p.isVisible('#taskHint'), await task());
     await p.click('#taskHint'); await waitLog('Every part of the level is listed in the Hierarchy');
+    check('the ticket\'s page shows it in progress, with the task and a hint', /In progress.*Your task now.*Find the part you fell through.*Stuck\? Get a hint/.test(await p.$eval('#ticketPage', function (e) { return e.textContent; })));
+    await p.click('#ticketPage .back');
     await row('Floor tile'); await p.click('#inspBody .cbox'); await waitLog('walk across it');
     await p.click('#bPlay'); await hold([['ArrowRight', 1400]]);
     await waitLog('It holds!', 9000);

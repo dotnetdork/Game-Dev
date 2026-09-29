@@ -35,6 +35,7 @@
   <symbol id="i-cards" viewBox="0 0 24 24"><path d="M8 4h9a2 2 0 0 1 2 2v11M5 7h9a2 2 0 0 1 2 2v9a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V9a2 2 0 0 1 2-2z"/></symbol>
   <symbol id="i-star" viewBox="0 0 24 24"><path d="M12 3.5l2.6 5.3 5.9.9-4.3 4.1 1 5.8L12 16.9l-5.2 2.7 1-5.8-4.3-4.1 5.9-.9z"/></symbol>
   <symbol id="i-fold" viewBox="0 0 24 24"><path d="M8 10l4 4 4-4"/></symbol>
+      <symbol id="i-lock" viewBox="0 0 24 24"><rect width="16" height="10" x="4" y="11" rx="2"/><path d="M8 11V7.5a4 4 0 0 1 8 0V11"/></symbol>
   <symbol id="i-more" viewBox="0 0 24 24"><path d="M10 8l4 4-4 4"/></symbol>
   <symbol id="i-x" viewBox="0 0 24 24"><path d="M6 6l12 12M18 6L6 18"/></symbol>
   <symbol id="i-check" viewBox="0 0 24 24"><path d="M5 12.5l4.5 4.5L19 7.5"/></symbol>
@@ -99,10 +100,11 @@
 
   <div class="area left" id="aLeft" data-area="left">
     <!-- Tickets: its own dock (Jay, 2026-09-28), above the Hierarchy, because a ticket is what the
-         kid is working on and the Hierarchy is where they work on it. Rows are buttons (quest.js). -->
+         kid is working on and the Hierarchy is where they work on it. Rows are buttons; each opens
+         the ticket's page in place of the board (quest.js paintTickets). -->
     <section class="dock closed" id="dTickets" data-panel="tickets" aria-label="Tickets">
       <div class="tabs"><span class="tab" data-drag><svg class="i" aria-hidden="true"><use href="#i-ticket"/></svg>Tickets <small id="ticketCount"></small></span></div>
-      <div class="dock-body"><ul class="tickets" id="ticketList"></ul></div>
+      <div class="dock-body"><ul class="tickets" id="ticketList"></ul><div class="tpage" id="ticketPage" hidden></div></div>
     </section>
     <section class="dock closed" id="dHier" data-panel="hierarchy" aria-label="Hierarchy">
       <div class="tabs"><span class="tab" data-drag><svg class="i" aria-hidden="true"><use href="#i-tree"/></svg>Hierarchy</span></div>
@@ -122,7 +124,7 @@
 
   <div class="area right" id="aRight" data-area="right">
     <section class="dock inspector" id="inspector" data-panel="inspector" aria-label="Inspector" aria-hidden="true" inert>
-      <div class="tabs"><span class="tab" data-drag><svg class="i" aria-hidden="true"><use href="#i-sliders"/></svg>Inspector <small id="inspName"></small></span>
+      <div class="tabs"><span class="tab" data-drag><svg class="i" aria-hidden="true"><use href="#i-sliders"/></svg>Inspector</span>
         <button type="button" class="x" id="inspClose" aria-label="Close the Inspector" data-tip="Close the Inspector (Esc)"><svg class="i" aria-hidden="true"><use href="#i-x"/></svg></button></div>
       <div class="dock-body" id="inspBody"></div>
     </section>

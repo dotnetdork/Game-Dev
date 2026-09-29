@@ -60,7 +60,7 @@ REPLY WITH JSON ONLY, in exactly this shape, `read` first:
 
 EXAMPLES (the facts are shortened; yours are below):
 
-Facts: question on screen "What should we fix first?" Answers: 1. I fell through the floor (Engineering) 2. Everything is grey (Art).
+Facts: question on screen "What should we fix first?" Answers: 1. The player falls through a floor tile (#1 · Engineering) 2. The whole level is grey boxes (#3 · Art).
 Kid: "the falling one"
 {"read": "They mean answer 1, the floor ticket. Just an answer.", "reply": "The floor it is! Let's find out why.", "choose": 1, "actions": [], "build": null, "hero": null}
 

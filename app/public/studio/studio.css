@@ -127,7 +127,7 @@ svg.i { width: 18px; height: 18px; fill: none; stroke: currentColor; stroke-widt
 .area.right { grid-area: right; }
 .area.bottom { grid-area: bottom; flex-direction: row; }
 .area > .dock { flex: 1 1 0; }
-.area:not(.bottom) > .inspector { flex: 0 1 auto; max-height: 58%; }
+.area:not(.bottom) > .inspector { flex: 0 0 50%; }   /* one height whichever part is picked, so the chat below doesn't jump */
 .area > .inspector[style*="flex"] { max-height: none; }
 .inspector:not(.open) { display: none; }
 .inspector.open { animation: inspIn .35s var(--ease); }
@@ -321,24 +321,52 @@ body.resizing-x iframe, body.resizing-y iframe { pointer-events: none; }   /* th
 .send.busy svg { display: none; }
 .send.busy::after { content: ''; width: 16px; height: 16px; border-radius: 50%; border: 2px solid var(--track-off); border-top-color: var(--accent); animation: spin .8s linear infinite; }
 
-/* ---------- Tickets: its own dock, a button per ticket (quest.js paintTickets) ---------- */
-.tickets { list-style: none; margin: 0; padding: 0; display: grid; gap: 4px; align-content: start; }
+/* ---------- Tickets: a board of rows, and a ticket's page in its place (quest.js paintTickets) ----------
+   A row reads the way a studio's tracker does: number, department, status, then the title. The
+   department is its lead's colour (a dot and the word); the status is a pill: Open is outlined, In
+   progress is orange because it is the one to work on, Fixed is green with a tick. */
+.tickets { list-style: none; margin: 0; padding: 0; display: grid; gap: 6px; align-content: start; }
+.tickets[hidden] { display: none; }
 .tickets .empty { color: var(--ink-3); font-size: 13.5px; padding: 6px 2px; line-height: 1.4; }
-.tk { width: 100%; display: grid; grid-template-columns: 22px minmax(0, 1fr); align-items: center; column-gap: 9px; min-height: 52px;
-      padding: 7px 10px; border: 0; border-radius: 7px; background: var(--panel-2); color: var(--ink); text-align: left; cursor: pointer;
-      transition: background-color .15s ease-out; }
-.tk:hover:not([aria-disabled="true"]) { background: var(--hover); }
-.tk[aria-disabled="true"] { cursor: default; background: transparent; }
-.tk .st { grid-row: span 2; width: 18px; height: 18px; border-radius: 50%; border: 2px solid var(--ink-3); display: grid; place-items: center; }
-.tk .tt { font-size: 14px; font-weight: 600; line-height: 1.3; }
-.tk small { font-size: 12px; font-weight: 600; color: var(--who, var(--ink-3)); }   /* the department, in its lead's colour */
+.tk { width: 100%; display: grid; gap: 5px; min-height: 60px; padding: 9px 11px 10px; border: 0; border-radius: 8px; background: var(--panel-2);
+      color: var(--ink); text-align: left; cursor: pointer; transition: background-color .15s ease-out; }
+.tk:hover { background: var(--hover); }
+.tk .tt { font-size: 14.5px; font-weight: 600; line-height: 1.3; }
 .tk.doing { box-shadow: inset 0 0 0 1.5px var(--accent); }
-.tk.doing .st { border-color: var(--accent); background: var(--accent-soft); }
-.tk.done .tt { color: var(--ink-3); text-decoration: line-through; text-decoration-color: var(--ink-3); }
-.tk.done small { color: var(--ink-3); font-weight: 500; }
-.tk.done .st { border-color: var(--accent); background: var(--accent); color: var(--accent-ink); }
-.tk.done .st svg { width: 12px; height: 12px; stroke-width: 3; }
+.tk.done { background: transparent; box-shadow: inset 0 0 0 1px var(--line-soft); }
+.tk.done:hover { background: var(--panel-2); }
+.tk.done .tt { color: var(--ink-2); }
 .tk:focus-visible { outline-offset: -2px; }
+.tmeta { display: flex; align-items: center; gap: 8px; margin: 0; min-width: 0; font-size: 12px; font-weight: 600; }
+.tid { font: 600 12px/1 ui-monospace, "Cascadia Mono", Menlo, monospace; color: var(--ink-3); font-variant-numeric: tabular-nums; }
+.tdept { display: inline-flex; align-items: center; gap: 6px; color: var(--who, var(--ink-2)); white-space: nowrap; }
+.tdept::before { content: ''; width: 7px; height: 7px; border-radius: 50%; background: currentColor; }
+.pill { margin-left: auto; display: inline-flex; align-items: center; gap: 4px; height: 21px; padding: 0 9px; border-radius: 999px;
+        font-size: 11.5px; font-weight: 700; white-space: nowrap; }
+.pill svg { width: 12px; height: 12px; stroke-width: 3; }
+.pill.open { color: var(--ink); background: var(--ground); box-shadow: inset 0 0 0 1px var(--edge); }
+.pill.doing { color: var(--accent-ink); background: var(--accent); }
+.pill.done { color: var(--good); background: var(--ground); }
+
+.tpage { display: grid; gap: 10px; align-content: start; animation: msgIn .25s var(--ease) both; }
+.tpage[hidden] { display: none; }
+.tpage .back { justify-self: start; height: 36px; padding: 0 10px 0 6px; margin: -2px 0 -2px -6px; }
+.tpage h3 { margin: -4px 0 0; font-size: 17px; font-weight: 700; line-height: 1.3; text-wrap: balance; }
+.towner { display: flex; align-items: center; gap: 8px; margin: 0; font-size: 13px; color: var(--ink-2); }
+.towner .face { width: 28px; height: 28px; }
+.towner .face svg { width: 16px; height: 16px; }
+.tsec { padding-top: 10px; border-top: 1px solid var(--line-soft); }
+.tsec h4 { margin: 0 0 3px; font-size: 12px; font-weight: 700; color: var(--ink-3); }
+.tsec p { margin: 0; font-size: 14px; line-height: 1.45; max-width: 60ch; }
+.tsec.quote p { display: inline-block; padding: 6px 11px; border-radius: 12px 12px 12px 4px; background: var(--kid-bubble); }   /* their words, as their chat bubble */
+.tact { display: grid; gap: 8px; padding-top: 12px; border-top: 1px solid var(--line-soft); }
+.tact .tbtn { justify-self: start; }
+.tbtn.on:disabled { background: var(--panel-2); color: var(--ink-3); }
+.tnow { margin: 0; padding: 8px 10px; border-radius: 8px; background: var(--ground); font-size: 14px; font-weight: 600; line-height: 1.35; }
+.tnow small { display: block; font-size: 12px; color: var(--ink-2); margin-bottom: 1px; }
+.tnote { display: flex; align-items: center; gap: 7px; margin: 0; font-size: 13px; line-height: 1.4; color: var(--ink-2); }
+.tnote.good { color: var(--ink); font-size: 14px; }
+.tnote.good svg { color: var(--good); stroke-width: 2.5; }
 
 /* ---------- the Console: every event, with its time ---------- */
 .dock-body.console { padding: 4px 0; flex: 1; }
@@ -357,7 +385,13 @@ body.resizing-x iframe, body.resizing-y iframe { pointer-events: none; }   /* th
 /* ---------- the Inspector: components as Unity draws them ---------- */
 .inspector .tabs { justify-content: space-between; align-items: center; }
 .inspector .tabs .tab { align-self: flex-end; }
-.inspector .dock-body { padding-top: 0; }
+.inspector .dock-body { padding-top: 0; flex: 1; }
+/* the part itself: icon, name, what it is */
+.ohead { display: flex; align-items: center; gap: 10px; margin: 0 -12px; padding: 10px 12px; border-bottom: 1px solid var(--line); }
+.ohead > svg { width: 22px; height: 22px; color: var(--ink-2); }
+.ohead p { margin: 0; min-width: 0; }
+.ohead strong { display: block; font-size: 15px; font-weight: 700; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.ohead small { display: block; font-size: 12px; color: var(--ink-3); }
 .x { border: 0; background: transparent; color: var(--ink-2); min-height: 36px; min-width: 44px; border-radius: 5px; cursor: pointer; display: grid; place-items: center; }
 .x:hover { background: var(--hover); color: var(--ink); }
 .comp { display: flex; align-items: center; gap: 2px; min-height: 44px; margin: 0 -12px; padding: 0 10px 0 2px; background: var(--panel-2);
@@ -370,6 +404,13 @@ body.resizing-x iframe, body.resizing-y iframe { pointer-events: none; }   /* th
 .fold:hover { color: var(--ink); background: var(--hover); }
 .fold svg { transition: transform .2s var(--ease); }
 .comp.folded .fold svg { transform: rotate(-90deg); }
+/* a component the story hasn't opened: there, but locked */
+.comp.locked { background: var(--panel); color: var(--ink-3); }
+.comp.locked .lock { width: 32px; display: grid; place-items: center; flex: none; }
+.comp.locked .lock svg { width: 15px; height: 15px; }
+.comp.locked .cicon { color: var(--ink-3); }
+.comp.locked strong { font-weight: 500; }
+.comp.locked:focus-visible { outline-offset: -2px; }
 .cbox { display: inline-flex; align-items: center; gap: 9px; min-height: 44px; padding: 0 8px 0 4px; border: 0; background: transparent;
         color: var(--ink); cursor: pointer; border-radius: 5px; text-align: left; min-width: 0; }
 .cbox:hover { background: var(--hover); }
@@ -398,6 +439,9 @@ body.resizing-x iframe, body.resizing-y iframe { pointer-events: none; }   /* th
         color: var(--ink); font-size: 14px; font-weight: 600; text-align: right; font-variant-numeric: tabular-nums; -moz-appearance: textfield; }
 .nbox::-webkit-inner-spin-button, .nbox::-webkit-outer-spin-button { -webkit-appearance: none; margin: 0; }
 .nbox:focus-visible { outline-offset: 0; border-color: var(--ink-2); }
+/* a value that can't be changed here: the box, flat, at the row's end */
+.irow.fixed .rng { justify-content: flex-end; }
+output.nbox { display: inline-grid; align-items: center; justify-content: end; border-color: var(--line-soft); background: transparent; color: var(--ink-2); font-weight: 500; }
 
 /* an object field: Unity's slot for a sprite or a clip. Tap it (or the target) for the picker;
    drag an asset in from the Project window, or hold one there and tap the slot (tap-to-slot) */
@@ -514,7 +558,7 @@ body.resizing-x iframe, body.resizing-y iframe { pointer-events: none; }   /* th
 .tip[hidden] { display: none; }
 
 /* ---------- reactiveness (ui.js feel()) ---------- */
-.qopt:active, .asset:active, .popt:active, .tk:active:not([aria-disabled="true"]), .cbox:active, .tbtn:active:not(:disabled), .tree button:active, .send:active, .mtop:active { transform: translateY(1px); }
+.qopt:active, .asset:active, .popt:active, .tk:active, .cbox:active, .tbtn:active:not(:disabled), .tree button:active, .send:active, .mtop:active { transform: translateY(1px); }
 .feel-good { animation: feelGood .5s var(--ease); }
 @keyframes feelGood { 0% { box-shadow: 0 0 0 0 var(--accent); } 40% { box-shadow: 0 0 0 5px var(--accent-soft); } 100% { box-shadow: 0 0 0 0 transparent; } }
 .feel-nope { animation: feelNope .32s ease-in-out; }
