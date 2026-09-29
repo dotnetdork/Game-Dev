@@ -4,7 +4,7 @@
 
 It sits on top of `prototype-plan.md` (what to build, and in what order). This file is *how V2
 works*: the architecture, the course flow, and the interaction rules. The spec comes first; the
-decision log it was built from (Jay's answers, rounds 1–7) is below it, numbered so the spec can
+decision log it was built from (Jay's answers, rounds 1–8) is below it, numbered so the spec can
 cite it as (D12).
 
 ---
@@ -367,7 +367,8 @@ the real engine without a spec. Jay's review:
     - It asks for first name and last initial and runs the try-this moments.
     - *Superseded while building (Jay, 2026-09-28): no handle at all, and no question card in the
       interview: the director asks open questions and the kid types. See §3.2.*
-15. **The look: DESIGN.md's structure stays, and the colour is re-explored.**
+15. **The look: DESIGN.md's structure stays, and the colour is re-explored.** (Amended by D28: each
+    character has a hue of their own.)
     - **Kept:** the Unity layout, the kid sizes, the icon set, and the finishing (tooltips; hover,
       pressed and disabled states; real controls; clean Inspector rows).
     - **Re-explored:** the palette is bland. Jed liked the old app's colours. The options were
@@ -438,3 +439,17 @@ the real engine without a spec. Jay's review:
 
 24. **Two addresses:** rename `game-dev` to `game-dev-v1`, and add `game-dev-v2` (Jay).
 25. **The priority order in spec §6 is approved as proposed.**
+
+### Round 8: after the first build's review (2026-09-28)
+
+The review is `v2-review-2026-09-28.md`. Its §9 has the full wording of R1–R4; these are pointers
+to it, numbered so the spec can cite them.
+
+26. **R1: chat-first, and the code keeps the score.** The quest holds the goals, the evidence and
+    the hint levels. The AI picks the words and the order inside them (review §4, option C).
+27. **R2: shape heroes.** The AI builds the hero from drawn parts. There are no hero sprites.
+28. **R3: every character has a full identity colour.** It never goes on buttons or focus rings.
+    Orange stays the one call to action, and each hue passes AA on the navy it sits on. This
+    amends D15.
+29. **R4: inline Lucide icons, at stroke 1.75.**
+30. **The Builder is needed for Sunday** (review §9, open question 2; Jay: "Needed for Sunday").
