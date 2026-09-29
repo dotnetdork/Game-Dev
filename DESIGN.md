@@ -324,9 +324,9 @@ the selection. `studio/interview.css` says which token is which. Everything belo
 editor.
 
 An editor designed at 1366×650, the usable part of a 1366×768 Chromebook screen once Chrome's own
-bars are gone. A four-row, three-column grid: toolbar (56px), workspace, Project drawer (30px, or a
+bars are gone. A four-row, three-column grid: one bar (48px: menus, Play, Sound and the kid's own menu), workspace, Project drawer (30px, or a
 118–132px shelf when a shift needs its sounds or cards), status bar (26px); left column 264px,
-centre flexible, right column 388px running from under the toolbar to the status bar. The
+centre flexible, right column 388px running from under the bar to the status bar. The
 workspace row is `minmax(0, 1fr)` so tall dock content scrolls inside its dock instead of pushing
 the drawer and status bar out of the frame. Docks meet with 1px gaps that show the charcoal
 ground, as editor panes do.
@@ -498,7 +498,7 @@ the game until the game has focus.
 
 ### Unity mapping
 Recorded in the contract and the artifact's step notes; any new surface keeps it.
-- **Kept, real names:** toolbar with centred Play / Pause / Step; Game view; Hierarchy (parts
+- **Kept, real names:** centred Play / Pause / Stop icons in the bar (Step when the story brings it); Game view; Hierarchy (parts
   indented under the level); Inspector (component header, property rows); Play-mode tint and the
   undo-on-Stop behaviour; the Stats overlay (one number).
 - **Repurposed:** the right-hand column holds the mentor and characters, with the Inspector docked
@@ -514,7 +514,7 @@ The UI makes a sound only when **the kid caused a change**: Play and Stop, a ste
 answer, a card or tool earned, being hired. Routine taps (a Hierarchy row, a slider, an answer) are
 silent, because twenty trackpads clicking at once in one room is noise, not feedback. Sounds are
 Kenney CC0 interface sounds, all under a second, at gain 0.15–0.35, and never two within 250ms.
-One **Sound** switch in the toolbar (44px, icon and word) mutes the UI and the game together; pops
+One **Sound** switch in the bar (an icon) mutes the UI and the game together; pops
 still show. The shared implementation is `docs/rework/wireframes/src/ui.js`.
 
 ### Motion

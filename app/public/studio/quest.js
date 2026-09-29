@@ -908,6 +908,14 @@ var Quest = (function () {
     cards: function () { return S ? S.cards.map(cardOf) : []; },
     ideas: function () { return S ? S.ideas.slice() : []; },
     doneFirstDay: function () { return !!S && S.done.indexOf('first-day') >= 0; },
+    /* For the kid's own menu (editor.js ME_ITEMS): the numbers, and what they're on now. */
+    progress: function () {
+      if (!S) return {};
+      var ids = Object.keys(S.tickets), f = frame(), q = f && quest(f), b = f && beat(f);
+      return { game: S.name || '', stars: S.stars || 0, cards: S.cards.length, tickets: ids.length,
+               fixed: ids.filter(function (id) { return S.tickets[id].status === 'done'; }).length,
+               quest: q ? q.title : '', task: b && b.goal ? fill(b.goal) : '' };
+    },
     dev: {
       state: function () { return S; }, course: function () { return COURSE; },
       where: function () { var f = frame(); return f ? f.quest + ' › ' + (beat(f) ? beat(f).id : '(end)') : '(no quest)'; },

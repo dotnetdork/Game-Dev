@@ -1,4 +1,4 @@
-/* editor.js: the engine around the game. Menus, the toolbar, docks, the Hierarchy, the Inspector,
+/* editor.js: the engine around the game. The bar (menus, Play, the kid's own menu), docks, the Hierarchy, the Inspector,
    the Project window, Play, Undo, the pointer.
 
    The layout and its rules are DESIGN.md's; this file is the behaviour:
@@ -31,7 +31,10 @@ var Editor = (function () {
   function on(fn) { listeners.push(fn); }
   function emit(name, detail) { listeners.forEach(function (fn) { try { fn(name, detail); } catch (e) { console.error(e); } }); }
   function status(text) { $('statusMsg').textContent = text; }
-  function isOpen(id) { var d = $(id); return !!d && !d.classList.contains('closed'); }
+  /* What the story has brought out so far. Most are elements (a panel, Play); Undo and the layouts
+     are menu items now, so theirs is only a flag. */
+  var gates = {};
+  function isOpen(id) { var d = $(id); return d ? !d.classList.contains('closed') : !!gates[id]; }
 
   function openDock(id, open) {
     var d = $(id); if (!d) return;
@@ -44,8 +47,8 @@ var Editor = (function () {
     paintBar();
   }
   function reveal(id, open) {
-    var d = $(id); if (!d) return;
-    d.classList.toggle('closed', !open); d.inert = !open;
+    var d = $(id);
+    if (!d) gates[id] = !!open; else { d.classList.toggle('closed', !open); d.inert = !open; }
     paintBar();
   }
 
@@ -372,7 +375,7 @@ var Editor = (function () {
     else undos.push({ id: id, key: key, before: before, after: after, t: t });
     if (undos.length > 50) { undos.shift(); playMark = Math.max(0, playMark - 1); }
     redos = [];
-    paintUndo();
+   
   }
   function what(e) { var p = Project.part(e.id); return (p ? p.name + ' ' : '') + (WORD[e.key] || e.key); }
   function canUndo() { return undos.length > (Runner.isPlaying() ? playMark : 0); }
@@ -381,19 +384,13 @@ var Editor = (function () {
     if (!canUndo()) return;
     var e = undos.pop(); redos.push(e);
     set(e.id, e.key, e.before, false, true);
-    status('Undid: ' + what(e)); paintUndo();
+    status('Undid: ' + what(e));
   }
   function redo() {
     if (!canRedo()) return;
     var e = redos.pop(); undos.push(e);
     set(e.id, e.key, e.after, false, true);
-    status('Redid: ' + what(e)); paintUndo();
-  }
-  function paintUndo() {
-    $('bUndo').disabled = !canUndo(); $('bRedo').disabled = !canRedo();
-    var u = undos[undos.length - 1], r = redos[redos.length - 1];
-    $('bUndo').setAttribute('data-tip', canUndo() ? 'Undo: put back ' + what(u) + ' (Ctrl+Z)' : 'Undo: nothing to put back yet');
-    $('bRedo').setAttribute('data-tip', canRedo() ? 'Redo: ' + what(r) + ' again (Ctrl+Y)' : 'Redo: nothing to do again');
+    status('Redid: ' + what(e));
   }
 
   /* ---------- Play, Pause, Stop, Step ---------- */
@@ -409,7 +406,7 @@ var Editor = (function () {
     $('gamebody').classList.toggle('playing', on);
     status(paused ? 'Paused: press Step to move one frame, or Pause again to carry on'
       : on ? 'Play mode: changes you make now are undone when you press Stop' : 'Stopped');
-    hint(); paintUndo();
+    hint();
   }
   function togglePlay() {
     var st = Project.get();
@@ -583,38 +580,76 @@ var Editor = (function () {
                       inspector: ['Inspector', 'i-sliders', 'inspector'], chat: ['Chat', 'i-chat', 'dMentor'], project: ['Project', 'i-folder', 'dProject'],
                       console: ['Console', 'i-terminal', 'dConsole'] };
   function MENUS() {
-    var playing = Runner.isPlaying(), hier = isOpen('dHier');
+    var doneDay = window.Quest && Quest.doneFirstDay && Quest.doneFirstDay();
     return [
+      /* File: the game as a file. Signing out is in the kid's own menu (the circle at the right). */
       { id: 'file', label: 'File', items: [
         { label: 'Save', icon: 'i-save', keys: 'Ctrl+S', tip: 'Your game saves by itself; this saves it right now', run: saveNow },
-        window.Quest && Quest.doneFirstDay && Quest.doneFirstDay() && { label: 'Clock out', icon: 'i-clapper', tip: 'End today’s shift. The Studio Director sums it up', run: function () { Quest.clockOut(); } },
-        { sep: true },
-        { label: 'Sign out', icon: 'i-exit', tip: 'Sign out of the studio. Your game stays saved', run: function () { saveNow(); setTimeout(function () { location.href = '/auth/logout'; }, 300); } }
+        isOpen('dProject') && window.Views && { label: 'Open game.js', icon: 'i-script', tip: 'Your game’s code, in the code editor', run: function () { Views.openCode(); } },
+        doneDay && { sep: true },
+        doneDay && { label: 'Clock out', icon: 'i-clapper', tip: 'End today’s shift. The Studio Director sums it up', run: function () { Quest.clockOut(); } }
       ] },
+      /* Edit: Undo and Redo, which were buttons under the menus. Play is only on the bar: a menu
+         that repeated it was the kind of doubling Jay pointed at (2026-09-29). */
       { id: 'edit', label: 'Edit', items: [
-        isOpen('editTools') && { label: 'Undo', icon: 'i-undo', keys: 'Ctrl+Z', disabled: !canUndo(), run: undo },
-        isOpen('editTools') && { label: 'Redo', icon: 'i-redo', keys: 'Ctrl+Y', disabled: !canRedo(), run: redo },
-        isOpen('transport') && { sep: true },
-        isOpen('transport') && { label: 'Play', icon: 'i-play', keys: 'Ctrl+P', disabled: playing && !Runner.isPaused(), run: play },
-        isOpen('transport') && { label: Runner.isPaused() ? 'Carry on' : 'Pause', icon: 'i-pause', keys: 'Ctrl+Shift+P', disabled: !playing, run: togglePause },
-        isOpen('transport') && { label: 'Stop', icon: 'i-stop', keys: 'Ctrl+P', disabled: !playing, run: stop },
-        isOpen('stepTools') && { label: 'Step', icon: 'i-step', keys: 'Ctrl+Alt+P', disabled: !Runner.isPaused(), run: stepFrame }
+        isOpen('editTools') && { label: canUndo() ? 'Undo ' + what(undos[undos.length - 1]) : 'Undo', icon: 'i-undo', keys: 'Ctrl+Z', disabled: !canUndo(), run: undo },
+        isOpen('editTools') && { label: canRedo() ? 'Redo ' + what(redos[redos.length - 1]) : 'Redo', icon: 'i-redo', keys: 'Ctrl+Y', disabled: !canRedo(), run: redo }
       ] },
-      { id: 'gameobject', label: 'GameObject', items: hier ? [
-        { label: 'New part…', icon: 'i-plus', tip: 'Describe a new part, and the Builder adds it to your level', run: function () { Chat.prompt('Describe the part you want, like “a spring that bounces me up”…'); } },
-        { sep: true, label: 'In your level' }
-      ].concat(Project.get().parts.map(function (p) {
-        return { label: p.name, icon: 'i-cube', checked: selected === p.id, run: function () { if (selected !== p.id) select(p.id); } };
-      })) : [] },
       { id: 'window', label: 'Window', items: Object.keys(PANEL_NAMES).filter(met).map(function (k) {
         var n = PANEL_NAMES[k];
         return { label: n[0], icon: n[1], checked: k === 'inspector' ? $('inspector').classList.contains('open') : true, run: function () { showPanel(k); } };
       }).concat(isOpen('layoutTools') ? [{ sep: true, label: 'Layouts' }].concat(LAYOUT_ITEMS()) : []) },
       { id: 'help', label: 'Help', items: [
-        { label: 'Ask the mentor', icon: 'i-chat', tip: 'Type a question to the studio', run: function () { Chat.prompt('Ask the studio anything…'); } },
-        isOpen('dGame') && { label: 'Game keys', icon: 'i-keys', tip: 'Show the keys that move your hero', run: showKeys }
+        isOpen('dGame') && { label: 'Game keys', icon: 'i-keys', tip: 'Show the keys that move your hero', run: showKeys },
+        { label: 'Keyboard shortcuts', icon: 'i-keys', tip: 'The keys that work anywhere in the studio', run: function () { var b = document.querySelector('.mtop[data-menu="help"]'); if (b) popup(b, KEYS_ITEMS(), true, true); } }
       ] }
     ].map(function (m) { m.items = m.items.filter(Boolean); return m; });
+  }
+  /* The studio's own keys: a menu that lists them (picking one does what it says). */
+  function KEYS_ITEMS() {
+    return [{ sep: true, label: 'Keyboard shortcuts' },
+      isOpen('transport') && { label: 'Play or Stop', icon: 'i-play', keys: 'Ctrl+P', run: togglePlay },
+      isOpen('transport') && { label: 'Pause', icon: 'i-pause', keys: 'Ctrl+Shift+P', disabled: !Runner.isPlaying(), run: togglePause },
+      isOpen('stepTools') && { label: 'Step one frame', icon: 'i-step', keys: 'Ctrl+Alt+P', disabled: !Runner.isPaused(), run: stepFrame },
+      isOpen('editTools') && { label: 'Undo', icon: 'i-undo', keys: 'Ctrl+Z', disabled: !canUndo(), run: undo },
+      isOpen('editTools') && { label: 'Redo', icon: 'i-redo', keys: 'Ctrl+Y', disabled: !canRedo(), run: redo },
+      { label: 'Save', icon: 'i-save', keys: 'Ctrl+S', run: saveNow }].filter(Boolean);
+  }
+  /* The kid's own menu, the circle at the right of the bar: who they are, how far they've come,
+     and the way out (Jay, 2026-09-29: sign out was hidden in File). */
+  var meName = '';
+  function me(name) {
+    meName = name || '';
+    $('meInitial').textContent = meName ? meName.charAt(0).toUpperCase() : '?';
+  }
+  function ME_ITEMS() {
+    var pr = window.Quest && Quest.progress ? Quest.progress() : {};
+    var head = document.createElement('div'); head.className = 'mehead';
+    head.innerHTML = '<span class="me big" aria-hidden="true"></span><p><b></b><span></span></p>';
+    head.querySelector('.me').textContent = meName ? meName.charAt(0).toUpperCase() : '?';
+    head.querySelector('b').textContent = meName || 'New developer';
+    head.querySelector('p span').textContent = pr.game ? 'Making ' + pr.game : 'Intern at the studio';
+    var st = document.createElement('dl'); st.className = 'mestats';
+    [['i-star', pr.stars || 0, pr.stars === 1 ? 'star' : 'stars'],
+     ['i-ticket', (pr.fixed || 0) + (pr.tickets ? ' of ' + pr.tickets : ''), 'tickets fixed'],
+     ['i-cards', pr.cards || 0, pr.cards === 1 ? 'card' : 'cards']].forEach(function (x) {
+      var d = document.createElement('div');
+      d.innerHTML = '<dd></dd><dt><svg class="i" aria-hidden="true"><use href="#' + x[0] + '"/></svg><span></span></dt>';
+      d.querySelector('dt span').textContent = x[2]; d.querySelector('dd').textContent = String(x[1]);
+      st.appendChild(d);
+    });
+    var today = null;
+    if (pr.quest) {
+      today = document.createElement('p'); today.className = 'metoday';
+      today.innerHTML = '<small>Now</small><b></b><span></span>';
+      today.querySelector('b').textContent = pr.quest;
+      today.querySelector('span').textContent = pr.task || '';
+    }
+    var doneDay = window.Quest && Quest.doneFirstDay && Quest.doneFirstDay();
+    return [{ node: head }, { node: st }, today && { node: today }, { sep: true },
+      doneDay && { label: 'Clock out', icon: 'i-clapper', tip: 'End today’s shift. The Studio Director sums it up', run: function () { Quest.clockOut(); } },
+      { label: 'Sign out', icon: 'i-exit', tip: 'Sign out of the studio. Your game stays saved', run: function () { saveNow(); setTimeout(function () { location.href = '/auth/logout'; }, 300); } }
+    ].filter(Boolean);
   }
   function LAYOUT_ITEMS() {
     return [{ label: 'Default', icon: 'i-layout', checked: layoutIs(DEFAULT), tip: 'Put every panel back where it started', run: function () { useLayout(DEFAULT); } },
@@ -671,6 +706,7 @@ var Editor = (function () {
     var pop = document.createElement('div'); pop.className = 'menupop'; pop.setAttribute('role', 'menu');
     pop.setAttribute('aria-label', btn.textContent.trim());
     items.forEach(function (it) {
+      if (it.node) { pop.appendChild(it.node); return; }
       if (it.sep) { var s = document.createElement('div'); s.className = 'msep'; s.setAttribute('role', 'separator'); if (it.label) s.textContent = it.label; pop.appendChild(s); return; }
       var b = document.createElement('button'); b.type = 'button'; b.className = 'mitem';
       b.setAttribute('role', it.checked !== undefined ? 'menuitemcheckbox' : 'menuitem');
@@ -961,12 +997,10 @@ var Editor = (function () {
     $('bStop').addEventListener('click', stop);
     $('bPause').addEventListener('click', togglePause);
     $('bStep').addEventListener('click', stepFrame);
-    $('bUndo').addEventListener('click', undo);
-    $('bRedo').addEventListener('click', redo);
-    $('bLayout').addEventListener('click', function () {
-      var b = $('bLayout'); if (openMenu && openMenu.btn === b) closeMenu(true); else popup(b, LAYOUT_ITEMS(), false, false);
+    $('bMe').addEventListener('click', function () {
+      var b = $('bMe'); if (openMenu && openMenu.btn === b) closeMenu(true); else popup(b, ME_ITEMS(), false, false);
     });
-    $('bLayout').addEventListener('keydown', function (e) { if (e.key === 'ArrowDown') { e.preventDefault(); popup($('bLayout'), LAYOUT_ITEMS(), true, false); } });
+    $('bMe').addEventListener('keydown', function (e) { if (e.key === 'ArrowDown') { e.preventDefault(); popup($('bMe'), ME_ITEMS(), true, false); } });
     $('inspClose').addEventListener('click', function () { closeInspector(); });
     Array.prototype.forEach.call($('editor').querySelectorAll('.dock'), function (d) {
       var row = d.querySelector(':scope > .tabs'); if (!row) return;
@@ -1003,6 +1037,6 @@ var Editor = (function () {
 
   return { init: init, on: on, openDock: openDock, reveal: reveal, tree: tree, allow: allow, select: select,
            inspect: inspect, closeInspector: closeInspector, set: set, togglePlay: togglePlay, cue: cue, point: point,
-           paintPlay: paintPlay, setProjectName: setProjectName, stars: stars, project: paintProject, undo: undo, redo: redo,
+           paintPlay: paintPlay, me: me, setProjectName: setProjectName, stars: stars, project: paintProject, undo: undo, redo: redo,
            selected: function () { return selected; }, allowed: function () { return allowed; } };
 })();

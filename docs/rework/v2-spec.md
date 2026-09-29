@@ -475,3 +475,9 @@ the Mentor had said it. He picked the options below from a list of ideas.
     Console only.
 35. **Play, Pause and Stop are three buttons**, as in Unity and Unreal. Play stays lit while the game
     runs and carries on after a pause; Step still waits for the story.
+36. **One bar, not two** (Jay, 2026-09-29: items in it were redundant). The menus sit left, with Play,
+    Pause and Stop as icons in the centre, then Sound and a circle with the kid's initial on the right.
+    Undo and Redo moved into Edit, and the layouts into Window. The GameObject menu is gone, and so
+    are the menu items that repeated a button. The circle opens the kid's own menu: their name, their
+    stars, tickets and cards, what they're working on, Clock out, and Sign out. The first day no
+    longer points at the Game view with a bubble.

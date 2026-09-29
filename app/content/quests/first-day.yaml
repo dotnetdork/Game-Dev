@@ -17,7 +17,7 @@ beats:
 
   - id: press-play
     goal: Play the game and look for anything broken
-    do: { reveal: [game, play], point: game, cue: play }
+    do: { reveal: [game, play], cue: play }
     say:
       - Press Play up top to test it.
     on:

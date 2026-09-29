@@ -43,7 +43,7 @@ var UI = (function () {
     var b = document.getElementById('bSound'); if (!b) return;
     b.setAttribute('aria-pressed', String(!muted));
     b.querySelector('use').setAttribute('href', muted ? '#i-sound-off' : '#i-sound');
-    b.querySelector('span').textContent = muted ? 'Sound off' : 'Sound on';
+    b.setAttribute('data-tip', muted ? 'Sound is off. Turn the studio’s and your game’s sounds back on' : 'Sound: the studio’s sounds and your game’s');
   }
   function init() {
     var b = document.getElementById('bSound'); if (!b) return;

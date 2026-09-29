@@ -51,18 +51,21 @@ svg.i { width: 18px; height: 18px; fill: none; stroke: currentColor; stroke-widt
 [data-who="d"], [data-from="d"], [data-dept="design"] { --who: var(--c-d); }
 [data-who="r"], [data-from="r"] { --who: var(--c-r); }
 
-/* ---------- the editor grid: menu bar, toolbar, then the three areas round the Game view ----------
+/* ---------- the editor grid: the bar, then the three areas round the Game view ----------
    The area sizes are the kid's layout (editor.js sets --lw, --rw, --bh; 0 when an area is empty). */
 .editor {
   height: 100vh; height: 100dvh; min-height: 560px; position: relative;
   display: grid; gap: 1px; background: var(--line);
-  grid-template-rows: 44px 52px minmax(0, 1fr) var(--bh, 150px) 26px;
+  grid-template-rows: 48px minmax(0, 1fr) var(--bh, 150px) 26px;
   grid-template-columns: var(--lw, 264px) minmax(0, 1fr) var(--rw, 388px);
-  grid-template-areas: "menu menu menu" "tool tool tool" "left game right" "bottom bottom right" "status status status";
+  grid-template-areas: "menu menu menu" "left game right" "bottom bottom right" "status status status";
 }
 
-/* ---------- the menu bar ---------- */
-.menubar { grid-area: menu; background: var(--frame); display: flex; align-items: center; gap: 8px; padding: 0 10px 0 12px; min-width: 0; }
+/* ---------- the bar: menus left, Play centred where Unity keeps it, Sound and the kid right ---------- */
+.menubar { grid-area: menu; background: var(--frame); display: grid; grid-template-columns: minmax(0, 1fr) auto minmax(0, 1fr);
+           align-items: center; gap: 12px; padding: 0 10px 0 12px; min-width: 0; }
+.mleft { display: flex; align-items: center; gap: 8px; min-width: 0; }
+.mright { justify-self: end; display: flex; align-items: center; gap: 6px; }
 .wordmark { height: 20px; width: auto; display: block; flex: none; margin-right: 4px; }
 .menus { list-style: none; margin: 0; padding: 0; display: flex; gap: 1px; }
 .menu-anchor { position: relative; display: inline-flex; }
@@ -70,14 +73,14 @@ svg.i { width: 18px; height: 18px; fill: none; stroke: currentColor; stroke-widt
         font-size: 14px; font-weight: 500; cursor: pointer; transition: background-color .12s ease-out, color .12s ease-out; }
 .mtop:hover, .mtop.open { background: var(--hover); color: var(--ink); }
 .mtop:focus-visible { outline-offset: -2px; }
-.project { margin-left: auto; color: var(--ink-3); font-size: 13.5px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; min-width: 0; }
+.project { margin-left: 6px; color: var(--ink-3); font-size: 13.5px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; min-width: 0; }
 .project b { color: var(--ink); font-weight: 600; }
 
-/* a menu: the popup under a menu-bar word, or under the Layout button */
+/* a menu: the popup under a menu-bar word, or under the kid's circle */
 .menupop { position: absolute; top: calc(100% + 4px); left: 0; z-index: 40; min-width: 240px; max-width: 320px;
            background: var(--frame); border: 1px solid var(--line-soft); border-radius: 8px; padding: 5px;
            box-shadow: var(--lift); animation: popIn .16s var(--ease) both; }
-.tool-right .menupop { left: auto; right: 0; }
+.mright .menupop { left: auto; right: 0; }
 @keyframes popIn { from { opacity: 0; transform: translateY(-4px); } to { opacity: 1; transform: none; } }
 .mitem { display: grid; grid-template-columns: 16px 18px minmax(0, 1fr) auto; align-items: center; gap: 8px; width: 100%;
          min-height: 38px; padding: 0 10px 0 6px; border: 0; border-radius: 5px; background: transparent; color: var(--ink);
@@ -95,11 +98,43 @@ svg.i { width: 18px; height: 18px; fill: none; stroke: currentColor; stroke-widt
 .msep:not(:empty) { height: auto; background: none; border-top: 1px solid var(--line-soft); margin: 5px 6px 0; padding: 7px 2px 3px;
                     font-size: 12px; font-weight: 600; color: var(--ink-3); }
 
-/* ---------- the toolbar: Undo and Redo left, Play centred where Unity keeps it, Layout and Sound right ---------- */
-.toolbar { grid-area: tool; background: var(--frame); display: grid; grid-template-columns: 1fr auto 1fr;
-           align-items: center; padding: 0 10px; gap: 12px; }
-.tgroup { display: flex; gap: 2px; }
+/* Play, Pause, Stop (and Step, when the story brings it): icons in one well, as Unity's are. Their
+   names are in the tooltips and aria-labels. */
 .transport { display: flex; gap: 2px; background: var(--ground); padding: 3px; border-radius: 8px; }
+.ibtn { display: inline-grid; place-items: center; width: 40px; height: 36px; padding: 0; border: 0; border-radius: 6px;
+        background: transparent; color: var(--ink-2); cursor: pointer;
+        transition: background-color .15s ease-out, color .15s ease-out, box-shadow .2s ease-out; }
+.ibtn svg { width: 18px; height: 18px; }
+.ibtn:hover:not(:disabled) { color: var(--ink); background: var(--hover); }
+.ibtn:disabled { cursor: default; color: var(--ink-3); }
+.ibtn:disabled svg { opacity: .6; }
+.transport .ibtn:not(:disabled) { color: var(--ink); }
+#bPlay svg, #bStop svg { fill: currentColor; }
+.ibtn.on { background: var(--accent); color: var(--accent-ink); }
+.transport .ibtn.on { color: var(--accent-ink); }
+#bPause.on { background: var(--select); color: var(--ink); box-shadow: inset 0 0 0 1.5px var(--grip); }
+.ibtn.cue { box-shadow: 0 0 0 2px var(--accent); animation: cue 1.6s var(--ease) infinite; }
+/* the kid's circle: their first initial */
+.me { width: 34px; height: 34px; flex: none; border-radius: 50%; border: 0; padding: 0; display: grid; place-items: center;
+      background: var(--kid-bubble); color: var(--ink); font: 700 15px/1 inherit; cursor: pointer;
+      box-shadow: inset 0 0 0 1.5px var(--grip); transition: box-shadow .15s ease-out; }
+.me:hover, .me.open { box-shadow: inset 0 0 0 2px var(--ink-2); }
+.me.big { width: 44px; height: 44px; font-size: 19px; cursor: default; }
+.menupop:has(.mehead) { min-width: 290px; }
+.mehead { display: flex; align-items: center; gap: 12px; padding: 8px 8px 10px; }
+.mehead p { margin: 0; min-width: 0; }
+.mehead b { display: block; font-size: 16px; }
+.mehead span { font-size: 13px; color: var(--ink-2); }
+.mestats { display: grid; grid-template-columns: repeat(3, 1fr); gap: 4px; margin: 0 4px 6px; }
+.mestats div { padding: 8px 6px; border-radius: 6px; background: var(--ground); text-align: center; }
+.mestats dd { margin: 0; font-size: 18px; font-weight: 700; font-variant-numeric: tabular-nums; }
+.mestats dt { display: flex; align-items: center; justify-content: center; gap: 4px; font-size: 12px; color: var(--ink-2); }
+.mestats dt svg { width: 13px; height: 13px; flex: none; }
+.mestats div:first-child dt svg { color: var(--accent); }
+.metoday { margin: 0 4px 4px; padding: 8px 10px; border-radius: 6px; background: var(--ground); font-size: 13px; line-height: 1.4; }
+.metoday small { display: block; font-size: 12px; font-weight: 600; color: var(--ink-3); }
+.metoday b { display: block; font-size: 14px; }
+.metoday span { color: var(--ink-2); }
 .stepper { display: inline-flex; gap: 2px; }
 .stepper.closed { display: none; }
 .tbtn { display: inline-flex; align-items: center; gap: 7px; height: 44px; padding: 0 15px; border: 0;
@@ -114,12 +149,11 @@ svg.i { width: 18px; height: 18px; fill: none; stroke: currentColor; stroke-widt
 #bPause.on { background: var(--select); color: var(--ink); box-shadow: inset 0 0 0 1.5px var(--grip); }
 .tbtn.cue { box-shadow: 0 0 0 2px var(--accent); animation: cue 1.6s var(--ease) infinite; }
 @keyframes cue { 50% { box-shadow: 0 0 0 5px var(--accent-soft); } }
-.tool-right { justify-self: end; display: flex; align-items: center; gap: 2px; }
 .snd-toggle[aria-pressed="false"] { color: var(--ink-3); }
 
 /* Play mode: Unity tints the editor chrome while the game runs (a brighter navy here) */
-.editor .menubar, .editor .toolbar, .editor .tabs, .editor .status { transition: background-color .3s ease-out; }
-.editor.playmode .menubar, .editor.playmode .toolbar, .editor.playmode .tabs, .editor.playmode .status { background: var(--playtint); }
+.editor .menubar, .editor .tabs, .editor .status { transition: background-color .3s ease-out; }
+.editor.playmode .menubar, .editor.playmode .tabs, .editor.playmode .status { background: var(--playtint); }
 
 /* ---------- areas and docks ---------- */
 .area { position: relative; display: flex; flex-direction: column; gap: 1px; background: var(--line); min-height: 0; min-width: 0; }
@@ -127,9 +161,9 @@ svg.i { width: 18px; height: 18px; fill: none; stroke: currentColor; stroke-widt
 .area.right { grid-area: right; }
 .area.bottom { grid-area: bottom; flex-direction: row; }
 .area > .dock { flex: 1 1 0; }
-/* one panel made big (editor.js, maximize): over everything from the toolbar to the status bar, or
+/* one panel made big (editor.js, maximize): over everything from the bar to the status bar, or
    beside the Chat column when that is on the right */
-.dock.max { position: fixed; z-index: 20; top: 98px; bottom: 27px; left: 0; right: 0; flex: none !important;
+.dock.max { position: fixed; z-index: 20; top: 49px; bottom: 27px; left: 0; right: 0; flex: none !important;
             box-shadow: var(--lift); animation: maxIn .3s var(--ease); }
 .dock.max.side { right: calc(var(--rw) + 1px); }
 .inspector.max { max-height: none; }
@@ -640,23 +674,30 @@ output.nbox { display: inline-grid; align-items: center; justify-content: end; b
 /* ---------- narrow windows: stack rather than squeeze (a zoomed-in Chromebook lands here) ---------- */
 @media (max-width: 900px) {
   .editor { height: auto; min-height: 100dvh;
-    grid-template-columns: 1fr; grid-template-rows: 44px auto minmax(300px, 56vh) auto auto auto 26px;
-    grid-template-areas: "menu" "tool" "game" "right" "left" "bottom" "status"; }
+    grid-template-columns: 1fr; grid-template-rows: auto minmax(300px, 56vh) auto auto auto 26px;
+    grid-template-areas: "menu" "game" "right" "left" "bottom" "status"; }
   .area.right { min-height: 420px; }
   .area.bottom { flex-direction: column; min-height: 180px; }
   .split { display: none !important; }
   .dock.max, .dock.max.side { top: 0; bottom: 0; right: 0; }
   .dock:not(.closed) [data-drag] { cursor: default; }
-  .toolbar { grid-template-columns: auto 1fr auto; padding: 4px 8px; }
-  .transport { justify-self: center; }   /* Play in the middle, not at the start of the wide column */
+  .menubar { gap: 6px; padding: 0 6px; }
+  .wordmark { display: none; }   /* the menus, Play and the kid's circle need the width more */
   .tbtn span { display: none; }
-  .transport .tbtn span, #bPlay span { display: inline; }
   .project { display: none; }
   .pwin { grid-template-columns: 1fr; grid-template-rows: auto minmax(0, 1fr); }
   .pnav { flex-direction: row; border-right: 0; border-bottom: 1px solid var(--line-soft); overflow-x: auto; }
   .pfold span { white-space: nowrap; }
   .assets { grid-template-columns: repeat(auto-fill, minmax(80px, 1fr)); }
   .irow, .irow.wide { grid-template-columns: minmax(0, 1fr) minmax(0, 1.8fr); }
+}
+/* a phone-width window: Play gets a row of its own under the menus, rather than sitting on them */
+@media (max-width: 560px) {
+  .menubar { grid-template-columns: minmax(0, 1fr) auto; grid-template-areas: "left right" "play play"; padding: 2px 6px 6px; row-gap: 2px; }
+  .mleft { grid-area: left; }
+  .mright { grid-area: right; }
+  .menubar .transport { grid-area: play; justify-self: center; }
+  .mtop { padding: 0 9px; }
 }
 
 @media (prefers-reduced-motion: reduce) { *, *::before, *::after { transition: none !important; animation: none !important; } }

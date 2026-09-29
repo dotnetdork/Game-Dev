@@ -43,13 +43,13 @@
       if (m && m.studio) {
         return fetch('/auth/studio/me').then(function (r) { return r.json(); }).then(function (s) {
           if (!s.interviewed) { location.replace('/interview.html'); return new Promise(function () {}); }
-          Chat.setKid(s.card && s.card.first);
+          Chat.setKid(s.card && s.card.first); Editor.me(s.card && s.card.first);
           window.__studioKid = true;   // a class-list kid: the quests keep their card up to date (quest.js card())
           return course;
         });
       }
       var n = m && m.signedIn && m.name && m.name !== 'Local developer' ? String(m.name).split(/\s+/)[0] : '';
-      Chat.setKid(n);
+      Chat.setKid(n); Editor.me(n);
       return course;
     }).then(function (c) {
       Quest.start(c);

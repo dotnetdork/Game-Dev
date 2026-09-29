@@ -10,7 +10,7 @@
 <meta name="theme-color" content="#0c1e34">
 <!-- The studio (V2, branch claude/prototype-v2). The design system is DESIGN.md at the repo root;
      the old app's front end lives on main and is not loaded here.
-     The shape is Unity's (docs/rework/v2-spec.md §3.3): a menu bar over a toolbar, then docks.
+     The shape is Unity's (docs/rework/v2-spec.md §3.3): one bar of menus and Play, then docks.
      Which dock sits where is not written here: editor.js moves the <section class="dock"> panels
      into the three areas (left, right, bottom) from the saved layout, so the order below is only
      the default. The Game view stays in the centre. -->
@@ -74,33 +74,31 @@
 </svg>
 
 <div class="editor" id="editor">
-  <!-- The menu bar: only items that work, and only for what the kid has met (editor.js, menus). -->
+  <!-- The one bar (Jay, 2026-09-29: the toolbar under the menus repeated them). Menus left, with
+       only items that work (editor.js, menus); Play, Pause and Stop centred, as icons, where Unity
+       keeps them; Sound and the kid's own menu right. Undo, Redo and the layouts live in Edit and
+       Window, where an engine keeps them. -->
   <nav class="menubar" id="menubar" aria-label="Menus">
-    <img class="wordmark" alt="The League of Amazing Programmers" src="/img/wordmark.png">
-    <ul class="menus" role="menubar" id="menus" aria-label="Studio"></ul>
-    <span class="project reveal closed" id="projName"><b id="projText">The intern’s game</b></span>
-  </nav>
-
-  <header class="toolbar" id="toolbar">
-    <div class="tgroup reveal closed" id="editTools" role="group" aria-label="Undo and redo">
-      <button type="button" class="tbtn quiet" id="bUndo" disabled data-tip="Undo: put back your last change (Ctrl+Z)"><svg class="i" aria-hidden="true"><use href="#i-undo"/></svg><span>Undo</span></button>
-      <button type="button" class="tbtn quiet" id="bRedo" disabled data-tip="Redo: do it again (Ctrl+Y)"><svg class="i" aria-hidden="true"><use href="#i-redo"/></svg><span>Redo</span></button>
+    <div class="mleft">
+      <img class="wordmark" alt="The League of Amazing Programmers" src="/img/wordmark.png">
+      <ul class="menus" role="menubar" id="menus" aria-label="Studio"></ul>
+      <span class="project reveal closed" id="projName"><b id="projText">The intern’s game</b></span>
     </div>
     <div class="transport reveal closed" id="transport" role="group" aria-label="Play controls">
-      <button type="button" class="tbtn" id="bPlay" aria-pressed="false" data-tip="Play: run your game (Ctrl+P)"><svg class="i" aria-hidden="true"><use href="#i-play"/></svg><span>Play</span></button>
-      <button type="button" class="tbtn" id="bPause" disabled aria-pressed="false" data-tip="Pause: freeze the game where it is (Ctrl+Shift+P)"><svg class="i" aria-hidden="true"><use href="#i-pause"/></svg><span>Pause</span></button>
-      <button type="button" class="tbtn" id="bStop" disabled data-tip="Stop: end the game. Changes made while playing are undone (Ctrl+P)"><svg class="i" aria-hidden="true"><use href="#i-stop"/></svg><span>Stop</span></button>
+      <button type="button" class="ibtn" id="bPlay" aria-label="Play" aria-pressed="false" data-tip="Play: run your game (Ctrl+P)"><svg class="i" aria-hidden="true"><use href="#i-play"/></svg></button>
+      <button type="button" class="ibtn" id="bPause" aria-label="Pause" disabled aria-pressed="false" data-tip="Pause: freeze the game where it is (Ctrl+Shift+P)"><svg class="i" aria-hidden="true"><use href="#i-pause"/></svg></button>
+      <button type="button" class="ibtn" id="bStop" aria-label="Stop" disabled data-tip="Stop: end the game. Changes made while playing are undone (Ctrl+P)"><svg class="i" aria-hidden="true"><use href="#i-stop"/></svg></button>
       <span class="reveal closed stepper" id="stepTools">
-        <button type="button" class="tbtn" id="bStep" disabled data-tip="Step: while paused, move the game one frame (Ctrl+Alt+P)"><svg class="i" aria-hidden="true"><use href="#i-step"/></svg><span>Step</span></button>
+        <button type="button" class="ibtn" id="bStep" aria-label="Step" disabled data-tip="Step: while paused, move the game one frame (Ctrl+Alt+P)"><svg class="i" aria-hidden="true"><use href="#i-step"/></svg></button>
       </span>
     </div>
-    <div class="tool-right">
-      <span class="menu-anchor reveal closed" id="layoutTools">
-        <button type="button" class="tbtn quiet" id="bLayout" aria-haspopup="menu" aria-expanded="false" data-tip="Layout: put the panels back, or make the game big"><svg class="i" aria-hidden="true"><use href="#i-layout"/></svg><span>Layout</span></button>
+    <div class="mright">
+      <button type="button" class="ibtn snd-toggle" id="bSound" aria-label="Sound" aria-pressed="true" data-tip="Sound: the studio’s sounds and your game’s"><svg class="i" aria-hidden="true"><use href="#i-sound"/></svg></button>
+      <span class="menu-anchor">
+        <button type="button" class="me" id="bMe" aria-haspopup="menu" aria-expanded="false" aria-label="You: your progress, and signing out" data-tip="You: your progress, and signing out"><span id="meInitial" aria-hidden="true">?</span></button>
       </span>
-      <button type="button" class="tbtn quiet snd-toggle" id="bSound" aria-pressed="true" data-tip="Sound: the studio’s sounds and your game’s"><svg class="i" aria-hidden="true"><use href="#i-sound"/></svg><span>Sound on</span></button>
     </div>
-  </header>
+  </nav>
 
   <div class="area left" id="aLeft" data-area="left">
     <!-- Tickets: its own dock (Jay, 2026-09-28), above the Hierarchy, because a ticket is what the
