@@ -23,10 +23,10 @@ all.tickets.forEach(function (t) {
 
 /* The checker has to actually refuse things, or every file "passes". */
 const bad = quests.checkQuest({ id: 'x', title: 'x', department: 'art', character: 'mentor',
-  beats: [{ id: 'a', wait_for: { event: 'teleported' } }, { id: 'b', do: { reveal: ['console'] }, wait_for: { set: { part: 'dragon', key: 'fire' } } }] }, 'x.yaml', []);
+  beats: [{ id: 'a', wait_for: { event: 'teleported' } }, { id: 'b', do: { reveal: ['scene'] }, wait_for: { set: { part: 'dragon', key: 'fire' } } }] }, 'x.yaml', []);
 check('an event the game never sends is refused', bad.some(function (p) { return /never sends "teleported"/.test(p); }));
 check('a part that does not exist is refused', bad.some(function (p) { return /no part called "dragon"/.test(p); }));
-check('a panel that does not exist is refused', bad.some(function (p) { return /unknown panel "console"/.test(p); }));
+check('a panel that does not exist is refused', bad.some(function (p) { return /unknown panel "scene"/.test(p); }));
 
 const split = quests.checkQuest({ id: 'y', title: 'y', department: 'art', character: 'mentor',
   beats: [{ id: 'a', ask: { text: 'Ok?', answers: [{ text: 'Ha', 'got it': null, goto: 'next' }] } }] }, 'y.yaml', []);

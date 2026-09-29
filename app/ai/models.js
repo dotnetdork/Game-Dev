@@ -66,7 +66,18 @@ const AGENT_TOOLS = {
      two sentences: a lookup would cost more than the answer is worth. */
   mentor: false,
   /* The interviewer (V2's hiring interview) knows nothing it could look up: it is a conversation. */
-  interviewer: false
+  interviewer: false,
+  /* The studio's Builder (V2) edits the kid's game, so a docs lookup would be worth something, and it
+     is still OFF, for three reasons. Every tool round re-sends the whole prompt, the kid's game code
+     included, which roughly doubles the wait for a class that is watching a spinner; the Builder's
+     request budget is shorter than the coder's (routes/ai.js, BUILDER_BUDGET_MS) because the
+     browser gives up at 40s. tools.js offers every tool or none, and read_file / list_owned_assets /
+     search_store / get_lesson are V1's world (files, a Store, lessons) that the studio does not have.
+     And what a lookup would catch is caught anyway: the answer is compiled, checked for invented
+     Phaser APIs and unregistered keys, and retried once before anything reaches the kid.
+     If it earns its place later, give it search_phaser_docs ALONE, which needs a per-agent tool
+     list in tools.js first; do not just flip this to true. */
+  builder: false
 };
 const MAX_TOOL_ROUNDS = Number(process.env.AI_TOOL_ROUNDS || 4);
 const ANTHROPIC_KEY = process.env.ANTHROPIC_API_KEY || '';
@@ -93,6 +104,10 @@ function resolveModel(agent) {
      AGENT_MODELS at all, fell through to DEFAULT_PROVIDER, and a course configured for Anthropic
      tried to reach a local Ollama that was not running: "The AI service is not reachable". */
   if (!spec && (agent === 'lab-tutor' || agent === 'design-coach' || agent === 'mentor' || agent === 'interviewer')) spec = AGENT_MODELS.tutor || ai.agentModel('tutor') || '';
+  /* The studio's Builder writes code, so it rides on the coder's model for the same reason: without
+     this it would fall through to DEFAULT_PROVIDER, which on a course configured for Anthropic is a
+     local Ollama that is not running. No BUILDER_MODEL of its own until someone needs one. */
+  if (!spec && agent === 'builder') spec = AGENT_MODELS.coder || ai.agentModel('coder') || '';
   if (!spec) spec = DEFAULT_PROVIDER + ':' + (PROVIDER_DEFAULT_MODEL[DEFAULT_PROVIDER] || '');
   const i = spec.indexOf(':');
   // `agent` rides along so the usage meter can attribute a call without threading an extra

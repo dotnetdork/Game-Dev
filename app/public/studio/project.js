@@ -16,15 +16,17 @@
 var Project = (function () {
   var KEY = 'studio.v2';
 
-  /* The intern's level. x/y are in the game's own 960×540 pixels. */
+  /* The intern's level. x/y are in the game's own 960×540 pixels. Every setting here is one the
+     Inspector shows (schema.js); the Hierarchy shows only the names (no notes: "Level 1 · the
+     level" told the kid what they could already see, and "looks broken" gave the answer away). */
   function internsParts() {
     return [
-      { id: 'level', name: 'Level 1', kind: 'level', note: 'the level', gravity: 1200, look: null },
-      { id: 'player', name: 'Player', kind: 'player', note: 'grey box', x: 96, y: 420, speed: 240, jump: 600, look: null },
-      { id: 'ground', name: 'Ground', kind: 'floor', note: 'solid', y: 448, pieces: [[0, 320], [384, 192], [704, 256]], solid: true, look: null },
-      { id: 'tile', name: 'Floor tile', kind: 'floor', note: 'looks broken', y: 448, pieces: [[320, 64]], solid: false, look: null },
-      { id: 'lava', name: 'Lava', kind: 'lava', note: 'the danger', x: 576, y: 464, w: 128, hurts: false, look: null },
-      { id: 'coins', name: 'Coins', kind: 'coin', note: 'the goal', spots: [[480, 400], [832, 400]], size: 1, look: null, sound: null }
+      { id: 'level', name: 'Level 1', kind: 'level', gravity: 1200, look: null },
+      { id: 'player', name: 'Player', kind: 'player', x: 96, y: 420, speed: 240, jump: 600, gravityScale: 1, look: null, tint: null, shape: null },
+      { id: 'ground', name: 'Ground', kind: 'floor', y: 448, pieces: [[0, 320], [384, 192], [704, 256]], solid: true, look: null, tint: null },
+      { id: 'tile', name: 'Floor tile', kind: 'floor', y: 448, pieces: [[320, 64]], solid: false, look: null, tint: null },
+      { id: 'lava', name: 'Lava', kind: 'lava', x: 576, y: 464, w: 128, hurts: false, look: null, tint: null },
+      { id: 'coins', name: 'Coins', kind: 'coin', spots: [[480, 400], [832, 400]], size: 1, look: null, tint: null, sound: null, volume: 0.6, pitch: 1 }
     ];
   }
 
@@ -32,9 +34,24 @@ var Project = (function () {
   function fresh() {
     return { v: 3, parts: internsParts(), code: null, quest: null };   // quest: the engine's own state (quest.js)
   }
+  /* A save from before a setting existed gets that setting, at the intern's value, rather than the
+     whole game being thrown away (V1's rule: migrate, never wipe). The old Kenney looks the first
+     build used are moved onto the code-drawn sprites with the same job. */
+  var OLD_LOOKS = { alien: 'hero', pink: 'hero', slime: 'hero', frog: 'hero', mouse: 'hero' };
+  function migrate(s) {
+    var base = internsParts();
+    s.parts.forEach(function (p) {
+      var b = base.filter(function (q) { return q.id === p.id; })[0];
+      if (b) Object.keys(b).forEach(function (k) { if (!(k in p)) p[k] = b[k]; });
+      delete p.note;
+      if (p.kind === 'player' && OLD_LOOKS[p.look]) p.look = p.shape ? 'hero' : null;
+    });
+    return s;
+  }
   function load() {
     try { var raw = localStorage.getItem(KEY); if (raw) state = JSON.parse(raw); } catch (e) { state = null; }
-    if (!state || state.v !== 3) state = fresh();
+    if (!state || state.v !== 3 || !Array.isArray(state.parts)) state = fresh();
+    else migrate(state);
     return state;
   }
   var saveTimer = null, onSave = [];
@@ -61,5 +78,5 @@ var Project = (function () {
   function clone(parts) { return JSON.parse(JSON.stringify(parts)); }
 
   return { load: load, save: save, onSave: function (fn) { onSave.push(fn); }, KEY: KEY, reset: reset, code: code, part: part, clone: clone,
-           get: function () { return state; }, internsParts: internsParts };
+           get: function () { return state; }, internsParts: internsParts, migrate: migrate };
 })();

@@ -1,5 +1,6 @@
 # Design's first shift: the lava does nothing (ticket: harmless-lava). Concept: risk. A designer's
-# rule (a Hazard script) makes touching it send you back; then the kid has to get past it.
+# rule (a Hazard script) makes touching it send you back; then the kid has to get past it and grab
+# every coin (`cleared`, so a coin grabbed before the lava doesn't count as beating it).
 id: harmless-lava
 title: The harmless lava
 department: design
@@ -10,26 +11,40 @@ allow: [hazard]
 on:
   - when: { reverted: true }
     say:
-      - "It changed back! Changes made while playing are undone on Stop. Turn the rule on while it’s stopped."
+      - It changed back! Changes made while playing are undone on Stop.
+      - Turn the rule on while the game is stopped.
 beats:
   - id: meet
+    goal: Find the lava
     do: { reveal: [hierarchy], point: hierarchy, stop: true }
     say:
-      - Hi @name, I’m the lead designer! Lava that doesn’t hurt isn’t scary. Tap Lava in the Hierarchy.
+      - Hi @name, I’m the lead designer!
+      - Lava that doesn’t hurt isn’t scary. Let’s give it a rule.
     skip_if: { state: { lava.hurts: true } }
+    hints_after: 20
+    hints:
+      - Find the lava in the Hierarchy.
+      - Tap Lava in the Hierarchy.
     wait_for: { select: lava }
 
   - id: fix
+    goal: Make the lava dangerous
     say:
-      - Its Hazard script is a designer’s rule. Turn on Hurts player.
+      - Designers write rules as scripts. This one has a script that’s switched off.
     skip_if: { state: { lava.hurts: true } }
     on:
       - when: { set: { part: lava, key: hurts, value: false } }
         say:
-          - "That turned it off. Turn Hurts player on, then test it."
+          - That turned it off. Turn it back on, then test it.
+    hints_after: 25
+    hints:
+      - Look through the Lava’s components in the Inspector.
+      - Scripts have (Script) after their name.
+      - Tick the Hazard (Script).
     wait_for: { state: { lava.hurts: true } }
 
   - id: feel-it
+    goal: Play and step in the lava
     do: { cue: play }
     say:
       - Press Play and step in the lava. Carefully!
@@ -38,14 +53,20 @@ beats:
       - Ouch! Back to the start.
 
   - id: beat-it
+    goal: Get past the lava and grab every coin
     say:
-      - Now jump over it and grab the far coin.
-    wait_for: { event: coin }
+      - Now get past it and grab every coin.
+    hints_after: 40
+    hints:
+      - Get a running start, then jump.
+      - Hold the arrow key while you jump, so you keep moving.
+    wait_for: { event: cleared }
     pass: true
     done_say:
       - You made it! Danger makes a game exciting.
 
   - id: name-it
+    goal: "Pick an answer: why is real lava more fun?"
     do: { stop: true }
     award: { card: risk }
     ask:
@@ -54,13 +75,11 @@ beats:
         - text: There was a risk to beat
           correct: true
           say:
-            - "Yes! Designers call it risk. Something to lose makes getting past it feel good."
-          goto: next
+            - Yes! Designers call it risk.
+            - Something to lose makes getting past it feel good.
         - text: The lava looked cooler
           say:
-            - "It looked the same! What changed is it could send you back. That’s risk, and beating it feels good."
-          goto: next
+            - It looked the same! Think about what changed when you touched it. Try again!
         - text: It didn’t
           say:
-            - "Fair! But most players like a challenge. Something to lose is called risk."
-          goto: next
+            - Fair! But what could happen now that couldn’t before? Try again!

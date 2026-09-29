@@ -13,7 +13,7 @@
   el.innerHTML = '<div class="dh"><b>Dev panel</b><span>localhost only · Ctrl+Shift+D</span><button type="button" data-a="close" aria-label="Close">×</button></div>'
     + '<p class="where"></p>'
     + '<div class="row"><button type="button" data-a="skip">Skip beat</button><select id="devQuest" aria-label="Quest"></select><button type="button" data-a="jump">Jump</button></div>'
-    + '<div class="row"><select id="devEvent" aria-label="Event"><option>fell</option><option>coin</option><option>lava</option><option>hurt</option><option>crossed</option><option value="stop">(stop)</option><option value="reverted">(reverted)</option></select><button type="button" data-a="fire">Fire event</button></div>'
+    + '<div class="row"><select id="devEvent" aria-label="Event"><option>fell</option><option>coin</option><option>lava</option><option>hurt</option><option>crossed</option><option>cleared</option><option value="stop">(stop)</option><option value="reverted">(reverted)</option></select><button type="button" data-a="fire">Fire event</button></div>'
     + '<div class="row"><button type="button" data-a="reset">Start over</button><label><input type="checkbox" id="devFresh"> Always start fresh</label></div>'
     + '<pre class="state"></pre>';
   document.body.appendChild(el);

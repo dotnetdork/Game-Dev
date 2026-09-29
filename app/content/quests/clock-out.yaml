@@ -1,0 +1,42 @@
+# The end of a day: the Studio Director sums it up (the AI's words when it's up, the facts when it
+# isn't), then three questions for whoever runs the playtest. Answers go to the event log.
+id: clock-out
+title: Clocking out
+department: studio
+character: director
+beats:
+  - id: recap
+    do: { stop: true, recap: true }
+
+  - id: how-was-it
+    goal: Tell the Director how today went
+    ask:
+      text: How was today?
+      answers:
+        - text: Loved it
+          say:
+            - That’s what I like to hear.
+        - text: It was OK
+          say:
+            - Fair. Help me make it better.
+        - text: Not for me
+          say:
+            - Thanks for being honest. Tell me why.
+
+  - id: best-part
+    goal: Tell the Director your favourite part
+    ask:
+      text: What was the best part?
+      from: feedback
+      examples: [Fixing the bugs, Making my hero, Building with the AI]
+
+  - id: confusing
+    goal: Tell the Director what was confusing
+    ask:
+      text: Was anything confusing?
+      from: feedback
+      examples: [Nothing, What to do next, Finding things in the panels]
+
+  - id: bye
+    say:
+      - See you next shift, @name. Your game will be right here.

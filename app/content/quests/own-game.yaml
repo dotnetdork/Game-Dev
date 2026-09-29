@@ -1,0 +1,40 @@
+# After the board is clear: the game is the kid's, and the studio builds what they ask for. The
+# Mentor hands a request the settings can't do to the Builder (builder.js, ai/agents/builder.md).
+# No dead end (Jay's playthrough ended at "that's everything for now"): this runs next, and File ›
+# Clock out ends the day whenever the kid is ready.
+id: own-game
+title: Make it yours
+department: studio
+character: mentor
+next_quest: clock-out
+beats:
+  - id: ask-anything
+    goal: Ask for something new in your game
+    do: { stop: true, reveal: [project, console] }
+    say:
+      - The board is clear. Now the fun part.
+      - Tell me anything you want in your game, and I’ll build it with you.
+      - Coins that spin? A jump pad? A second level?
+    hints_after: 45
+    hints:
+      - Type an idea in the box below. Anything you’d like to see.
+      - Try “make the coins spin” or “add a jump pad”.
+      - Or just play your game. File › Clock out ends the day.
+    wait_for: { built: true }
+
+  - id: try-it
+    goal: Play and try it out, then press Stop
+    do: { cue: play }
+    say:
+      - Press Play and try it out!
+    wait_for: { stop: true }
+
+  - id: more
+    goal: Build something else, or clock out
+    ask:
+      text: What next?
+      answers:
+        - text: Build something else
+          goto: ask-anything
+        - text: Clock out for today
+          goto: next

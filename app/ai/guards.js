@@ -248,7 +248,9 @@ const CLAIMS_A_CHANGE = [
 ];
 function claimsChangeWithoutOps(reply, ops) {
   if (Object.keys(ops || {}).length) return false;
-  const s = String(reply || '');
+  /* Curly apostrophes folded to straight ones first: models write "I’ve added" as often as "I've
+     added", and the first-person pattern above only knew the straight one (found by check-builder.js). */
+  const s = String(reply || '').replace(/[‘’]/g, "'");
   return CLAIMS_A_CHANGE.some(function (re) { return re.test(s); });
 }
 
@@ -295,6 +297,26 @@ function heldNote(name, hits, owned) {
   return '';
 }
 
+/* ---- the studio Builder's give-up line (V2) ----
+   The Builder (routes/ai.js, ai/agents/builder.md) talks to 10-year-olds who never see the code, so
+   its notes cannot name `bezierCurveTo` the way heldNote does for V1's coder, whose students are
+   reading a diff. One plain sentence per guard, all ending the same way, because the one thing the
+   kid needs to know is that their game is exactly as it was. The technical detail is not lost: the
+   guard's `detail` goes to telemetry, where the person helping them can read it.
+   Pure, like everything here; tools/check-builder.js reads the wording through the real route. */
+const BUILDER_NOTES = {
+  'bad-find': 'I couldn’t find the right spot in your code for that change',
+  'bad-js': 'My change had a mistake in it that would stop your game from running',
+  'bad-api': 'My change used a Phaser command that doesn’t exist',
+  'bad-key': 'My change read a key your game never sets up, so it would have frozen',
+  'bad-asset': 'My change used a picture or sound file the studio doesn’t have',
+  'no-ops': 'I didn’t manage to send a change that time'
+};
+function builderNote(name) {
+  const s = BUILDER_NOTES[name];
+  return s ? s + ', so I left your game just as it was.' : '';
+}
+
 /* "Done." / "OK" / "Sure" — an acknowledgement carrying no information. The browser has had this
    list since the first "Done." complaint (saysSomething in js/ai.js); the server needs it for the
    one decision above, where keeping such a reply means printing a correction followed by the very
@@ -306,4 +328,4 @@ function isEmptyAck(s) { return EMPTY_ACK.test(String(s || '').trim()); }
 module.exports = { extractJSON: extractJSON, unwrapDoubleJSON: unwrapDoubleJSON,
   sanitizeHistory: sanitizeHistory, unknownAssetKeys: unknownAssetKeys, assetApology: assetApology,
   badApisIn: badApisIn, badKeysIn: badKeysIn, claimsChangeWithoutOps: claimsChangeWithoutOps,
-  heldNote: heldNote, isEmptyAck: isEmptyAck, BAD_PHASER_APIS: BAD_PHASER_APIS };
+  heldNote: heldNote, builderNote: builderNote, isEmptyAck: isEmptyAck, BAD_PHASER_APIS: BAD_PHASER_APIS };

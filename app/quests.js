@@ -19,18 +19,35 @@ const DIR = path.join(__dirname, 'content', 'quests');
 
 /* The vocabulary. Adding a word here is adding a feature to the engine; the two must move together. */
 const DEPARTMENTS = ['studio', 'engineering', 'art', 'audio', 'design'];
-const CHARACTERS = ['mentor', 'lead-programmer', 'art-director', 'sound-designer', 'lead-designer', 'department'];
-const PANELS = ['game', 'play', 'hierarchy', 'inspector', 'tickets', 'quest', 'project', 'script', 'stars', 'pause'];
-const EVENTS = ['fell', 'coin', 'lava', 'hurt', 'crossed'];            // what the game itself reports
-const PARTS = { level: ['look', 'gravity'], player: ['look', 'speed', 'jump'], ground: ['solid', 'look'],
-  tile: ['solid', 'look'], lava: ['look', 'hurts'], coins: ['look', 'sound', 'size'] };
-const COMPONENTS = ['coinArt', 'coinSound', 'coinSize', 'lavaArt', 'hazard', 'floorArt', 'playerMove'];
-const PICKERS = ['tickets', 'heroes', 'names'];
-const BEAT_KEYS = ['id', 'character', 'say', 'do', 'ask', 'wait_for', 'on', 'hint', 'hints_after', 'done_say', 'pass', 'award', 'skip_if', 'next'];
-const DO_KEYS = ['reveal', 'point', 'cue', 'play', 'stop', 'allow', 'close_inspector', 'file_tickets'];
+const CHARACTERS = ['mentor', 'lead-programmer', 'art-director', 'sound-designer', 'lead-designer', 'director', 'department'];
+const PANELS = ['game', 'play', 'hierarchy', 'inspector', 'tickets', 'quest', 'project', 'script', 'stars', 'pause', 'console'];
+const EVENTS = ['fell', 'coin', 'lava', 'hurt', 'crossed', 'cleared'];  // what the game itself reports (cleared: every coin grabbed)
+/* The parts a quest may name, and their settings. The Inspector's own list is public/studio/schema.js
+   (the browser's); check-studio.js checks every setting here is one the schema has. */
+const PARTS = { level: ['look', 'gravity'], player: ['look', 'speed', 'jump', 'gravityScale', 'tint', 'shape', 'x', 'y'],
+  ground: ['solid', 'look', 'tint'], tile: ['solid', 'look', 'tint'], lava: ['look', 'hurts', 'w', 'tint'],
+  coins: ['look', 'sound', 'size', 'tint', 'volume', 'pitch'] };
+const COMPONENTS = ['coinArt', 'coinSound', 'coinSize', 'lavaArt', 'lavaSize', 'hazard', 'floorArt', 'playerMove', 'heroArt'];
+/* A question whose answers come from the game, not the file. `findings`, `heroes`, `names` and
+   `feedback` are TYPED: the kid says what they found, what their hero is, what their game is called,
+   what they thought of the day, in their own words (Jay, 2026-09-28: the game name typed in chat,
+   not a preselected card). Their card still shows the question and a few `examples` of an answer
+   (Jay, 2026-09-29: without them a kid can't tell what's wanted); tapping one is typing it. */
+const PICKERS = ['tickets', 'findings', 'heroes', 'names', 'feedback'];
+/* `hints` is a ladder, where → which → how (review §4, rule 3): one rung every `hints_after` seconds,
+   or at once when the kid types "help", "stuck" or "idk". Never the answer before the last rung. */
+/* `goal` is the step's task line, pinned under the chat's header while the step runs (Jay,
+   2026-09-29: "There is no way for them to know whats happening"). Short, in the kid's terms, and
+   never the answer: "Find out why the tile doesn't hold you", not "Tick the Box Collider". A beat
+   that waits for something or asks something needs one. */
+const BEAT_KEYS = ['id', 'character', 'goal', 'say', 'do', 'ask', 'wait_for', 'on', 'hints', 'hints_after', 'done_say', 'pass', 'award', 'skip_if', 'next'];
+const GOAL_WORDS = 12;
+const DO_KEYS = ['reveal', 'point', 'cue', 'play', 'stop', 'allow', 'close_inspector', 'file', 'recap'];
 const ANSWER_KEYS = ['text', 'sub', 'say', 'goto', 'correct'];
 const HANDLER_KEYS = ['when', 'say', 'once', 'flag', 'cue'];
-const COND_KEYS = ['event', 'set', 'select', 'play', 'stop', 'reverted', 'state', 'flag', 'not_flag', 'found_at_least', 'found_none', 'playing', 'filed'];
+const COND_KEYS = ['event', 'set', 'select', 'play', 'stop', 'reverted', 'state', 'flag', 'not_flag', 'seen_at_least', 'seen_none', 'playing', 'filed', 'built'];
+const ASK_KEYS = ['text', 'answers', 'from', 'then', 'if_none', 'examples'];
+const SAY_WORDS = 22;   // one idea per bubble (review §4, rule 4): a line longer than this is two lines
 
 function problem(list, where, msg) { list.push(where + ': ' + msg); }
 
@@ -54,16 +71,29 @@ function checkCond(list, where, c) {
 
 function checkLines(list, where, lines) {
   if (!Array.isArray(lines) || !lines.length || lines.some(function (l) { return typeof l !== 'string' || !l.trim(); })) {
-    problem(list, where, 'lines must be a list of sentences');
+    return problem(list, where, 'lines must be a list of sentences');
   }
+  lines.forEach(function (l) {
+    const n = l.trim().split(/\s+/).length;
+    if (n > SAY_WORDS) problem(list, where, 'a line of ' + n + ' words is too long for one bubble (at most ' + SAY_WORDS + '); split it: "' + l.slice(0, 40) + '…"');
+  });
 }
 
 function checkAsk(list, where, ask, beatIds) {
   if (!ask || typeof ask.text !== 'string') return problem(list, where, 'ask needs text');
+  Object.keys(ask).forEach(function (k) { if (ASK_KEYS.indexOf(k) < 0) problem(list, where, 'ask: unknown key "' + k + '"'); });
+  if (ask.then !== undefined && ask.then !== 'again') problem(list, where, 'ask.then can only be "again"');
+  if (ask.if_none !== undefined && beatIds.indexOf(ask.if_none) < 0) problem(list, where, 'if_none "' + ask.if_none + '" is not a beat in this quest');
   if (ask.from !== undefined) {
     if (PICKERS.indexOf(ask.from) < 0) problem(list, where, 'ask.from must be one of ' + PICKERS.join(', '));
+    if (ask.examples !== undefined && (!Array.isArray(ask.examples) || ask.examples.length > 4 || ask.examples.some(function (x) { return typeof x !== 'string' || !x.trim(); }))) {
+      problem(list, where, 'examples is a list of at most 4 short answers');
+    }
     return;
   }
+  /* A question with one answer is a Next button wearing a costume (review §4: no "Ready?" or "Make
+     sense?" cards). If there is nothing to choose, the beat says its line and moves on. */
+  if (Array.isArray(ask.answers) && ask.answers.length < 2) problem(list, where, 'a question needs at least two real answers');
   if (!Array.isArray(ask.answers) || !ask.answers.length) return problem(list, where, 'ask needs answers (or from:)');
   ask.answers.forEach(function (a, n) {
     const w = where + ' answer ' + (n + 1);
@@ -72,6 +102,8 @@ function checkAsk(list, where, ask, beatIds) {
        read as text "Ha" plus a key called "got it". Quote text that has a comma in it. */
     Object.keys(a || {}).forEach(function (k) { if (ANSWER_KEYS.indexOf(k) < 0) problem(list, w, 'unknown key "' + k + '" (text with a comma must be in quotes)'); });
     if (a.say) checkLines(list, w, a.say);
+    /* again: ask the same question once more, WITHOUT this answer, so "Why does it do that?" can be
+       asked once and never loops (it did, in Jay's playthrough). */
     if (a.goto && a.goto !== 'next' && a.goto !== 'end' && a.goto !== 'again' && beatIds.indexOf(a.goto) < 0) problem(list, w, 'goto "' + a.goto + '" is not a beat in this quest');
   });
   if (ask.answers.some(function (a) { return a && a.correct; }) && !ask.answers.some(function (a) { return a && !a.correct && a.say; })) {
@@ -90,6 +122,9 @@ function checkQuest(q, file, ticketIds) {
   if (CHARACTERS.indexOf(q.character) < 0 || q.character === 'department') problem(list, w0, 'character must be one of ' + CHARACTERS.slice(0, -1).join(', '));
   if (q.ticket && ticketIds.indexOf(q.ticket) < 0) problem(list, w0, 'ticket "' + q.ticket + '" is not in tickets.yaml');
   (q.allow || []).forEach(function (c) { if (COMPONENTS.indexOf(c) < 0) problem(list, w0, 'allow: unknown component "' + c + '"'); });
+  /* next_quest: what starts when this one ends with nothing under it, so the course never stops at
+     "that's everything for now" (Jay's playthrough: a dead end after the tickets). */
+  if (q.next_quest !== undefined && !/^[a-z0-9-]+$/.test(q.next_quest)) problem(list, w0, 'next_quest must be a quest id');
   if (!Array.isArray(q.beats) || !q.beats.length) { problem(list, w0, 'needs beats'); return list; }
   const ids = q.beats.map(function (b) { return b && b.id; });
   ids.forEach(function (id, n) { if (!id) problem(list, w0, 'beat ' + (n + 1) + ' needs an id'); else if (ids.indexOf(id) !== n) problem(list, w0, 'two beats are called "' + id + '"'); });
@@ -100,12 +135,16 @@ function checkQuest(q, file, ticketIds) {
     if (b.character && CHARACTERS.indexOf(b.character) < 0) problem(list, w, 'unknown character "' + b.character + '"');
     if (b.say) checkLines(list, w, b.say);
     if (b.done_say) checkLines(list, w, b.done_say);
-    if (b.hint) checkLines(list, w, b.hint);
+    if ((b.wait_for || b.ask) && !b.goal) problem(list, w, 'needs a goal: the task line the kid sees while this step runs');
+    if (b.goal !== undefined && (typeof b.goal !== 'string' || b.goal.trim().split(/\s+/).length > GOAL_WORDS)) problem(list, w, 'goal is one line of at most ' + GOAL_WORDS + ' words');
+    if (b.hints) checkLines(list, w + ' hints', b.hints);
+    if (b.hints_after !== undefined && !(b.hints_after >= 5)) problem(list, w, 'hints_after is seconds, at least 5');
     if (b.do) {
       Object.keys(b.do).forEach(function (k) { if (DO_KEYS.indexOf(k) < 0) problem(list, w, 'do: unknown action "' + k + '"'); });
       (b.do.reveal || []).forEach(function (p) { if (PANELS.indexOf(p) < 0) problem(list, w, 'reveal: unknown panel "' + p + '"'); });
       if (b.do.point && PANELS.indexOf(b.do.point) < 0) problem(list, w, 'point: unknown panel "' + b.do.point + '"');
       (b.do.allow || []).forEach(function (c) { if (COMPONENTS.indexOf(c) < 0) problem(list, w, 'allow: unknown component "' + c + '"'); });
+      (b.do.file || []).forEach(function (t) { if (ticketIds.indexOf(t) < 0) problem(list, w, 'file: no ticket "' + t + '"'); });
     }
     if (b.ask) checkAsk(list, w, b.ask, ids);
     if (b.wait_for) checkCond(list, w + ' wait_for', b.wait_for);
@@ -130,7 +169,13 @@ function checkTickets(t, file) {
     if (DEPARTMENTS.indexOf(k.department) < 0) problem(list, w, 'department must be one of ' + DEPARTMENTS.join(', '));
     if (!k.quest) problem(list, w, 'needs the quest that fixes it');
     if (k.found_by) checkCond(list, w + ' found_by', k.found_by);
+    if (k.words !== undefined) { try { new RegExp(k.words, 'i'); } catch (e) { problem(list, w, 'words is not a valid pattern (' + e.message + ')'); } }
     if (k.fixed_when) checkCond(list, w + ' fixed_when', k.fixed_when);
+    /* `says` is the finding in a kid's words, offered on the "What did you find?" card once the kid
+       has run into it (never before: that would be narrating it). `detail` is the ticket's
+       description, shown when the kid opens it. */
+    if (!k.says) problem(list, w, 'needs says: the finding as a kid would put it');
+    if (!k.detail) problem(list, w, 'needs detail: what is wrong, for the ticket\'s page');
   });
   return list;
 }
@@ -166,8 +211,9 @@ function load() {
     if (q.id) out.quests[q.id] = q;
   });
   out.tickets.forEach(function (t) { if (t.quest && !out.quests[t.quest]) problems.push('tickets.yaml: ticket ' + t.id + ' is fixed by quest "' + t.quest + '", which does not exist'); });
+  Object.keys(out.quests).forEach(function (id) { const n = out.quests[id].next_quest; if (n && !out.quests[n]) problems.push(id + '.yaml: next_quest "' + n + '" does not exist'); });
   out.problems = problems;
   return out;
 }
 
-module.exports = { load: load, checkQuest: checkQuest, checkTickets: checkTickets, VOCAB: { DEPARTMENTS, CHARACTERS, PANELS, EVENTS, PARTS, COMPONENTS, PICKERS } };
+module.exports = { load: load, checkQuest: checkQuest, checkTickets: checkTickets, VOCAB: { DEPARTMENTS, CHARACTERS, PANELS, EVENTS, PARTS, COMPONENTS, PICKERS, SAY_WORDS } };

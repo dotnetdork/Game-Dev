@@ -1,109 +1,114 @@
-# The first day: the studio's first shift (docs/rework/v2-spec.md §4; the beats are wireframe 04's).
-# The kid plays the intern's broken greybox level, and everything they find becomes a ticket. They
-# pick one and its department fixes it with them (the ticket's own quest runs inside this one). Then
-# they make the Play-mode mistake, and the level becomes their own game.
+# The first day: the studio's first shift (docs/rework/v2-spec.md §4; the beats are wireframe 04's,
+# reworked by Jay's playthrough, docs/rework/v2-review-2026-09-28.md §4).
+# The kid plays the intern's broken greybox level, then TELLS the Mentor what they found, in their own
+# words; each finding becomes a ticket. They pick one and its department fixes it with them (the
+# ticket's own quest runs inside this one). Then they make the Play-mode mistake, describe their hero,
+# name their game, and fix the rest of the board. Nothing here narrates a problem for them.
 id: first-day
 title: Your first day
 department: studio
 character: mentor
+next_quest: own-game
 beats:
   - id: clock-in
     say:
-      - Welcome to the studio, @name! Our last intern left a game half-broken. Let’s see how bad it is.
-    ask:
-      text: Ready to see it?
-      answers:
-        - { text: "Let’s see it", goto: next }
+      - Welcome to the studio, @name! I’m the Mentor, the studio’s AI.
+      - Our last intern left a game half-broken. Let’s see how bad it is.
+
   - id: press-play
+    goal: Play the game and look for anything broken
     do: { reveal: [game, play], point: game, cue: play }
     say:
-      - Press Play up top to test the game.
+      - Press Play up top to test it.
     on:
       - when: { play: true }
         once: true
         say:
-          - "Arrow keys to move, Space to jump. Find what’s broken!"
-      - when: { filed: floor }
+          - Arrow keys to move, Space to jump. Look for anything broken!
+      - when: { stop: true, seen_none: true }
         say:
-          - "Whoa, you fell right through the floor!"
-      - when: { filed: silent-coins }
-        say:
-          - "You grabbed a coin and… nothing. No sound at all."
-      - when: { filed: harmless-lava }
-        say:
-          - "That lava doesn’t even hurt!"
-      - when: { stop: true, found_none: true }
-        say:
-          - "Press Play again and walk to the right. Something’s broken."
-    hints_after: 25
-    hint:
-      - "Try walking over that floor on the left. Carefully…"
-    wait_for: { stop: true, found_at_least: 1 }
-    done_say:
-      - "Nice detective work!"
+          - Nothing broken yet? Press Play and explore a bit further.
+    hints_after: 30
+    hints:
+      - Explore the whole level, left to right.
+      - Try everything. Walk on things, grab things, touch things.
+      - Walk right from the start, carefully. Watch the floor.
+    wait_for: { stop: true, seen_at_least: 1 }
+
+  - id: report
+    goal: Tell the Mentor what you found
+    ask:
+      text: What did you find? Tell me in your own words.
+      from: findings
+      if_none: press-play
+
   - id: what-first
-    do: { file_tickets: true, reveal: [tickets] }
+    goal: Pick a ticket to fix first
+    # Art files the grey itself if the kid didn't: it's plain to see, and a colleague would say so.
+    do: { file: [greybox], reveal: [tickets] }
     say:
-      - Everything that needs fixing is on your ticket board now. You pick!
+      - Each ticket goes to a department. You pick which we fix first.
     ask:
       text: What should we fix first?
       from: tickets
 
   - id: play-mode
-    character: department
+    goal: Make the coins bigger while the game runs, then press Stop
+    character: mentor
     do: { reveal: [hierarchy], allow: [coinSize], play: true }
     say:
-      - Quick test while it’s running. Tap Coins and slide Size to make them bigger.
+      - Quick test while it’s running. Tap Coins and make them bigger.
     on:
       - when: { set: { part: coins, key: size, gt: 1.2 }, playing: true, not_flag: grew }
         flag: grew
         say:
-          - "Bigger! Now press Stop."
+          - Bigger! Now press Stop.
         cue: play
       - when: { set: { part: coins, key: size }, playing: false }
         say:
-          - "That one stuck, because the game wasn’t running. Press Play and try it again."
+          - That one stuck, because the game wasn’t running. Press Play and try again.
       - when: { stop: true, not_flag: grew }
         say:
-          - "Press Play again, then make the coins bigger while it runs."
+          - Press Play again, then make the coins bigger while it runs.
+    hints_after: 25
+    hints:
+      - Coins is in the Hierarchy, on the left.
+      - Its Transform has a Scale. Make it bigger than 1.
     wait_for: { reverted: true, flag: grew }
+    award: { card: play-mode }
     done_say:
-      - They shrank back! Changes made in Play mode don’t stick. Every developer learns that once.
-    ask:
-      text: Make sense?
-      answers:
-        - { text: "Ha, got it", goto: next }
-        - text: Why does it do that?
-          say:
-            - "Play mode is just a test run, so Stop puts everything back. Unity works the same way."
-          goto: again
+      - They shrank back!
+      - Play mode is a test run. Stop puts everything back, the same as in Unity.
+      - Every developer learns that once.
 
   - id: its-yours
+    goal: Describe your game’s hero
     do: { stop: true, close_inspector: true }
     say:
       - This level is yours now, @name. Every fix goes into YOUR game.
     ask:
-      text: Every game needs a hero. Pick yours
+      text: Every game needs a hero. What’s yours? A dragon, a robot, a pizza… anything!
       from: heroes
+      examples: [A dragon, A robot, A cat, A pizza with legs]
 
   - id: name-it
+    goal: Give your game a name
     ask:
-      text: What’s your game called?
+      text: And what’s your game called?
       from: names
 
   - id: play-yours
+    goal: Play your game and grab a coin
     do: { play: true }
     say:
       - Your game, @name! Grab a coin.
     wait_for: { event: coin }
-    award: { stars: 1, card: play-mode }
+    award: { stars: 1 }
     done_say:
-      - "Your first star, and your first card: Play mode!"
-    ask:
-      text: Ready for your next ticket?
-      answers:
-        - { text: "Let’s go", goto: next }
+      - Your first star!
+
   - id: next-ticket
+    goal: Pick your next ticket
     do: { stop: true, reveal: [tickets, stars] }
     say:
       - Pick your next ticket.

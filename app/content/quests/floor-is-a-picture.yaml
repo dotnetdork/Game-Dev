@@ -1,6 +1,7 @@
 # Engineering's first shift: the floor tile is only a picture (ticket: floor). Concept: collider.
-# Wireframe 04's Engineering branch, plus the "which line did that?" check Jay and Jed agreed on
-# (the real Phaser line that makes a floor solid).
+# Wireframe 04's Engineering branch, reworked for round 2 (review §4): the lead programmer gives the
+# goal and a ladder of hints, where → which → how, and never the answer first. The kid finds the
+# difference between the Ground (which holds you) and the tile (which doesn't) themselves.
 id: floor-is-a-picture
 title: The floor is a picture
 department: engineering
@@ -10,38 +11,58 @@ concept: collider
 on:
   - when: { reverted: true }
     say:
-      - "It changed back! Changes made while playing are undone on Stop. Make the fix while it’s stopped."
+      - It changed back! Changes made while playing are undone on Stop.
+      - Make the fix while the game is stopped.
 beats:
   - id: meet
+    goal: Find the part you fell through
     do: { reveal: [hierarchy], point: hierarchy, stop: true }
     say:
-      - Hi @name, I’m the lead programmer! That floor tile is only a picture, so nothing holds you up. Tap Floor tile in the Hierarchy.
+      - Hi @name, I’m the lead programmer!
+      - You fell through part of the floor. Let’s find out why.
     skip_if: { state: { tile.solid: true } }
+    hints_after: 20
+    hints:
+      - Every part of the level is listed in the Hierarchy.
+      - Which part were you standing on when you fell? Find it in the list.
+      - Tap Floor tile in the Hierarchy.
     wait_for: { select: tile }
 
   - id: fix
+    goal: Find out why the tile doesn’t hold you, and fix it
     say:
-      - That’s the Inspector, its settings. Turn on Solid in the Box Collider 2D.
+      - Its settings are in the Inspector now.
+      - The Ground holds you up and this tile doesn’t. What’s different?
     skip_if: { state: { tile.solid: true } }
     on:
       - when: { set: { part: tile, key: solid, value: false } }
         say:
-          - "That turned it off again. Turn Solid on, then test it."
+          - That turned it off again. Turn it back on, then test it.
       - when: { set: { part: ground, key: solid, value: false } }
         say:
-          - "Ha, now the Ground is a picture too! Turn it back on."
+          - Ha, now the Ground lets you fall too! Turn it back on.
+    hints_after: 25
+    hints:
+      - Tap the Ground and look at its Inspector. Then tap the tile again.
+      - A collider is what the game checks when things touch.
+      - Tick the Box Collider 2D on the Floor tile.
     wait_for: { state: { tile.solid: true } }
 
   - id: test
+    goal: Play and walk across the tile
     do: { cue: play }
     say:
       - Now press Play and walk across it.
+    hints_after: 30
+    hints:
+      - Walk right from the start and stand on the tile.
     wait_for: { event: crossed }
     pass: true
     done_say:
       - It holds! You just fixed a bug.
 
   - id: name-it
+    goal: "Pick an answer: what made the tile solid?"
     do: { stop: true }
     award: { card: collider }
     ask:
@@ -50,13 +71,11 @@ beats:
         - text: Its Box Collider
           correct: true
           say:
-            - "Yes! A collider is what the game checks when things touch. No collider, no floor."
-          goto: next
+            - Yes! A collider is what the game checks when things touch.
+            - No collider, no floor.
         - text: Its colour
           say:
-            - "Not quite. It looked the same the whole time. It was the Box Collider switch in the Inspector."
-          goto: next
+            - Not that. It looked the same the whole time. Try again!
         - text: Pressing Play
           say:
-            - "Play only tests it. The fix was the Box Collider in the Inspector."
-          goto: next
+            - Play only tests it. What did you change before that?

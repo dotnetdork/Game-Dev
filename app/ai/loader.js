@@ -168,6 +168,12 @@ function buildPrompt(agent, ctx) {
        student was looking at a canvas exercise that contains neither. */
     whereTheyAre: c.where || '(not known)',
     studio: c.studio || '(no studio context)',
+    /* The level's parts, for the studio's Builder (V2), which edits them as data alongside the code.
+       One part per line as JSON, because the Builder writes part ops back by id and key: it has to
+       see the exact ids and setting names, not a description of them. */
+    parts: (Array.isArray(c.parts) && c.parts.length)
+      ? c.parts.map(function (p) { return JSON.stringify(p); }).join('\n')
+      : '(no parts were sent)',
     labTitle: (c.lab && c.lab.title) || '(untitled lab)',
     labTask: (c.lab && c.lab.task) || '(no task given)',
     labGoal: (c.lab && c.lab.goal) || '(no goal given)',

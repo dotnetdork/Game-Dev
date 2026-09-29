@@ -1,5 +1,6 @@
 # Art's first shift: everything is grey (ticket: greybox). Concept: readability. The level is a
 # greybox, the grey blockout studios test with before Art; giving parts sprites makes it readable.
+# The sprites are drawn by the game's own code (starter/game.js, SPRITES).
 id: greybox
 title: The greybox
 department: art
@@ -10,28 +11,43 @@ allow: [coinArt, lavaArt]
 on:
   - when: { reverted: true }
     say:
-      - "It changed back! Changes made while playing are undone on Stop. Pick sprites while it’s stopped."
+      - It changed back! Changes made while playing are undone on Stop.
+      - Pick sprites while the game is stopped.
 beats:
   - id: meet
+    goal: Find the coins in the Hierarchy
     do: { reveal: [hierarchy], point: hierarchy, stop: true }
     say:
-      - Hi @name, I’m the art director! This is a greybox, a level made of plain grey blocks for testing. Nothing stands out. Tap Coins in the Hierarchy.
+      - Hi @name, I’m the art director!
+      - This is a greybox, plain blocks for testing. A player can’t tell good from dangerous.
+      - Let’s start with the coins.
     skip_if: { state: { coins.look: set, lava.look: set } }
+    hints_after: 20
+    hints:
+      - Every part is in the Hierarchy, on the left.
+      - Tap Coins in the Hierarchy.
     wait_for: { select: coins }
 
   - id: fix
+    goal: Give the coins and the lava a picture
     say:
-      - Its Sprite Renderer is the picture it’s drawn with. Give the coins a sprite, then the Lava.
+      - The Sprite Renderer draws a part’s picture. Give the coins one, then the Lava.
     on:
       - when: { set: { part: coins, key: look }, state: { lava.look: null } }
         say:
-          - "Nice! Now give the Lava a sprite."
+          - Nice! Now the Lava.
       - when: { set: { part: lava, key: look }, state: { coins.look: null } }
         say:
-          - "Scary! Now give the Coins a sprite."
+          - Scary! Now the Coins.
+    hints_after: 25
+    hints:
+      - Look for the Sprite Renderer in the Inspector.
+      - Its Sprite field says None. Tap it to pick a picture, or drag one in from the Project window.
+      - Do the same for the Lava. Tap Lava in the Hierarchy first.
     wait_for: { state: { coins.look: set, lava.look: set } }
 
   - id: test
+    goal: Play and grab a coin
     do: { cue: play }
     say:
       - Press Play. Can you spot the coins now?
@@ -41,6 +57,7 @@ beats:
       - See how they pop? Art shows players what matters.
 
   - id: name-it
+    goal: "Pick an answer: what did the sprites do for the player?"
     do: { stop: true }
     award: { card: readability }
     ask:
@@ -49,13 +66,11 @@ beats:
         - text: Showed what matters
           correct: true
           say:
-            - "Right. Artists call that readability, seeing at a glance what’s good and what’s dangerous."
-          goto: next
+            - Right. Artists call that readability.
+            - Seeing at a glance what’s good and what’s dangerous.
         - text: Made it faster
           say:
-            - "Speed didn’t change. The sprites show what’s good and what’s dangerous. That’s readability."
-          goto: next
+            - Speed didn’t change. Think about what a player can see now. Try again!
         - text: Nothing, just pretty
           say:
-            - "Pretty helps, but the real job is showing what’s good and what’s dangerous. That’s readability."
-          goto: next
+            - Pretty helps. But could a player tell coin from lava before? Try again!

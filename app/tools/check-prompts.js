@@ -33,7 +33,7 @@ function check(name, ok, detail) {
 
 /* Every agent the server will dispatch to. Kept here rather than imported so that adding an agent
    to the whitelist without adding its .md fails here rather than at 4pm on a Sunday. */
-const AGENTS = ['coder', 'tutor', 'lab-tutor', 'quiz', 'grader', 'design-coach', 'mentor', 'interviewer'];
+const AGENTS = ['coder', 'tutor', 'lab-tutor', 'quiz', 'grader', 'design-coach', 'mentor', 'interviewer', 'builder'];
 
 /* A request with every field the server can send, each carrying a sentinel we can look for. The
    values are deliberately unmistakable — a real lesson title could occur by accident; SENTINEL_LESSON
@@ -45,6 +45,7 @@ const CTX = {
   lessonContext: S('lessoncontext'),
   practiceTask: { title: S('practicetitle'), task: S('practicetask'), steps: [S('practicestep')] },
   where: S('where'), studio: S('studio'),
+  parts: [{ id: 'coins', name: S('parts'), kind: 'coin' }],
   lab: { title: S('labtitle'), task: S('labtask'), goal: S('labgoal'), code: S('labcode'), log: S('lablog') },
   assets: [{ key: S('assetkey'), type: 'image' }],
   files: [{ name: 'player.js', code: S('filecode') }],
@@ -67,7 +68,7 @@ const CTX = {
    value actually arrived". Mirrors the fill() call in loader.js. */
 const SLOT_SENTINEL = {
   gameCode: S('gamecode'), lessonTitle: S('lessontitle'), lessonContext: S('lessoncontext'),
-  practiceTask: S('practicetask'), whereTheyAre: S('where'), studio: S('studio'),
+  practiceTask: S('practicetask'), whereTheyAre: S('where'), studio: S('studio'), parts: S('parts'),
   labTitle: S('labtitle'), labTask: S('labtask'), labGoal: S('labgoal'), labCode: S('labcode'), labLog: S('lablog'),
   ownedAssets: S('assetkey'), files: S('filecode'), gameLog: S('gamelog'),
   line: S('line'), snippet: S('snippet'),
@@ -121,6 +122,25 @@ AGENTS.forEach(function (agent) {
     || prompt.indexOf(S('changedcode')) >= 0;
   check('grader: is told what was asked and what changed', knowsTheTask,
     knowsTheTask ? 'has the task and the change' : 'is judging a child with no idea what was asked');
+})();
+
+/* The interviewer answers in JSON, and the route (routes/ai.js, the interviewer block) keeps only the
+   `learned` fields it knows. A field the route keeps and the prompt never mentions is one the model
+   will never fill; one the prompt asks for and the route drops is thrown away every turn. So the two
+   lists must match. And the ladder (studio/interview.js) is only as good as the prompt's example of
+   it: the element, the why and the contrast have to be shown, not just named. */
+(function () {
+  const md = fs.readFileSync(path.join(AI_DIR, 'agents', 'interviewer.md'), 'utf8');
+  const route = fs.readFileSync(path.join(__dirname, '..', 'routes', 'ai.js'), 'utf8');
+  const block = route.slice(route.indexOf("agent === 'interviewer'"));
+  const body = (block.match(/const learned = \{([\s\S]*?)\n\s*\};/) || ['', ''])[1];
+  const kept = (body.match(/^\s*(\w+):/gm) || []).map(function (k) { return k.trim().slice(0, -1); });
+  const unasked = kept.filter(function (k) { return md.indexOf('"' + k + '"') < 0; });
+  check('interviewer: every learned field the route keeps is one the prompt asks for', kept.length > 5 && unasked.length === 0,
+    unasked.length ? 'never asked for: ' + unasked.join(', ') : kept.length + ' fields');
+  const ex = md.indexOf('EXAMPLE') >= 0 ? md.slice(md.indexOf('EXAMPLE')) : '';
+  check('interviewer: the prompt shows the ladder (a part, a why and a contrast)', /"element"/.test(ex) && /"why"/.test(ex) && /"over"/.test(ex),
+    ex ? 'worked example present' : 'no EXAMPLE section');
 })();
 
 /* The flip side, as a note rather than a failure: context the server assembles, sends, and the

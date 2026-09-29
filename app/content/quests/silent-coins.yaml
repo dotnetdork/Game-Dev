@@ -10,22 +10,36 @@ allow: [coinSound]
 on:
   - when: { reverted: true }
     say:
-      - "It changed back! Changes made while playing are undone on Stop. Pick the sound while it’s stopped."
+      - It changed back! Changes made while playing are undone on Stop.
+      - Pick the sound while the game is stopped.
 beats:
   - id: meet
+    goal: Find the part that should make the sound
     do: { reveal: [hierarchy], point: hierarchy, stop: true }
     say:
-      - Hi @name, I’m the sound designer! A silent coin doesn’t feel like anything. Tap Coins in the Hierarchy.
+      - Hi @name, I’m the sound designer!
+      - A silent coin doesn’t feel like anything. Let’s fix that.
     skip_if: { state: { coins.sound: set } }
+    hints_after: 20
+    hints:
+      - Which part makes the sound? Find it in the Hierarchy.
+      - Tap Coins in the Hierarchy.
     wait_for: { select: coins }
 
   - id: fix
+    goal: Give the coins a sound
     say:
-      - Its Audio Source holds its sound. Pick one!
+      - In Unity a sound lives on the part that makes it. Find where the coin’s would go.
     skip_if: { state: { coins.sound: set } }
+    hints_after: 25
+    hints:
+      - Look for the component that holds a sound.
+      - It’s the Audio Source. Its Clip is None.
+      - Tap the Clip and pick a sound, or drag one in from the Project window.
     wait_for: { state: { coins.sound: set } }
 
   - id: test
+    goal: Play, grab a coin, and listen
     do: { cue: play }
     say:
       - Now press Play, grab a coin, and listen.
@@ -35,6 +49,7 @@ beats:
       - Hear that? Now the game answers you.
 
   - id: name-it
+    goal: "Pick an answer: why does a coin need a sound?"
     do: { stop: true }
     award: { card: feedback }
     ask:
@@ -43,13 +58,11 @@ beats:
         - text: So you know you got it
           correct: true
           say:
-            - "Exactly. Game designers call that feedback, the game telling you what just happened."
-          goto: next
+            - Exactly. Game designers call that feedback.
+            - The game telling you what just happened.
         - text: To make it louder
           say:
-            - "Louder isn’t the point. The sound tells you that you got it. That’s called feedback."
-          goto: next
+            - Loud isn’t the point. What does the sound tell you? Try again!
         - text: Coins always ding
           say:
-            - "Only if someone adds it! The sound tells you that you got it. That’s called feedback."
-          goto: next
+            - Only if someone adds it! What does the ding tell you? Try again!

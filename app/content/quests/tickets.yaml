@@ -1,34 +1,56 @@
 # The problems a kid can find in the intern's level (docs/rework/v2-spec.md §2.2).
 #
-# A ticket is filed the FIRST time the game shows the problem, whatever the kid is doing at the time,
-# and is never lost: the first V2 build forgot a floor the kid had fallen through because they
-# reported the coins first. `found_by` is checked against every event from the game; `quest` is the
-# department shift that fixes it; `fixed_when` closes it early if the kid (or the AI) fixes it first.
+# NEVER NARRATE WHAT THE KID HASN'T NOTICED (review §4, rule 1). On the first day a problem the game
+# shows is only SEEN (`found_by`, checked against every event); it becomes a ticket when the kid
+# says they found it, in their own words, and the ticket keeps those words. `words` is how the studio
+# recognises a finding without the AI (a regular expression, case ignored); the AI, when it is up,
+# recognises the rest. After the first report, a problem the kid runs into is filed at once, with a
+# row in the chat saying so, and never lost.
+#
+# `says` is the finding as a kid would put it: the "What did you find?" card offers it once the kid
+# has run into it (a card that listed problems they hadn't met would be narrating them). `detail` is
+# what the ticket's page says is wrong.
+#
+# `quest` is the department shift that fixes it; `fixed_when` closes it early if the kid (or the AI)
+# fixes it first.
 tickets:
   - id: floor
     title: I fell through a floor tile
+    says: I fell through the floor
+    detail: Part of the floor looks solid, but the player drops right through it.
     department: engineering
     quest: floor-is-a-picture
     found_by: { event: fell }
+    words: "fell|fall|floor|hole|through|ground|tile|drop"
     fixed_when: { state: { tile.solid: true } }
 
   - id: silent-coins
     title: Grabbing a coin makes no sound
+    says: The coins don’t make a sound
+    detail: Grabbing a coin is silent, so the player can’t tell they got it.
     department: audio
     quest: silent-coins
     found_by: { event: coin, state: { coins.sound: null } }
+    words: "sound|quiet|silent|noise|hear|ding|audio|mute"
     fixed_when: { state: { coins.sound: set } }
 
   - id: greybox
     title: Everything is grey
+    says: Everything is grey
+    detail: Every part is a plain grey block, so a player can’t tell coins from danger.
     department: art
     quest: greybox
-    # Not found by an event: it is plain to see, so the board lists it when tickets are first filed.
+    # Not found by an event: it is plain to see. If the kid doesn't say it, the art director files it
+    # herself (first-day.yaml), as a colleague would.
+    words: "gr[ae]y|colou?r|plain|boring|blank|ugly|art|picture|block"
     fixed_when: { state: { coins.look: set, lava.look: set } }
 
   - id: harmless-lava
     title: Touching the lava does nothing
+    says: The lava doesn’t hurt
+    detail: The lava looks dangerous, but touching it does nothing.
     department: design
     quest: harmless-lava
     found_by: { event: lava }
+    words: "lava|hurt|damage|die|danger|safe|burn"
     fixed_when: { state: { lava.hurts: true } }

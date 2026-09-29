@@ -311,13 +311,17 @@ without the plain one.
 
 ## Layout
 
-**The Front Door exception.** The hiring interview (wireframe 07, a kid's first sign-in) is
-deliberately *not* the editor (Jay, 2026-09-26: "it should be distinct from the course"): a warm
-studio lobby at dusk, the interviewer a silhouette backlit by a big window, one cream speech bubble
-centred under them (19px), the kid's last answer echoed above it, rounded answer pills below, the
-director's clipboard notes on the left and a tablet for the try-this moments on the right. It shares
-only League orange, the 44px targets, the focus ring, the one announcer and the answer-picking
-habit. Everything below describes the editor.
+**The Front Door (no longer an exception).** The hiring interview (wireframe 07, a kid's first
+sign-in) is still its own scene, not the editor: the Studio Director a silhouette against a big
+window at night, one speech bubble centred under them, the kid's last answer echoed above it, the
+text box below, the director's clipboard notes on the left and a tablet for the try-this moments on
+the right. But it is drawn in League Navy, token for token with the studio: the warm dusk lobby
+(Jay, 2026-09-26) is reversed (Jay, 2026-09-28: "the interview art style does not match the color
+scheme of the rest of the app"). The bubble is Raised navy with 17px message text; the director's
+identity colour, `#f7d154`, is on the avatar (Lucide "clapperboard"), the bubble's edge and the
+name only, never on buttons or focus rings; orange is only the call to action ("Go to my desk") and
+the selection. `studio/interview.css` says which token is which. Everything below describes the
+editor.
 
 An editor designed at 1366×650, the usable part of a 1366×768 Chromebook screen once Chrome's own
 bars are gone. A four-row, three-column grid: toolbar (56px), workspace, Project drawer (30px, or a

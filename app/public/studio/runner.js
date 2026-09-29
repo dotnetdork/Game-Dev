@@ -31,6 +31,12 @@ var Runner = (function () {
   var frame = null, phaser = null, builtFor = null, ready = false, pending = null;
   var playing = false, paused = false, snapshot = null, changedInPlay = false;
   var listeners = [], lastEvent = {};
+  /* THUMBNAILS. The art is drawn by the game's own code (starter/game.js, SPRITES), so there is no
+     image file for the Project window to show. It asks the frame instead, which sends back each
+     texture as a PNG (Phaser's textures.getBase64); a sprite the Builder adds shows up the same way.
+     Checked on the way in: only PNG data URLs, from our own frame. */
+  var thumbs = {};
+  function askThumbs() { post({ __studio: 'thumbs' }); }
 
   function on(fn) { listeners.push(fn); }
   function emit(name, detail) { listeners.forEach(function (fn) { try { fn(name, detail); } catch (e) { console.error(e); } }); }
@@ -61,6 +67,9 @@ var Runner = (function () {
       + 'var g=window.__game;'
       + 'if(d.__studio==="pause"&&g&&g.loop){if(d.on)g.loop.sleep();else g.loop.wake();}'
       + 'if(d.__studio==="step"&&g&&g.loop&&!g.loop.running){var t=performance.now();g.step(t,1000/60);}'
+      + 'if(d.__studio==="thumbs"&&g&&g.textures){var out={};g.textures.getTextureKeys().forEach(function(k){'
+      +   'try{var u=g.textures.getBase64(k);if(u&&u.length<400000)out[k]=u;}catch(err){}});'
+      +   'parent.postMessage({__studio:"thumbs",list:out},"*");}'
       + '});'
       + 'function report(err){parent.postMessage({__studio:"error",text:String(err&&err.message||err)},"*");}'
       + 'window.addEventListener("error",function(e){report(e.message);});'
@@ -104,7 +113,10 @@ var Runner = (function () {
   window.addEventListener('message', function (e) {
     if (!frame || e.source !== frame.contentWindow) return;
     var d = e.data || {};
-    if (d.__studio === 'ready') { ready = true; if (pending) { pending(); pending = null; } emit('ready'); }
+    if (d.__studio === 'ready') {
+      ready = true; if (pending) { pending(); pending = null; } emit('ready');
+      setTimeout(askThumbs, 400);   // after the scene's create() has drawn the sprites
+    }
     if (d.__studio === 'event') {
       var t = Date.now(), n = String(d.name).slice(0, 30);
       if (t - (lastEvent[n] || 0) < 600) return;
@@ -112,6 +124,13 @@ var Runner = (function () {
       if (playing) emit(n);
     }
     if (d.__studio === 'error') emit('error', String(d.text || '').slice(0, 300));
+    if (d.__studio === 'thumbs' && d.list && typeof d.list === 'object') {
+      Object.keys(d.list).forEach(function (k) {
+        var u = d.list[k];
+        if (typeof u === 'string' && /^data:image\/png;base64,/.test(u)) thumbs[String(k).slice(0, 40)] = u;
+      });
+      emit('thumbs');
+    }
   });
 
   function post(msg) { if (frame && frame.contentWindow) frame.contentWindow.postMessage(msg, '*'); }
@@ -156,5 +175,6 @@ var Runner = (function () {
 
   return { on: on, mount: mount, play: play, stop: stop, set: set, mute: mute, focusGame: focusGame, pause: pause, step: step,
            isPlaying: function () { return playing; }, isPaused: function () { return paused; }, isReady: function () { return ready; },
-           frame: function () { return frame; }, builtFor: function () { return builtFor; } };
+           frame: function () { return frame; }, builtFor: function () { return builtFor; },
+           thumb: function (k) { return thumbs[k] || null; }, askThumbs: askThumbs };
 })();

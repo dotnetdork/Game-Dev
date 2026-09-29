@@ -10,7 +10,11 @@
      3. the parts the quests may name (quests.js) are exactly the intern's parts (project.js), with
         the same settings;
      4. every event the game sends (starter/game.js) is one the quests know, and back;
-     5. the dev panel is refused on a real deployment, and the kids' page has no reviewer buttons. */
+     5. the dev panel is refused on a real deployment, and the kids' page has no reviewer buttons;
+     7. schema.js (the Inspector's list) has every setting and component the quests may name, and
+        every sprite it lists is one the game's code draws;
+     6. the interview is drawn in the studio's own colours (Jay, 2026-09-28: it didn't match), and the
+        Studio Director's identity colour is only on the director (never a button or a focus ring). */
 const fs = require('fs');
 const path = require('path');
 const vm = require('vm');
@@ -69,6 +73,24 @@ const noSetting = [];
 parts.forEach(function (p) { (vocab[p.id] || []).forEach(function (k) { if (!(k in p)) noSetting.push(p.id + '.' + k); }); });
 check('every setting a quest may name is on its part', noSetting.length === 0, noSetting.join(', ') || 'all present');
 
+/* 7: the schema, the quests and the game's pictures agree */
+vm.runInContext(read(path.join(STUDIO, 'schema.js')) + '\nthis.__schema = Schema;', ctx);
+const schema = ctx.__schema, notInSchema = [];
+parts.forEach(function (p) {
+  const r = schema.rules(p);
+  (vocab[p.id] || []).forEach(function (k) { if (!r[k] && k !== 'shape') notInSchema.push(p.id + '.' + k); });   // shape is the hero drawer's, set by the AI or a typed description
+});
+check('every setting a quest may name is one the Inspector has (schema.js)', notInSchema.length === 0, notInSchema.join(', ') || 'all in the schema');
+const gates = schema.GATES.slice().sort().join(), comps = quests.VOCAB.COMPONENTS.slice().sort().join();
+check('the components a quest may allow are exactly the schema\'s gates', gates === comps, 'schema: ' + gates + ' / quests.js: ' + comps);
+const gameSrc = read(path.join(STUDIO, 'starter', 'game.js'));
+const undrawn = Object.keys(schema.SPRITES).filter(function (k) {
+  if (k === 'hero') return !/generateTexture\('hero'/.test(gameSrc);
+  const kind = schema.SPRITES[k][1], has = new RegExp('^\\s*' + k + ':\\s*\\[', 'm').test(gameSrc);
+  return !has || ((kind === 'floor' || kind === 'lava') && !new RegExp('^\\s*' + k + '_fill:\\s*\\[', 'm').test(gameSrc));
+});
+check('every sprite the Inspector offers is drawn by the game\'s code (and a floor\'s fill below it)', undrawn.length === 0, undrawn.join(', ') || Object.keys(schema.SPRITES).length + ' sprites');
+
 /* 4: the game's events */
 const game = read(path.join(STUDIO, 'starter', 'game.js'));
 const sent = {};
@@ -85,6 +107,23 @@ const guard = server.indexOf("app.get('/studio/dev.js'"), stat = server.indexOf(
 check('the dev panel is refused on a real deployment, before static files are served',
   guard > 0 && stat > guard && /auth\.isHosted\(\)\) return res\.status\(404\)/.test(server.slice(guard, guard + 200)));
 check('the kids\' page has no reviewer controls', !/Skip ahead|Restart the day|revSkip/.test(PAGES['index.html']));
+
+/* 6: the interview's colours. There is no shared stylesheet (each page is its own plain CSS), so the
+   interview repeats the studio's tokens; this is what keeps the copy from drifting back to a look of
+   its own. And the director's yellow may only sit on the director: the lanyard, the bubble and its
+   tail, the name and the avatar. */
+const tokens = function (css) { const out = {}; (css.match(/:root\s*\{([^}]*)\}/) || ['', ''])[1].replace(/--([\w-]+):\s*([^;]+);/g, function (m, k, v) { out[k] = v.trim().toLowerCase(); }); return out; };
+const ivCss = read(path.join(STUDIO, 'interview.css')), studioTok = tokens(read(path.join(STUDIO, 'studio.css'))), ivTok = tokens(ivCss);
+const SHARED = ['ground', 'frame', 'panel', 'panel-2', 'hover', 'select', 'line-soft', 'ink', 'ink-2', 'ink-3', 'kid-bubble', 'accent', 'accent-ink', 'focus'];
+const drift = SHARED.filter(function (k) { return ivTok[k] !== studioTok[k]; });
+check('the interview uses the studio\'s colour tokens', drift.length === 0, drift.map(function (k) { return '--' + k + ' ' + ivTok[k] + ' vs ' + studioTok[k]; }).join(', ') || SHARED.length + ' tokens agree');
+const DIRECTOR_ONLY = ['.lany', '.bubble', '.bubble::before', '.who b', '.face'];
+const misused = [];
+ivCss.replace(/([^{}]+)\{([^}]*)\}/g, function (m, sel, body) {
+  if (!/var\(--director\)/.test(body)) return;
+  sel.split(',').map(function (x) { return x.trim(); }).forEach(function (x) { if (DIRECTOR_ONLY.indexOf(x) < 0) misused.push(x); });
+});
+check('the director\'s colour is only on the director (never a button or focus ring)', misused.length === 0 && ivTok.director === '#f7d154', misused.join(', ') || 'lanyard, bubble, name, avatar');
 
 if (failed) { console.log('\n' + failed + ' check(s) failed'); process.exit(1); }
 console.log('\nstudio: all checks passed');

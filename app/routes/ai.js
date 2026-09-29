@@ -8,6 +8,9 @@
  * Mounted the way auth does it — `mount(app, deps)` — so this file never reaches back into
  * server.js for anything. Everything it needs arrives in `deps`.
  */
+const fs = require('fs');
+const path = require('path');
+const vm = require('vm');
 const ai = require('../ai/loader');
 const tools = require('../ai/tools');
 const tel = require('../telemetry');
@@ -21,7 +24,155 @@ const cleanGrade = require('../ai/grade-check').cleanGrade;
 const { AGENT_TOOLS, resolveModel } = models;
 const { TOTAL_BUDGET_MS, callAI } = provider;
 const { extractJSON, sanitizeHistory, unknownAssetKeys, badApisIn, badKeysIn,
-  claimsChangeWithoutOps, heldNote, isEmptyAck } = guards;
+  claimsChangeWithoutOps, heldNote, builderNote, isEmptyAck } = guards;
+
+/* ---------- the studio Builder's (V2) pure helpers ----------
+   Module-level because they are pure functions and constants: nothing here holds a request's state
+   (CLAUDE.md, "per-request state goes on the request"). The branch that uses them is BUILDER, below.
+
+   The Builder is sent the kid's whole game.js and answers with find/replace edits, which the SERVER
+   applies, compiles and checks before the browser sees anything. V1's coder sent whole files back
+   and let the browser apply them (js/ops.js); that cost a 12k-character answer for a two-line
+   change, and a truncated answer was a lost change. An edit list is small, and applying it here
+   means every check runs against the exact code the kid will get. */
+const PUBLIC_DIR = path.join(__dirname, '..', 'public');
+const ASSETS_DIR = path.join(PUBLIC_DIR, 'assets');
+/* The browser gives up at 40s (studio/builder.js), so the server has to finish first, or its honest
+   answer arrives at a page that has already stopped listening. 36s is one answer and one corrective
+   retry on a hosted model with the game code in the prompt, with room to spare. */
+const BUILDER_BUDGET_MS = 36000;
+/* How much of game.js the prompt carries: all of it, in practice. The shape-drawn starter is already
+   ~18k characters (about 5k tokens), and a Builder that cannot see the part of the file it needs to
+   change can only guess at a `find`. */
+const BUILDER_SHOWN = 32000;
+const BUILDER_MAX = 60000;       // longer than this and it is not a game.js the Builder should edit
+
+/* The same 8-hex-digit FNV-1a as studio/builder.js, over UTF-16 code units, so the browser can check
+   that `base` is a hash of exactly the code it sent. Not security; a consistency check. */
+function codeHash(s) {
+  let h = 0x811c9dc5;
+  for (let i = 0; i < s.length; i++) { h ^= s.charCodeAt(i); h = Math.imul(h, 0x01000193) >>> 0; }
+  return ('0000000' + h.toString(16)).slice(-8);
+}
+/* A part setting the Inspector could hold: true/false, a finite number, a short word, null, or a
+   small list of number pairs (spots, pieces). Anything else is not plain data and is dropped. */
+function plainValue(v, strMax) {
+  if (v === null || typeof v === 'boolean') return true;
+  if (typeof v === 'number') return Number.isFinite(v);
+  if (typeof v === 'string') return v.length <= (strMax || 40);
+  if (Array.isArray(v)) {
+    return v.length <= 12 && v.every(function (pair) {
+      return Array.isArray(pair) && pair.length === 2
+        && pair.every(function (n) { return typeof n === 'number' && Number.isFinite(n); });
+    });
+  }
+  return false;
+}
+const SETTING_KEY = /^[A-Za-z][A-Za-z0-9]{0,23}$/;
+const PART_ID = /^[a-z][a-z0-9]*(?:-[a-z0-9]+)*$/;
+/* The parts the browser sent, cleaned for the prompt. Generous (40 parts, longer strings, longer
+   lists) because this is only what the model is SHOWN; the ops it sends back are held to the
+   stricter plainValue above. */
+function cleanSentParts(raw) {
+  if (!Array.isArray(raw)) return [];
+  return raw.slice(0, 40).map(function (p) {
+    if (!p || typeof p !== 'object' || typeof p.id !== 'string' || !p.id) return null;
+    const out = {};
+    const num = function (n) { return typeof n === 'number' && Number.isFinite(n); };
+    Object.keys(p).slice(0, 30).forEach(function (k) {
+      if (!SETTING_KEY.test(k)) return;
+      const v = p[k];
+      const shown = Array.isArray(v)
+        ? v.length <= 40 && v.every(function (x) { return num(x) || (Array.isArray(x) && x.length <= 4 && x.every(num)); })
+        : plainValue(v, 120);
+      if (shown) out[k] = v;
+    });
+    out.id = String(p.id).slice(0, 40);
+    return out;
+  }).filter(Boolean);
+}
+/* The model's part ops, cleaned. Ids are checked against the parts that exist, growing as `add`s
+   are accepted, so "add a slime, then set its speed" works in one answer. Removing the level or the
+   player is refused: the starter code reads both unconditionally, so either one gone is a crash. */
+function cleanPartOps(raw, sent) {
+  const known = {};
+  sent.forEach(function (p) { known[p.id] = true; });
+  const ops = [], dropped = [];
+  (Array.isArray(raw) ? raw : []).forEach(function (o) {
+    if (ops.length >= 6) { dropped.push('more than 6 ops'); return; }
+    if (!o || typeof o !== 'object') { dropped.push('not an op'); return; }
+    if (o.op === 'set') {
+      const id = String(o.id || ''), key = String(o.key || '');
+      if (!known[id]) { dropped.push('set on unknown part "' + id.slice(0, 30) + '"'); return; }
+      if (!SETTING_KEY.test(key) || key === 'id' || key === 'kind') { dropped.push('set of bad key "' + key.slice(0, 30) + '"'); return; }
+      if (!plainValue(o.value)) { dropped.push('set ' + id + '.' + key + ' to a non-plain value'); return; }
+      ops.push({ op: 'set', id: id, key: key, value: o.value });
+    } else if (o.op === 'add') {
+      const p = o.part;
+      if (!p || typeof p !== 'object') { dropped.push('add with no part'); return; }
+      const id = String(p.id || ''), name = typeof p.name === 'string' ? p.name.trim().slice(0, 30) : '';
+      const kind = String(p.kind || '');
+      if (!PART_ID.test(id) || id.length > 24) { dropped.push('add with bad id "' + id.slice(0, 30) + '"'); return; }
+      if (known[id]) { dropped.push('add of "' + id + '", which already exists'); return; }
+      if (!name) { dropped.push('add of "' + id + '" with no name'); return; }
+      if (!PART_ID.test(kind) || kind.length > 20) { dropped.push('add of "' + id + '" with bad kind'); return; }
+      const part = { id: id, name: name, kind: kind };
+      Object.keys(p).slice(0, 20).forEach(function (k) {
+        if (k === 'id' || k === 'name' || k === 'kind') return;
+        if (SETTING_KEY.test(k) && plainValue(p[k])) part[k] = p[k];
+        else dropped.push('field "' + k.slice(0, 24) + '" on new part "' + id + '"');
+      });
+      known[id] = true;
+      ops.push({ op: 'add', part: part });
+    } else if (o.op === 'remove') {
+      const id = String(o.id || '');
+      if (!known[id]) { dropped.push('remove of unknown part "' + id.slice(0, 30) + '"'); return; }
+      const was = sent.filter(function (p) { return p.id === id; })[0];
+      if (was && (was.kind === 'level' || was.kind === 'player')) { dropped.push('remove of the ' + was.kind); return; }
+      delete known[id];
+      ops.push({ op: 'remove', id: id });
+    } else dropped.push('unknown op "' + String(o.op).slice(0, 20) + '"');
+  });
+  return { ops: ops, dropped: dropped };
+}
+/* Apply find/replace edits in order. Every `find` has to occur EXACTLY once in the code as it stands
+   when that edit is applied: missing means the model misremembered the file, and twice means it
+   cannot know which one it meant. Either way NONE of the edits are kept, because half a change is
+   the likeliest way to break a game. */
+function applyEdits(code, raw) {
+  const list = Array.isArray(raw) ? raw.slice(0, 12) : [];
+  let next = code; const bad = [];
+  list.forEach(function (e, i) {
+    const find = (e && typeof e.find === 'string') ? e.find.replace(/\r\n/g, '\n') : '';
+    const repl = (e && typeof e.replace === 'string') ? e.replace.replace(/\r\n/g, '\n') : null;
+    if (!find || repl === null) { bad.push({ i: i + 1, n: -1, find: find }); return; }
+    const n = next.split(find).length - 1;
+    if (n !== 1) { bad.push({ i: i + 1, n: n, find: find }); return; }
+    const at = next.indexOf(find);
+    next = next.slice(0, at) + repl + next.slice(at + find.length);
+  });
+  return { code: next, count: list.length, bad: bad,
+    added: list.map(function (e) { return (e && typeof e.replace === 'string') ? e.replace : ''; }).join('\n') };
+}
+/* Compiles without running: class syntax, top-level const and arrow functions are all fine. */
+function compileError(src) {
+  try { new vm.Script(src, { filename: 'game.js' }); return ''; }
+  catch (e) { return String(e.message || e); }
+}
+/* Picture and sound paths in the text an edit ADDS that are not really there under public/assets,
+   and web addresses the code did not already have. The game frame fetches /assets/... by path, so
+   an invented one is a missing texture at best. */
+function badPaths(added, original) {
+  const out = {};
+  (added.match(/\/assets\/[A-Za-z0-9_\-./]+/g) || []).forEach(function (p) {
+    const full = path.resolve(PUBLIC_DIR, '.' + p);
+    let ok = full.indexOf(ASSETS_DIR + path.sep) === 0;
+    if (ok) { try { ok = fs.statSync(full).isFile(); } catch (e) { ok = false; } }
+    if (!ok) out[p] = true;
+  });
+  (added.match(/https?:\/\/[^\s'"`)]+/g) || []).forEach(function (u) { if (original.indexOf(u) < 0) out[u] = true; });
+  return Object.keys(out);
+}
 
 /* Injected by mount(): auth and store, which this file must not require directly — the rate
    limiter keys on the session and counts in the store, and both belong to the app. */
@@ -101,7 +252,9 @@ function mount(app, deps) {
         /* The difference that matters for the builder: a reply that changed the game, versus a reply
            that reads like it did and changed nothing. `ops: false` on a coder turn is the shape of
            the complaint that it "just says done". */
-        ops: !!(body && body.ops),
+        /* The studio's Builder (V2) answers with `code` and `parts` instead of `ops`; either one
+           non-empty is the same fact, "this turn changed the game". */
+        ops: !!(body && (body.ops || body.code || (Array.isArray(body.parts) && body.parts.length))),
         /* And, when it changed nothing, whether the model MEANT to: `held` is the word it sets when
            it asked a question back, declined the practice exercise, or hit something it could not
            do. Absent on a coder turn that changed nothing is the real failure — the reply that
@@ -141,7 +294,7 @@ function mount(app, deps) {
        should be tidied in its own commit, the way `studentId` still needs to be. */
     const history = sanitizeHistory(req.body && req.body.history);
     let agent = (req.body && req.body.agent) || 'coder';
-    if (['coder', 'tutor', 'lab-tutor', 'quiz', 'grader', 'design-coach', 'mentor', 'interviewer'].indexOf(agent) < 0) agent = 'coder';   // controller: keep to known agents
+    if (['coder', 'tutor', 'lab-tutor', 'quiz', 'grader', 'design-coach', 'mentor', 'interviewer', 'builder'].indexOf(agent) < 0) agent = 'coder';   // controller: keep to known agents
     const spec = resolveModel(agent);
     /* The whole-request deadline every provider call measures itself against, stamped on this
        request's own spec so the retry chain cannot outlive it however many times it goes round — and
@@ -206,7 +359,7 @@ function mount(app, deps) {
       where: (b.where || '').toString().slice(0, 400),
       /* The studio's (V2) own context for the mentor: the question on screen, the parts and their
          settings, and what the mentor may change. One block, written by the browser for the prompt. */
-      studio: (b.studio || '').toString().slice(0, 4000),
+      studio: (b.studio || '').toString().slice(0, 7000),
       aiMode: ['full', 'guided', 'off'].indexOf(b.aiMode) >= 0 ? b.aiMode : 'full',
       hasAssetList: Array.isArray(b.ownedAssets),   // only validate keys when the client actually told us what it owns
       assets: Array.isArray(b.ownedAssets) ? b.ownedAssets.slice(0, 300).map(function (a) {
@@ -281,12 +434,18 @@ function mount(app, deps) {
        mentor answers in JSON: what to say, which on-screen answer the kid meant (if any), and the
        Inspector settings to change (if any). Only the shape is checked here; the browser checks each
        change against the settings that exist and applies it the way a tap would, so the AI can never
-       set anything the kid couldn't. */
+       set anything the kid couldn't. The JSON opens with `read`, the mentor's own reading of what the
+       kid means and needs, written BEFORE its reply: a model that must answer first and decide after
+       picks the wrong intent (the V1 review, 2026-09-29). It is never sent on to the browser. */
     if (agent === 'mentor') {
       let raw;
       const mentorSystem = promptFor('mentor', ctx, res);
       if (!mentorSystem) return;
-      try { raw = await callAI(spec, mentorSystem, message, true, history, null, onTool); }
+      try {
+        raw = await callAI(spec, mentorSystem, message, true, history, null, onTool);
+        // the same one retry as the interviewer's, for the empty answer a model sometimes gives
+        if (!String(raw || '').trim() && Date.now() < spec.deadline - 20000) raw = await callAI(spec, mentorSystem, message, true, history, null, onTool);
+      }
       catch (e) { return res.status(502).json({ reply: 'The mentor is not reachable right now (' + e.message + ').' }); }
       const m = extractJSON(raw) || { reply: String(raw || '').trim() };
       const choose = Number.isInteger(m.choose) && m.choose >= 1 && m.choose <= 8 ? m.choose : null;
@@ -295,27 +454,56 @@ function mount(app, deps) {
         return { part: String((a && a.part) || '').slice(0, 24), key: String((a && a.key) || '').slice(0, 24),
           value: (typeof v === 'boolean' || typeof v === 'number' || v === null) ? v : String(v).slice(0, 40) };
       }).filter(function (a) { return a.part && a.key; }) : [];
-      return res.json({ reply: String(m.reply || '').trim().slice(0, 800) || 'Hmm, say that another way?', choose: choose, actions: actions });
+      /* `build`: the kid asked for a change beyond the settings the mentor may touch, and this is the
+         mentor's one-line brief for the Builder (the BUILDER branch below), which the browser hands to
+         Builder.ask. A string or nothing; the Builder does its own checking of whatever comes of it. */
+      const build = (typeof m.build === 'string' && m.build.trim()) ? m.build.trim().slice(0, 300) : null;
+      /* `hero`: what the kid said their hero looks like, as the drawer's words ({ body, color, belly,
+         eyes, eyeColor, extras }). Only the shape is checked here, a plain object of a sane size; the
+         browser owns the drawer, so it owns the vocabulary and drops any word it does not know. */
+      const h = m.hero;
+      const hero = (h && typeof h === 'object' && !Array.isArray(h) && JSON.stringify(h).length <= 1500) ? h : null;
+      return res.json({ reply: String(m.reply || '').trim().slice(0, 800) || 'Hmm, say that another way?', choose: choose, actions: actions,
+        build: build, hero: hero });
     }
 
     /* INTERVIEWER: the studio director in the hiring interview (ai/agents/interviewer.md, V2). It leads
        a conversation and says what it learned. The browser keeps the goals and decides when a kid is
-       hired, so everything here is only cleaned: a wrong type is dropped, never trusted. */
+       hired, so everything here is only cleaned: a wrong type is dropped, never trusted.
+       `loves` is the ladder (studio/interview.js says why): each {game, element, why, over} is short
+       free text in the kid's words, capped here and checked again in the browser against what the kid
+       actually typed. `fun` is the same list interview.js hears answers into (its FUN). */
     if (agent === 'interviewer') {
       let raw;
       const ivSystem = promptFor('interviewer', ctx, res);
       if (!ivSystem) return;
-      try { raw = await callAI(spec, ivSystem, message, true, history, null, onTool); }
-      catch (e) { return res.status(502).json({ reply: 'The director is not reachable right now (' + e.message + ').' }); }
+      /* Sonnet 5 sometimes answers with a thinking block and no text at all (2 samples in 6 on the
+         same turn, 2026-09-28). That used to come back as "Tell me more?" with nothing learned, which
+         the page took as a real answer. Now: one retry while there's time, else a 502, so the page
+         says its scripted line instead (studio/interview.js, RESILIENCE). */
+      try {
+        raw = await callAI(spec, ivSystem, message, true, history, null, onTool);
+        if (!String(raw || '').trim() && Date.now() < spec.deadline - 20000) raw = await callAI(spec, ivSystem, message, true, history, null, onTool);
+      } catch (e) { return res.status(502).json({ reply: 'The director is not reachable right now (' + e.message + ').' }); }
+      if (!String(raw || '').trim()) return res.status(502).json({ reply: 'The director gave an empty answer.' });
       const m = extractJSON(raw) || { reply: String(raw || '').trim() };
       const l = (m.learned && typeof m.learned === 'object') ? m.learned : {};
       const word = (v, n) => String(v || '').replace(/[^\p{L}\p{N} '’&:!.-]/gu, '').trim().slice(0, n);
+      const phrase = (v, n) => (typeof v === 'string' ? v : '').replace(/[^\p{L}\p{N} '’&:!?.,()-]/gu, '').replace(/\s+/g, ' ').trim().slice(0, n);
       const one = (v, list) => list.indexOf(v) >= 0 ? v : undefined;
+      const FUN = ['explore', 'challenge', 'clever', 'social', 'make', 'story', 'collect', 'feel', 'progress', 'characters', 'funny', 'cozy'];
       const learned = {
         first: word(l.first, 20).split(' ')[0] || undefined,
         initial: (String(l.initial || '').match(/\p{L}/u) || [''])[0].toUpperCase() || undefined,
         games: Array.isArray(l.games) ? l.games.slice(0, 6).map(function (g) { return word(g, 30); }).filter(Boolean) : undefined,
-        fun: Array.isArray(l.fun) ? l.fun.filter(function (f) { return ['explore', 'challenge', 'clever', 'social', 'make', 'story', 'collect'].indexOf(f) >= 0; }).slice(0, 7) : undefined,
+        loves: Array.isArray(l.loves) ? l.loves.slice(0, 6).filter(function (x) { return x && typeof x === 'object' && !Array.isArray(x); }).map(function (x) {
+          const e = { game: word(x.game, 30), element: phrase(x.element, 40), why: phrase(x.why, 80), over: phrase(x.over, 80) };
+          Object.keys(e).forEach(function (k) { if (!e[k]) delete e[k]; });
+          return e;
+        }).filter(function (e) { return e.game || e.element; }) : undefined,
+        notFan: (Array.isArray(l.notFan) ? l.notFan : typeof l.notFan === 'string' ? [l.notFan] : []).slice(0, 3).map(function (x) { return phrase(x, 50); }).filter(Boolean),
+        wants: phrase(l.wants, 60) || undefined,
+        fun: Array.isArray(l.fun) ? l.fun.filter(function (f) { return FUN.indexOf(f) >= 0; }).slice(0, FUN.length) : undefined,
         confidence: Number.isInteger(l.confidence) && l.confidence >= 1 && l.confidence <= 5 ? l.confidence : undefined,
         job: one(l.job, ['art', 'audio', 'design', 'engineering', 'everything']),
         jump: one(l.jump, ['floaty', 'snappy', 'same']),
@@ -377,6 +565,153 @@ function mount(app, deps) {
       const g = cleanGrade(parsedAgent);
       if (!g) console.warn('[ai] dropped a malformed grade: ' + JSON.stringify(parsedAgent).slice(0, 300));
       return res.json({ result: g || {} });
+    }
+
+    /* BUILDER: the studio's (V2) engineer (ai/agents/builder.md). The mentor hands it a request the
+       Inspector cannot do ("make the coins spin"); it answers with find/replace edits to the kid's
+       game.js and ops on the level's parts, and THIS branch applies the edits to the code it was sent,
+       compiles the result and checks it before the browser ever sees it. The browser
+       (studio/builder.js) then applies the returned code and part ops, and puts everything back if
+       the game will not start.
+
+       V1's corrective shape, ported: every detector runs, ONE correction lists everything that
+       fired, ONE retry, every detector again, and then an honest give-up in plain words
+       (builderNote in ai/guards.js). The coder branch below explains why it is one pass and not one
+       retry per guard.
+
+       Response: { reply, code, base, edits, parts, held }. `code` is the whole new file, or null when
+       the code did not change; `base` is a hash of the code as sent, so the browser can tell the
+       answer is about exactly what it has. */
+    if (agent === 'builder') {
+      spec.deadline = Math.min(spec.deadline, t0 + BUILDER_BUDGET_MS);
+      const sentCode = (b.code === undefined || b.code === null) ? '' : String(b.code);
+      const base = codeHash(sentCode);
+      const nothing = function (status, reply) {
+        return res.status(status).json({ reply: reply, code: null, base: base, edits: 0, parts: [], held: null });
+      };
+      if (!sentCode.trim()) return nothing(400, 'I didn’t get your game’s code, so I can’t change it. Try reloading the page.');
+      if (sentCode.length > BUILDER_MAX) return nothing(413, 'Your game’s code has grown too big for me to edit safely, so I left it alone.');
+      const code = sentCode.replace(/\r\n/g, '\n');
+      const sentParts = cleanSentParts(b.parts);
+      const kidSaid = String(b.kidSaid || '').trim().slice(0, 600);
+      const shown = code.length > BUILDER_SHOWN
+        ? code.slice(0, BUILDER_SHOWN) + '\n// … (the rest of the file is not shown: only edit what you can see above)'
+        : code;
+      const bSystem = promptFor('builder', Object.assign({}, ctx, { gameCode: shown, parts: sentParts }), res);
+      if (!bSystem) return;
+      const ask = (kidSaid && kidSaid !== message ? 'The kid typed: "' + kidSaid + '"\n' : '') + 'What to build: ' + message;
+      const bUnreachable = function () {
+        return nothing(502, 'The Builder isn’t answering right now, so nothing in your game changed. Try again in a minute.');
+      };
+
+      const clean = function (s) {
+        return String(s || '').replace(/```[\s\S]*?```/g, '').trim().slice(0, 400);
+      };
+      /* One answer, judged: what it would change, and every guard it trips. */
+      const judge = function (r) {
+        const text = String(r || '').trim();
+        /* Prose is the model talking and becomes the reply; a `{` that did not parse is a truncated
+           answer, recorded the way the coder records it (parseAnswer, below) and never shown. */
+        let p = extractJSON(text);
+        if (!p) {
+          if (text[0] === '{') guard('bad-json', text.length + ' chars, unparsable: ' + text.slice(0, 80));
+          p = { reply: text[0] === '{' ? '' : text };
+        }
+        const said = clean(p.reply);
+        const h = typeof p.held === 'string' ? p.held.trim().toLowerCase() : '';
+        const held = ['question', 'blocked'].indexOf(h) >= 0 ? h : '';
+        const applied = applyEdits(code, p.edits);
+        const partsOut = cleanPartOps(p.parts, sentParts);
+        const hits = [];
+        if (applied.bad.length) {
+          hits.push({ name: 'bad-find', detail: applied.bad.map(function (x) { return '#' + x.i + (x.n < 0 ? ' malformed' : ' found ' + x.n + 'x'); }).join(', '),
+            retry: 'IMPORTANT: your edits could not be applied. ' + applied.bad.map(function (x) {
+              if (x.n < 0) return 'Edit ' + x.i + ' is missing its "find" or "replace" text.';
+              return 'Edit ' + x.i + '\'s "find" text ' + (x.n === 0 ? 'does not appear in the code' : 'appears ' + x.n + ' times')
+                + ': ' + JSON.stringify(x.find.slice(0, 120)) + '.';
+            }).join(' ') + ' Every "find" must be copied EXACTLY from THE CODE, spaces and line breaks included, and must appear exactly '
+              + 'once: include more of the line to make it unique. Send your whole answer again, with every edit.' });
+        }
+        const changed = !applied.bad.length && applied.code !== code;
+        const next = changed ? applied.code : code;
+        if (changed) {
+          const err = compileError(next);
+          if (err) {
+            hits.push({ name: 'bad-js', detail: err.slice(0, 200),
+              retry: 'IMPORTANT: with your edits applied, the code does not compile: "' + err.slice(0, 200) + '". Check every bracket, '
+                + 'brace and comma in your "replace" text, and that each edit replaces a whole piece of code, then send your whole answer again.' });
+          }
+          const apis = badApisIn({ replaceFile: next }, code, []);
+          if (apis.length) {
+            hits.push({ name: 'bad-api', detail: apis.map(function (x) { return x.name; }).join(', '),
+              retry: 'IMPORTANT: your change used ' + apis.map(function (x) { return '"' + x.name + '" (' + x.why + ': ' + x.hint + ')'; }).join('; ')
+                + '. Redo it using only Phaser methods that exist, or change nothing, set "held":"blocked" and say plainly what you can\'t do.' });
+          }
+          const keysBefore = badKeysIn({ create: code }, '');
+          const keys = badKeysIn({ create: next }, '').filter(function (k) { return keysBefore.indexOf(k) < 0; });
+          if (keys.length) {
+            hits.push({ name: 'bad-key', detail: keys.join(', '),
+              retry: 'IMPORTANT: your change reads ' + keys.map(function (k) { return 'keys.' + k; }).join(' and ')
+                + ', but those keys are never registered, so the game crashes on the first frame. Add them to the addKeys(\'...\') list first.' });
+          }
+        }
+        const paths = badPaths(applied.added + '\n' + partsOut.ops.map(function (o) { return JSON.stringify(o); }).join('\n'), code);
+        if (paths.length) {
+          hits.push({ name: 'bad-asset', detail: paths.join(', ').slice(0, 200),
+            retry: 'IMPORTANT: your change uses ' + paths.map(function (x) { return '"' + x + '"'; }).join(', ')
+              + ', which is not a file the studio has. Draw it with Phaser shapes instead (rectangle, circle, triangle, star, graphics), '
+              + 'or use a picture the code already loads. Send your whole answer again.' });
+        }
+        const any = changed || partsOut.ops.length > 0;
+        if (!any && !hits.length && !held && claimsChangeWithoutOps(said, {})) {
+          hits.push({ name: 'no-ops', detail: said.slice(0, 200),
+            retry: 'IMPORTANT: your reply said you changed the game, but "edits" and "parts" were empty (or nothing in them was usable), '
+              + 'so NOTHING happened and the kid will see no difference. Send the change for real this time. If you cannot do it, '
+              + 'send no edits, set "held", and say so plainly in "reply".' });
+        }
+        return { said: said, held: held, next: next, changed: changed, edits: changed ? applied.count : 0,
+          parts: partsOut.ops, dropped: partsOut.dropped, hits: hits };
+      };
+
+      let raw;
+      try { raw = await callAI(spec, bSystem, ask, true, history, AGENT_TOOLS.builder ? ctx : null, onTool); }
+      catch (e) { return bUnreachable(); }
+      let a = judge(raw);
+      if (a.dropped.length) guard('bad-part', a.dropped.join('; ').slice(0, 300));
+      if (a.hits.length) {
+        a.hits.forEach(function (h) { guard(h.name, h.detail); });
+        const first = a;
+        const correction = ask + '\n\n' + a.hits.map(function (h) { return h.retry; }).join('\n\n');
+        let retried = true;
+        try { raw = await callAI(spec, bSystem, correction, true, history, AGENT_TOOLS.builder ? ctx : null, onTool); }
+        catch (e) { retried = false; }
+        /* Out of time or unreachable on the retry: the first answer's failures are the ones to report. */
+        a = retried ? judge(raw) : first;
+        if (retried && a.dropped.length) guard('bad-part', a.dropped.join('; ').slice(0, 300));
+        if (a.hits.length) {
+          a.hits.forEach(function (h) { guard(h.name, h.detail, true); });
+          /* THE GIVE-UP, IN THE KID'S WORDS. One plain line saying the game is as it was, then the
+             model's own words ONLY if it set `held`, which makes them an explanation of why not.
+             Otherwise they describe the change it tried and we refused ("Press Play: the coins spin
+             now!"), and printing that under "I left your game just as it was" is the lie this branch
+             exists to stop. No regex can tell those apart reliably ("spin now" is not in
+             CLAIMS_A_CHANGE); `held` can. This differs from the coder, whose words survive a give-up:
+             a 10-year-old reading a contradiction is worse off than one reading one plain line. */
+          const keep = a.held && a.said && !isEmptyAck(a.said) ? a.said : '';
+          return res.json({ reply: builderNote(a.hits[0].name) + (keep ? ' ' + keep : ' Try asking for it a different way.'),
+            code: null, base: base, edits: 0, parts: [], held: a.held || null });
+        }
+      }
+      const any = a.changed || a.parts.length > 0;
+      return res.json({
+        reply: a.said,
+        code: a.changed ? a.next : null,
+        base: base,
+        edits: a.edits,
+        parts: a.parts,
+        /* A model that sent a change AND said it was holding is believed about the change. */
+        held: any ? null : (a.held || null)
+      });
     }
 
     // CODER (default): return ops the browser applies to game.js.

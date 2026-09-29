@@ -44,15 +44,8 @@ var Editor = (function () {
   }
 
   /* ---------- the Hierarchy ---------- */
-  var HERO_WORDS = { alien: 'alien', pink: 'pink alien', slime: 'slime', frog: 'frog', mouse: 'mouse' };
-  function note(p) {
-    if (p.kind === 'player') return p.look ? 'your ' + (p.lookWord || HERO_WORDS[p.look] || 'hero') : p.note;
-    if (p.id === 'tile') return p.solid ? 'solid now' : p.note;
-    if (p.kind === 'floor') return p.solid ? 'solid' : 'not solid!';
-    if (p.kind === 'coin') return p.sound ? 'makes a sound now' : p.look ? 'has art now' : p.size > 1.05 ? 'bigger' : p.note;
-    if (p.kind === 'lava') return p.hurts ? 'hurts now' : p.look ? 'has art now' : p.note;
-    return p.note || '';
-  }
+  /* Names only, as Unity's is. The first build glossed each row ("not solid!", "looks broken"), which
+     told the kid the answer before they looked (Jay, 2026-09-28: no glosses). */
   function tree(animate) {
     UI.keepFocus($('tree'), function () {
       var ul = $('tree'); ul.innerHTML = '';
@@ -66,9 +59,8 @@ var Editor = (function () {
         b.setAttribute('aria-pressed', String(selected === p.id));
         if (animate) b.style.animationDelay = (k * 0.1) + 's';
         b.innerHTML = (p.kind === 'level' ? '<svg class="i fold" aria-hidden="true"><use href="#i-fold"/></svg>' : '')
-          + '<svg class="i" aria-hidden="true"><use href="#i-cube"/></svg><span class="nm"></span><small></small>';
+          + '<svg class="i" aria-hidden="true"><use href="#' + (p.kind === 'level' ? 'i-layout' : 'i-cube') + '"/></svg><span class="nm"></span>';
         b.querySelector('.nm').textContent = p.name;
-        b.querySelector('small').textContent = note(p);
         b.addEventListener('click', function () { select(p.id); });
         li.appendChild(b); ul.appendChild(li);
       });
@@ -76,72 +68,99 @@ var Editor = (function () {
   }
 
   /* ---------- the Inspector ---------- */
+  /* Drawn from schema.js, the one list of components and settings (its header says why). Unity's
+     shapes, because the Unity words and habits stay (Jed, 2026-09-28):
+     - a component header: fold arrow, the on/off checkbox where Unity has one (that IS the setting:
+       a Box Collider that's off lets things fall through), the icon and the real name. No gloss
+       under it; the plain words are in its tooltip.
+     - a number: its label, a slider, and a box to type the exact value in.
+     - an OBJECT FIELD for a sprite or a sound: a slot saying what's in it ("None (Sprite)"), and the
+       round picker button beside it that opens the list of what fits. A slot also takes an asset
+       dragged from the Project window, or TAPPED there first (tap-to-slot: a Chromebook trackpad
+       drag is hard, and a touch screen has no drag at all). A slot that can take the held asset
+       glows.
+     - a colour: a swatch that opens the palette.
+     Which components show is up to the story (allow()): on the first day each department's job has
+     exactly one to find, so a kid isn't handed six. After it, all of them. */
   function allow(list) { allowed = {}; (list || []).forEach(function (c) { allowed[c] = true; }); if (selected) inspect(selected); }
 
-  /* A component, as Unity draws one: a fold arrow, the on/off checkbox when the component can be
-     switched off (that IS the setting, as in Unity: a Box Collider that's off lets things fall
-     through), the real name, and the kid's gloss. `state` says in words what the checkbox means. */
   var folded = {};
-  function comp(o) {
-    var id = o.name.replace(/\W+/g, '-').toLowerCase(), shut = !!folded[o.name];
+  function esc(t) { return String(t).replace(/[&<>"]/g, function (c) { return { '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' }[c]; }); }
+  function header(c, p) {
+    var id = c.name.replace(/\W+/g, '-').toLowerCase(), shut = !!folded[c.name];
     var h = '<div class="comp' + (shut ? ' folded' : '') + '">'
-      + '<button type="button" class="fold" data-fold="' + o.name + '" data-key="fold:' + id + '" aria-expanded="' + !shut + '" aria-controls="cb-' + id + '" aria-label="Fold ' + o.name + '" data-tip="Fold or open this component"><svg class="i" aria-hidden="true"><use href="#i-fold"/></svg></button>';
-    if (o.key) {
-      h += '<button type="button" class="cbox" role="checkbox" data-key="c:' + o.key + '" data-set="' + o.key + '" aria-checked="' + !!o.on + '" data-tip="' + o.tip + '">'
-        + '<i aria-hidden="true"><svg class="i"><use href="#i-check"/></svg></i><strong>' + o.name + '</strong></button>';
-    } else h += '<strong class="cname" data-tip="' + o.tip + '" tabindex="0">' + o.name + '</strong>';
-    h += '<small>' + o.gloss + '</small></div><div class="comp-body" id="cb-' + id + '"' + (shut ? ' hidden' : '') + '>';
-    if (o.state) h += '<p class="cstate' + (o.on ? ' on' : '') + '">' + o.state + '</p>';
-    return h + (o.body || '') + '</div>';
+      + '<button type="button" class="fold" data-fold="' + esc(c.name) + '" data-key="fold:' + id + '" aria-expanded="' + !shut + '" aria-controls="cb-' + id + '" aria-label="Fold ' + esc(c.name) + '" data-tip="Fold or open this component"><svg class="i" aria-hidden="true"><use href="#i-fold"/></svg></button>'
+      + '<svg class="i cicon" aria-hidden="true"><use href="#' + (c.icon || 'i-cube') + '"/></svg>';
+    if (c.toggle) {
+      h += '<button type="button" class="cbox" role="checkbox" data-key="c:' + c.toggle + '" data-set="' + c.toggle + '" aria-checked="' + !!p[c.toggle] + '" data-tip="' + esc(c.tip || c.name) + '">'
+        + '<i aria-hidden="true"><svg class="i"><use href="#i-check"/></svg></i><strong>' + esc(c.name) + '</strong></button>';
+    } else h += '<strong class="cname" data-tip="' + esc(c.tip || c.name) + '" tabindex="0">' + esc(c.name) + '</strong>';
+    return h + '</div><div class="comp-body" id="cb-' + id + '"' + (shut ? ' hidden' : '') + '>';
   }
-  function choices(key, label, unity, tip, list, cur) {
-    return '<div class="irow wide"><span class="lbl" data-tip="' + tip + '" tabindex="0">' + label + '<small>' + unity + '</small></span><div class="sw-row" role="group" aria-label="' + label + '">'
-      + list.map(function (c) {
-        return '<button type="button" class="swatch" data-key="' + key + ':' + c[0] + '" data-pick="' + key + '" data-val="' + (c[0] === null ? '' : c[0]) + '" aria-pressed="' + (cur === c[0]) + '">'
-          + (c[2] ? '<img alt="" src="' + c[2] + '">' : c[3] ? '<i class="blk" style="background:' + c[3] + '"></i>' : '')
-          + c[1] + '</button>';
-      }).join('') + '</div></div>';
+  function fmt(f, v) {
+    if (typeof v !== 'number') return '';
+    var d = f.step < 0.1 ? 2 : f.step < 1 ? 1 : 0;
+    return Number(v).toFixed(d);
   }
-  function slider(key, label, unity, tip, min, max, stepv, val, fmt) {
-    return '<div class="irow"><label for="r-' + key + '" data-tip="' + tip + '">' + label + '<small>' + unity + '</small></label>'
-      + '<div class="rng"><input id="r-' + key + '" type="range" data-key="r:' + key + '" data-slide="' + key + '" min="' + min + '" max="' + max + '" step="' + stepv + '" value="' + val + '"'
-      + ' aria-valuetext="' + fmt(val) + '"><output>' + fmt(val) + '</output></div></div>';
+  function numberField(f, p) {
+    var v = typeof p[f.key] === 'number' ? p[f.key] : f.min;
+    return '<div class="irow num"><label for="r-' + f.key + '" data-tip="' + esc(f.tip || f.label) + '">' + esc(f.label) + '</label>'
+      + '<div class="rng"><input id="r-' + f.key + '" type="range" data-key="r:' + f.key + '" data-slide="' + f.key + '" min="' + f.min + '" max="' + f.max + '" step="' + f.step + '" value="' + v + '" aria-valuetext="' + fmt(f, v) + (f.unit || '') + '">'
+      + '<input type="number" class="nbox" id="n-' + f.key + '" data-key="n:' + f.key + '" data-num="' + f.key + '" min="' + f.min + '" max="' + f.max + '" step="' + f.step + '" value="' + fmt(f, v) + '" aria-label="' + esc(f.label) + ', exact value"></div></div>';
   }
-
-  var A = '/assets/platformer/';
+  /* An asset as the Project window and the object fields show it: the game's own picture of it for a
+     sprite (runner.js, thumbnails), the sound icon for a sound. */
+  function assetFace(kind, key) {
+    if (kind === 'sprite') {
+      var u = Runner.thumb(key);
+      return u ? '<img alt="" src="' + u + '">' : '<svg class="i" aria-hidden="true"><use href="#i-image"/></svg>';
+    }
+    return '<svg class="i" aria-hidden="true"><use href="#i-music"/></svg>';
+  }
+  function assetName(kind, key) { var t = kind === 'sprite' ? Schema.SPRITES[key] : Schema.SOUNDS[key]; return t ? t[0] : key; }
+  function objectField(f, p) {
+    var v = p[f.key], kind = f.type, what = kind === 'sprite' ? 'Sprite' : 'AudioClip';
+    return '<div class="irow wide"><span class="lbl" data-tip="' + esc(f.tip || f.label) + '" tabindex="0">' + esc(f.label) + '</span>'
+      + '<div class="ofield' + (v ? '' : ' none') + '" data-slot="' + f.key + '" data-kind="' + kind + '" data-of="' + (f.of || '') + '">'
+      + '<button type="button" class="oslot" data-key="slot:' + f.key + '" data-open="' + f.key + '" aria-label="' + esc(f.label) + ': ' + (v ? esc(assetName(kind, v)) : 'None') + '. Pick one">'
+      + (v ? assetFace(kind, v) + '<span>' + esc(assetName(kind, v)) + '</span>' : '<span>None (' + what + ')</span>') + '</button>'
+      + '<button type="button" class="opick" data-key="pick:' + f.key + '" data-open="' + f.key + '" aria-label="Pick a ' + what.toLowerCase() + '" data-tip="Pick from your Project"><svg class="i" aria-hidden="true"><use href="#i-pick"/></svg></button>'
+      + '</div></div>';
+  }
+  function colorField(f, p) {
+    var v = p[f.key];
+    return '<div class="irow wide"><span class="lbl" data-tip="' + esc(f.tip || f.label) + '" tabindex="0">' + esc(f.label) + '</span>'
+      + '<button type="button" class="cfield' + (v ? '' : ' none') + '" data-key="color:' + f.key + '" data-color="' + f.key + '" aria-label="' + esc(f.label) + ': ' + (v || 'none') + '. Pick a colour">'
+      + '<i style="background:' + (v || 'transparent') + '"></i><span>' + (v ? v.toUpperCase() : 'None') + '</span></button></div>';
+  }
+  function fields(c, p) {
+    return (c.fields || []).map(function (f) {
+      if (f.type === 'number') return numberField(f, p);
+      if (f.type === 'sprite' || f.type === 'sound') return objectField(f, p);
+      if (f.type === 'color') return colorField(f, p);
+      return '';
+    }).join('');
+  }
+  /* A part the Builder added, of a kind schema.js doesn't know: its plain settings, as Unity shows a
+     script's public fields. */
+  function generic(p) {
+    var r = Schema.rules(p), keys = Object.keys(r);
+    if (!keys.length) return '';
+    var c = { name: 'Properties', icon: 'i-script', tip: 'The settings the Builder gave this part' };
+    return header(c, p) + keys.map(function (k) {
+      if (r[k].type === 'bool') return '<div class="irow"><button type="button" class="cbox inline" role="checkbox" data-set="' + k + '" data-key="c:' + k + '" aria-checked="' + !!p[k] + '"><i aria-hidden="true"><svg class="i"><use href="#i-check"/></svg></i><strong>' + esc(k) + '</strong></button></div>';
+      var span = Math.max(1, Math.abs(p[k]) * 4);
+      return numberField({ key: k, label: k, min: Math.max(r[k].min, Math.min(0, p[k] - span)), max: Math.min(r[k].max, p[k] + span), step: Number.isInteger(p[k]) ? 1 : 0.1 }, p);
+    }).join('') + '</div>';
+  }
   function body(p) {
     var h = '';
-    if (p.kind === 'floor') {
-      h += comp({ name: 'Box Collider 2D', gloss: 'makes it solid', key: 'solid', on: p.solid,
-        tip: 'Box Collider 2D: tick it and things can stand on this part',
-        state: p.solid ? 'On: things stand on it.' : 'Off: it’s just a picture. Things fall through.' });
-    }
-    if (p.kind === 'coin') {
-      if (allowed.coinArt) h += comp({ name: 'Sprite Renderer', gloss: 'how it looks', tip: 'Sprite Renderer: draws a picture for this part',
-        body: choices('look', 'Sprite', 'Unity: Sprite', 'Sprite: the picture this part is drawn with',
-          [[null, 'Grey box', null, '#c4c4c4'], ['coin_gold', 'Gold coin', A + 'coin_gold.png'], ['coin_silver', 'Silver coin', A + 'coin_silver.png'], ['gem_blue', 'Blue gem', A + 'gem_blue.png']], p.look) });
-      if (allowed.coinSound) h += comp({ name: 'Audio Source', gloss: 'the sound it makes', tip: 'Audio Source: plays a sound from this part',
-        body: choices('sound', 'When you grab it', 'Unity: AudioClip', 'AudioClip: the sound that plays when a coin is grabbed',
-          [[null, 'Nothing'], ['ding', 'Sparkly ding'], ['boing', 'Springy boing'], ['buzz', 'Angry buzz']], p.sound) });
-      if (allowed.coinSize) h += comp({ name: 'Transform', gloss: 'where it is, how big', tip: 'Transform: every part has one. It holds where the part is and how big',
-        body: slider('size', 'Size', 'Unity: Scale', 'Scale: how big the part is. 1 is its normal size', 1, 3, 0.1, p.size, function (v) { return Number(v).toFixed(1) + '×'; }) });
-    }
-    if (p.kind === 'lava') {
-      if (allowed.lavaArt) h += comp({ name: 'Sprite Renderer', gloss: 'how it looks', tip: 'Sprite Renderer: draws a picture for this part',
-        body: choices('look', 'Sprite', 'Unity: Sprite', 'Sprite: the picture this part is drawn with', [[null, 'Grey box', null, '#7c7c7c'], ['lava', 'Lava', A + 'lava_top.png']], p.look) });
-      if (allowed.hazard) h += comp({ name: 'Hazard (Script)', gloss: 'a rule the designer wrote', key: 'hurts', on: p.hurts,
-        tip: 'Hazard: a script. Tick it and touching this part sends the player back',
-        state: p.hurts ? 'On: touching it sends you back.' : 'Off: it’s just a floor.' });
-    }
-    if (!h) {
-      h = '<p class="inote">' + ({
-        player: p.look ? 'Your hero. You’ll tune how it moves soon.' : 'The hero, for now a grey box. Nothing to change here yet.',
-        level: 'The level all the parts live in. Gravity lives here.',
-        coin: 'The goal. Grab them to win.',
-        lava: 'Lava. It should hurt… but that’s a job for the Design department.'
-      }[p.kind] || 'Nothing to change here yet.') + '</p>';
-    }
-    return h;
+    Schema.components(p.kind).forEach(function (c) {
+      if (c.gate && !allowed[c.gate]) return;
+      h += header(c, p) + fields(c, p) + '</div>';
+    });
+    if (!Schema.components(p.kind).length) h = generic(p);
+    return h || '<p class="inote">Nothing on ' + esc(p.name) + ' to change yet.</p>';
   }
 
   function select(id) {
@@ -153,46 +172,142 @@ var Editor = (function () {
   function openInspector() {
     var el = $('inspector');
     if (!el.classList.contains('open')) { el.classList.add('open'); el.setAttribute('aria-hidden', 'false'); el.inert = false; }
-    requestAnimationFrame(function () { var lg = $('log'); lg.scrollTop = lg.scrollHeight; });   // the conversation keeps its newest line in view
   }
   function inspect(id) {
     var p = Project.part(id); if (!p) return;
     selected = id;
+    closePicker();
     UI.keepFocus($('inspector'), function () {
       $('inspName').textContent = p.name;
       $('inspBody').innerHTML = body(p);
       wire(p);
     });
+    glow();
     openInspector();
   }
   /* Window › Inspector with nothing picked: Unity's empty Inspector, saying what to do. */
   function inspectNothing() {
     $('inspName').textContent = '';
-    $('inspBody').innerHTML = '<p class="inote">Nothing picked. Tap a part in the Hierarchy to see its settings here.</p>';
+    $('inspBody').innerHTML = '<p class="inote">Nothing picked. Tap a part in the Hierarchy to see its components here.</p>';
     openInspector();
   }
   function closeInspector() {
     var el = $('inspector');
+    closePicker();
     el.classList.remove('open'); el.setAttribute('aria-hidden', 'true'); el.inert = true;
     selected = null; tree();
   }
+  function fieldOf(p, key) {
+    var out = null;
+    Schema.components(p.kind).forEach(function (c) { (c.fields || []).forEach(function (f) { if (f.key === key) out = f; }); });
+    if (!out && Schema.rules(p)[key]) out = Schema.rules(p)[key];
+    return out;
+  }
   function wire(p) {
     var box = $('inspBody');
-    Array.prototype.forEach.call(box.querySelectorAll('[data-set]'), function (b) {
-      b.addEventListener('click', function () { var k = b.getAttribute('data-set'); set(p.id, k, !p[k]); });
-    });
-    Array.prototype.forEach.call(box.querySelectorAll('[data-fold]'), function (b) {
-      b.addEventListener('click', function () { var n = b.getAttribute('data-fold'); folded[n] = !folded[n]; inspect(p.id); });
-    });
-    Array.prototype.forEach.call(box.querySelectorAll('[data-pick]'), function (b) {
-      b.addEventListener('click', function () { var v = b.getAttribute('data-val') || null; set(p.id, b.getAttribute('data-pick'), v); });
-    });
-    Array.prototype.forEach.call(box.querySelectorAll('[data-slide]'), function (r) {
+    function each(sel, fn) { Array.prototype.forEach.call(box.querySelectorAll(sel), fn); }
+    each('[data-set]', function (b) { b.addEventListener('click', function () { var k = b.getAttribute('data-set'); set(p.id, k, !p[k]); }); });
+    each('[data-fold]', function (b) { b.addEventListener('click', function () { var n = b.getAttribute('data-fold'); folded[n] = !folded[n]; inspect(p.id); }); });
+    each('[data-slide]', function (r) {
       r.addEventListener('input', function () {
-        var v = parseFloat(r.value), out = r.parentNode.querySelector('output');
-        out.textContent = Number(v).toFixed(1) + '×'; r.setAttribute('aria-valuetext', out.textContent);
-        set(p.id, r.getAttribute('data-slide'), v, true);
+        var k = r.getAttribute('data-slide'), f = fieldOf(p, k), v = parseFloat(r.value), n = $('n-' + k);
+        if (n) n.value = fmt(f, v);
+        r.setAttribute('aria-valuetext', fmt(f, v) + (f.unit || ''));
+        set(p.id, k, v, true);
       });
+    });
+    each('[data-num]', function (n) {
+      n.addEventListener('change', function () {
+        var k = n.getAttribute('data-num'), f = fieldOf(p, k), v = parseFloat(n.value);
+        if (!isFinite(v)) { n.value = fmt(f, p[k]); return; }
+        v = Math.max(f.min, Math.min(f.max, v));
+        n.value = fmt(f, v); var r = $('r-' + k); if (r) r.value = v;
+        set(p.id, k, v, true);
+      });
+    });
+    each('[data-open]', function (b) {
+      b.addEventListener('click', function () {
+        var slot = b.closest('.ofield'), k = slot.getAttribute('data-slot');
+        if (held && fits(slot, held)) { set(p.id, k, held.key); drop(); return; }   // tap-to-slot
+        picker(b, p, fieldOf(p, k), slot.getAttribute('data-kind'));
+      });
+    });
+    each('[data-color]', function (b) { b.addEventListener('click', function () { palette(b, p, b.getAttribute('data-color')); }); });
+    // an asset dragged in from the Project window
+    each('.ofield', function (slot) {
+      slot.addEventListener('dragover', function (e) { if (dragging && fits(slot, dragging)) { e.preventDefault(); slot.classList.add('over'); } });
+      slot.addEventListener('dragleave', function () { slot.classList.remove('over'); });
+      slot.addEventListener('drop', function (e) {
+        slot.classList.remove('over');
+        if (!dragging || !fits(slot, dragging)) return;
+        e.preventDefault(); set(p.id, slot.getAttribute('data-slot'), dragging.key); dragging = null; drop();
+      });
+    });
+  }
+
+  /* ---------- the picker: Unity's object picker, as a popover under the field ---------- */
+  var pickerEl = null;
+  function closePicker(refocus) {
+    if (!pickerEl) return;
+    var from = pickerEl.from; pickerEl.remove(); pickerEl = null;
+    if (refocus && from && document.body.contains(from)) from.focus();
+  }
+  function pop(anchor, cls, label) {
+    closePicker();
+    var el = document.createElement('div'); el.className = 'opicker ' + cls; el.setAttribute('role', 'listbox'); el.setAttribute('aria-label', label);
+    el.from = anchor;
+    el.addEventListener('keydown', function (e) {
+      var list = Array.prototype.slice.call(el.querySelectorAll('button')), i = list.indexOf(document.activeElement);
+      if (e.key === 'Escape') { e.preventDefault(); e.stopPropagation(); closePicker(true); }
+      if (e.key === 'ArrowDown' || e.key === 'ArrowRight') { e.preventDefault(); (list[i + 1] || list[0]).focus(); }
+      if (e.key === 'ArrowUp' || e.key === 'ArrowLeft') { e.preventDefault(); (list[i - 1] || list[list.length - 1]).focus(); }
+    });
+    anchor.closest('.irow').appendChild(el);
+    pickerEl = el;
+    return el;
+  }
+  function picker(anchor, p, f, kind) {
+    var keys = kind === 'sprite' ? Schema.spritesFor(f.of) : Object.keys(Schema.SOUNDS);
+    var el = pop(anchor, kind, 'Pick a ' + (kind === 'sprite' ? 'sprite' : 'sound'));
+    [null].concat(keys).forEach(function (k) {
+      var b = document.createElement('button'); b.type = 'button'; b.className = 'popt'; b.setAttribute('role', 'option');
+      b.setAttribute('aria-selected', String(p[f.key] === k)); b.setAttribute('data-key', 'opt:' + (k || 'none'));
+      b.innerHTML = k ? assetFace(kind, k) + '<span></span>' : '<span class="nonei" aria-hidden="true"></span><span></span>';
+      b.lastChild.textContent = k ? assetName(kind, k) : 'None';
+      b.addEventListener('click', function () { closePicker(); set(p.id, f.key, k); });
+      if (kind === 'sound' && k) b.addEventListener('pointerenter', function () { previewSound(k); });
+      el.appendChild(b);
+    });
+    var cur = el.querySelector('[aria-selected="true"]') || el.querySelector('button'); if (cur) cur.focus();
+  }
+  function palette(anchor, p, key) {
+    var el = pop(anchor, 'colors', 'Pick a colour');
+    [null].concat(Schema.COLORS).forEach(function (c) {
+      var b = document.createElement('button'); b.type = 'button'; b.className = 'popt sw'; b.setAttribute('role', 'option');
+      b.setAttribute('aria-selected', String(p[key] === c)); b.setAttribute('aria-label', c || 'No colour'); b.setAttribute('data-key', 'col:' + (c || 'none'));
+      b.innerHTML = '<i style="background:' + (c || 'transparent') + '"' + (c ? '' : ' class="nonei"') + '></i>';
+      b.addEventListener('click', function () { closePicker(); set(p.id, key, c); });
+      el.appendChild(b);
+    });
+    var cur = el.querySelector('[aria-selected="true"]') || el.querySelector('button'); if (cur) cur.focus();
+  }
+
+  /* ---------- tap-to-slot and drag: an asset held from the Project window ---------- */
+  var held = null, dragging = null;   // { kind: 'sprite'|'sound', key, of }
+  function fits(slot, a) {
+    if (slot.getAttribute('data-kind') !== a.kind) return false;
+    return a.kind !== 'sprite' || slot.getAttribute('data-of') === a.of;
+  }
+  function hold(a) {
+    held = held && held.key === a.key ? null : a;
+    glow(); paintProject();
+    if (held) status((held.kind === 'sprite' ? 'Holding the ' : 'Holding ') + assetName(held.kind, held.key) + '. Tap a slot in the Inspector that fits it' + (selected ? '' : ', after tapping a part in the Hierarchy'));
+    else status('Put it down');
+  }
+  function drop() { held = null; glow(); paintProject(); }
+  function glow() {
+    Array.prototype.forEach.call(document.querySelectorAll('#inspBody .ofield'), function (s) {
+      s.classList.toggle('can-take', !!(held && fits(s, held)) || !!(dragging && fits(s, dragging)));
     });
   }
 
@@ -207,21 +322,21 @@ var Editor = (function () {
     Runner.set(id, key, value);
     if (!Runner.isPlaying()) Project.save();
     if (key === 'sound' && value) previewSound(value);
+    if (key === 'look' || key === 'shape') setTimeout(Runner.askThumbs, 600);   // the Project window shows the new picture
     if ((!quiet || replay) && selected === id) inspect(id);   // repaint the open Inspector; never open one the kid didn't ask for
     tree();
     emit('set', { id: id, key: key, value: value });
   }
 
   /* Picking a sound plays it once, here in the studio: the kid caused it, so it may make a noise. */
-  var SFX = { ding: 'platformer/sfx_coin.ogg', boing: 'platformer/sfx_jump.ogg', buzz: 'sfx-error.ogg' };
   function previewSound(id) {
-    if (UI.muted() || !SFX[id]) return;
-    try { var a = new Audio('/assets/' + SFX[id]); a.volume = 0.5; a.play().catch(function () {}); } catch (e) {}
+    if (UI.muted() || !Schema.SOUNDS[id]) return;
+    try { var a = new Audio('/assets/' + Schema.SOUNDS[id][1]); a.volume = 0.5; a.play().catch(function () {}); } catch (e) {}
   }
 
   /* ---------- Undo and Redo ---------- */
   var undos = [], redos = [], playMark = 0;
-  var WORD = { solid: 'Box Collider', hurts: 'Hazard', look: 'Sprite', sound: 'sound', size: 'size' };
+  var WORD = { solid: 'Box Collider', hurts: 'Hazard', look: 'Sprite', sound: 'Clip', size: 'Scale', tint: 'Color', shape: 'hero', gravityScale: 'Gravity Scale', jump: 'Jump Force', w: 'Width' };
   function record(id, key, before, after, quiet) {
     var last = undos[undos.length - 1], t = Date.now();
     // one slider drag is one step, not forty
@@ -302,57 +417,164 @@ var Editor = (function () {
     el.style.top = Math.max(8, Math.round(r.top - ed.top - el.offsetHeight - 10)) + 'px';
   }
 
-  /* ---------- the Project window: Tickets and Cards, each a tab that arrives with the story ---------- */
-  var PTABS = { tickets: ['tabTickets', 'pTickets'], cards: ['tabCards', 'pCards'] };
-  function projectTab(name, pick) {
-    var t = PTABS[name]; if (!t) return;
-    openDock('dProject', true);
-    var first = !Object.keys(PTABS).some(function (k) { return !$(PTABS[k][0]).hidden; });
-    $(t[0]).hidden = false;
-    if (first || pick) pickTab(name);
-  }
-  function pickTab(name) {
-    Object.keys(PTABS).forEach(function (k) {
-      var on = k === name;
-      $(PTABS[k][0]).setAttribute('aria-selected', String(on)); $(PTABS[k][0]).tabIndex = on ? 0 : -1;
-      $(PTABS[k][1]).hidden = !on;
-      if (on) $(PTABS[k][0]).classList.remove('news');
+  /* ---------- the Project window ---------- */
+  /* Unity's: folders on the left, what's in the open one on the right (Jay, 2026-09-28: the Project
+     window holds everything the game is made of, like Unity). Everything listed exists:
+       Sprites  the pictures the game's code draws (thumbnails from the frame, runner.js)
+       Sounds   the clips an Audio Source can play (tap to hear one)
+       Scripts  the game's code, game.js, to read; tap a line to ask what it does
+       Docs     the kid's Ideas (what they asked for that isn't built yet) and the design doc
+       Cards    the game ideas they've learned
+     A sprite or sound can be dragged onto an object field in the Inspector, or tapped to hold it
+     and then a field tapped to take it (tap-to-slot, the Inspector's note). */
+  var FOLDERS = [
+    { id: 'sprites', name: 'Sprites', icon: 'i-image', path: 'Assets › Sprites' },
+    { id: 'sounds', name: 'Sounds', icon: 'i-music', path: 'Assets › Sounds' },
+    { id: 'scripts', name: 'Scripts', icon: 'i-script', path: 'Assets › Scripts' },
+    { id: 'docs', name: 'Docs', icon: 'i-doc', path: 'Docs' },
+    { id: 'cards', name: 'Cards', icon: 'i-cards', path: 'Cards' }
+  ];
+  var folder = 'sprites', openDoc = null, seenCards = 0;
+  function paintFolders() {
+    var nav = $('pFolders');
+    UI.keepFocus(nav, function () {
+      nav.innerHTML = '';
+      FOLDERS.forEach(function (f) {
+        var b = document.createElement('button');
+        b.type = 'button'; b.className = 'pfold'; b.id = 'pf-' + f.id; b.setAttribute('role', 'tab'); b.setAttribute('data-key', 'folder:' + f.id);
+        b.setAttribute('aria-selected', String(folder === f.id)); b.setAttribute('aria-controls', 'pBody'); b.tabIndex = folder === f.id ? 0 : -1;
+        b.innerHTML = '<svg class="i" aria-hidden="true"><use href="#' + (f.id === 'docs' || f.id === 'cards' ? f.icon : 'i-folder') + '"/></svg><span>' + f.name + '</span><i class="dot" aria-hidden="true"></i>';
+        if (f.id === 'cards' && cardList().length > seenCards && folder !== 'cards') b.classList.add('news');
+        b.addEventListener('click', function () { openFolder(f.id); });
+        nav.appendChild(b);
+      });
     });
   }
-  function tabKeys(e) {
-    var fwd = e.key === 'ArrowDown' || e.key === 'ArrowRight', back = e.key === 'ArrowUp' || e.key === 'ArrowLeft';
-    if (!fwd && !back) return;
-    var shown = Object.keys(PTABS).filter(function (k) { return !$(PTABS[k][0]).hidden; });
-    var at = shown.indexOf(Object.keys(PTABS).filter(function (k) { return $(PTABS[k][0]) === e.target; })[0]);
-    if (at < 0) return;
-    var n = shown[(at + (fwd ? 1 : shown.length - 1)) % shown.length];
-    pickTab(n); $(PTABS[n][0]).focus(); e.preventDefault();
+  function openFolder(id) { folder = id; openDoc = null; if (id === 'cards') seenCards = cardList().length; paintProject(); }
+  function folderKeys(e) {
+    var d = { ArrowDown: 1, ArrowUp: -1 }[e.key]; if (!d) return;
+    var i = FOLDERS.map(function (f) { return f.id; }).indexOf(folder), n = FOLDERS[(i + d + FOLDERS.length) % FOLDERS.length];
+    e.preventDefault(); openFolder(n.id); $('pf-' + n.id).focus();
   }
-  function ticketCount(open) { $('ticketCount').textContent = open ? open + ' open' : ''; }
-  /* The cards the kid has earned, newest first: the idea's name and one line of what it means. */
-  function cards(list) {
-    var ul = $('cardList'); ul.innerHTML = '';
-    $('cardCount').textContent = list.length ? String(list.length) : '';
-    if (!list.length) { ul.innerHTML = '<li class="empty">No cards yet. You earn one each time you learn a game idea.</li>'; return; }
-    list.slice().reverse().forEach(function (c) {
-      var li = document.createElement('li'); li.className = 'ctile';
-      li.innerHTML = '<svg class="i" aria-hidden="true"><use href="#i-cards"/></svg><b></b><span></span>';
-      li.querySelector('b').textContent = c.name || c; li.querySelector('span').textContent = c.text || '';
-      ul.appendChild(li);
+  function cardList() { return window.Quest && Quest.cards ? Quest.cards() : []; }
+  function tile(face, name, opts) {
+    var li = document.createElement('li'), b = document.createElement('button');
+    b.type = 'button'; b.className = 'asset' + (opts.cls ? ' ' + opts.cls : '');
+    if (opts.key) b.setAttribute('data-key', opts.key);
+    b.innerHTML = '<span class="face">' + face + '</span><span class="nm"></span>';
+    b.querySelector('.nm').textContent = name;
+    if (opts.pressed !== undefined) b.setAttribute('aria-pressed', String(opts.pressed));
+    if (opts.tip) b.setAttribute('data-tip', opts.tip);
+    if (opts.run) b.addEventListener('click', opts.run);
+    if (opts.drag) {
+      b.draggable = true;
+      b.addEventListener('dragstart', function (e) { dragging = opts.drag; try { e.dataTransfer.setData('text/plain', opts.drag.key); e.dataTransfer.effectAllowed = 'copy'; } catch (x) {} glow(); });
+      b.addEventListener('dragend', function () { dragging = null; glow(); });
+    }
+    li.appendChild(b);
+    return li;
+  }
+  function paintProject() {
+    if (!$('assetGrid')) return;
+    paintFolders();
+    var f = FOLDERS.filter(function (x) { return x.id === folder; })[0];
+    var grid = $('assetGrid'), crumbs = $('pCrumbs');
+    $('pBody').setAttribute('aria-labelledby', 'pf-' + folder);
+    UI.keepFocus($('pBody'), function () {
+      grid.innerHTML = ''; grid.className = 'assets';
+      crumbs.textContent = f.path + (openDoc ? ' › ' + openDoc : '');
+      var old = $('pBody').querySelector('.pview'); if (old) old.remove();
+      if (folder === 'sprites') Object.keys(Schema.SPRITES).forEach(function (k) {
+        var a = { kind: 'sprite', key: k, of: Schema.SPRITES[k][1] };
+        grid.appendChild(tile(assetFace('sprite', k), Schema.SPRITES[k][0], { key: 'asset:' + k, pressed: !!held && held.key === k, drag: a,
+          tip: Schema.SPRITES[k][0] + ': drag it onto a Sprite slot, or tap it, then tap the slot', run: function () { hold(a); } }));
+      });
+      if (folder === 'sounds') Object.keys(Schema.SOUNDS).forEach(function (k) {
+        var a = { kind: 'sound', key: k };
+        grid.appendChild(tile(assetFace('sound', k), Schema.SOUNDS[k][0], { key: 'asset:' + k, pressed: !!held && held.key === k, drag: a,
+          tip: Schema.SOUNDS[k][0] + ': tap to hear it and hold it, then tap a Clip slot', run: function () { previewSound(k); hold(a); } }));
+      });
+      if (folder === 'scripts') {
+        if (openDoc) return script();
+        grid.appendChild(tile('<svg class="i" aria-hidden="true"><use href="#i-script"/></svg>', 'game.js', { key: 'asset:game.js',
+          tip: 'Your game’s code. Open it to read it', run: function () { openDoc = 'game.js'; paintProject(); } }));
+      }
+      if (folder === 'docs') {
+        if (openDoc) return doc(openDoc);
+        [['Ideas', 'i-bulb'], ['Design doc', 'i-doc']].forEach(function (d) {
+          grid.appendChild(tile('<svg class="i" aria-hidden="true"><use href="#' + d[1] + '"/></svg>', d[0], { key: 'doc:' + d[0], run: function () { openDoc = d[0]; paintProject(); } }));
+        });
+      }
+      if (folder === 'cards') {
+        var list = cardList();
+        if (!list.length) { grid.className = 'assets list'; grid.innerHTML = '<li class="empty">No cards yet. You earn one each time you learn a game idea.</li>'; return; }
+        grid.className = 'assets cards';
+        list.slice().reverse().forEach(function (c) {
+          var li = document.createElement('li'); li.className = 'ctile';
+          li.innerHTML = '<svg class="i" aria-hidden="true"><use href="#i-cards"/></svg><b></b><span></span>';
+          li.querySelector('b').textContent = c.name; li.querySelector('span').textContent = c.text;
+          grid.appendChild(li);
+        });
+      }
     });
-    if ($('tabCards').getAttribute('aria-selected') !== 'true') $('tabCards').classList.add('news');
+  }
+  /* A doc or the script, in place of the grid, with a way back. */
+  function view(title) {
+    var v = document.createElement('div'); v.className = 'pview';
+    var back = document.createElement('button'); back.type = 'button'; back.className = 'tbtn quiet back'; back.setAttribute('data-key', 'back');
+    back.innerHTML = '<svg class="i" aria-hidden="true"><use href="#i-undo"/></svg><span>Back</span>';
+    back.addEventListener('click', function () { openDoc = null; paintProject(); });
+    var h = document.createElement('h3'); h.textContent = title;
+    v.appendChild(back); v.appendChild(h);
+    $('pBody').appendChild(v);
+    return v;
+  }
+  function doc(name) {
+    var v = view(name), st = Project.get(), S = st.quest || {};
+    var ul = document.createElement('ul'); ul.className = 'docl';
+    var rows = [];
+    if (name === 'Ideas') {
+      rows = (S.ideas || []).slice().reverse();
+      if (!rows.length) rows = ['Nothing yet. Anything you ask for that can’t be built right away is kept here.'];
+    } else {
+      rows = ['Game: ' + (S.name || 'not named yet'), 'Hero: ' + (S.hero || 'not picked yet'),
+        'Fixed: ' + (Object.keys(S.tickets || {}).filter(function (k) { return S.tickets[k].status === 'done'; }).length) + ' tickets',
+        'Built with the AI: ' + (S.built || 0) + ' changes', 'Parts: ' + st.parts.map(function (p) { return p.name; }).join(', ')];
+    }
+    rows.forEach(function (r) { var li = document.createElement('li'); li.textContent = r; ul.appendChild(li); });
+    v.appendChild(ul);
+  }
+  /* The game's code, read-only here. Tapping a line asks whoever's thread is open what it does. */
+  function script() {
+    var v = view('game.js');
+    var ol = document.createElement('ol'); ol.className = 'code'; ol.setAttribute('aria-label', 'game.js, one button per line');
+    v.appendChild(ol);
+    Project.code().then(function (code) {
+      code.split('\n').forEach(function (line, n) {
+        var li = document.createElement('li'), b = document.createElement('button');
+        b.type = 'button'; b.className = 'cl'; b.setAttribute('data-key', 'line:' + (n + 1));
+        b.innerHTML = '<span class="ln" aria-hidden="true">' + (n + 1) + '</span><code></code>';
+        b.querySelector('code').textContent = line || ' ';
+        b.setAttribute('aria-label', 'Line ' + (n + 1) + ': ' + (line.trim() || 'blank') + '. Ask what it does');
+        if (line.trim()) b.addEventListener('click', function () { Chat.send('What does line ' + (n + 1) + ' of game.js do? `' + line.trim().slice(0, 150) + '`'); });
+        else b.disabled = true;
+        li.appendChild(b); ol.appendChild(li);
+      });
+    });
   }
 
   /* ---------- menus ---------- */
   /* Built each time one opens, from what is true right now, so an item never lies about whether it
      works. A menu with nothing in it yet isn't on the bar. */
-  var PANEL_NAMES = { hierarchy: ['Hierarchy', 'i-tree', 'dHier'], game: ['Game', 'i-pad', 'dGame'], inspector: ['Inspector', 'i-sliders', 'inspector'],
-                      chat: ['Chat', 'i-chat', 'dMentor'], project: ['Project', 'i-folder', 'dProject'] };
+  var PANEL_NAMES = { tickets: ['Tickets', 'i-ticket', 'dTickets'], hierarchy: ['Hierarchy', 'i-tree', 'dHier'], game: ['Game', 'i-pad', 'dGame'],
+                      inspector: ['Inspector', 'i-sliders', 'inspector'], chat: ['Chat', 'i-chat', 'dMentor'], project: ['Project', 'i-folder', 'dProject'],
+                      console: ['Console', 'i-terminal', 'dConsole'] };
   function MENUS() {
     var playing = Runner.isPlaying(), hier = isOpen('dHier');
     return [
       { id: 'file', label: 'File', items: [
         { label: 'Save', icon: 'i-save', keys: 'Ctrl+S', tip: 'Your game saves by itself; this saves it right now', run: saveNow },
+        window.Quest && Quest.doneFirstDay && Quest.doneFirstDay() && { label: 'Clock out', icon: 'i-clapper', tip: 'End today’s shift. The Studio Director sums it up', run: function () { Quest.clockOut(); } },
         { sep: true },
         { label: 'Sign out', icon: 'i-exit', tip: 'Sign out of the studio. Your game stays saved', run: function () { saveNow(); setTimeout(function () { location.href = '/auth/logout'; }, 300); } }
       ] },
@@ -365,7 +587,7 @@ var Editor = (function () {
         isOpen('stepTools') && { label: 'Step', icon: 'i-step', keys: 'Ctrl+Alt+P', disabled: !Runner.isPaused(), run: stepFrame }
       ] },
       { id: 'gameobject', label: 'GameObject', items: hier ? [
-        { label: 'Add a part…', icon: 'i-plus', tip: 'Describe a new part, and the studio will add it', run: function () { Chat.prompt('Describe the part you want to add…'); } },
+        { label: 'New part…', icon: 'i-plus', tip: 'Describe a new part, and the Builder adds it to your level', run: function () { Chat.prompt('Describe the part you want, like “a spring that bounces me up”…'); } },
         { sep: true, label: 'In your level' }
       ].concat(Project.get().parts.map(function (p) {
         return { label: p.name, icon: 'i-cube', checked: selected === p.id, run: function () { if (selected !== p.id) select(p.id); } };
@@ -483,10 +705,12 @@ var Editor = (function () {
 
   /* ---------- docks: where each panel sits, and how big ---------- */
   var AREAS = { left: 'aLeft', right: 'aRight', bottom: 'aBottom' };
-  var PANELS = { hierarchy: 'dHier', inspector: 'inspector', chat: 'dMentor', project: 'dProject' };
-  var DEFAULT = { left: ['hierarchy'], right: ['inspector', 'chat'], bottom: ['project'], lw: 264, rw: 388, bh: 150, grow: {} };
-  var BIG = { left: ['hierarchy'], right: ['inspector', 'chat'], bottom: ['project'], lw: 200, rw: 316, bh: 112, grow: {} };
-  var LAYOUT_KEY = 'studio.layout.v1', L = null;
+  /* Tickets sit above the Hierarchy (a ticket is what the kid is working on; the Hierarchy is where),
+     and the Console beside the Project window, as Unity's are. */
+  var PANELS = { tickets: 'dTickets', hierarchy: 'dHier', inspector: 'inspector', chat: 'dMentor', project: 'dProject', console: 'dConsole' };
+  var DEFAULT = { left: ['tickets', 'hierarchy'], right: ['inspector', 'chat'], bottom: ['project', 'console'], lw: 264, rw: 388, bh: 176, grow: { tickets: 2, hierarchy: 3, project: 3, console: 2 } };
+  var BIG = { left: ['tickets', 'hierarchy'], right: ['inspector', 'chat'], bottom: ['project', 'console'], lw: 200, rw: 316, bh: 120, grow: { tickets: 2, hierarchy: 3, project: 3, console: 2 } };
+  var LAYOUT_KEY = 'studio.layout.v3', L = null;
   function copy(o) { return JSON.parse(JSON.stringify(o)); }
   function layoutIs(d) { return JSON.stringify(L) === JSON.stringify(d); }
   function loadLayout() {
@@ -654,6 +878,8 @@ var Editor = (function () {
   function keys(e) {
     if (e.key === 'Escape' && drag) { tabEnd(); return; }
     if (e.key === 'Escape' && openMenu) { closeMenu(true); return; }
+    if (e.key === 'Escape' && pickerEl) { closePicker(true); return; }
+    if (e.key === 'Escape' && held) { drop(); status('Put it down'); return; }
     if (e.key === 'Escape' && $('inspector').classList.contains('open')) { closeInspector(); return; }
     var t = e.target, typing = t && (t.tagName === 'INPUT' || t.tagName === 'TEXTAREA' || t.isContentEditable);
     if (!(e.ctrlKey || e.metaKey) || typing) return;
@@ -682,10 +908,13 @@ var Editor = (function () {
     });
     $('bLayout').addEventListener('keydown', function (e) { if (e.key === 'ArrowDown') { e.preventDefault(); popup($('bLayout'), LAYOUT_ITEMS(), true, false); } });
     $('inspClose').addEventListener('click', function () { closeInspector(); });
-    Object.keys(PTABS).forEach(function (k) { $(PTABS[k][0]).addEventListener('click', function () { pickTab(k); }); $(PTABS[k][0]).addEventListener('keydown', tabKeys); });
+    $('pFolders').addEventListener('keydown', folderKeys);
+    paintProject();
+    Runner.on(function (name) { if (name === 'thumbs') { paintProject(); if (selected) inspect(selected); } });
     document.addEventListener('keydown', keys);
     document.addEventListener('pointerdown', function (e) {
       if (openMenu && !openMenu.pop.contains(e.target) && e.target !== openMenu.btn) closeMenu(false);
+      if (pickerEl && !pickerEl.contains(e.target) && !pickerEl.from.contains(e.target)) closePicker(false);
     });
     $('editor').addEventListener('pointerdown', tabDown);
     $('gamebody').addEventListener('pointerdown', function () { Runner.focusGame(); });
@@ -698,17 +927,13 @@ var Editor = (function () {
     paintPlay();
   }
 
-  function setProjectName(name) {
-    $('projText').textContent = name;
-    $('gameOf').textContent = name;
-  }
+  function setProjectName(name) { $('projText').textContent = name; }
   function stars(n) {
     $('starCount').textContent = n + (n === 1 ? ' star' : ' stars');
   }
 
   return { init: init, on: on, openDock: openDock, reveal: reveal, tree: tree, allow: allow, select: select,
            inspect: inspect, closeInspector: closeInspector, set: set, togglePlay: togglePlay, cue: cue, point: point,
-           paintPlay: paintPlay, setProjectName: setProjectName, stars: stars, cards: cards,
-           projectTab: projectTab, ticketCount: ticketCount, undo: undo, redo: redo,
-           selected: function () { return selected; } };
+           paintPlay: paintPlay, setProjectName: setProjectName, stars: stars, project: paintProject, undo: undo, redo: redo,
+           selected: function () { return selected; }, allowed: function () { return allowed; } };
 })();
