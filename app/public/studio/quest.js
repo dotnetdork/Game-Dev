@@ -397,7 +397,7 @@ var Quest = (function () {
     if (d.close_inspector) Editor.closeInspector();
     if (d.allow) { d.allow.forEach(function (c) { if (S.taught.indexOf(c) < 0) S.taught.push(c); }); allow(frame()); }
     if (d.cue) Editor.cue(true);
-    if (d.point) { var el = document.querySelector('#' + (PANEL[d.point] || '') + ' .tab') || $(PANEL[d.point]); if (el) setTimeout(function () { if (!Editor.selected() && !Runner.isPlaying()) Editor.point(pointText(d.point), el); }, 500); }
+    if (d.point) { var el = document.querySelector(d.point === 'game' ? '#vtGame' : '#' + (PANEL[d.point] || '') + ' .tab') || $(PANEL[d.point]); if (el) setTimeout(function () { if (!Editor.selected() && !Runner.isPlaying()) Editor.point(pointText(d.point), el); }, 500); }
   }
   function pointText(p) {
     return { game: 'The Game view: where games run.', hierarchy: 'The Hierarchy: every part of the level.', tickets: 'Your tickets: everything that needs fixing.', play: 'Play runs the game.' }[p] || '';

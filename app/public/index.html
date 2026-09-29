@@ -35,7 +35,8 @@
   <symbol id="i-cards" viewBox="0 0 24 24"><path d="M8 4h9a2 2 0 0 1 2 2v11M5 7h9a2 2 0 0 1 2 2v9a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V9a2 2 0 0 1 2-2z"/></symbol>
   <symbol id="i-star" viewBox="0 0 24 24"><path d="M12 3.5l2.6 5.3 5.9.9-4.3 4.1 1 5.8L12 16.9l-5.2 2.7 1-5.8-4.3-4.1 5.9-.9z"/></symbol>
   <symbol id="i-fold" viewBox="0 0 24 24"><path d="M8 10l4 4 4-4"/></symbol>
-      <symbol id="i-lock" viewBox="0 0 24 24"><rect width="16" height="10" x="4" y="11" rx="2"/><path d="M8 11V7.5a4 4 0 0 1 8 0V11"/></symbol>
+  <symbol id="i-lock" viewBox="0 0 24 24"><rect width="16" height="10" x="4" y="11" rx="2"/><path d="M8 11V7.5a4 4 0 0 1 8 0V11"/></symbol>
+  <symbol id="i-scene" viewBox="0 0 24 24"><rect width="18" height="18" x="3" y="3" rx="2"/><path d="M3 9h18M3 15h18M9 3v18M15 3v18"/></symbol>
   <symbol id="i-more" viewBox="0 0 24 24"><path d="M10 8l4 4-4 4"/></symbol>
   <symbol id="i-x" viewBox="0 0 24 24"><path d="M6 6l12 12M18 6L6 18"/></symbol>
   <symbol id="i-check" viewBox="0 0 24 24"><path d="M5 12.5l4.5 4.5L19 7.5"/></symbol>
@@ -113,12 +114,33 @@
   </div>
 
   <section class="dock game closed" id="dGame" data-panel="game" aria-label="Game">
-    <div class="tabs"><span class="tab"><svg class="i" aria-hidden="true"><use href="#i-pad"/></svg>Game</span>
+    <!-- The centre's three views, as Unity's (views.js): Scene arrives with the Hierarchy, game.js
+         when the kid opens it from the Project window. Scene and game.js lie over the Game view,
+         which stays underneath so the game frame keeps its size. -->
+    <div class="tabs"><div class="vtabs" role="tablist" aria-label="Views">
+        <button type="button" class="tab vtab" role="tab" id="vtScene" aria-controls="sceneView" aria-selected="false" tabindex="-1" hidden data-tip="Scene: the level's parts, to look at and pick"><svg class="i" aria-hidden="true"><use href="#i-scene"/></svg>Scene</button>
+        <button type="button" class="tab vtab" role="tab" id="vtGame" aria-controls="gamebody" aria-selected="true" data-tip="Game: your game, as a player sees it"><svg class="i" aria-hidden="true"><use href="#i-pad"/></svg>Game</button>
+        <button type="button" class="tab vtab" role="tab" id="vtCode" aria-controls="codeView" aria-selected="false" tabindex="-1" hidden data-tip="game.js: your game's code"><svg class="i" aria-hidden="true"><use href="#i-script"/></svg>game.js<span class="dirty" id="codeDirty" hidden aria-hidden="true"></span></button>
+      </div>
+      <button type="button" class="tclose" id="codeClose" hidden aria-label="Close game.js" data-tip="Close game.js"><svg class="i" aria-hidden="true"><use href="#i-x"/></svg></button>
       <span class="paused-tag" id="pausedTag" hidden>Paused</span></div>
     <div class="gamebody" id="gamebody">
       <div class="stage" id="stage"></div>
       <div class="focus-hint" id="hint" hidden>Click the game, then <span class="keys"><span class="key">←</span><span class="key">→</span></span> or <span class="keys"><span class="key">A</span><span class="key">D</span></span> to move · <span class="key">Space</span> or <span class="key">W</span> to jump</div>
       <p class="game-status" id="gameStatus" role="status"></p>
+    </div>
+    <div class="view scene" id="sceneView" role="tabpanel" aria-labelledby="vtScene" hidden>
+      <svg class="scenesvg" id="sceneSvg" viewBox="-16 -16 992 572" role="img" aria-label="The level, with every part where it starts"></svg>
+      <p class="scenehint" id="sceneHint" role="status"></p>
+    </div>
+    <div class="view codeview" id="codeView" role="tabpanel" aria-labelledby="vtCode" hidden>
+      <div class="codebar"><span class="crumbs">Assets › Scripts › game.js</span><span class="codestate" id="codeState" role="status"></span>
+        <button type="button" class="tbtn on" id="codeSave" disabled data-tip="Save your code and restart the game with it (Ctrl+S)"><svg class="i" aria-hidden="true"><use href="#i-play"/></svg><span>Save &amp; run</span></button></div>
+      <div class="codehost" id="codeHost"></div>
+      <div class="codeerr" id="codeErr" role="alert" hidden><p id="codeErrText"></p>
+        <button type="button" class="tbtn quiet" id="codeErrGo">Go to line</button>
+        <button type="button" class="tbtn quiet" id="codeErrAsk"><svg class="i" aria-hidden="true"><use href="#i-chat"/></svg><span>Ask for help</span></button>
+        <button type="button" class="tbtn quiet" id="codeErrBack"><svg class="i" aria-hidden="true"><use href="#i-undo"/></svg><span>Put back what worked</span></button></div>
     </div>
   </section>
 
@@ -193,6 +215,8 @@
      chat.js     the conversation and the Console. Needs Runner (it won't steal focus from a running game).
      editor.js   menus, docks, Hierarchy, Inspector, Project, Play, Undo. Needs UI, Project, Schema,
                  Runner, Chat, Save.
+     views.js    the centre's Scene, Game and game.js views. Needs Project, Runner, Builder, Chat,
+                 Editor; editor.js calls it at run time only.
      quest.js    the quest engine and tickets. Needs all of the above.
      boot.js     loads the course and starts it. Last.
      dev.js      localhost only (the server refuses it on a deployment): the dev panel. -->
@@ -204,6 +228,7 @@
 <script src="/studio/builder.js"></script>
 <script src="/studio/chat.js"></script>
 <script src="/studio/editor.js"></script>
+<script src="/studio/views.js"></script>
 <script src="/studio/quest.js"></script>
 <script src="/studio/boot.js"></script>
 <script src="/studio/dev.js" onerror="this.remove()"></script>

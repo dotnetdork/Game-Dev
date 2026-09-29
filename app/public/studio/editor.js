@@ -35,6 +35,8 @@ var Editor = (function () {
     d.classList.toggle('closed', !open); d.inert = !open; d.setAttribute('aria-hidden', String(!open));
     // Undo and Layout arrive with the first panel whose contents the kid can change or move.
     if (id === 'dHier' && open) { reveal('editTools', true); reveal('layoutTools', true); }
+    // ...and the Scene view with the Hierarchy: the parts, to look at and pick (views.js)
+    if (id === 'dHier' && window.Views) Views.revealScene(!!open);
     paintBar();
   }
   function reveal(id, open) {
@@ -217,6 +219,7 @@ var Editor = (function () {
     closePicker();
     el.classList.remove('open'); el.setAttribute('aria-hidden', 'true'); el.inert = true;
     selected = null; tree();
+    emit('deselect');   // nothing is picked now (the Scene view drops its outline)
   }
   function fieldOf(p, key) {
     var out = null;
@@ -516,9 +519,9 @@ var Editor = (function () {
           tip: Schema.SOUNDS[k][0] + ': tap to hear it and hold it, then tap a Clip slot', run: function () { previewSound(k); hold(a); } }));
       });
       if (folder === 'scripts') {
-        if (openDoc) return script();
+        // game.js opens in the centre, in its own tab beside the Game view (views.js)
         grid.appendChild(tile('<svg class="i" aria-hidden="true"><use href="#i-script"/></svg>', 'game.js', { key: 'asset:game.js',
-          tip: 'Your game’s code. Open it to read it', run: function () { openDoc = 'game.js'; paintProject(); } }));
+          tip: 'Your game’s code. Open it to read and change it', run: function () { Views.openCode(); } }));
       }
       if (folder === 'docs') {
         if (openDoc) return doc(openDoc);
@@ -539,7 +542,7 @@ var Editor = (function () {
       }
     });
   }
-  /* A doc or the script, in place of the grid, with a way back. */
+  /* A doc, in place of the grid, with a way back. */
   function view(title) {
     var v = document.createElement('div'); v.className = 'pview';
     var back = document.createElement('button'); back.type = 'button'; back.className = 'tbtn quiet back'; back.setAttribute('data-key', 'back');
@@ -565,25 +568,6 @@ var Editor = (function () {
     rows.forEach(function (r) { var li = document.createElement('li'); li.textContent = r; ul.appendChild(li); });
     v.appendChild(ul);
   }
-  /* The game's code, read-only here. Tapping a line asks whoever's thread is open what it does. */
-  function script() {
-    var v = view('game.js');
-    var ol = document.createElement('ol'); ol.className = 'code'; ol.setAttribute('aria-label', 'game.js, one button per line');
-    v.appendChild(ol);
-    Project.code().then(function (code) {
-      code.split('\n').forEach(function (line, n) {
-        var li = document.createElement('li'), b = document.createElement('button');
-        b.type = 'button'; b.className = 'cl'; b.setAttribute('data-key', 'line:' + (n + 1));
-        b.innerHTML = '<span class="ln" aria-hidden="true">' + (n + 1) + '</span><code></code>';
-        b.querySelector('code').textContent = line || ' ';
-        b.setAttribute('aria-label', 'Line ' + (n + 1) + ': ' + (line.trim() || 'blank') + '. Ask what it does');
-        if (line.trim()) b.addEventListener('click', function () { Chat.send('What does line ' + (n + 1) + ' of game.js do? `' + line.trim().slice(0, 150) + '`'); });
-        else b.disabled = true;
-        li.appendChild(b); ol.appendChild(li);
-      });
-    });
-  }
-
   /* ---------- menus ---------- */
   /* Built each time one opens, from what is true right now, so an item never lies about whether it
      works. A menu with nothing in it yet isn't on the bar. */

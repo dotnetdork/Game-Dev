@@ -39,7 +39,7 @@ var Runner = (function () {
   function askThumbs() { post({ __studio: 'thumbs' }); }
 
   function on(fn) { listeners.push(fn); }
-  function emit(name, detail) { listeners.forEach(function (fn) { try { fn(name, detail); } catch (e) { console.error(e); } }); }
+  function emit(name, detail, line) { listeners.forEach(function (fn) { try { fn(name, detail, line); } catch (e) { console.error(e); } }); }
 
   function phaserText() {
     if (phaser) return Promise.resolve(phaser);
@@ -71,8 +71,8 @@ var Runner = (function () {
       +   'try{var u=g.textures.getBase64(k);if(u&&u.length<400000)out[k]=u;}catch(err){}});'
       +   'parent.postMessage({__studio:"thumbs",list:out},"*");}'
       + '});'
-      + 'function report(err){parent.postMessage({__studio:"error",text:String(err&&err.message||err)},"*");}'
-      + 'window.addEventListener("error",function(e){report(e.message);});'
+      + 'function report(err,line){parent.postMessage({__studio:"error",text:String(err&&err.message||err),line:line||0},"*");}'
+      + 'window.addEventListener("error",function(e){report(e.message,e.lineno);});'
       /* Phaser.Game is wrapped so the studio can find the game the kid's code makes without the
          kid's code having to hand it over. */
       + 'window.__wrapPhaser=function(){var G=Phaser.Game;Phaser.Game=function(c){var g=new G(c);window.__game=g;'
@@ -81,17 +81,23 @@ var Runner = (function () {
       + '})();<' + '/script>';
   }
 
+  /* An error's line comes back as a line of this whole document, Phaser included, so the line the
+     kid's code starts on is remembered to turn it into a line of game.js (views.js shows it). */
+  var codeStart = 0, codeLines = 0;
   function doc(code, parts, mute) {
-    return '<!doctype html><html><head><meta charset="utf-8">'
+    var head = '<!doctype html><html><head><meta charset="utf-8">'
       + '<style>html,body{margin:0;height:100%;background:#111;overflow:hidden}#game{width:100%;height:100%}canvas{display:block}</style>'
       + '</head><body><div id="game"></div>'
       + bridge()
       + '<script>window.__mute=' + (mute ? 'true' : 'false') + ';Studio.parts=' + JSON.stringify(parts).replace(/</g, '\\u003c') + ';</' + 'script>'
       + '<script>' + phaser + '\n</' + 'script>'
       + '<script>__wrapPhaser();</' + 'script>'
-      + '<script>' + code.replace(/<\/script/gi, '<\\/script') + '\n</' + 'script>'
+      + '<script>';
+    codeStart = head.split('\n').length - 1; codeLines = code.split('\n').length;
+    return head + code.replace(/<\/script/gi, '<\\/script') + '\n</' + 'script>'
       + '</body></html>';
   }
+  function codeLine(n) { n = (+n || 0) - codeStart; return n >= 1 && n <= codeLines ? n : 0; }
 
   /* Build (or rebuild) the frame for this code. Resolves when the game says it is ready. */
   function mount(host, code, parts, mute) {
@@ -123,7 +129,7 @@ var Runner = (function () {
       lastEvent[n] = t;
       if (playing) emit(n);
     }
-    if (d.__studio === 'error') emit('error', String(d.text || '').slice(0, 300));
+    if (d.__studio === 'error') emit('error', String(d.text || '').slice(0, 300), codeLine(d.line));
     if (d.__studio === 'thumbs' && d.list && typeof d.list === 'object') {
       Object.keys(d.list).forEach(function (k) {
         var u = d.list[k];

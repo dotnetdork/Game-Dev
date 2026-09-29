@@ -20,6 +20,7 @@
     Save.start();
     Chat.init();
     Editor.init();
+    Views.init();
 
     Runner.on(function (name, text) {
       /* Said plainly on the game, with the detail in the console for whoever is helping. Cleared by the

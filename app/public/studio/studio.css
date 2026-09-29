@@ -203,14 +203,86 @@ body.resizing-x iframe, body.resizing-y iframe { pointer-events: none; }   /* th
 
 /* ---------- the Game view ---------- */
 .game { grid-area: game; }
-.game .tabs { justify-content: space-between; align-items: center; }
+.game { position: relative; }
+.game .tabs { align-items: center; gap: 2px; }
 .game .tabs .tab { align-self: flex-end; }
-.paused-tag { font-size: 12px; font-weight: 700; color: var(--ink); background: var(--select); border-radius: 4px; padding: 2px 8px; margin-right: 4px; }
+.paused-tag { margin-left: auto; font-size: 12px; font-weight: 700; color: var(--ink); background: var(--select); border-radius: 4px; padding: 2px 8px; margin-right: 4px; }
 .paused-tag[hidden] { display: none; }
 .gamebody { flex: 1; display: flex; background: var(--game-well); position: relative; min-height: 0; }
 .stage { flex: 1; min-width: 0; position: relative; }
 .stage iframe { position: absolute; inset: 0; width: 100%; height: 100%; border: 0; display: block; background: var(--game-well); }
 .gamebody.playing::after { content: ''; position: absolute; inset: 0; box-shadow: inset 0 0 0 3px var(--accent); pointer-events: none; }
+/* the centre's tabs (views.js): Scene, Game, game.js. The one showing is the panel colour; the
+   others sit back on the frame until hovered. */
+.vtabs { display: flex; gap: 2px; align-self: flex-end; min-width: 0; }
+.vtab { border: 0; cursor: pointer; font: inherit; font-size: 14px; font-weight: 600; }
+.vtab[aria-selected="false"] { background: transparent; color: var(--ink-2); }
+.vtab[aria-selected="false"]:hover { background: var(--panel-2); color: var(--ink); }
+.vtab[hidden] { display: none; }
+.vtab:focus-visible { outline-offset: -2px; }
+.vtab .dirty { width: 8px; height: 8px; border-radius: 50%; background: var(--ink-2); }
+.vtab .dirty[hidden] { display: none; }
+.tclose { width: 30px; height: 30px; display: grid; place-items: center; border: 0; border-radius: 6px; background: transparent;
+          color: var(--ink-2); cursor: pointer; }
+.tclose:hover { background: var(--hover); color: var(--ink); }
+.tclose[hidden] { display: none; }
+.view { position: absolute; top: 40px; left: 0; right: 0; bottom: 0; display: flex; flex-direction: column; background: var(--game-well); }
+.view[hidden] { display: none; }
+
+/* the Scene view: the level on a grid, each part where it starts */
+.scenesvg { flex: 1; min-height: 0; width: 100%; display: block; touch-action: none; user-select: none; }
+.scenesvg .gridline { stroke: var(--line-soft); stroke-width: 1; }
+.scenesvg .gridover { opacity: .35; pointer-events: none; }
+.scenesvg .bounds { fill: none; stroke: var(--grip); stroke-width: 2; stroke-dasharray: 8 6; vector-effect: non-scaling-stroke; pointer-events: none; }
+.spart { cursor: pointer; }
+.spart.movable.on { cursor: move; }
+.spart .hit { fill: transparent; }
+.spart:hover .hit { fill: rgba(234, 241, 248, .08); }
+.spart .sel { fill: none; stroke: var(--focus); stroke-width: 2; vector-effect: non-scaling-stroke; pointer-events: none; }
+.spart .gizmo { fill: none; stroke: var(--good); stroke-width: 2; vector-effect: non-scaling-stroke; pointer-events: none; }
+.scenehint { position: absolute; left: 12px; bottom: 12px; margin: 0; max-width: calc(100% - 24px); padding: 6px 10px; border-radius: 8px;
+             background: rgba(6, 16, 29, .88); color: var(--ink-2); font-size: 13.5px; pointer-events: none; }
+
+/* game.js: the code, in the studio's navy. The syntax colours stay off orange, which means "do this". */
+.codeview {
+  --syn-key: #c9a2ff; --syn-str: #a5e075; --syn-num: #f7d154; --syn-def: #6cb6ff; --syn-prop: #9fd1ff;
+  --syn-com: var(--ink-3); --syn-op: #8fe3f0; --syn-atom: #ff9ecf;
+}
+.codebar { flex: none; display: flex; align-items: center; gap: 12px; padding: 6px 8px 6px 14px; background: var(--panel); min-width: 0; }
+.codebar .crumbs { margin: 0; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; min-width: 0; flex: 0 1 auto; }
+.codestate { flex: 1 1 0; font-size: 13px; color: var(--ink-3); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; min-width: 0; }
+.codebar .tbtn { margin-left: auto; height: 36px; flex: none; }
+.codehost { flex: 1; min-height: 0; position: relative; }
+.codehost .CodeMirror, .codebox { position: absolute; inset: 0; height: auto; font: 14px/1.55 ui-monospace, "Cascadia Mono", Menlo, monospace; }
+.codebox { width: 100%; border: 0; margin: 0; padding: 8px 12px; resize: none; background: var(--game-well); color: var(--ink); tab-size: 2; }
+.codebox:focus-visible { outline-offset: -2px; }
+.cm-s-studio.CodeMirror { background: var(--game-well); color: var(--ink); }
+.cm-s-studio .CodeMirror-scrollbar-filler, .cm-s-studio .CodeMirror-gutter-filler { background: var(--game-well); }
+.cm-s-studio .CodeMirror-gutters { background: var(--game-well); border-right: 1px solid var(--line-soft); }
+.cm-s-studio .CodeMirror-linenumber { color: var(--ink-3); padding: 0 10px 0 6px; cursor: pointer; }
+.cm-s-studio .CodeMirror-gutter-wrapper:hover .CodeMirror-linenumber { color: var(--ink); }
+.cm-s-studio .CodeMirror-cursor { border-left: 2px solid var(--accent); }
+.cm-s-studio .CodeMirror-activeline-background { background: rgba(108, 182, 255, .07); }
+.cm-s-studio .CodeMirror-selected, .cm-s-studio.CodeMirror-focused .CodeMirror-selected { background: var(--select); }
+.cm-s-studio .CodeMirror-matchingbracket { color: var(--ink) !important; box-shadow: inset 0 -2px 0 var(--syn-op); }
+.cm-s-studio .cm-keyword { color: var(--syn-key); }
+.cm-s-studio .cm-string, .cm-s-studio .cm-string-2 { color: var(--syn-str); }
+.cm-s-studio .cm-number { color: var(--syn-num); }
+.cm-s-studio .cm-def { color: var(--syn-def); }
+.cm-s-studio .cm-property { color: var(--syn-prop); }
+.cm-s-studio .cm-variable, .cm-s-studio .cm-variable-2 { color: var(--ink); }
+.cm-s-studio .cm-variable-3, .cm-s-studio .cm-type { color: var(--syn-def); }
+.cm-s-studio .cm-comment { color: var(--syn-com); font-style: italic; }
+.cm-s-studio .cm-operator { color: var(--syn-op); }
+.cm-s-studio .cm-atom { color: var(--syn-atom); }
+.cm-s-studio .cm-errline { background: rgba(255, 143, 126, .14); }
+.codeerr { flex: none; display: flex; flex-wrap: wrap; align-items: center; gap: 4px 6px; padding: 8px 10px 8px 14px;
+           background: #2a1a26; box-shadow: inset 0 2px 0 var(--bad); }
+.codeerr[hidden] { display: none; }
+.codeerr p { flex: 1 1 260px; margin: 0; font: 13.5px/1.4 ui-monospace, "Cascadia Mono", Menlo, monospace; color: var(--ink); }
+.codeerr .tbtn { height: 36px; }
+.codeerr .tbtn[hidden] { display: none; }
+
 .focus-hint { position: absolute; inset: auto 0 18px 0; margin: 0 auto; width: max-content; max-width: 86%;
               background: rgba(6, 16, 29, .9); color: var(--ink); padding: 10px 14px; border-radius: 10px; font-size: 15px;
               pointer-events: none; box-shadow: 0 6px 18px rgba(2, 8, 18, .45); }
@@ -525,21 +597,11 @@ output.nbox { display: inline-grid; align-items: center; justify-content: end; b
 .ctile b { font-size: 14px; font-weight: 600; }
 .ctile span { grid-column: 2; font-size: 13px; color: var(--ink-2); line-height: 1.35; }
 
-/* a doc or the script, open in place of the grid */
+/* a doc, open in place of the grid */
 .pview { display: grid; gap: 6px; align-content: start; }
 .pview .back { justify-self: start; height: 36px; padding: 0 10px 0 6px; }
 .pview h3 { margin: 0; font-size: 15px; font-weight: 600; }
 .docl { margin: 0; padding: 0 0 0 18px; display: grid; gap: 4px; font-size: 14px; color: var(--ink-2); line-height: 1.4; max-width: 70ch; }
-.code { list-style: none; margin: 0; padding: 4px 0; border-radius: 6px; background: var(--game-well); overflow-x: auto;
-        font: 13px/1.5 ui-monospace, "Cascadia Mono", Menlo, monospace; }
-.cl { width: 100%; min-width: max-content; display: grid; grid-template-columns: 4ch auto; gap: 12px; min-height: 26px; padding: 0 12px 0 4px;
-      border: 0; background: transparent; color: var(--ink); text-align: left; cursor: pointer; font: inherit; }
-.cl code { font: inherit; white-space: pre; }
-.cl .ln { color: var(--ink-3); text-align: right; font-variant-numeric: tabular-nums; user-select: none; }
-.cl:hover:not(:disabled) { background: var(--panel-2); }
-.cl:hover:not(:disabled) .ln { color: var(--ink-2); }
-.cl:disabled { cursor: default; color: var(--ink); }
-.cl:focus-visible { outline-offset: -2px; }
 
 /* ---------- status bar ---------- */
 .status { grid-area: status; background: var(--frame); display: flex; align-items: center; justify-content: space-between; gap: 12px;

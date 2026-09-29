@@ -14,7 +14,9 @@
      3. The studio greets them by first name, and the first day plays out of order: fall through the
         floor and grab a silent coin (noticed, not filed), tell the Mentor both in her own words, fix
         the coins first through the Clip's picker, describe a hero, type the game's name, and then the
-        floor ticket is still there.
+        floor ticket is still there: read on its page, picked from it, the tile tapped in the Scene
+        view and fixed. Then game.js, opened from the Project window: broken on purpose, saved, the
+        error back with its line, and put back.
      4. Log in from a second browser: a wrong class code is refused and points at that box; both codes
         show the class list, the kid confirms it's them, and the studio resumes where they were.
      5. The interview again, with a stand-in AI (a page route answers /api/ai, so no model is needed):
@@ -98,7 +100,8 @@ async function launch() {
   async function page() {
     const ctx = await browser.newContext({ viewport: { width: 1366, height: 720 } });
     const p = await ctx.newPage();
-    p.on('pageerror', function (e) { errors.push(e.message); });
+    // the one error made on purpose (the game.js check breaks the kid's code to see the line come back) isn't the page's
+    p.on('pageerror', function (e) { if (!/notAThing/.test(e.message)) errors.push(e.message); });
     await p.emulateMedia({ reducedMotion: 'reduce' });
     return p;
   }
@@ -258,16 +261,44 @@ async function launch() {
     await p.waitForSelector('#qcard .qopt', { timeout: 9000 });
     where = 'the first day: the floor, later';
     check('the floor ticket is still on the board after the coins were fixed first', /falls through a floor tile/.test(await options()), await options());
-    await p.click('#ticketList [data-key="ticket:floor"]'); await p.click('#ticketPage [data-key="fix"]');   // picked from its page, not the card await waitLog('talking to the lead programmer');
+    await p.click('#ticketList [data-key="ticket:floor"]'); await p.click('#ticketPage [data-key="fix"]');   // picked from its page, not the card
+    await waitLog('talking to the lead programmer');
     check('the floor\'s first task, with a Hint button', await task() === 'Find the part you fell through' && await p.isVisible('#taskHint'), await task());
     await p.click('#taskHint'); await waitLog('Every part of the level is listed in the Hierarchy');
     check('the ticket\'s page shows it in progress, with the task and a hint', /In progress.*Your task now.*Find the part you fell through.*Stuck\? Get a hint/.test(await p.$eval('#ticketPage', function (e) { return e.textContent; })));
     await p.click('#ticketPage .back');
-    await row('Floor tile'); await p.click('#inspBody .cbox'); await waitLog('walk across it');
-    await p.click('#bPlay'); await hold([['ArrowRight', 1400]]);
+    check('the Scene view arrives with the Hierarchy', await p.isVisible('#vtScene'));
+    await p.click('#vtScene'); await p.click('#sceneSvg [data-part="tile"] .hit');
+    check('the Scene view: tapping the tile picks it, as the Hierarchy does', await p.evaluate(function () { return Editor.selected(); }) === 'tile' && await p.isVisible('#inspBody'));
+    await p.click('#inspBody .cbox'); await waitLog('walk across it');
+    check('and a solid floor shows its collider there, in green', await p.$$eval('#sceneSvg [data-part="tile"] .gizmo', function (x) { return x.length; }) === 1);
+    await p.click('#bPlay');
+    check('Play shows the Game view', await p.evaluate(function () { return Views.current(); }) === 'game' && await p.isHidden('#sceneView'));
+    await hold([['ArrowRight', 1400]]);
     await waitLog('It holds!', 9000);
     check('the floor is fixed later, walked across in play', true);
     await shot(p, 'p02-floor-fixed');
+    await waitLog('what made the tile solid', 12000);   // settled on the next question, so the log-in below finds her here
+    where = 'game.js';
+    await p.click('#pf-scripts'); await p.click('[data-key="asset:game.js"]');
+    await p.waitForSelector('#codeHost .CodeMirror-code .CodeMirror-line', { timeout: 9000 });   // not the hidden one CodeMirror measures with
+    await shot(p, 'p03-code');
+    check('game.js opens in its own tab, in a code editor', await p.evaluate(function () { return Views.current(); }) === 'code' && await p.isVisible('#vtCode'));
+    const errAt = await p.evaluate(function () {
+      var cm = document.querySelector('#codeHost .CodeMirror').CodeMirror, n = 0;
+      for (var i = 0; i < cm.lineCount(); i++) if (/create\(\) \{/.test(cm.getLine(i))) { n = i + 1; break; }
+      cm.replaceRange('    notAThing();\n', { line: n, ch: 0 });
+      return n + 1;
+    });
+    await p.click('#codeSave');
+    await p.waitForSelector('#codeErr:not([hidden])', { timeout: 12000 });
+    const errText = await p.$eval('#codeErrText', function (e) { return e.textContent; });
+    check('Save & run restarts the game with it, and an error comes back with its line in game.js', errText.indexOf('Line ' + errAt + ':') === 0 && /notAThing/.test(errText), errText);
+    await p.click('#codeErrBack');
+    await p.waitForFunction(function () { return Runner.isReady() && document.getElementById('codeErr').hidden; }, null, { timeout: 12000 });
+    check('Put back what worked puts the code back', await p.evaluate(function () { return document.querySelector('#codeHost .CodeMirror').CodeMirror.getValue().indexOf('notAThing') < 0 && !/notAThing/.test(Project.get().code || ''); }));
+    await p.click('#codeClose');
+    check('closing game.js goes back to the Game view', await p.evaluate(function () { return Views.current(); }) === 'game' && await p.isHidden('#vtCode'));
     const rows = await p.evaluate(function () { Chat.event('A test row', 'i-flag'); Chat.event('A test row', 'i-flag'); Chat.event('A test row', 'i-flag'); var r = document.querySelectorAll('#log .evt[data-text="A test row"]'); return r.length + ' ' + (r[0] && r[0].textContent); });
     check('the same event again is one row with a count, not spam', rows === '1 A test row×3', rows);
     const firstAt = await p.evaluate(function () { return Quest.dev.where() + ' / floor ' + Quest.dev.state().tickets.floor.status; });
