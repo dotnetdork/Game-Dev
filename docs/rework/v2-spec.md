@@ -13,7 +13,7 @@ cite it as (D12).
 
 ## 1. What V2 is, in one paragraph
 
-A kid signs in with the class password and is interviewed for a job at a game studio (about 3
+A kid signs up with today's code and is interviewed for a job at a game studio (about 3
 minutes, in its own scene). They're hired, and land at their desk: a cut-down Unity editor in
 League Navy. Studio characters voice authored quests, and a mentor answers anything typed. The
 first quest has them play the intern's broken greybox level. Every problem they find becomes a
@@ -33,7 +33,7 @@ form.
   │      │ events            ▲               │   │  character, builder,   │
   │      ▼                   │ set()/ops     │   │  art-scout, checker    │
   │ Chat panel   Editor (docks, Inspector,   │   │ /api/state: saves      │
-  │ (question    Hierarchy, Project, Script) │   │  per handle            │
+  │ (question    Hierarchy, Project, Script) │   │  per kid               │
   │  card)            │                      │   │ /api/teacher: roster,  │
   │                   ▼                      │   │  progress, live feed   │
   │            Game frame (sandboxed Phaser) │   └────────────────────────┘
@@ -121,7 +121,7 @@ panels or steps.
 
 ### 2.4 Saves and state
 
-- **Everything is saved on the server, per handle:** the project, the quest state, tickets, cards
+- **Everything is saved on the server, per kid:** the project, the quest state, tickets, cards
   and chat history (test telemetry).
 - **The browser copy is only a cache.** An "always start fresh" dev flag ignores it (D7).
 - **Versioned:** a new quest-file version resumes at the nearest beat, never a stuck one.
@@ -130,22 +130,35 @@ panels or steps.
 
 ### 3.1 Sign-in (prototype-plan §7)
 
-The original sign-in page's look, with new copy. The steps: the class password, then "Who's here?"
-(name cards and **I'm new here**), then "Is this your game?" for a returning kid. A new kid goes to
-the interview. Returning kids usually skip the list: the cookie lasts 14 days.
+The original sign-in page's look, with new copy. Two doors, then Google for staff:
+- **Sign Up** asks for **today's code** (`TESTER_PASSWORD`, one code for the room, changed per
+  session) and goes straight to the interview. The name is asked there, not here.
+- **Log In** asks for today's code **and the class code** (`CLASS_CODE`, which never changes), then
+  "Who's here?" (a card per hired kid: badge or hero, first name + initial, their game or join date),
+  then "Is this you?".
+- **No handles and no picture password** (Jed, 2026-09-28). Codes ignore case, spaces and dashes.
+- Returning kids usually skip all of it: the cookie lasts 14 days. Google sign-in is limited to
+  `ALLOWED_DOMAIN=jointheleague.org`.
 
 ### 3.2 The interview (D14, D19)
 
 - **All of wireframe 07's beats, about 3 minutes,** in its own scene: the lobby, the silhouette,
   the clipboard and the tablet.
-- **The director is a character agent,** with the question card and free typing.
+- **A conversation, not a survey.** The director (`ai/agents/interviewer.md`) asks one open
+  question at a time and follows up on what the kid said. There are no premade answers; the only
+  taps are the tablet's try-this moments (jump feel, coin sound, press Play, words they know, fix a
+  silent coin).
+- **The page owns the goals and the hire,** the AI only talks: it returns `{learned, reply, show,
+  done}` and the page validates every field. When the model forgets to fill `learned` or `show`,
+  the page's own safety net records the answer and turns the tablet on (`studio/interview.js`).
+  With no AI at all, scripted lines run the same goals.
 - **It collects:**
   - first name and last initial;
-  - the generated, re-rollable handle;
   - the games they play and the kinds of fun they like;
-  - the growth snapshot;
-  - their confidence.
-- **It ends with the kid hired.**
+  - the growth snapshot (the tablet taps);
+  - their confidence, and which job they want.
+- **The clipboard takes notes as they talk,** and the name is pinned at the top.
+- **It ends with the kid hired** and a badge (colour + icon) for their card on "Who's here?".
 
 ### 3.3 The editor (D3, D9–D13, D15)
 
@@ -351,8 +364,9 @@ the real engine without a spec. Jay's review:
 14. **The interview keeps wireframe 07's scene, as a real chat.**
     - The scene stays: the lobby, the silhouette, the clipboard and the tablet.
     - The director is AI-voiced, choices come as the question card, and the kid can type anything.
-    - It asks for first name and last initial, makes the re-rollable handle, and runs the try-this
-      moments.
+    - It asks for first name and last initial and runs the try-this moments.
+    - *Superseded while building (Jay, 2026-09-28): no handle at all, and no question card in the
+      interview: the director asks open questions and the kid types. See §3.2.*
 15. **The look: DESIGN.md's structure stays, and the colour is re-explored.**
     - **Kept:** the Unity layout, the kid sizes, the icon set, and the finishing (tooltips; hover,
       pressed and disabled states; real controls; clean Inspector rows).
@@ -415,7 +429,7 @@ the real engine without a spec. Jay's review:
     - **An observer form for Jay:** engagement, stuck points, "whoa" moments, and anything that
       broke.
 23. **The teacher view for Sunday:**
-    - **who's who:** name and initial beside each handle;
+    - **who's who:** first name and initial, with the kid's badge;
     - **where each kid is:** quest, beat, time there, and a stuck flag;
     - **reset or rewind a kid;**
     - **a live feed** of what kids type to the AI and what it did.

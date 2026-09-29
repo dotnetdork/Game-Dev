@@ -364,7 +364,7 @@ app.get('/api/quests', (req, res) => {
    completely different reasons — an environment variable, and a missing file in the bundle. */
 app.get('/api/info', (req, res) => {
   const agents = {};
-  ['coder', 'tutor', 'lab-tutor', 'quiz', 'grader', 'design-coach', 'mentor'].forEach(function (a) { const m = resolveModel(a); agents[a] = m.provider + ':' + m.model; });
+  ['coder', 'tutor', 'lab-tutor', 'quiz', 'grader', 'design-coach', 'mentor', 'interviewer'].forEach(function (a) { const m = resolveModel(a); agents[a] = m.provider + ':' + m.model; });
   res.json({
     agents: agents,
     provider: DEFAULT_PROVIDER,

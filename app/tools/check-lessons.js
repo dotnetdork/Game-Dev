@@ -273,7 +273,10 @@ function checkFigureSizes(where, attrs, inner) {
    wrong, and would have shipped. */
 function checkUpscaleGuard() {
   const cssPath = path.join(PUBLIC, 'styles.css');
-  if (!fs.existsSync(cssPath)) { problems.push('styles.css: not found at ' + cssPath); return; }
+  /* V1's page drew the lessons; V2 doesn't read them (docs/rework/v2-spec.md §2.1). Once V1's
+     stylesheet is gone there is no renderer left to stretch a screenshot, so there is nothing to
+     guard, and saying so beats failing on a file removed on purpose. */
+  if (!fs.existsSync(cssPath)) { console.log('  (skipped the screenshot-stretch guard: V1’s styles.css is gone, and nothing else renders lessons)'); return; }
   const css = fs.readFileSync(cssPath, 'utf8');
   const rule = css.match(/\.lesson-content > figure\.shot img[^{]*\{([^}]*)\}/);
   if (!rule) {

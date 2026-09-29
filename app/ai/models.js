@@ -64,7 +64,9 @@ const AGENT_TOOLS = {
   'design-coach': agentTool('TUTOR_TOOLS', true),
   /* The studio's mentor (V2) answers from where the kid is standing, which is in its prompt, in one or
      two sentences: a lookup would cost more than the answer is worth. */
-  mentor: false
+  mentor: false,
+  /* The interviewer (V2's hiring interview) knows nothing it could look up: it is a conversation. */
+  interviewer: false
 };
 const MAX_TOOL_ROUNDS = Number(process.env.AI_TOOL_ROUNDS || 4);
 const ANTHROPIC_KEY = process.env.ANTHROPIC_API_KEY || '';
@@ -90,7 +92,7 @@ function resolveModel(agent) {
      unless someone deliberately gives it one of its own. Without this it had no entry in
      AGENT_MODELS at all, fell through to DEFAULT_PROVIDER, and a course configured for Anthropic
      tried to reach a local Ollama that was not running: "The AI service is not reachable". */
-  if (!spec && (agent === 'lab-tutor' || agent === 'design-coach' || agent === 'mentor')) spec = AGENT_MODELS.tutor || ai.agentModel('tutor') || '';
+  if (!spec && (agent === 'lab-tutor' || agent === 'design-coach' || agent === 'mentor' || agent === 'interviewer')) spec = AGENT_MODELS.tutor || ai.agentModel('tutor') || '';
   if (!spec) spec = DEFAULT_PROVIDER + ':' + (PROVIDER_DEFAULT_MODEL[DEFAULT_PROVIDER] || '');
   const i = spec.indexOf(':');
   // `agent` rides along so the usage meter can attribute a call without threading an extra

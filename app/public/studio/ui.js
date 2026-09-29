@@ -9,7 +9,11 @@
    2. keepFocus(): a rebuild with innerHTML drops keyboard focus to <body>; run it inside keepFocus
       and focus returns to the control with the same data-key.
    3. feel(): a small visual answer on what the kid acted on: a pulse on success, one shake on
-      "not yet". Off under prefers-reduced-motion; the words still carry it. */
+      "not yet". Off under prefers-reduced-motion; the words still carry it.
+   4. TOOLTIPS: every control with data-tip gets one (spec §3.3: "every button has an icon, a word
+      and a tooltip"). One tooltip element for the page. It shows after a short rest on hover, at
+      once on keyboard focus, and goes on a press, Escape or leaving. It is extra, never the only
+      place a thing is said: the button's own word or aria-label already names it. */
 var UI = (function () {
   var FILES = { play: 'sfx-select.ogg', stop: 'sfx-back.ogg', good: 'sfx-confirm.ogg', nope: 'sfx-lowrandom.ogg',
                 card: 'sfx-powerup2.ogg', tool: 'platformer/sfx_magic.ogg', hired: 'sfx-threetone2.ogg' };
@@ -59,7 +63,42 @@ var UI = (function () {
     if (!el || (window.matchMedia && matchMedia('(prefers-reduced-motion: reduce)').matches)) return;
     el.classList.remove('feel-good', 'feel-nope'); void el.offsetWidth; el.classList.add(kind === 'nope' ? 'feel-nope' : 'feel-good');
   }
+  /* ---------- tooltips ---------- */
+  var tip = null, tipFor = null, tipTimer = null;
+  function tipEl() {
+    if (!tip) { tip = document.createElement('div'); tip.className = 'tip'; tip.id = 'tip'; tip.setAttribute('role', 'tooltip'); tip.hidden = true; document.body.appendChild(tip); }
+    return tip;
+  }
+  function showTip(el) {
+    var text = el.getAttribute('data-tip'); if (!text) return;
+    var t = tipEl(); t.textContent = text; t.hidden = false; tipFor = el;
+    el.setAttribute('aria-describedby', 'tip');
+    var r = el.getBoundingClientRect(), w = t.offsetWidth, h = t.offsetHeight, vw = document.documentElement.clientWidth;
+    var below = r.bottom + 8 + h < window.innerHeight;
+    t.style.left = Math.round(Math.max(8, Math.min(vw - w - 8, r.left + r.width / 2 - w / 2))) + 'px';
+    t.style.top = Math.round(below ? r.bottom + 8 : r.top - h - 8) + 'px';
+  }
+  function hideTip() {
+    clearTimeout(tipTimer);
+    if (tipFor) tipFor.removeAttribute('aria-describedby');
+    tipFor = null; if (tip) tip.hidden = true;
+  }
+  function tipTarget(e) { return e.target && e.target.closest ? e.target.closest('[data-tip]') : null; }
+  document.addEventListener('pointerover', function (e) {
+    var el = tipTarget(e); if (el === tipFor) return;
+    hideTip(); if (!el || e.pointerType === 'touch') return;
+    tipTimer = setTimeout(function () { showTip(el); }, 450);
+  });
+  document.addEventListener('pointerout', function (e) { var el = tipTarget(e); if (el && !el.contains(e.relatedTarget)) hideTip(); });
+  document.addEventListener('pointerdown', hideTip, true);
+  document.addEventListener('focusin', function (e) {
+    var el = tipTarget(e); hideTip();
+    if (el && el.matches(':focus-visible')) showTip(el);
+  });
+  document.addEventListener('focusout', hideTip);
+  document.addEventListener('keydown', function (e) { if (e.key === 'Escape' && tipFor) hideTip(); }, true);
+
   if (document.readyState === 'loading') document.addEventListener('DOMContentLoaded', init); else init();
   return { sound: sound, muted: function () { return muted; }, onMute: function (fn) { onMute.push(fn); },
-           keepFocus: keepFocus, feel: feel };
+           keepFocus: keepFocus, feel: feel, hideTip: hideTip };
 })();

@@ -43,6 +43,7 @@ var Chat = (function () {
       var text = input.value.trim().slice(0, 200);
       if (!text) return;
       input.value = '';
+      if (!expecting) stopExpecting();   // a prompt() placeholder lasts one message
       typed(text);
     });
     card.addEventListener('keydown', cardKeys);
@@ -217,6 +218,9 @@ var Chat = (function () {
 
   /* The step asked for something typed (a name, a description): the next line typed is that. */
   function expect(placeholder, fn) { expecting = fn; input.placeholder = placeholder; hideCard(); question = null; input.focus(); }
+  /* Menus that start a conversation (GameObject › Add a part…, Help › Ask the mentor) put the
+     cursor in the box with a hint of what to type; what's typed goes the usual way. */
+  function prompt(placeholder) { if (placeholder) input.placeholder = placeholder; input.focus(); }
   function stopExpecting() { expecting = null; input.placeholder = 'Answer, ask a question, or tell the mentor what to do…'; }
   function onAsk(fn) { askHandler = fn; }
 
@@ -232,7 +236,7 @@ var Chat = (function () {
   function reask() { if (question) { if (settled()) showCard(question); else pendingQ = question; } }
   function clear() { hideCard(); question = null; }
 
-  return { init: init, say: say, ask: ask, choose: choose, clear: clear, reask: reask, expect: expect,
+  return { init: init, say: say, ask: ask, choose: choose, clear: clear, reask: reask, expect: expect, prompt: prompt,
            stopExpecting: stopExpecting, onAsk: onAsk, speaker: speaker, setKid: setKid, settled: settled,
            thinking: thinking, hide: hideCard, question: function () { return question; },
            history: function () { return history.slice(); }, WHO: WHO };

@@ -1,9 +1,9 @@
 /* boot.js: starts the studio. Loads the kid's project and the course, builds the game frame, and
    hands over to the quest engine.
 
-   The kid's name comes from the sign-in (/auth/me). Until the hiring interview gives every kid a
-   handle (docs/rework/v2-spec.md §3.2), a tester's typed name stands in, and a kid with no name is
-   "new developer".
+   The kid's name comes from the sign-in: a class-list kid is greeted by the first name the hiring
+   interview learned (no generated handles, Jay 2026-09-28), a teacher by their first name, and
+   anyone else is "new developer".
 
    "Always start fresh" (the dev panel's switch, localhost only) throws this browser's copy away on
    every load, so testing never resumes a half-played state by accident. */
@@ -38,11 +38,11 @@
 
     me.then(function (m) {
       /* A kid who came in through the class list but hasn't finished the interview goes back to it:
-         the studio greets them by the handle the interview gives them. */
+         the studio greets them by the first name the interview learned. */
       if (m && m.studio) {
         return fetch('/auth/studio/me').then(function (r) { return r.json(); }).then(function (s) {
           if (!s.interviewed) { location.replace('/interview.html'); return new Promise(function () {}); }
-          Chat.setKid(s.card && s.card.handle);
+          Chat.setKid(s.card && s.card.first);
           window.__studioKid = true;   // a class-list kid: the quests keep their card up to date (quest.js card())
           return course;
         });

@@ -141,7 +141,7 @@ function mount(app, deps) {
        should be tidied in its own commit, the way `studentId` still needs to be. */
     const history = sanitizeHistory(req.body && req.body.history);
     let agent = (req.body && req.body.agent) || 'coder';
-    if (['coder', 'tutor', 'lab-tutor', 'quiz', 'grader', 'design-coach', 'mentor'].indexOf(agent) < 0) agent = 'coder';   // controller: keep to known agents
+    if (['coder', 'tutor', 'lab-tutor', 'quiz', 'grader', 'design-coach', 'mentor', 'interviewer'].indexOf(agent) < 0) agent = 'coder';   // controller: keep to known agents
     const spec = resolveModel(agent);
     /* The whole-request deadline every provider call measures itself against, stamped on this
        request's own spec so the retry chain cannot outlive it however many times it goes round — and
@@ -296,6 +296,36 @@ function mount(app, deps) {
           value: (typeof v === 'boolean' || typeof v === 'number' || v === null) ? v : String(v).slice(0, 40) };
       }).filter(function (a) { return a.part && a.key; }) : [];
       return res.json({ reply: String(m.reply || '').trim().slice(0, 800) || 'Hmm, say that another way?', choose: choose, actions: actions });
+    }
+
+    /* INTERVIEWER: the studio director in the hiring interview (ai/agents/interviewer.md, V2). It leads
+       a conversation and says what it learned. The browser keeps the goals and decides when a kid is
+       hired, so everything here is only cleaned: a wrong type is dropped, never trusted. */
+    if (agent === 'interviewer') {
+      let raw;
+      const ivSystem = promptFor('interviewer', ctx, res);
+      if (!ivSystem) return;
+      try { raw = await callAI(spec, ivSystem, message, true, history, null, onTool); }
+      catch (e) { return res.status(502).json({ reply: 'The director is not reachable right now (' + e.message + ').' }); }
+      const m = extractJSON(raw) || { reply: String(raw || '').trim() };
+      const l = (m.learned && typeof m.learned === 'object') ? m.learned : {};
+      const word = (v, n) => String(v || '').replace(/[^\p{L}\p{N} '’&:!.-]/gu, '').trim().slice(0, n);
+      const one = (v, list) => list.indexOf(v) >= 0 ? v : undefined;
+      const learned = {
+        first: word(l.first, 20).split(' ')[0] || undefined,
+        initial: (String(l.initial || '').match(/\p{L}/u) || [''])[0].toUpperCase() || undefined,
+        games: Array.isArray(l.games) ? l.games.slice(0, 6).map(function (g) { return word(g, 30); }).filter(Boolean) : undefined,
+        fun: Array.isArray(l.fun) ? l.fun.filter(function (f) { return ['explore', 'challenge', 'clever', 'social', 'make', 'story', 'collect'].indexOf(f) >= 0; }).slice(0, 7) : undefined,
+        confidence: Number.isInteger(l.confidence) && l.confidence >= 1 && l.confidence <= 5 ? l.confidence : undefined,
+        job: one(l.job, ['art', 'audio', 'design', 'engineering', 'everything']),
+        jump: one(l.jump, ['floaty', 'snappy', 'same']),
+        sound: one(l.sound, ['ding', 'thud']),
+        tone: one(l.tone, ['keen', 'curious', 'silly', 'shy']),
+        note: word(l.note, 32) || undefined
+      };
+      Object.keys(learned).forEach(function (k) { if (learned[k] === undefined || (Array.isArray(learned[k]) && !learned[k].length)) delete learned[k]; });
+      return res.json({ reply: String(m.reply || '').trim().slice(0, 600) || 'Tell me more?', learned: learned,
+        show: one(m.show, ['jumps', 'sounds', 'engine', 'words', 'coin']) || null, done: m.done === true });
     }
 
     if (agent === 'tutor' || agent === 'lab-tutor') {

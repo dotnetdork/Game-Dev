@@ -8,8 +8,9 @@
 <meta name="theme-color" content="#1b1512">
 <!-- The hiring interview (docs/rework/v2-spec.md §3.2; the beats and the scene are wireframe 07's,
      docs/rework/wireframes/src/07-hiring-interview.template.html, whose notes say why each is shaped
-     as it is). A new kid lands here straight from "I'm new here" on the sign-in page, and leaves
-     hired, with a name on their card and a handle. It is deliberately its own scene, not the editor
+     as it is). A new kid lands here straight from Sign up on the sign-in page, talks with the studio
+     director (a conversation, not a survey: studio/interview.js says how), and leaves hired, with
+     their first name and last initial on their badge. It is deliberately its own scene, not the editor
      (DESIGN.md, the Front Door exception): a studio lobby at dusk, the director a silhouette. -->
 <link rel="stylesheet" href="/studio/interview.css">
 </head>
@@ -72,16 +73,16 @@
     <div id="badgeOut"></div>
     <div class="echo" id="echo" aria-hidden="true"></div>
     <div class="bubble" id="bubble"><span class="who">Studio director</span><p id="words"></p></div>
-    <div class="qcard" id="qcard" role="group" aria-labelledby="qText" hidden></div>
+    <button type="button" class="desk" id="desk" hidden>Go to my desk<svg class="i" aria-hidden="true"><use href="#i-send"/></svg></button>
     <form class="sayline" id="sayForm">
-      <input id="say" type="text" autocomplete="off" maxlength="120" placeholder="Answer, or ask the director anything…" aria-label="Type to the director">
+      <input id="say" type="text" autocomplete="off" maxlength="200" placeholder="Type your answer…" aria-label="Type to the director">
       <button type="submit" class="send" id="sendBtn" aria-label="Send"><svg class="i" aria-hidden="true"><use href="#i-send"/></svg></button>
     </form>
   </main>
   <p class="sr" id="announce" aria-live="polite"></p>
 </div>
 
-<!-- ui.js: sounds and feel (shared with the studio). interview.js: the beats. -->
+<!-- ui.js: sounds and feel (shared with the studio). interview.js: the conversation. -->
 <script src="/studio/ui.js"></script>
 <script src="/studio/interview.js"></script>
 </body>

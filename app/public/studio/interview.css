@@ -54,6 +54,7 @@ svg.i { width: 18px; height: 18px; fill: none; stroke: currentColor; stroke-widt
 .clip h2 { margin: 0 0 8px; font-size: 13px; letter-spacing: .05em; text-transform: uppercase; color: #6b5c48; }
 .clip ul { list-style: none; margin: 0; padding: 0; display: grid; gap: 5px; }
 .clip li { font-size: 15.5px; font-weight: 600; border-bottom: 1px solid #d8ccb8; padding-bottom: 3px; animation: jotIn .5s var(--ease) both; }
+.clip li.name { font-size: 17px; font-weight: 750; }
 .clip li.empty { color: #7c6e5c; font-weight: 500; font-style: italic; border: 0; }
 @keyframes jotIn { from { opacity: 0; transform: translateX(-8px); } to { opacity: 1; transform: none; } }
 
@@ -72,13 +73,6 @@ svg.i { width: 18px; height: 18px; fill: none; stroke: currentColor; stroke-widt
 .pair { display: flex; gap: 12px; }
 .pair > div { display: flex; flex-direction: column; align-items: center; gap: 6px; }
 .pair canvas { width: 140px; height: 96px; border-radius: 6px; display: block; }
-.faces { display: flex; gap: 5px; flex-wrap: wrap; justify-content: center; }
-.faces .tile { flex-direction: column; padding: 6px 4px; gap: 2px; min-width: 60px; font-size: 11.5px; color: var(--ink-2); }
-.faces svg { width: 28px; height: 28px; stroke-width: 1.6; }
-.namefields { display: grid; grid-template-columns: 1fr 72px; gap: 8px; width: 100%; text-align: left; }
-.namefields label { display: block; font-size: 11px; font-weight: 700; letter-spacing: 1px; text-transform: uppercase; color: var(--ink-3); margin-bottom: 4px; }
-.namefields input { width: 100%; min-height: 44px; border-radius: 8px; border: 1.5px solid var(--tile-line); background: #120e0c; color: #fff; padding: 0 12px; font-size: 16px; }
-.namefields input:focus { outline: none; border-color: var(--accent); }
 .note { margin: 0; font-size: 12.5px; color: var(--ink-3); max-width: 34ch; }
 
 /* the engine picture, for the "just guess" taps */
@@ -113,7 +107,7 @@ svg.i { width: 18px; height: 18px; fill: none; stroke: currentColor; stroke-widt
 @keyframes printOut { from { transform: translateY(40px) scale(.85) rotate(4deg); opacity: 0; } 40% { opacity: 1; } to { transform: rotate(-3deg) scale(1.1); opacity: 1; } }
 
 /* the conversation: under the director, centred. One bubble for the director's newest words, the
-   kid's last answer echoed above it, the question card below, then the text box. */
+   kid's last answer echoed above it, then the text box. */
 .talk { position: static; padding: calc(var(--d) + 14px) 16px 28px; margin: 0 auto; width: min(680px, 100%);
         display: flex; flex-direction: column; align-items: stretch; gap: 10px; }
 .echo { min-height: 26px; text-align: center; }
@@ -132,24 +126,20 @@ svg.i { width: 18px; height: 18px; fill: none; stroke: currentColor; stroke-widt
 .wheel { display: inline-block; width: 16px; height: 16px; border-radius: 50%; border: 2px solid #d9c9b3; border-top-color: var(--accent); animation: spin .8s linear infinite; vertical-align: -3px; margin-right: 8px; }
 @keyframes spin { to { transform: rotate(360deg); } }
 
-/* the question card: the same one the studio uses (chat.js), in the lobby's colours */
-.qcard { padding: 10px 10px 8px; border-radius: 12px; background: rgba(18, 13, 10, .88); border: 1.5px solid var(--accent); animation: in .3s var(--ease); }
-.qcard[hidden] { display: none; }
-.qcard .q { margin: 0 4px 8px; font-weight: 600; font-size: 15px; }
-.qcard ol { list-style: none; margin: 0; padding: 0; display: grid; gap: 2px; }
-.qopt { width: 100%; display: flex; align-items: center; gap: 10px; min-height: 44px; padding: 7px 10px; border: 0; border-radius: 8px; background: transparent;
-        color: var(--ink); text-align: left; cursor: pointer; font-weight: 600; font-size: 15px; }
-.qopt .n { width: 24px; height: 24px; border-radius: 6px; display: grid; place-items: center; flex: none; background: var(--tile); color: var(--ink-2); font-size: 13px; font-weight: 700; }
-.qopt .t { flex: 1; min-width: 0; }
-.qopt small { display: block; font-weight: 500; font-size: 12.5px; color: var(--ink-3); }
-.qopt .go { width: 16px; height: 16px; opacity: 0; }
-.qopt.on { background: var(--accent); color: var(--accent-ink); }
-.qopt.on .n { background: rgba(26, 18, 6, .16); color: var(--accent-ink); }
-.qopt.on small { color: var(--accent-ink); }
-.qopt.on .go { opacity: 1; }
-.qopt:focus-visible { outline-offset: -2px; }
-.qcard .hint { margin: 8px 4px 0; font-size: 12.5px; color: var(--ink-3); }
+/* the tablet's picks: a jump to tap, a sound to hear and pick */
+.pair > .pick { display: flex; flex-direction: column; align-items: center; gap: 4px; padding: 8px; border-radius: 10px; border: 1.5px solid var(--tile-line); background: var(--tile); cursor: pointer; }
+.pair > .pick:hover { border-color: var(--accent); }
+.pick small { color: var(--ink-3); font-size: 12px; }
+.opt { display: flex; flex-direction: column; gap: 6px; }
+.tile.pickit, .tile.done { border-color: var(--accent); }
+.tile.done { margin-top: 4px; }
+/* the one button in the whole interview: off to their desk, once hired */
+.desk { display: inline-flex; align-self: center; align-items: center; gap: 10px; min-height: 52px; padding: 0 26px; border: 0; border-radius: 999px;
+        background: var(--accent); color: var(--accent-ink); font-weight: 750; font-size: 18px; cursor: pointer; box-shadow: 0 8px 24px rgba(245, 130, 10, .3); }
+.desk:hover { filter: brightness(1.08); }
+.desk[hidden] { display: none; }
 .sayline { display: flex; gap: 6px; }
+.sayline[hidden] { display: none; }
 .sayline input { flex: 1; min-width: 0; min-height: 44px; border-radius: 999px; border: 1px solid rgba(255, 255, 255, .18); background: rgba(10, 7, 5, .6); color: #fff; padding: 0 18px; font-size: 15px; }
 .sayline input::placeholder { color: var(--ink-3); }
 .send { min-width: 44px; min-height: 44px; border: 0; border-radius: 999px; background: var(--tile); color: var(--ink-2); cursor: pointer; display: grid; place-items: center; }

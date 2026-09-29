@@ -28,7 +28,7 @@
           "app/tools/check-lessons.js"
         ],
         "createdAt": "2026-08-25T15:25:45.220Z",
-        "reason": "false positive: the <img matches are regex literals inside a Node validator (IMG_SRC and checkFigureSizes) used to FIND img tags in lesson markdown and assert their src exists on disk. The file ships no markup. Verified separately that all 70 lesson images and 3 chrome images load."
+        "reason": "Claude: the <img> matches are regex/test strings in a Node check script, not rendered markup"
       },
       {
         "rule": "cramped-padding",

@@ -7,9 +7,13 @@
 <link rel="icon" type="image/png" sizes="32x32" href="/img/favicon-32x32.png">
 <link rel="icon" type="image/png" sizes="16x16" href="/img/favicon-16x16.png">
 <link rel="apple-touch-icon" href="/img/apple-touch-icon.png">
-<meta name="theme-color" content="#232323">
+<meta name="theme-color" content="#0c1e34">
 <!-- The studio (V2, branch claude/prototype-v2). The design system is DESIGN.md at the repo root;
-     the old app's front end lives on main and is not loaded here. -->
+     the old app's front end lives on main and is not loaded here.
+     The shape is Unity's (docs/rework/v2-spec.md §3.3): a menu bar over a toolbar, then docks.
+     Which dock sits where is not written here: editor.js moves the <section class="dock"> panels
+     into the three areas (left, right, bottom) from the saved layout, so the order below is only
+     the default. The Game view stays in the centre. -->
 <link rel="stylesheet" href="/studio/studio.css">
 </head>
 <body>
@@ -17,16 +21,28 @@
 <svg width="0" height="0" style="position:absolute" aria-hidden="true">
   <symbol id="i-play" viewBox="0 0 24 24"><path d="M8 5.5v13l10.5-6.5z"/></symbol>
   <symbol id="i-stop" viewBox="0 0 24 24"><rect x="6.5" y="6.5" width="11" height="11" rx="1.5"/></symbol>
+  <symbol id="i-pause" viewBox="0 0 24 24"><path d="M8.5 6v12M15.5 6v12"/></symbol>
+  <symbol id="i-step" viewBox="0 0 24 24"><path d="M6 6v12l8.5-6zM18 6v12"/></symbol>
+  <symbol id="i-undo" viewBox="0 0 24 24"><path d="M9 5.5L4.5 10 9 14.5M5 10h9.5a4.75 4.75 0 0 1 0 9.5H11"/></symbol>
+  <symbol id="i-redo" viewBox="0 0 24 24"><path d="M15 5.5l4.5 4.5-4.5 4.5M19 10H9.5a4.75 4.75 0 0 0 0 9.5H13"/></symbol>
+  <symbol id="i-layout" viewBox="0 0 24 24"><path d="M4.5 5h15a1 1 0 0 1 1 1v12a1 1 0 0 1-1 1h-15a1 1 0 0 1-1-1V6a1 1 0 0 1 1-1zM9.5 5v14M9.5 14.5h11"/></symbol>
   <symbol id="i-tree" viewBox="0 0 24 24"><path d="M5 5h6M8 5v14M8 11h6M8 17h6M15 9h4v4h-4zM15 15h4v4h-4z"/></symbol>
   <symbol id="i-pad" viewBox="0 0 24 24"><path d="M7 8h10a4 4 0 0 1 4 4v1a3 3 0 0 1-5.4 1.8L14.6 14H9.4l-1 .8A3 3 0 0 1 3 13v-1a4 4 0 0 1 4-4zM8 10.5v3M6.5 12h3M16 11.2h.01M17.8 12.8h.01"/></symbol>
   <symbol id="i-flag" viewBox="0 0 24 24"><path d="M6 20V4M6 4h10l-2 4 2 4H6"/></symbol>
+  <symbol id="i-folder" viewBox="0 0 24 24"><path d="M3.5 7a1.5 1.5 0 0 1 1.5-1.5h4l2 2h8a1.5 1.5 0 0 1 1.5 1.5v8.5a1.5 1.5 0 0 1-1.5 1.5H5a1.5 1.5 0 0 1-1.5-1.5z"/></symbol>
   <symbol id="i-cube" viewBox="0 0 24 24"><path d="M12 3l8 4.5v9L12 21l-8-4.5v-9zM12 12l8-4.5M12 12v9M12 12L4 7.5"/></symbol>
   <symbol id="i-sliders" viewBox="0 0 24 24"><path d="M5 7h9M18 7h1M5 17h3M12 17h7M16 5v4M10 15v4"/></symbol>
   <symbol id="i-cards" viewBox="0 0 24 24"><path d="M8 4h9a2 2 0 0 1 2 2v11M5 7h9a2 2 0 0 1 2 2v9a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V9a2 2 0 0 1 2-2z"/></symbol>
   <symbol id="i-star" viewBox="0 0 24 24"><path d="M12 3.5l2.6 5.3 5.9.9-4.3 4.1 1 5.8L12 16.9l-5.2 2.7 1-5.8-4.3-4.1 5.9-.9z"/></symbol>
   <symbol id="i-fold" viewBox="0 0 24 24"><path d="M8 10l4 4 4-4"/></symbol>
+  <symbol id="i-more" viewBox="0 0 24 24"><path d="M10 8l4 4-4 4"/></symbol>
   <symbol id="i-x" viewBox="0 0 24 24"><path d="M6 6l12 12M18 6L6 18"/></symbol>
   <symbol id="i-check" viewBox="0 0 24 24"><path d="M5 12.5l4.5 4.5L19 7.5"/></symbol>
+  <symbol id="i-plus" viewBox="0 0 24 24"><path d="M12 5.5v13M5.5 12h13"/></symbol>
+  <symbol id="i-save" viewBox="0 0 24 24"><path d="M5.5 4h10.5l3.5 3.5v11a1.5 1.5 0 0 1-1.5 1.5h-12A1.5 1.5 0 0 1 4.5 18.5v-13A1.5 1.5 0 0 1 5.5 4zM8 4v4.5h7V4M8 20v-5.5h8V20"/></symbol>
+  <symbol id="i-exit" viewBox="0 0 24 24"><path d="M14 4.5h4.5a1 1 0 0 1 1 1v13a1 1 0 0 1-1 1H14M10 8l-4 4 4 4M6.5 12h9"/></symbol>
+  <symbol id="i-help" viewBox="0 0 24 24"><path d="M12 20.5a8.5 8.5 0 1 0 0-17 8.5 8.5 0 0 0 0 17zM9.6 9.6a2.5 2.5 0 1 1 3.4 2.3c-.6.3-1 .8-1 1.5v.4M12 16.8h.01"/></symbol>
+  <symbol id="i-keys" viewBox="0 0 24 24"><path d="M4.5 6.5h15a1 1 0 0 1 1 1v9a1 1 0 0 1-1 1h-15a1 1 0 0 1-1-1v-9a1 1 0 0 1 1-1zM7 10h.01M10.3 10h.01M13.7 10h.01M17 10h.01M8 14h8"/></symbol>
   <symbol id="i-chat" viewBox="0 0 24 24"><path d="M5 5.5h14a1.5 1.5 0 0 1 1.5 1.5v8a1.5 1.5 0 0 1-1.5 1.5h-7l-4.5 3.5v-3.5H5A1.5 1.5 0 0 1 3.5 15V7A1.5 1.5 0 0 1 5 5.5z"/></symbol>
   <symbol id="i-send" viewBox="0 0 24 24"><path d="M4.5 12h13M12.5 6.5l5.5 5.5-5.5 5.5"/></symbol>
   <symbol id="i-sound" viewBox="0 0 24 24"><path d="M4.5 9.5h3l4.5-4v13l-4.5-4h-3zM15.5 9a4 4 0 0 1 0 6M18 6.5a7.5 7.5 0 0 1 0 11"/></symbol>
@@ -37,32 +53,43 @@
 </svg>
 
 <div class="editor" id="editor">
-  <header class="toolbar">
-    <div class="brand">
-      <img class="wordmark" alt="The League of Amazing Programmers" src="/img/wordmark.png">
-      <span class="project reveal" id="projName">· <b id="projText">The intern’s game</b></span>
+  <!-- The menu bar: only items that work, and only for what the kid has met (editor.js, menus). -->
+  <nav class="menubar" id="menubar" aria-label="Menus">
+    <img class="wordmark" alt="The League of Amazing Programmers" src="/img/wordmark.png">
+    <ul class="menus" role="menubar" id="menus" aria-label="Studio"></ul>
+    <span class="project reveal closed" id="projName"><b id="projText">The intern’s game</b></span>
+  </nav>
+
+  <header class="toolbar" id="toolbar">
+    <div class="tgroup reveal closed" id="editTools" role="group" aria-label="Undo and redo">
+      <button type="button" class="tbtn quiet" id="bUndo" disabled data-tip="Undo: put back your last change (Ctrl+Z)"><svg class="i" aria-hidden="true"><use href="#i-undo"/></svg><span>Undo</span></button>
+      <button type="button" class="tbtn quiet" id="bRedo" disabled data-tip="Redo: do it again (Ctrl+Y)"><svg class="i" aria-hidden="true"><use href="#i-redo"/></svg><span>Redo</span></button>
     </div>
-    <div class="transport reveal closed" id="transport" aria-label="Play controls">
-      <button type="button" class="tbtn" id="bPlay" aria-label="Play the game"><svg class="i" aria-hidden="true"><use href="#i-play"/></svg><span>Play</span></button>
+    <div class="transport reveal closed" id="transport" role="group" aria-label="Play controls">
+      <button type="button" class="tbtn" id="bPlay" aria-label="Play the game" data-tip="Play: run your game (Ctrl+P)"><svg class="i" aria-hidden="true"><use href="#i-play"/></svg><span>Play</span></button>
+      <span class="reveal closed stepper" id="stepTools">
+        <button type="button" class="tbtn" id="bPause" disabled aria-pressed="false" data-tip="Pause: freeze the game where it is"><svg class="i" aria-hidden="true"><use href="#i-pause"/></svg><span>Pause</span></button>
+        <button type="button" class="tbtn" id="bStep" disabled data-tip="Step: while paused, move the game one frame"><svg class="i" aria-hidden="true"><use href="#i-step"/></svg><span>Step</span></button>
+      </span>
     </div>
     <div class="tool-right">
-      <button type="button" class="snd-toggle" id="bSound" aria-pressed="true"><svg class="i" aria-hidden="true"><use href="#i-sound"/></svg><span>Sound on</span></button>
+      <span class="menu-anchor reveal closed" id="layoutTools">
+        <button type="button" class="tbtn quiet" id="bLayout" aria-haspopup="menu" aria-expanded="false" data-tip="Layout: put the panels back, or make the game big"><svg class="i" aria-hidden="true"><use href="#i-layout"/></svg><span>Layout</span></button>
+      </span>
+      <button type="button" class="tbtn quiet snd-toggle" id="bSound" aria-pressed="true" data-tip="Sound: the studio’s sounds and your game’s"><svg class="i" aria-hidden="true"><use href="#i-sound"/></svg><span>Sound on</span></button>
     </div>
   </header>
 
-  <div class="left">
-    <section class="dock closed" id="dTickets" aria-label="Tickets">
-      <div class="tabs"><span class="tab"><svg class="i" aria-hidden="true"><use href="#i-flag"/></svg>Tickets <small>what needs fixing</small></span></div>
-      <div class="dock-body"><ul class="tickets" id="ticketList"></ul></div>
-    </section>
-    <section class="dock closed" id="dHier" aria-label="Hierarchy">
-      <div class="tabs"><span class="tab"><svg class="i" aria-hidden="true"><use href="#i-tree"/></svg>Hierarchy <small id="hierOf">the intern’s game</small></span></div>
+  <div class="area left" id="aLeft" data-area="left">
+    <section class="dock closed" id="dHier" data-panel="hierarchy" aria-label="Hierarchy">
+      <div class="tabs"><span class="tab" data-drag><svg class="i" aria-hidden="true"><use href="#i-tree"/></svg>Hierarchy <small id="hierOf">the intern’s game</small></span></div>
       <div class="dock-body"><ul class="tree" id="tree"></ul></div>
     </section>
   </div>
 
-  <section class="dock game closed" id="dGame" aria-label="Game">
-    <div class="tabs"><span class="tab"><svg class="i" aria-hidden="true"><use href="#i-pad"/></svg>Game <small id="gameOf">the intern’s game</small></span></div>
+  <section class="dock game closed" id="dGame" data-panel="game" aria-label="Game">
+    <div class="tabs"><span class="tab"><svg class="i" aria-hidden="true"><use href="#i-pad"/></svg>Game <small id="gameOf">the intern’s game</small></span>
+      <span class="paused-tag" id="pausedTag" hidden>Paused</span></div>
     <div class="gamebody" id="gamebody">
       <div class="stage" id="stage"></div>
       <div class="focus-hint" id="hint" hidden>Click the game, then <span class="keys"><span class="key">←</span><span class="key">→</span></span> or <span class="keys"><span class="key">A</span><span class="key">D</span></span> to move · <span class="key">Space</span> or <span class="key">W</span> to jump</div>
@@ -70,14 +97,14 @@
     </div>
   </section>
 
-  <div class="rightcol">
-    <section class="dock inspector" id="inspector" aria-label="Inspector" aria-hidden="true" inert>
-      <div class="tabs"><span class="tab"><svg class="i" aria-hidden="true"><use href="#i-sliders"/></svg>Inspector <small id="inspName"></small></span>
-        <button type="button" class="x" id="inspClose" aria-label="Close the Inspector"><svg class="i" aria-hidden="true"><use href="#i-x"/></svg></button></div>
+  <div class="area right" id="aRight" data-area="right">
+    <section class="dock inspector" id="inspector" data-panel="inspector" aria-label="Inspector" aria-hidden="true" inert>
+      <div class="tabs"><span class="tab" data-drag><svg class="i" aria-hidden="true"><use href="#i-sliders"/></svg>Inspector <small id="inspName"></small></span>
+        <button type="button" class="x" id="inspClose" aria-label="Close the Inspector" data-tip="Close the Inspector (Esc)"><svg class="i" aria-hidden="true"><use href="#i-x"/></svg></button></div>
       <div class="dock-body" id="inspBody"></div>
     </section>
-    <section class="dock right" id="dMentor" aria-label="Conversation">
-      <div class="tabs"><span class="tab"><svg class="i" aria-hidden="true"><use href="#i-chat"/></svg><span id="whoTab">Mentor</span></span></div>
+    <section class="dock right" id="dMentor" data-panel="chat" aria-label="Conversation">
+      <div class="tabs"><span class="tab" data-drag><svg class="i" aria-hidden="true"><use href="#i-chat"/></svg><span id="whoTab">Mentor</span></span></div>
       <div class="who">
         <div class="face" id="face" data-who="m" aria-hidden="true"><svg class="i fm"><use href="#i-bot"/></svg><svg class="i fp"><use href="#i-person"/></svg></div>
         <div><strong id="whoName">Mentor</strong><span id="whoRole">The studio’s AI, and proud of it</span></div>
@@ -87,14 +114,25 @@
       <div class="qcard" id="qcard" role="group" aria-labelledby="qText" hidden></div>
       <form class="say" id="sayForm">
         <input id="say" type="text" autocomplete="off" maxlength="200" placeholder="Type to the studio…" aria-label="Type a message to the studio">
-        <button type="submit" class="send" id="sendBtn" aria-label="Send"><svg class="i" aria-hidden="true"><use href="#i-send"/></svg></button>
+        <button type="submit" class="send" id="sendBtn" aria-label="Send" data-tip="Send (Enter)"><svg class="i" aria-hidden="true"><use href="#i-send"/></svg></button>
       </form>
     </section>
   </div>
 
-  <div class="proj reveal closed" id="proj">
-    <svg class="i" aria-hidden="true"><use href="#i-cards"/></svg><b>Project</b><span>your cards</span>
-    <span class="chip" id="cardChip">no cards yet</span>
+  <div class="area bottom" id="aBottom" data-area="bottom">
+    <!-- The Project window. Its tabs arrive in story order like the docks do (quest.js reveal). -->
+    <section class="dock closed" id="dProject" data-panel="project" aria-label="Project">
+      <div class="tabs"><span class="tab" data-drag><svg class="i" aria-hidden="true"><use href="#i-folder"/></svg>Project <small>your studio’s files</small></span></div>
+      <!-- Unity's Project window: folders on the left, what's in the picked one on the right. -->
+      <div class="pwin">
+        <div class="pnav" role="tablist" aria-label="Project folders" aria-orientation="vertical">
+          <button type="button" class="ptab" role="tab" id="tabTickets" aria-controls="pTickets" aria-selected="true" hidden data-tip="Tickets: everything that needs fixing"><svg class="i" aria-hidden="true"><use href="#i-flag"/></svg><span>Tickets</span><small id="ticketCount"></small></button>
+          <button type="button" class="ptab" role="tab" id="tabCards" aria-controls="pCards" aria-selected="false" hidden data-tip="Cards: the game ideas you’ve learned"><svg class="i" aria-hidden="true"><use href="#i-cards"/></svg><span>Cards</span><small id="cardCount"></small></button>
+        </div>
+        <div class="pbody" id="pTickets" role="tabpanel" aria-labelledby="tabTickets"><ul class="tickets" id="ticketList"></ul></div>
+        <div class="pbody" id="pCards" role="tabpanel" aria-labelledby="tabCards" hidden><ul class="cardtiles" id="cardList"></ul></div>
+      </div>
+    </section>
   </div>
 
   <div class="pointer" id="pointer" hidden><span id="pointerText"></span></div>
@@ -106,12 +144,12 @@
 </div>
 
 <!-- Plain scripts sharing globals, in dependency order (CLAUDE.md: no bundler, no modules).
-     ui.js       sounds, focus keeping, feel. Needs nothing.
+     ui.js       sounds, tooltips, focus keeping, feel. Needs nothing.
      project.js  the kid's game as data, and saving it. Needs nothing.
      save.js     the server's copy of it. Needs Project.
      runner.js   the game frame and Play mode. Needs Project.
      chat.js     the conversation. Needs Runner (it won't steal focus from a running game).
-     editor.js   docks, Hierarchy, Inspector, Play. Needs UI, Project, Runner.
+     editor.js   menus, docks, Hierarchy, Inspector, Play, Undo. Needs UI, Project, Runner, Chat, Save.
      quest.js    the quest engine and tickets. Needs all of the above.
      boot.js     loads the course and starts it. Last.
      dev.js      localhost only (the server refuses it on a deployment): the dev panel. -->

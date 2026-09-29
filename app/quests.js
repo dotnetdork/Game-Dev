@@ -20,7 +20,7 @@ const DIR = path.join(__dirname, 'content', 'quests');
 /* The vocabulary. Adding a word here is adding a feature to the engine; the two must move together. */
 const DEPARTMENTS = ['studio', 'engineering', 'art', 'audio', 'design'];
 const CHARACTERS = ['mentor', 'lead-programmer', 'art-director', 'sound-designer', 'lead-designer', 'department'];
-const PANELS = ['game', 'play', 'hierarchy', 'inspector', 'tickets', 'quest', 'project', 'script', 'stars'];
+const PANELS = ['game', 'play', 'hierarchy', 'inspector', 'tickets', 'quest', 'project', 'script', 'stars', 'pause'];
 const EVENTS = ['fell', 'coin', 'lava', 'hurt', 'crossed'];            // what the game itself reports
 const PARTS = { level: ['look', 'gravity'], player: ['look', 'speed', 'jump'], ground: ['solid', 'look'],
   tile: ['solid', 'look'], lava: ['look', 'hurts'], coins: ['look', 'sound', 'size'] };

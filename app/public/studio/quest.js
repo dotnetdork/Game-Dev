@@ -24,7 +24,10 @@ var Quest = (function () {
   var VOICE = { mentor: 'm', 'lead-programmer': 'p', 'art-director': 'a', 'sound-designer': 'u', 'lead-designer': 'd' };
   var NAME = { mentor: 'the Mentor', 'lead-programmer': 'the lead programmer', 'art-director': 'the art director', 'sound-designer': 'the sound designer', 'lead-designer': 'the lead designer' };
   var DEPT = { engineering: 'Engineering', art: 'Art', audio: 'Audio', design: 'Design', studio: 'Studio' };
-  var PANEL = { game: 'dGame', hierarchy: 'dHier', tickets: 'dTickets', play: 'transport', stars: 'stars', project: 'proj' };
+  /* What a quest's `reveal:` names, and where it is. Tickets and cards are tabs of the Project
+     window (spec §2.2), so revealing either opens that window at that tab. `pause` brings Pause and
+     Step into the toolbar beside Play. */
+  var PANEL = { game: 'dGame', hierarchy: 'dHier', tickets: 'tabTickets', play: 'transport', stars: 'stars', project: 'tabCards', pause: 'stepTools' };
   var HEROES = [['alien', 'A green alien', 'The alien!'], ['slime', 'A slime', 'The slime!'], ['frog', 'A frog', 'The frog!'], ['mouse', 'A mouse', 'The mouse!']];
   var NAMES = {
     alien: ['Alien Lava Run', 'Space Hopper', 'Coin Invader'], pink: ['Pink Planet', 'Alien Lava Run', 'Star Hopper'],
@@ -111,6 +114,7 @@ var Quest = (function () {
     var ul = $('ticketList'); if (!ul) return;
     ul.innerHTML = '';
     var ids = Object.keys(S.tickets);
+    Editor.ticketCount(ids.filter(function (id) { return S.tickets[id].status !== 'done'; }).length);
     if (!ids.length) { ul.innerHTML = '<li class="empty">Nothing yet. Play the game to find what’s broken.</li>'; return; }
     ids.forEach(function (id) {
       var t = COURSE.tickets.filter(function (k) { return k.id === id; })[0], mine = S.tickets[id];
@@ -197,16 +201,26 @@ var Quest = (function () {
   function reveal(p) {
     if (S.shown.indexOf(p) < 0) { S.shown.push(p); save(); }
     var id = PANEL[p]; if (!id) return;
-    if (p === 'play' || p === 'stars' || p === 'project') Editor.reveal(id, true); else Editor.openDock(id, true);
+    if (p === 'tickets') Editor.projectTab('tickets');
+    else if (p === 'project') Editor.projectTab('cards');
+    else if (p === 'play' || p === 'stars' || p === 'pause') Editor.reveal(id, true); else Editor.openDock(id, true);
     if (p === 'hierarchy') Editor.tree(true);
   }
   function allow(f) { var q = quest(f); Editor.allow(S.taught.concat((q && q.allow) || [])); }
   function award(a) {
     if (a.stars) { S.stars = (S.stars || 0) + a.stars; Editor.stars(S.stars); reveal('stars'); }
-    if (a.card && S.cards.indexOf(a.card) < 0) { S.cards.push(a.card); Editor.cards(S.cards.map(cardName)); reveal('project'); UI.sound('card'); }
+    if (a.card && S.cards.indexOf(a.card) < 0) { S.cards.push(a.card); Editor.cards(S.cards.map(cardOf)); reveal('project'); UI.sound('card'); }
     save();
   }
-  function cardName(c) { return { 'play-mode': 'Play mode', collider: 'Collider', feedback: 'Feedback', readability: 'Readability', risk: 'Risk' }[c] || c; }
+  /* A card: the idea's name and one short line a 10-year-old can read. */
+  var CARDS = {
+    'play-mode': ['Play mode', 'Changes you make while the game runs are undone when you press Stop.'],
+    collider: ['Collider', 'The invisible shape that makes a part solid, so things can stand on it.'],
+    feedback: ['Feedback', 'The game telling you something happened: a sound, a flash, a number.'],
+    readability: ['Readability', 'A player can tell what everything is at a glance.'],
+    risk: ['Risk', 'A danger that makes the player’s choices matter.']
+  };
+  function cardOf(c) { var k = CARDS[c]; return k ? { name: k[0], text: k[1] } : { name: c, text: '' }; }
 
   /* ---------- questions ---------- */
   function ask(a) {
@@ -387,7 +401,7 @@ var Quest = (function () {
     // Put the screen back the way this kid left it.
     S.shown.forEach(reveal);
     if (S.stars) Editor.stars(S.stars);
-    if (S.cards.length) Editor.cards(S.cards.map(cardName));
+    if (S.cards.length) Editor.cards(S.cards.map(cardOf));
     if (S.name) { Editor.setProjectName(S.name); $('hierOf').textContent = 'your parts'; }
     paintTickets();
     if (!S.stack.length && S.done.indexOf('first-day') < 0) S.stack.push({ quest: 'first-day', beat: 0, flags: {}, fired: {} });

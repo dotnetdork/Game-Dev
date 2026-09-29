@@ -92,7 +92,10 @@ function startServer(fakePort) {
       AI_PROVIDER: 'ollama',
       OLLAMA_URL: 'http://127.0.0.1:' + fakePort + '/api/chat',
       CODER_MODEL: 'ollama:fake',
-      CODER_TOOLS: '1'
+      CODER_TOOLS: '1',
+      /* A laptop with today's code in its .env and no class code yet would refuse to start (auth.js,
+         configProblem), and that's the .env's problem, not the coder's. */
+      CLASS_CODE: process.env.CLASS_CODE || 'CHECKCODER'
     }),
     stdio: ['ignore', 'pipe', 'pipe']
   });

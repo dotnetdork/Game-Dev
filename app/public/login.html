@@ -11,10 +11,12 @@
      when sign-in has gone wrong, which is a bad moment to depend on the thing you are guarding.
 
      V2 (docs/rework/v2-spec.md §3.1): the same page as the original, its look kept on purpose (Jay,
-     2026-09-28), with the kids' door reworked. One card, three steps that slide in place:
-       1. the class password, sent with the link (it buys a two-hour pass, not a sign-in);
-       2. "Who's here?": the accounts kids have made, and "I'm new here";
-       3. "Is this your game?" for a returning kid, so a mis-tap is caught before it signs anyone in.
+     2026-09-28), with the kids' door reworked (Jay, 2026-09-28). One card, steps that slide in place:
+       1. Sign up or Log in;
+       2. Sign up asks for today's code (sent with the link) and goes straight to the interview.
+          Log in asks for today's code AND the class code, which never changes (auth.js, THE STUDIO DOOR);
+       3. "Who's here?": the kids in the class who've been hired, as first name and last initial;
+       4. "Is this you?", so a mis-tap is caught before it signs anyone in.
      Teachers' sign-in (Google) sits below, quieter, for the teacher view. -->
 <style>
   :root{
@@ -65,7 +67,7 @@
   .back{background:none;border:0;color:var(--muted);font:inherit;font-size:14px;cursor:pointer;padding:6px 0;margin-bottom:6px;}
   .back:hover{color:var(--ink);}
 
-  /* "Who's here?": a card per kid, the newest-made last, I'm new here first and loudest */
+  /* "Who's here?": a card per kid, the newest-made last */
   .roster{display:grid;grid-template-columns:repeat(auto-fill,minmax(150px,1fr));gap:8px;max-height:46vh;overflow:auto;padding:2px;}
   .who{display:grid;grid-template-columns:40px 1fr;align-items:center;column-gap:10px;text-align:left;min-height:64px;padding:10px;border-radius:10px;
     border:1px solid var(--line);background:var(--panel2);color:var(--ink);font:inherit;cursor:pointer;}
@@ -74,11 +76,10 @@
   .who .ph{display:grid;place-items:center;color:var(--brand);font-weight:800;font-size:22px;}
   .who b{font-size:15px;line-height:1.2;}
   .who small{font-size:12.5px;color:var(--muted);overflow:hidden;text-overflow:ellipsis;white-space:nowrap;}
-  .who.new{border:1.5px solid var(--brand);background:rgba(245,130,10,.12);}
-  .who.new small{color:var(--ink2);}
+  .ph.badge svg{width:60%;height:60%;fill:none;stroke:#fff;stroke-width:2;stroke-linecap:round;stroke-linejoin:round;}
   .empty{grid-column:1/-1;color:var(--muted);font-size:14px;margin:4px 0;}
 
-  /* "Is this your game?" */
+  /* "Is this you?" */
   .yours{display:flex;gap:14px;align-items:center;padding:14px;border-radius:12px;background:var(--panel2);margin-bottom:14px;}
   .yours img,.yours .ph{width:72px;height:72px;object-fit:contain;border-radius:10px;background:var(--frame);flex:none;}
   .yours .ph{display:grid;place-items:center;color:var(--brand);font-weight:800;font-size:34px;}
@@ -106,29 +107,53 @@
   <p class="blurb" id="blurb">You’re here to <b>try out a game studio that’s still being built</b>, and to tell us what you think. It’s a League class site, so it isn’t open to the public.</p>
 
   <section class="card" id="studio" aria-live="polite" hidden>
-    <!-- 1. the class password -->
-    <form class="step" id="sPass">
-      <h2>Enter the class password</h2>
-      <p class="hint">It was sent with the link to this page. Everyone in your class uses the same one.</p>
-      <label for="pw">Class password</label>
-      <input id="pw" type="password" autocomplete="current-password" required>
-      <button type="submit" class="btn primary" id="pwGo">Let’s go</button>
+    <!-- 1. new or back? -->
+    <div class="step" id="sChoose">
+      <h2>Welcome to the studio</h2>
+      <p class="hint">First time here? Sign up. Been here before? Log in and find your game.</p>
+      <div class="two">
+        <button type="button" class="btn primary" id="goSignup">Sign up</button>
+        <button type="button" class="btn quiet" id="goLogin">Log in</button>
+      </div>
+    </div>
+
+    <!-- 2a. sign up: today's code only -->
+    <form class="step" id="sSignup" hidden>
+      <button type="button" class="back" data-back>← Back</button>
+      <h2>Sign up</h2>
+      <p class="hint">Type today’s code. It came with the link to this page.</p>
+      <label for="suCode">Today’s code</label>
+      <input id="suCode" autocomplete="off" autocapitalize="characters" spellcheck="false" required>
+      <button type="submit" class="btn primary" id="suGo">Start my interview</button>
     </form>
 
-    <!-- 2. who's here -->
+    <!-- 2b. log in: today's code and the class code -->
+    <form class="step" id="sLogin" hidden>
+      <button type="button" class="back" data-back>← Back</button>
+      <h2>Log in</h2>
+      <p class="hint">Type today’s code, then your class code. Your teacher has both.</p>
+      <label for="liCode">Today’s code</label>
+      <input id="liCode" autocomplete="off" autocapitalize="characters" spellcheck="false" required>
+      <label for="liClass">Class code</label>
+      <input id="liClass" autocomplete="off" autocapitalize="characters" spellcheck="false" required>
+      <button type="submit" class="btn primary" id="liGo">Find my game</button>
+    </form>
+
+    <!-- 3. who's here -->
     <div class="step" id="sWho" hidden>
+      <button type="button" class="back" data-back>← Back</button>
       <h2>Who’s here?</h2>
-      <p class="hint">Been here before? Tap your name. First time? Tap “I’m new here”.</p>
+      <p class="hint">Tap your name.</p>
       <div class="roster" id="roster" role="list"></div>
     </div>
 
     <!-- 3. is this your game? -->
     <div class="step" id="sYours" hidden>
       <button type="button" class="back" id="notMe">← Back to the list</button>
-      <h2>Is this your game?</h2>
-      <p class="hint">Check it’s yours before you go in.</p>
+      <h2>Is this you?</h2>
+      <p class="hint">Check it’s you before you go in.</p>
       <div class="yours" id="yoursCard"></div>
-      <div class="two"><button type="button" class="btn primary" id="yes">Yes, that’s mine</button><button type="button" class="btn quiet" id="no">No, not me</button></div>
+      <div class="two"><button type="button" class="btn primary" id="yes">Yes, that’s me</button><button type="button" class="btn quiet" id="no">No, not me</button></div>
     </div>
   </section>
 
@@ -159,52 +184,81 @@
 
   /* Heroes as the game draws them (studio/starter/game.js ART), so a card shows the kid's own hero. */
   var HERO = { alien: 'character_green_idle', pink: 'character_pink_idle', slime: 'slime_normal_rest', frog: 'frog_idle', mouse: 'mouse_rest' };
+  /* Their hero once they've picked one; before that, the badge they made at the interview. */
+  var ICON = { rocket: 'M12 3c3 2 5 5.5 5 9.5l-2 3.5H9l-2-3.5C7 8.5 9 5 12 3zM12 9.5a1.5 1.5 0 1 0 0 .01M9 16l-2.5 4M15 16l2.5 4',
+    cat: 'M5 20V9l3-4 2 4h4l2-4 3 4v11zM9.5 13h.01M14.5 13h.01M10.5 16.5h3', bolt: 'M13.5 3L6 13.5h5.5L10.5 21 18 10.5h-5.5z',
+    ghost: 'M6 20V10a6 6 0 0 1 12 0v10l-2-1.5-2 1.5-2-1.5-2 1.5-2-1.5zM10 10.5h.01M14 10.5h.01' };
   function face(a, cls) {
-    return a.hero && HERO[a.hero] ? '<img class="' + (cls || '') + '" alt="" src="/assets/platformer/' + HERO[a.hero] + '.png">'
-      : '<span class="ph" aria-hidden="true">' + esc((a.first || a.handle || '?').charAt(0).toUpperCase()) + '</span>';
+    if (a.hero && HERO[a.hero]) return '<img class="' + (cls || '') + '" alt="" src="/assets/platformer/' + HERO[a.hero] + '.png">';
+    if (a.badge && ICON[a.badge.icon] && /^#[0-9a-f]{6}$/i.test(a.badge.colour)) return '<span class="ph badge" style="background:' + a.badge.colour + '" aria-hidden="true"><svg viewBox="0 0 24 24"><path d="' + ICON[a.badge.icon] + '"/></svg></span>';
+    return '<span class="ph" aria-hidden="true">' + esc((a.first || '?').charAt(0).toUpperCase()) + '</span>';
+  }
+  /* Under the name: their game, or until they've named one, the day they joined. */
+  function sub(a) {
+    if (a.game) return a.game;
+    return a.joined ? 'Joined ' + new Date(a.joined).toLocaleDateString(undefined, { weekday: 'short', month: 'short', day: 'numeric' }) : 'Game not named yet';
   }
   function esc(s) { return String(s).replace(/[&<>"']/g, function (c) { return '&#' + c.charCodeAt(0) + ';'; }); }
-  function show(step) { ['sPass', 'sWho', 'sYours'].forEach(function (s) { $(s).hidden = s !== step; }); }
+  function show(step) { ['sChoose', 'sSignup', 'sLogin', 'sWho', 'sYours'].forEach(function (s) { $(s).hidden = s !== step; }); }
+  function named(a) { return (a.first || '?') + (a.initial ? ' ' + a.initial + '.' : ''); }
   function post(url, body) {
     return fetch(url, { method: 'POST', credentials: 'same-origin', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(body || {}) })
-      .then(function (r) { return r.json().catch(function () { return {}; }).then(function (j) { if (!r.ok) throw new Error(j.error || 'Something went wrong. Try again.'); return j; }); });
+      .then(function (r) { return r.json().catch(function () { return {}; }).then(function (j) { if (!r.ok) { var e = new Error(j.error || 'Something went wrong. Try again.'); e.field = j.field; throw e; } return j; }); });
   }
+  var noCodes = false;   // a laptop with nothing configured: no codes to ask for (auth.js BYPASS)
 
-  $('sPass').addEventListener('submit', function (e) {
-    e.preventDefault(); say('');
-    $('pwGo').disabled = true;
-    post('/auth/studio/pass', { password: $('pw').value }).then(roster).catch(function (err) { say(err.message); $('pw').select(); })
-      .then(function () { $('pwGo').disabled = false; });
+  /* The two doors. Each code field is told which one was wrong (auth.js sends `field`). */
+  function newKid() {
+    return post('/auth/studio/pass', { mode: 'signup', code: $('suCode').value })
+      .then(function () { return post('/auth/studio/new'); })
+      .then(function (j) { location.replace(j.next || '/interview.html'); });
+  }
+  function returning() {
+    return post('/auth/studio/pass', { mode: 'login', code: $('liCode').value, classCode: $('liClass').value }).then(roster);
+  }
+  $('goSignup').addEventListener('click', function () {
+    say('');
+    if (noCodes) { $('goSignup').disabled = true; newKid().catch(function (err) { say(err.message); $('goSignup').disabled = false; }); return; }
+    show('sSignup'); $('suCode').focus();
+  });
+  $('goLogin').addEventListener('click', function () {
+    say('');
+    if (noCodes) { returning().catch(function (err) { say(err.message); }); return; }
+    show('sLogin'); $('liCode').focus();
+  });
+  Array.prototype.forEach.call(document.querySelectorAll('[data-back]'), function (b) {
+    b.addEventListener('click', function () { say(''); show('sChoose'); $('goSignup').focus(); });
+  });
+  $('sSignup').addEventListener('submit', function (e) {
+    e.preventDefault(); say(''); $('suGo').disabled = true;
+    newKid().catch(function (err) { say(err.message); $('suCode').select(); $('suGo').disabled = false; });
+  });
+  $('sLogin').addEventListener('submit', function (e) {
+    e.preventDefault(); say(''); $('liGo').disabled = true;
+    returning().catch(function (err) { say(err.message); $(err.field === 'classCode' ? 'liClass' : 'liCode').select(); })
+      .then(function () { $('liGo').disabled = false; });
   });
 
   var picked = null;
   function roster() {
     return fetch('/auth/studio/roster', { credentials: 'same-origin' }).then(function (r) { return r.json(); }).then(function (d) {
-      if (!d.accounts) { show('sPass'); return; }
+      if (!d.accounts) { show('sChoose'); return; }
       var box = $('roster'); box.innerHTML = '';
-      var fresh = document.createElement('button');
-      fresh.type = 'button'; fresh.className = 'who new'; fresh.setAttribute('role', 'listitem');
-      fresh.innerHTML = '<span class="ph" aria-hidden="true">+</span><b>I’m new here</b><small>Start your job interview</small>';
-      fresh.addEventListener('click', function () {
-        fresh.disabled = true;
-        post('/auth/studio/new').then(function (j) { location.replace(j.next || '/interview.html'); }).catch(function (err) { say(err.message); fresh.disabled = false; });
-      });
-      box.appendChild(fresh);
       d.accounts.forEach(function (a) {
         var b = document.createElement('button');
         b.type = 'button'; b.className = 'who'; b.setAttribute('role', 'listitem');
-        b.innerHTML = face(a) + '<b>' + esc(a.first + (a.initial ? ' ' + a.initial + '.' : '')) + '</b><small>' + esc(a.handle) + (a.game ? ' · ' + esc(a.game) : '') + '</small>';
+        b.innerHTML = face(a) + '<b>' + esc(named(a)) + '</b><small>' + esc(sub(a)) + '</small>';
         b.addEventListener('click', function () { confirm(a); });
         box.appendChild(b);
       });
-      if (!d.accounts.length) { var p = document.createElement('p'); p.className = 'empty'; p.textContent = 'No one has joined yet. You could be first!'; box.appendChild(p); }
+      if (!d.accounts.length) { var p = document.createElement('p'); p.className = 'empty'; p.textContent = 'Nobody in this class has signed up yet. Go back and tap Sign up.'; box.appendChild(p); }
       show('sWho');
-      fresh.focus();
+      var first = box.querySelector('button'); if (first) first.focus();
     });
   }
   function confirm(a) {
     picked = a;
-    $('yoursCard').innerHTML = face(a) + '<div><b>' + esc(a.game || 'Their game, not named yet') + '</b><span>' + esc(a.first + (a.initial ? ' ' + a.initial + '.' : '')) + ' · ' + esc(a.handle) + '</span></div>';
+    $('yoursCard').innerHTML = face(a) + '<div><b>' + esc(named(a)) + '</b><span>' + esc(sub(a)) + '</span></div>';
     show('sYours'); $('yes').focus();
   }
   $('yes').addEventListener('click', function () {
@@ -221,8 +275,8 @@
     if (d && d.signedIn) { location.replace(next); return; }
     if (d && d.studio) {
       $('studio').hidden = false;
-      if (d.noPassword) { post('/auth/studio/pass', {}).then(roster); }   // a laptop with nothing configured: no password to ask for
-      else { show('sPass'); $('pw').focus(); fetch('/auth/studio/roster', { credentials: 'same-origin' }).then(function (r) { if (r.ok) roster(); }); }
+      noCodes = !!d.noPassword;
+      show('sChoose'); $('goSignup').focus();
     }
     var p = (d && d.providers && d.providers.google) || null, host = $('btns');
     if (p && p.on) host.innerHTML = '<a class="btn google" href="/auth/google?next=' + encodeURIComponent(next) + '">' + GOOGLE_MARK + '<span>Continue with Google</span></a>';

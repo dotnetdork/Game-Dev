@@ -1,30 +1,33 @@
-/* check-release.js — the switches that must be right before students use this.
- *
- * WHAT THIS CHECKS CHANGED WHEN DEV MODE STOPPED BEING A CONSTANT.
- *
- * It used to read `unlockAll: true` out of js/dev.js and fail while it was on, because the flag had
- * to be flipped back by hand before a deploy. That is a reminder with a safety net, and the net only
- * works if somebody runs it. Dev mode is now DERIVED — on when the app is served from a laptop, off
- * everywhere else — so the League server's build is a student's build because of where it is, and there is
- * no longer a constant that can be left in the wrong position.
- *
- * So this checks the derivation instead: that dev mode is still decided by the hostname, that a URL
- * cannot switch it on where it is off, and that the controls which destroy a student's work are
- * still marked as dev-only in the markup. Those are the three things that, if broken, would put a
- * reset-everything button in front of a class.
- *
- *   npm --prefix app run check:release
- *
- * Parsed as text rather than imported, because dev.js is browser JavaScript with no exports that
- * reads `location` at load.
- */
+/* check-release.js: the switches that must be right before students use the studio.
+
+   WHAT CHANGED WITH V2. This used to read V1's js/dev.js and check that its dev mode was derived
+   from the hostname, and that the footer's reset buttons were marked dev-only. The V2 studio has no
+   dev mode to derive and no reset button in the page at all: everything that can wipe a kid's work
+   lives in the dev panel (studio/dev.js), and the server does not serve that file to a deployment
+   (server.js, next to the static hosting). So the question is no longer "is the switch in the right
+   position" but "does a real deployment refuse the file", and that is asked of a real server rather
+   than read out of the source.
+
+     1. A server started as the League server starts it (NODE_ENV=production) tells the page it is
+        hosted, and answers 404 for the dev panel even to a signed-in kid, while the rest of the
+        studio loads. The same server on a laptop serves it, so the 404 is the rule and not a typo.
+     2. The class list needs both codes: today's code alone (Sign Up) cannot list who is in the class.
+     3. Read from the source: nothing but the dev panel can delete a save, the game frame is
+        sandboxed without allow-same-origin, and the page survives the dev panel being absent.
+
+     npm --prefix app run check:release
+
+   It runs its own servers on their own ports with a save folder of their own (deleted afterwards),
+   so it never touches app/.data or the AI. */
+const { spawn } = require('child_process');
+const crypto = require('crypto');
 const fs = require('fs');
+const os = require('os');
 const path = require('path');
 
-const PUB = path.join(__dirname, '..', 'public');
-const DEV_FILE = path.join(PUB, 'js', 'dev.js');
-const INDEX_FILE = path.join(PUB, 'index.html');
-const CSS_FILE = path.join(PUB, 'styles.css');
+const ROOT = path.join(__dirname, '..');
+const PUB = path.join(ROOT, 'public');
+const CODE = 'release-check-code-4K', CLASS = 'RELEASE7';
 
 let failures = 0;
 function check(name, ok, detail) {
@@ -32,91 +35,103 @@ function check(name, ok, detail) {
   else { failures++; console.error('FAIL  ' + name + (detail ? '  — ' + detail : '')); }
 }
 
-const dev = fs.readFileSync(DEV_FILE, 'utf8');
-const html = fs.readFileSync(INDEX_FILE, 'utf8');
-const css = fs.readFileSync(CSS_FILE, 'utf8');
-
-/* Reads `name: true` / `name: false` out of the DEV object literal. Returns null when the switch is
-   missing or is set to something that is not a plain boolean. */
-function devFlag(name) {
-  const m = dev.match(new RegExp('\\b' + name + '\\s*:\\s*(true|false)\\b'));
-  return m ? m[1] === 'true' : null;
+function start(port, env) {
+  const state = fs.mkdtempSync(path.join(os.tmpdir(), 'studio-release-'));
+  const proc = spawn(process.execPath, [path.join(ROOT, 'server.js')], {
+    cwd: ROOT,
+    env: Object.assign({}, process.env, {
+      PORT: String(port), STATE_DIR: state,
+      TESTER_PASSWORD: CODE, CLASS_CODE: CLASS, SESSION_SECRET: crypto.randomBytes(32).toString('hex'),
+      AI_PROVIDER: 'ollama', OLLAMA_URL: 'http://127.0.0.1:9/api/chat', TUTOR_MODEL: 'ollama:none', CODER_MODEL: 'ollama:none',
+      ANTHROPIC_API_KEY: '', OPENROUTER_API_KEY: '', GOOGLE_CLIENT_ID: '', GOOGLE_CLIENT_SECRET: '', GITHUB_CLIENT_ID: '',
+      CODESERVER_CLIENT_ID: '', DEMO_LOGIN: '', KV_REST_API_URL: '', UPSTASH_REDIS_REST_URL: ''
+    }, env),
+    stdio: ['ignore', 'pipe', 'pipe']
+  });
+  let out = '';
+  proc.stdout.on('data', function (d) { out += d; });
+  proc.stderr.on('data', function (d) { out += d; });
+  const base = 'http://localhost:' + port;
+  return {
+    base: base, out: function () { return out; },
+    stop: function () { try { proc.kill(); } catch (e) {} try { fs.rmSync(state, { recursive: true, force: true }); } catch (e) {} },
+    up: async function () {
+      for (let i = 0; i < 80; i++) {
+        try { const r = await fetch(base + '/login.html'); if (r.ok) return r; } catch (e) {}
+        await new Promise(function (r) { setTimeout(r, 250); });
+      }
+      return null;
+    }
+  };
 }
 
-/* 1. Dev mode is derived, not written down. A literal `on: true` here would be exactly the failure
-      mode this whole arrangement exists to remove. */
-check('dev mode is derived from the hostname, not hard-coded',
-  /\bon\s*:\s*devHost\(\)/.test(dev) && devFlag('on') === null,
-  devFlag('on') === null ? 'DEV.on = devHost()' : 'DEV.on is hard-coded to ' + devFlag('on')
-    + ' — it must be devHost(), or every deployment ships in dev mode');
+/* A tiny cookie jar: the names and values from Set-Cookie, sent back as one Cookie header. */
+function jar() {
+  const c = {};
+  return {
+    take: function (res) { (res.headers.getSetCookie ? res.headers.getSetCookie() : []).forEach(function (s) { const kv = s.split(';')[0], i = kv.indexOf('='); c[kv.slice(0, i)] = kv.slice(i + 1); }); return res; },
+    get: function (n) { return c[n]; },
+    header: function () { return Object.keys(c).map(function (k) { return k + '=' + c[k]; }).join('; '); }
+  };
+}
+async function post(s, j, url, body) {
+  return j.take(await fetch(s.base + url, { method: 'POST', headers: { 'content-type': 'application/json', origin: s.base, cookie: j.header() }, body: JSON.stringify(body), redirect: 'manual' }));
+}
+async function get(s, j, url) { return j.take(await fetch(s.base + url, { headers: { cookie: j.header() }, redirect: 'manual' })); }
 
-check('lesson unlocking is derived too, so the course runs in order for students',
-  /\bunlockAll\s*:\s*devHost\(\)/.test(dev) && devFlag('unlockAll') === null,
-  devFlag('unlockAll') === null ? 'DEV.unlockAll = devHost()' : 'unlockAll is hard-coded to ' + devFlag('unlockAll'));
-
-/* 2. devHost() must only ever answer yes for a machine, never for a deployment. Checked by running
-      the function itself against a list of hostnames rather than by reading the regex, because the
-      regex is the thing most likely to be edited into something too generous. */
-let devHost = null;
-try {
-  const body = dev.match(/function devHost\(\)\s*\{[\s\S]*?\n\}/);
-  if (body) {
-    /* eslint-disable no-new-func */
-    /* hostedCookie() is stubbed to "no answer" so this exercises the hostname fallback on its own;
-       the cookie path is checked separately below. */
-    devHost = new Function('location',
-      'function hostedCookie(){return null;}\n' + body[0] + '\nreturn devHost();');
-  }
-} catch (e) { devHost = null; }
-
-/* The server's answer has to beat the hostname, or a deployment that happens to be reached on an
-   odd host name would unlock the course. */
-check('the server’s answer decides it, not the hostname',
-  /function hostedCookie\s*\(/.test(dev) && /if \(hosted !== null\) return !hosted;/.test(dev),
-  'league_hosted is set on every response by server.js');
-
-const LOCAL = ['localhost', '127.0.0.1', 'app.localhost', 'jays-laptop.local'];
-const HOSTED = ['game-dev.apps.jointheleague.org', 'gamedev.jointheleague.org',
-  'notlocalhost.com', 'localhost.evil.com', 'my-localhost-app.net'];
-if (!devHost) {
-  check('devHost() could be read out of js/dev.js', false, 'the function was not found — this check cannot run');
-} else {
-  const wrongLocal = LOCAL.filter(function (h) { return devHost({ hostname: h }) !== true; });
-  const wrongHosted = HOSTED.filter(function (h) { return devHost({ hostname: h }) !== false; });
-  check('dev mode is ON for a laptop', !wrongLocal.length, wrongLocal.length ? 'said no to: ' + wrongLocal.join(', ') : LOCAL.length + ' hostnames');
-  check('dev mode is OFF for anything deployed', !wrongHosted.length,
-    wrongHosted.length ? 'said YES to: ' + wrongHosted.join(', ') + ' — a student build would unlock the course'
-      : HOSTED.length + ' hostnames, including ones with "localhost" inside them');
+async function signedUp(s) {
+  const j = jar();
+  await get(s, j, '/login.html');
+  const p = await post(s, j, '/auth/studio/pass', { mode: 'signup', code: CODE });
+  const n = await post(s, j, '/auth/studio/new', {});
+  return { j: j, ok: p.status === 200 && n.status === 200, detail: 'pass ' + p.status + ', new ' + n.status };
 }
 
-/* 3. A URL must not be able to switch dev things on. `?dev=1` on the deployed site would otherwise
-      be a link a student could pass round that unlocks the course and hands them a reset button. */
-check('a URL cannot switch dev mode ON where it is off',
-  /if\s*\(\s*want\s*&&\s*!here\s*\)\s*return/.test(dev),
-  'the guard in the override block is what stops ?dev=1 working on the League server');
+(async function () {
+  /* 1 & 2: a deployment, started the way app/Dockerfile starts it */
+  const hosted = start(Number(process.env.RELEASE_PORT || 3995), { NODE_ENV: 'production' });
+  const local = start(Number(process.env.RELEASE_PORT || 3995) + 1, { NODE_ENV: 'test' });
+  try {
+    const hup = await hosted.up();
+    check('a production server starts with the studio door configured', !!hup,
+      hup ? '' : hosted.out().split('\n').filter(Boolean).slice(-2).join(' '));
+    if (hup) {
+      const k = await signedUp(hosted);
+      check('a kid can sign up on it', k.ok, k.detail);
+      check('it tells the page it is a real deployment', k.j.get('league_hosted') === '1', 'league_hosted=' + k.j.get('league_hosted'));
+      const dev = await get(hosted, k.j, '/studio/dev.js');
+      const quest = await get(hosted, k.j, '/studio/quest.js');
+      check('the dev panel is not served to a deployment, even signed in', dev.status === 404, 'GET /studio/dev.js → ' + dev.status);
+      check('the rest of the studio is', quest.status === 200, 'GET /studio/quest.js → ' + quest.status);
+      const roster = await get(hosted, k.j, '/auth/studio/roster');
+      check('today’s code alone cannot list the class', roster.status === 401, 'roster after Sign Up → ' + roster.status);
+      const l = jar();
+      const noClass = await post(hosted, l, '/auth/studio/pass', { mode: 'login', code: CODE, classCode: 'WRONG' });
+      check('Log In refuses a wrong class code', noClass.status === 401, '→ ' + noClass.status);
+    }
+    const lup = await local.up();
+    if (lup) {
+      const k = await signedUp(local);
+      const dev = await get(local, k.j, '/studio/dev.js');
+      check('the same server on a laptop does serve it (so the 404 above is the rule, not a typo)', dev.status === 200, '→ ' + dev.status);
+    } else check('a laptop server starts too', false, local.out().split('\n').filter(Boolean).slice(-2).join(' '));
+  } finally { hosted.stop(); local.stop(); }
 
-/* 4. The controls that destroy a student's work are marked, and the marking defaults to hidden. */
-const devOnly = (html.match(/data-dev-only/g) || []).length;
-check('the destructive controls are marked dev-only', devOnly >= 2,
-  devOnly + ' element(s) carry data-dev-only — expected the footer reset and the game reset');
-check('reset-everything is marked dev-only',
-  /id="resetAllBtn"[^>]*data-dev-only|data-dev-only[^>]*id="resetAllBtn"/.test(html),
-  'the footer button that wipes the account');
-check('reset-the-game is marked dev-only',
-  /id="gameReset"[^>]*data-dev-only|data-dev-only[^>]*id="gameReset"/.test(html),
-  'the transport button that throws away their code');
-check('data-dev-only is hidden unless something says otherwise',
-  /\[data-dev-only\]\s*\{\s*display:\s*none\s*!important/.test(css),
-  'hidden is the default, so a control that forgets to ask stays out of a student build');
+  /* 3: read from the source */
+  const studio = path.join(PUB, 'studio');
+  const files = fs.readdirSync(studio).filter(function (f) { return f.endsWith('.js'); });
+  const deleters = files.filter(function (f) { return f !== 'dev.js' && /method\s*:\s*['"]DELETE['"]/.test(fs.readFileSync(path.join(studio, f), 'utf8')); });
+  check('only the dev panel can delete a save', !deleters.length, deleters.length ? 'also in: ' + deleters.join(', ') : files.length + ' studio scripts read');
+  const runner = fs.readFileSync(path.join(studio, 'runner.js'), 'utf8').replace(/\/\*[\s\S]*?\*\//g, '');
+  check('the game frame is sandboxed', /setAttribute\(\s*['"]sandbox['"]\s*,\s*['"]allow-scripts['"]\s*\)/.test(runner),
+    'kid and AI code runs with an opaque origin (runner.js:3)');
+  const sameOrigin = files.filter(function (f) { return /allow-same-origin/.test(fs.readFileSync(path.join(studio, f), 'utf8').replace(/\/\*[\s\S]*?\*\//g, '')); });
+  check('nothing adds allow-same-origin to it', !sameOrigin.length, sameOrigin.length ? 'found in: ' + sameOrigin.join(', ') : '');
+  const html = fs.readFileSync(path.join(PUB, 'index.html'), 'utf8');
+  check('the page survives the dev panel being refused', /<script src="\/studio\/dev\.js" onerror="this\.remove\(\)"><\/script>/.test(html),
+    'a deployment answers 404 for it');
 
-/* 5. The sandbox is not a dev switch — it is the isolation the game frame runs under. */
-const sandboxGame = devFlag('sandboxGame');
-check('DEV.sandboxGame is on, so student code cannot reach the app',
-  sandboxGame === true,
-  sandboxGame === null ? 'could not find it in js/dev.js' : 'sandboxGame = ' + sandboxGame
-    + (sandboxGame === false ? ' — the game frame can read the parent page; set it to true' : ''));
-
-console.log('\n' + (failures
-  ? failures + ' check(s) failed — not ready for students'
-  : 'release checks pass: a deployed build locks the course and hides the reset controls'));
-process.exit(failures ? 1 : 0);
+  console.log('\n' + (failures ? failures + ' check(s) failed — not ready for students'
+    : 'release checks pass: a deployment refuses the dev panel, the class list needs both codes, and the game frame is sandboxed'));
+  process.exit(failures ? 1 : 0);
+})();

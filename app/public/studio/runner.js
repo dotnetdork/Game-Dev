@@ -19,12 +19,17 @@
    classic beginner's mistake, kept on purpose because every engine does it (Jay, 2026-09-28), and
    the first day has the kid make it safely. Changes made while stopped are kept.
 
+   PAUSE AND STEP, Unity's too. Pause freezes the whole game loop where it is (Phaser's loop goes to
+   sleep, so nothing moves and nothing is drawn anew); Step, while paused, runs exactly one frame of
+   1/60 s and draws it. Both only mean something in Play mode, and Stop always wakes the loop, so a
+   paused game can never be left asleep underneath a stopped one.
+
    What the game tells the studio arrives as events ('coin', 'fell', 'lava', 'hurt', 'crossed'),
    passed to whoever is listening (the first day's steps). The same event is passed on at most
    once every 600ms: the game notices "standing on the tile" every frame. */
 var Runner = (function () {
   var frame = null, phaser = null, builtFor = null, ready = false, pending = null;
-  var playing = false, snapshot = null, changedInPlay = false;
+  var playing = false, paused = false, snapshot = null, changedInPlay = false;
   var listeners = [], lastEvent = {};
 
   function on(fn) { listeners.push(fn); }
@@ -53,6 +58,9 @@ var Runner = (function () {
       + 'if(s){s.scene.restart();}if(window.__game&&window.__game.sound)window.__game.sound.mute=!!d.mute;}'
       + 'if(d.__studio==="set"){var p=S.part(d.id);if(p){p[d.key]=d.value;changeFns.slice().forEach(function(fn){try{fn(d.id,d.key,d.value);}catch(err){report(err);}});}}'
       + 'if(d.__studio==="mute"&&window.__game&&window.__game.sound)window.__game.sound.mute=!!d.mute;'
+      + 'var g=window.__game;'
+      + 'if(d.__studio==="pause"&&g&&g.loop){if(d.on)g.loop.sleep();else g.loop.wake();}'
+      + 'if(d.__studio==="step"&&g&&g.loop&&!g.loop.running){var t=performance.now();g.step(t,1000/60);}'
       + '});'
       + 'function report(err){parent.postMessage({__studio:"error",text:String(err&&err.message||err)},"*");}'
       + 'window.addEventListener("error",function(e){report(e.message);});'
@@ -109,6 +117,13 @@ var Runner = (function () {
   function post(msg) { if (frame && frame.contentWindow) frame.contentWindow.postMessage(msg, '*'); }
 
   function load(parts, mute) { post({ __studio: 'load', parts: parts, playing: playing, mute: mute }); }
+  function pause(on) {
+    if (!playing && on) return;
+    paused = !!on; post({ __studio: 'pause', on: paused });
+    if (!paused) focusGame();
+    emit(paused ? 'paused' : 'resumed');
+  }
+  function step() { if (playing && paused) post({ __studio: 'step' }); }
 
   /* Play takes the snapshot; Stop restores it. Returns true if Stop undid something. */
   function play(parts, mute) {
@@ -120,6 +135,7 @@ var Runner = (function () {
   }
   function stop(project, mute) {
     if (!playing) return false;
+    if (paused) pause(false);
     playing = false;
     var undid = changedInPlay;
     if (snapshot) project.parts = snapshot;
@@ -138,7 +154,7 @@ var Runner = (function () {
   function mute(m) { post({ __studio: 'mute', mute: m }); }
   function focusGame() { if (frame) { try { frame.focus(); frame.contentWindow.focus(); } catch (e) {} } }
 
-  return { on: on, mount: mount, play: play, stop: stop, set: set, mute: mute, focusGame: focusGame,
-           isPlaying: function () { return playing; }, isReady: function () { return ready; },
+  return { on: on, mount: mount, play: play, stop: stop, set: set, mute: mute, focusGame: focusGame, pause: pause, step: step,
+           isPlaying: function () { return playing; }, isPaused: function () { return paused; }, isReady: function () { return ready; },
            frame: function () { return frame; }, builtFor: function () { return builtFor; } };
 })();
