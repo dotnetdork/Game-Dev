@@ -226,6 +226,10 @@ svg.i { width: 18px; height: 18px; fill: none; stroke: currentColor; stroke-widt
 .area:has(> .dock:not(.closed):not(.inspector)) > .dock.closed { display: none; }
 .area:has(> .dock:not(.closed):not(.inspector)) > .dock.closed + .split,
 .area:has(> .dock:not(.closed):not(.inspector)) > .split:has(+ .dock.closed) { display: none; }
+/* and the bottom row, with nothing in it open yet, is no row at all: a tall empty band under the game
+   read as a broken panel, and the game had that room to use (it opens with the Project window) */
+.editor:not(.dragging):not(:has(#aBottom > .dock:not(.closed))) { --bh: 0px !important; }
+.editor:not(.dragging):not(:has(#aBottom > .dock:not(.closed))) #aBottom { display: none; }
 body.resizing-x, body.resizing-x * { cursor: col-resize !important; user-select: none; }
 body.resizing-y, body.resizing-y * { cursor: row-resize !important; user-select: none; }
 body.resizing-x iframe, body.resizing-y iframe { pointer-events: none; }   /* the game frame would swallow the drag */
