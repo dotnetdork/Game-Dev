@@ -111,6 +111,7 @@ from the first build.
 |---|---|---|---|
 | **Director** (unseen) | quest start, a kid is stuck, a ticket is picked | the next quest or beat, a nudge | nothing, it chooses |
 | **Character** (one agent, a character sheet per persona) | every beat's `say`; every typed line | `{ reply, choose, actions }` | Inspector settings, via `set()` |
+| **Designer** (D42, D48) | a design round: every kid turn in it, and the round's wrap-up | `{ reply, doc, decided, card, idea }`; at the wrap, `tickets` | the design doc, only in the kid's words (the page checks) |
 | **Builder** | a typed request beyond settings (new part, new behaviour, code) | ops on parts and code, and what it changed | the project, with a snapshot for Undo |
 | **Art scout** | "Something else…", or asking for art | 3 best matches from the whole library | nothing; the kid picks |
 | **Checker** | after every Builder change | does the game still boot, is the change there | nothing; it can make the Builder retry |
@@ -208,9 +209,10 @@ It isn't in the kid's UI and isn't served in production.
 | Time | What | Built from |
 |---|---|---|
 | 0:00 | Sign-in, then the interview (~3 min) | §3.1–3.2 |
-| 0:05 | **First day:** play the intern's level, file tickets, fix your pick, then the Play-mode mistake, pick a hero and name, play your game | quest `first-day` (wireframe 04's beats on the engine) |
-| 0:30 | **Tickets:** pick a shift, then the next one. All four departments' first shifts exist | quests `floor-is-a-picture` / Engineering, `silent-coins` / Audio, `greybox` / Art, `harmless-lava` / Design |
-| 1:15 | **Own-game time:** 2–3 suggestions as a question card, plus ask anything. The Builder does it and shows the change in the Inspector and code | own-game mode |
+| 0:05 | **First day:** play the intern's level, file tickets, fix your pick, then the Play-mode mistake, then the rest of the board. All four departments' first shifts exist | quest `first-day` (wireframe 04's beats on the engine); `floor-is-a-picture` / Engineering, `silent-coins` / Audio, `greybox` / Art, `harmless-lava` / Design |
+| 0:45 | **The design meeting, round 1** (D47): the idea, how you play, the goal, the fun, then the hero with the concept artist. Play as your hero | quest `first-day`, `studio/design.js` |
+| 0:55 | **Build your design:** the doc's decisions as tickets; pick one, its department builds it with you, test it, the lead designer's playtest question | quest `doc-ticket` |
+| 1:15 | **Own-game time:** design rounds 2 and 3, each filed and built the same way, plus ask anything | quest `own-game` |
 | 1:45 | **Feedback:** the kid survey as the mentor's last shift, the characters question, the recall check | quest `clock-out` |
 | (any) | The observer form, for Jay | teacher view |
 
@@ -495,3 +497,53 @@ the Mentor had said it. He picked the options below from a list of ideas.
 40. **Nothing is said on a timer.** The hint timer used to post the next hint every `hints_after`
     seconds, so a kid who didn't answer got a message every half-minute (Jay: "the robot will
     repetitively spam you"). Now it pulses the Hint button, once for each hint.
+
+### Round 10: the design doc and the design meeting (2026-09-30)
+
+After the Sept 29 UX call Jay committed (Slack, Sept 30) to the kid writing a game design document
+that the Builder builds from, with questions only when needed. Jed's reply the same day settled the
+order. Later that day, planning the meeting itself, Jay picked the options in D47–D50.
+
+41. **The design doc is the source of truth.** Nine sections in Jed's gameplay-first order ("start
+    with the things that make the game play, then move on to the next section"): the idea, how you
+    play, the goal, what makes it fun, obstacles and enemies, your hero, world and look, sound and
+    music, story and writing. Each is `empty`, `started` or `decided`, and the kid can edit any of it
+    in the Design doc tab (`studio/project.js`). The Builder and every character see it.
+42. **The doc is filled in the chat, in rounds.** Jed's loop: design → build → play → design again.
+    The page owns which sections a round covers and in what order; the AI (`ai/agents/designer.md`)
+    only talks, writes up what the kid said, and may propose a card. The page keeps only what is
+    grounded in the kid's words, the interviewer's method (§3.2).
+43. **A question card only when it is needed.** For a real choice from a closed set (which ticket,
+    a checkpoint quiz, the playtest review), for a fork in the kid's own design (D48), or when the kid
+    asks for help on an open question. Every open question carries an example so a kid knows how to
+    answer without a menu. Never on a timer (D40).
+44. **Departments file what the kid missed.** When the kid is done reporting, each problem they
+    didn't find is filed by its own department, so a missed finding never stalls the day. One finding
+    is still needed to get there.
+45. **The interview is off for Sunday.** Sign Up asks the name; the interview's code stays, switched
+    off (`STUDIO_INTERVIEW`).
+46. **Jed, Sept 30.** The editor tools stay ("I think they are great"). The course game becomes the
+    kid's game. The first hours are "Fun, Play, Build", and the course is 10–15 hours.
+47. **The design meeting comes after the board and before the hero** (Jay: "After they complete all
+    the beats, before the create a character"). It opens by naming the cards the kid earned fixing the
+    board: those are pieces of what makes a game a game. Round 1 is the core (idea, how you play, the
+    goal, the fun), about 5 minutes. Its last section is the hero, and the concept artist joins the
+    meeting for it. Later rounds come after building: obstacles and world, then sound and story, then
+    open-ended ("What would make it better?").
+48. **Discovery first, then a card only for a fork.** Each section starts with an open question; the
+    Mentor digs for the why. When the kid's answer leaves something the build must decide, the AI
+    offers a card whose options come from the kid's own idea (a pizza running from forks: when a fork
+    catches you, start over, lose a slice, or get knocked back). At most one card per section, never
+    on its first question. After three turns a section is let go, so the meeting never stalls.
+49. **The doc becomes tickets, and tickets get built** (Jay picked this over a pick card or a
+    checklist). At the end of a round the doc's new decisions are filed as tickets by department:
+    Design for the play, Art for the hero and the world, Audio for the sound. The kid picks one from
+    the board, as on the first day, and that department builds it with them (`quests/doc-ticket.yaml`).
+    The board is the running list of what they could do right now; there is no second list.
+50. **Game design is taught four ways, never as a lecture.** (1) Each doc section, once decided,
+    names its concept in one line and awards its card: Genre, Core loop, Goal, Reward, Player
+    character, Challenge, Theme, Mood, Story (the lines are `CARDS` in `studio/quest.js`). (2) The
+    meeting opens with the cards they already have. (3) After each doc ticket is built and tested, the
+    lead designer asks one playtest question on a card (how hard was it? could you tell when it
+    worked?), and the first "how hard" earns Balance. (4) The characters name a card the kid already
+    has instead of explaining it again ("that's feedback, like the coin ding").
