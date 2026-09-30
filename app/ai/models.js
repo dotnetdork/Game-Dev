@@ -67,6 +67,9 @@ const AGENT_TOOLS = {
   mentor: false,
   /* The interviewer (V2's hiring interview) knows nothing it could look up: it is a conversation. */
   interviewer: false,
+  /* The designer (V2's design rounds) is the interviewer's method on the kid's design doc, and the doc
+     is in its prompt: nothing to look up. */
+  designer: false,
   /* The studio's Builder (V2) edits the kid's game, so a docs lookup would be worth something, and it
      is still OFF, for three reasons. Every tool round re-sends the whole prompt, the kid's game code
      included, which roughly doubles the wait for a class that is watching a spinner; the Builder's
@@ -103,7 +106,7 @@ function resolveModel(agent) {
      unless someone deliberately gives it one of its own. Without this it had no entry in
      AGENT_MODELS at all, fell through to DEFAULT_PROVIDER, and a course configured for Anthropic
      tried to reach a local Ollama that was not running: "The AI service is not reachable". */
-  if (!spec && (agent === 'lab-tutor' || agent === 'design-coach' || agent === 'mentor' || agent === 'interviewer')) spec = AGENT_MODELS.tutor || ai.agentModel('tutor') || '';
+  if (!spec && (agent === 'lab-tutor' || agent === 'design-coach' || agent === 'mentor' || agent === 'interviewer' || agent === 'designer')) spec = AGENT_MODELS.tutor || ai.agentModel('tutor') || '';
   /* The studio's Builder writes code, so it rides on the coder's model for the same reason: without
      this it would fall through to DEFAULT_PROVIDER, which on a course configured for Anthropic is a
      local Ollama that is not running. No BUILDER_MODEL of its own until someone needs one. */

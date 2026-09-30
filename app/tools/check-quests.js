@@ -32,5 +32,12 @@ const split = quests.checkQuest({ id: 'y', title: 'y', department: 'art', charac
   beats: [{ id: 'a', ask: { text: 'Ok?', answers: [{ text: 'Ha', 'got it': null, goto: 'next' }] } }] }, 'y.yaml', []);
 check('text split at a comma is caught', split.some(function (p) { return /got it/.test(p) && /quotes/.test(p); }));
 
+// a design round says which round it is (studio/design.js ROUNDS), and only a design round has one
+const rounds = quests.checkQuest({ id: 'z', title: 'z', department: 'studio', character: 'mentor',
+  beats: [{ id: 'a', goal: 'Plan it', ask: { text: 'Go.', from: 'design', round: 4 } }, { id: 'b', goal: 'Plan it', ask: { text: 'Go.', from: 'design', round: 'more' } },
+    { id: 'c', goal: 'Name it', ask: { text: 'Name?', from: 'names', round: 1 } }] }, 'z.yaml', []);
+check('a design round that does not exist is refused, and "more" is one', rounds.filter(function (p) { return /round: 1, 2, 3 or more/.test(p); }).length === 1 && /beat "a"/.test(rounds.join(' ')), rounds.join(' / '));
+check('a round on a question that is not a design round is refused', rounds.some(function (p) { return /beat "c"/.test(p) && /only for from: design/.test(p); }), rounds.join(' / '));
+
 if (failed) { console.log('\n' + failed + ' check(s) failed'); process.exit(1); }
 console.log('\nquests: all checks passed');

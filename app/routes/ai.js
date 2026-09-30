@@ -294,7 +294,7 @@ function mount(app, deps) {
        should be tidied in its own commit, the way `studentId` still needs to be. */
     const history = sanitizeHistory(req.body && req.body.history);
     let agent = (req.body && req.body.agent) || 'coder';
-    if (['coder', 'tutor', 'lab-tutor', 'quiz', 'grader', 'design-coach', 'mentor', 'interviewer', 'builder'].indexOf(agent) < 0) agent = 'coder';   // controller: keep to known agents
+    if (['coder', 'tutor', 'lab-tutor', 'quiz', 'grader', 'design-coach', 'mentor', 'interviewer', 'designer', 'builder'].indexOf(agent) < 0) agent = 'coder';   // controller: keep to known agents
     const spec = resolveModel(agent);
     /* The whole-request deadline every provider call measures itself against, stamped on this
        request's own spec so the retry chain cannot outlive it however many times it goes round — and
@@ -541,6 +541,53 @@ function mount(app, deps) {
       Object.keys(learned).forEach(function (k) { if (learned[k] === undefined || (Array.isArray(learned[k]) && !learned[k].length)) delete learned[k]; });
       return res.json({ reply: String(m.reply || '').trim().slice(0, 600) || 'Tell me more?', learned: learned,
         show: one(m.show, ['jumps', 'sounds', 'engine', 'words', 'coin']) || null, done: m.done === true });
+    }
+
+    /* DESIGNER: the design meeting (ai/agents/designer.md, spec D42, D48). The interviewer's method on
+       the kid's game design doc: the page (studio/design.js) owns which section is being talked about
+       and when a round ends, and the AI talks, writes up what the kid said, and may offer a card when
+       the kid's idea leaves a fork. Everything here is only cleaned; the page checks each `doc` line
+       against what the kid actually typed and keeps their own words when it isn't grounded.
+       - `doc`: { section: text } for the nine sections of studio/project.js SECTIONS, and nothing else.
+       - `card`: a question and 2 to 4 options, each a short label and a one-line description. The
+         server allows up to 8 answers on a card the mentor reads (`choose` above); a design fork is
+         smaller on purpose, because a 10-year-old reads every option.
+       - `tickets`: only on the round's wrap-up, the doc's new decisions written up for the board,
+         cleaned exactly as the mentor's one `ticket` is, at most 4. */
+    if (agent === 'designer') {
+      let raw;
+      const dsSystem = promptFor('designer', ctx, res);
+      if (!dsSystem) return;
+      try {
+        raw = await callAI(spec, dsSystem, message, true, history, null, onTool);
+        if (!String(raw || '').trim() && Date.now() < spec.deadline - 20000) raw = await callAI(spec, dsSystem, message, true, history, null, onTool);
+        // prose instead of JSON loses the doc and the card: put it into the shape (the mentor's retry)
+        if (String(raw || '').trim() && !extractJSON(raw) && Date.now() < spec.deadline - 20000) {
+          const prose = String(raw).trim();
+          const again = await callAI(spec, dsSystem, 'That answer was not JSON. Put it into the JSON object your instructions describe, `read` first, with `doc` filled from what they said.',
+            history.concat([{ role: 'user', content: message }, { role: 'assistant', content: prose }]), null, onTool).catch(function () { return null; });
+          if (extractJSON(again)) raw = again;
+        }
+      } catch (e) { return res.status(502).json({ reply: 'The designer is not reachable right now (' + e.message + ').' }); }
+      if (!String(raw || '').trim()) return res.status(502).json({ reply: 'The designer gave an empty answer.' });
+      const m = extractJSON(raw) || { reply: String(raw || '').trim() };
+      const str = function (v, n) { return typeof v === 'string' && v.trim() ? v.replace(/\s+/g, ' ').trim().slice(0, n) : null; };
+      const SECTIONS = ['idea', 'play', 'goal', 'fun', 'obstacles', 'hero', 'world', 'sound', 'story'];
+      const doc = {};
+      if (m.doc && typeof m.doc === 'object' && !Array.isArray(m.doc)) SECTIONS.forEach(function (k) { const t = str(m.doc[k], 300); if (t) doc[k] = t; });
+      const c = m.card, opts = c && typeof c === 'object' && Array.isArray(c.options) ? c.options.slice(0, 4).map(function (o) {
+        return (o && typeof o === 'object') ? { text: str(o.text, 40), sub: str(o.sub, 80) } : { text: str(o, 40), sub: null };
+      }).filter(function (o) { return o.text; }) : [];
+      const card = (c && str(c.text, 90) && opts.length >= 2) ? { text: str(c.text, 90), options: opts } : null;
+      const DEPTS = ['engineering', 'art', 'audio', 'design'];
+      const tickets = Array.isArray(m.tickets) ? m.tickets.slice(0, 4).filter(function (t) { return t && typeof t === 'object' && str(t.title, 70); }).map(function (t) {
+        return { title: str(t.title, 70), department: DEPTS.indexOf(t.department) >= 0 ? t.department : null, detail: str(t.detail, 200), done: str(t.done, 160),
+          sections: (Array.isArray(t.sections) ? t.sections : []).filter(function (k) { return SECTIONS.indexOf(k) >= 0; }).slice(0, 4) };
+      }) : [];
+      const out = { reply: str(m.reply, 600) || '', doc: doc, decided: m.decided === true, card: card, idea: str(m.idea, 200), tickets: tickets };
+      tel.detail('designer-turn', { who: seen.who, said: message, studio: String((req.body && req.body.studio) || '').slice(0, 12000),
+        raw: String(raw || '').slice(0, 6000), parsed: !!extractJSON(raw), read: m.read || null, out: out, ms: Date.now() - t0 });
+      return res.json(out);
     }
 
     if (agent === 'tutor' || agent === 'lab-tutor') {

@@ -80,10 +80,12 @@ var Quest = (function () {
   }
   function voice() { return frame() ? (VOICE[character(beat())] || 'm') : (Chat.active() || 'm'); }
   /* {game}: the game's name. {role}: who is talking ("the lead programmer"). {ticket}: the ticket this
-     shift is fixing, as the board titles it. */
+     shift is fixing, as the board titles it. {cards}: the cards they have, by name ("Collider,
+     Feedback and Risk"), which is how the design meeting opens (spec D50). */
   function fill(t) {
     var f = frame(), tk = f && ticketFor(f) && ticketOf(ticketFor(f));
     return String(t).replace(/\{game\}/g, S.name || 'your game')
+      .replace(/\{cards\}/g, function () { return cardList(S.cards); })
       .replace(/\{role\}/g, NAME[character(f && beat(f), f)] || 'the Mentor')
       .replace(/\{ticket\}/g, tk ? tk.title.charAt(0).toLowerCase() + tk.title.slice(1) : 'this ticket');
   }
@@ -515,9 +517,22 @@ var Quest = (function () {
     collider: ['Collider', 'The invisible shape that makes a part solid, so things can stand on it.'],
     feedback: ['Feedback', 'The game telling you something happened: a sound, a flash, a number.'],
     readability: ['Readability', 'A player can tell what everything is at a glance.'],
-    risk: ['Risk', 'A danger that makes the player’s choices matter.']
+    risk: ['Risk', 'A danger that makes the player’s choices matter.'],
+    /* The design meeting's concepts, one per section of the doc (spec D50; design.js CONCEPT says which
+       section teaches which, and says this line when the section is decided). */
+    genre: ['Genre', 'The kind of game it is: a platformer, a racer, a puzzle…'],
+    'core-loop': ['Core loop', 'What the player does again and again: run, jump, grab.'],
+    goal: ['Goal', 'What the player is trying to do. Without one it’s a toy, not a game.'],
+    reward: ['Reward', 'Something good the game gives you for doing well.'],
+    'player-character': ['Player character', 'Who you are in the game, and what they can do.'],
+    challenge: ['Challenge', 'What makes the goal hard, so winning feels good.'],
+    theme: ['Theme', 'The world it’s set in, which ties how everything looks together.'],
+    mood: ['Mood', 'Music and sound set how a game feels: spooky, fast, happy.'],
+    story: ['Story', 'Why the player is doing all this.'],
+    balance: ['Balance', 'Not too easy, not too hard.']
   };
-  function cardOf(c) { var k = CARDS[c]; return k ? { name: k[0], text: k[1] } : { name: c, text: '' }; }
+  function cardOf(c) { var k = CARDS[c]; return k ? { id: c, name: k[0], text: k[1] } : { id: c, name: c, text: '' }; }
+  function cardList(ids) { var n = ids.map(function (c) { return cardOf(c).name; }); return n.length > 1 ? n.slice(0, -1).join(', ') + ' and ' + n[n.length - 1] : n[0] || 'no cards yet'; }
 
   /* ---------- questions ---------- */
   function ask(a) {
@@ -527,6 +542,7 @@ var Quest = (function () {
     if (a.from === 'heroes') return askHero(a, who);
     if (a.from === 'names') return askName(a, who);
     if (a.from === 'feedback') return askFeedback(a, who);
+    if (a.from === 'design') return askDesign(a, who);
     var quiz = a.answers.some(function (x) { return x.correct; });
     var left = f.left && f.left.q === a.text ? f.left.list : a.answers;
     Chat.ask(fill(a.text), left.map(function (x) {
@@ -1032,6 +1048,19 @@ var Quest = (function () {
     }, { who: who, card: { text: fill(a.text), options: examples(a) } });
   }
 
+  /* A round of the design meeting (design.js runs it). It gets the engine's own ways of saying,
+     awarding and logging, and `still`, which is false once the kid has moved on (a reload, a new beat),
+     so a late answer from the AI lands nowhere. */
+  function askDesign(a, who) {
+    var f = frame(), at = f.beat;
+    Design.round({ round: a.round || 1, text: fill(a.text), who: who, name: NAME[BY_VOICE[who] || 'mentor'],
+      say: function (lines) { say(lines, who); }, award: award, card: cardOf,
+      cards: function () { return S.cards.map(cardOf); }, hero: function () { return S.hero || null; },
+      idea: function (t) { idea(t); }, log: log, aiUp: aiUp,
+      still: function () { return frame() === f && f.beat === at; },
+      done: function () { if (frame() === f && f.beat === at) next(); } });
+  }
+
   /* The Director sums up the day: the AI's words when it's up, the facts when it isn't. */
   function recap(then) {
     var fixed = Object.keys(S.tickets).filter(function (id) { return S.tickets[id].status === 'done'; }).length;
@@ -1380,6 +1409,7 @@ var Quest = (function () {
       skip: function () { var f = frame(); if (!f) return; f.completing = false; next(); },
       jump: function (questId, beatIndex) { S.stack = [{ quest: questId, beat: beatIndex || 0, flags: {}, fired: {} }]; save(); enter(); },
       fire: function (ev) { handle(ev); },
+      aiBack: function () { aiFails = 0; },   // check-playthrough: a stand-in AI after the AI-off run
       onPaint: function (fn) { devPaint = fn; }
     } };
 })();

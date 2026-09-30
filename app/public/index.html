@@ -251,6 +251,8 @@
                  Runner, Chat, Save.
      views.js    the centre's Scene, Game and game.js views. Needs Project, Runner, Builder, Chat,
                  Editor; editor.js calls it at run time only.
+     design.js   the design meeting: the kid's design doc, asked in the chat. Needs Project, Chat,
+                 Views; quest.js starts it and hands it what it needs, so it loads before quest.js.
      quest.js    the quest engine and tickets. Needs all of the above.
      boot.js     loads the course and starts it. Last.
      dev.js      localhost only (the server refuses it on a deployment): the dev panel. -->
@@ -263,6 +265,7 @@
 <script src="/studio/chat.js"></script>
 <script src="/studio/editor.js"></script>
 <script src="/studio/views.js"></script>
+<script src="/studio/design.js"></script>
 <script src="/studio/quest.js"></script>
 <script src="/studio/boot.js"></script>
 <script src="/studio/dev.js" onerror="this.remove()"></script>

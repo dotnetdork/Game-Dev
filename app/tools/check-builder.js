@@ -343,6 +343,26 @@ function runServerChecks() {
     .then(function (r) {
       check('an oversized hero becomes null', r.d.hero === null, JSON.stringify(r.d.hero).slice(0, 40));
       check('and no build is null', r.d.build === null, JSON.stringify(r.d.build));
+
+      /* ---------- 12. the designer's answer is cleaned (routes/ai.js; design.js checks the rest) ---------- */
+      return scenario([JSON.stringify({ read: 'A fork.', reply: 'Forks! What happens when one gets you?',
+        doc: { goal: 'Escape the kitchen. ' + 'x'.repeat(400), secret: 'not a section', fun: 7 }, decided: 'yes',
+        card: { text: 'When a fork gets you?', options: [{ text: 'Lose a slice', sub: 'Three lives.' }, 'Start over', { text: '' }, { text: 'A', sub: 'a' }, { text: 'B', sub: 'b' }] },
+        idea: 'a boss fork', tickets: [{ title: 'Forks cost a slice', department: 'kitchen', detail: 'A hit takes a slice.', sections: ['goal', 'nope'] }, { detail: 'no title' }] })],
+      'if the forks get you', { agent: 'designer' });
+    })
+    .then(function (r) {
+      console.log('\n--- the designer ---');
+      check('doc keeps only the sections, each cut to 300', Object.keys(r.d.doc).join() === 'goal' && r.d.doc.goal.length === 300, JSON.stringify(Object.keys(r.d.doc)));
+      check('decided is true only when it is true', r.d.decided === false, JSON.stringify(r.d.decided));
+      check('a card keeps at most 4 options with a label, a plain string being a label', !!r.d.card && r.d.card.options.length === 3 && r.d.card.options[1].text === 'Start over' && r.d.card.options[1].sub === null,
+        JSON.stringify(r.d.card));
+      check('tickets keep a title, a known department or none, and only real sections', r.d.tickets.length === 1 && r.d.tickets[0].department === null && r.d.tickets[0].sections.join() === 'goal', JSON.stringify(r.d.tickets));
+      check('the idea is passed through', r.d.idea === 'a boss fork', JSON.stringify(r.d.idea));
+      return scenario([JSON.stringify({ reply: 'Hi!', card: { text: 'One?', options: [{ text: 'Only one' }] } })], 'hi', { agent: 'designer' });
+    })
+    .then(function (r) {
+      check('a card with one option is no card', r.d.card === null, JSON.stringify(r.d.card));
       return new Promise(function (res) { setTimeout(res, 300); });
     })
     .then(function () {

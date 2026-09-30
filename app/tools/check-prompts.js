@@ -33,7 +33,7 @@ function check(name, ok, detail) {
 
 /* Every agent the server will dispatch to. Kept here rather than imported so that adding an agent
    to the whitelist without adding its .md fails here rather than at 4pm on a Sunday. */
-const AGENTS = ['coder', 'tutor', 'lab-tutor', 'quiz', 'grader', 'design-coach', 'mentor', 'interviewer', 'builder'];
+const AGENTS = ['coder', 'tutor', 'lab-tutor', 'quiz', 'grader', 'design-coach', 'mentor', 'interviewer', 'designer', 'builder'];
 
 /* A request with every field the server can send, each carrying a sentinel we can look for. The
    values are deliberately unmistakable — a real lesson title could occur by accident; SENTINEL_LESSON
@@ -141,6 +141,23 @@ AGENTS.forEach(function (agent) {
   const ex = md.indexOf('EXAMPLE') >= 0 ? md.slice(md.indexOf('EXAMPLE')) : '';
   check('interviewer: the prompt shows the ladder (a part, a why and a contrast)', /"element"/.test(ex) && /"why"/.test(ex) && /"over"/.test(ex),
     ex ? 'worked example present' : 'no EXAMPLE section');
+})();
+
+/* The designer, the same way: every field the route sends on (routes/ai.js, the designer block's
+   `out`) is one the prompt asks for, and every doc section the route keeps is one the prompt names.
+   A card is only as good as the prompt's example of one, so the example has to show a whole card. */
+(function () {
+  const md = fs.readFileSync(path.join(AI_DIR, 'agents', 'designer.md'), 'utf8');
+  const route = fs.readFileSync(path.join(__dirname, '..', 'routes', 'ai.js'), 'utf8');
+  const block = route.slice(route.indexOf("agent === 'designer'"));
+  const out = ((block.match(/const out = \{([^}]*)\}/) || ['', ''])[1].match(/(\w+):/g) || []).map(function (k) { return k.slice(0, -1); });
+  const secs = ((block.match(/const SECTIONS = \[([^\]]*)\]/) || ['', ''])[1].match(/'(\w+)'/g) || []).map(function (k) { return k.slice(1, -1); });
+  const unasked = out.concat(secs, ['tickets']).filter(function (k) { return md.indexOf('"' + k + '"') < 0; });
+  check('designer: every field the route keeps is one the prompt asks for', out.length >= 5 && secs.length === 9 && unasked.length === 0,
+    unasked.length ? 'never asked for: ' + unasked.join(', ') : out.length + ' fields, ' + secs.length + ' sections');
+  const ex = md.indexOf('EXAMPLES') >= 0 ? md.slice(md.indexOf('EXAMPLES')) : '';
+  check('designer: the prompt shows a whole card (a question, options, a line for each)', /"card": \{"text"/.test(ex) && /"options": \[\{"text"/.test(ex) && /"sub"/.test(ex),
+    ex ? 'worked example present' : 'no EXAMPLES section');
 })();
 
 /* The flip side, as a note rather than a failure: context the server assembles, sends, and the

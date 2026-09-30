@@ -34,7 +34,10 @@ const COMPONENTS = ['coinArt', 'coinSound', 'coinSize', 'lavaArt', 'lavaSize', '
    not a preselected card). They are asked in the chat with no card (spec D43); their `examples` are
    the placeholder's example and the suggestions a kid gets by saying "idk" (Jay, 2026-09-29: without
    them a kid can't tell what's wanted); tapping one is typing it. */
-const PICKERS = ['tickets', 'findings', 'heroes', 'names', 'feedback'];
+/* `design` is a round of the design meeting (studio/design.js): its `text` is the round's opening line,
+   and `round` says which sections it covers (design.js ROUNDS). */
+const PICKERS = ['tickets', 'findings', 'heroes', 'names', 'feedback', 'design'];
+const ROUNDS = [1, 2, 3, 'more'];
 /* `hints` is a ladder, where → which → how (review §4, rule 3): one rung every `hints_after` seconds,
    or at once when the kid types "help", "stuck" or "idk". Never the answer before the last rung. */
 /* `goal` is the step's task line, pinned under the chat's header while the step runs (Jay,
@@ -49,7 +52,7 @@ const HANDLER_KEYS = ['when', 'say', 'instruct', 'once', 'flag', 'cue'];
 /* `fixed`: the kid says a ticket they filed themselves is fixed, after testing it with Play (quest.js
    claimFixed). It is how a shift with no set answer ends (your-ticket.yaml). */
 const COND_KEYS = ['event', 'set', 'select', 'play', 'stop', 'reverted', 'state', 'flag', 'not_flag', 'seen_at_least', 'seen_none', 'playing', 'filed', 'built', 'fixed'];
-const ASK_KEYS = ['text', 'answers', 'from', 'then', 'if_none', 'examples'];
+const ASK_KEYS = ['text', 'answers', 'from', 'then', 'if_none', 'examples', 'round'];
 /* One speaker, one message (Jay, 2026-09-29; chat.js says why): the lines of one `say` land as ONE
    bubble, so the whole list is what's counted. A hint is shown alone, so each hint is counted alone.
    An instruction (`instruct`) is one short line of what to do now. */
@@ -109,6 +112,8 @@ function checkAsk(list, where, ask, beatIds) {
   if (ask.if_none !== undefined && beatIds.indexOf(ask.if_none) < 0) problem(list, where, 'if_none "' + ask.if_none + '" is not a beat in this quest');
   if (ask.from !== undefined) {
     if (PICKERS.indexOf(ask.from) < 0) problem(list, where, 'ask.from must be one of ' + PICKERS.join(', '));
+    if (ask.from === 'design' && ROUNDS.indexOf(ask.round) < 0) problem(list, where, 'a design round needs round: 1, 2, 3 or more');
+    if (ask.from !== 'design' && ask.round !== undefined) problem(list, where, 'round is only for from: design');
     if (ask.examples !== undefined && (!Array.isArray(ask.examples) || ask.examples.length > 4 || ask.examples.some(function (x) { return typeof x !== 'string' || !x.trim(); }))) {
       problem(list, where, 'examples is a list of at most 4 short answers');
     }

@@ -405,13 +405,39 @@ async function launch() {
 
     /* the hero, once the board is clear (first-day.yaml, its-yours). The shifts in between are the
        same as the two above, so the page jumps there. */
-    where = 'the first day: her hero, after the board';
+    where = 'the first day: the design meeting, after the board';
     await p.evaluate(function () {
       Object.keys(Quest.dev.state().tickets).forEach(function (id) { Quest.dev.state().tickets[id].status = 'done'; });
       Quest.dev.jump('first-day', Quest.dev.course().quests['first-day'].beats.map(function (b) { return b.id; }).indexOf('its-yours'));
     });
-    await waitLog('The board is clear!', 9000);
+    /* The design meeting (spec D47-D50), with the AI off: round 1 is the page's own questions, and her
+       words go into the doc as she typed them. Her idea is already in the doc (she typed it in the
+       tab above), so round 1 starts on how you play. */
+    await waitLog('The board is clear', 9000);
+    // the page jumped here, so she has the cards of the shifts played above, not the whole board's
+    check('the meeting opens by naming the cards the board earned her', /earned you Feedback and Play mode\./.test(await log()), ((await log()).match(/earned you [^.]*\./) || ['(no line)'])[0]);
+    await waitLog('Which keys do what, like', 9000);
+    check('the doc is open beside the chat while she plans', await p.evaluate(function () { return Views.current() === 'doc'; }));
+    check('a section already decided is not asked again', !/What kind of game is it/.test(await log()));
+    await type('run and jump with the arrows');
+    await waitLog('How do you win? How do you lose, like', 9000);
+    await type('lol');
+    await waitLog('Say it any way you like', 9000);
+    await type('grab every coin, lava gets you');
+    await waitLog('what’s the best moment in it', 9000).catch(function () {});
+    await waitLog('why is it fun, like', 9000);
+    await type('idk');
+    await p.waitForSelector('#qcard.typed .qopt', { timeout: 6000 });
+    check('"idk" in the meeting brings that section\'s ideas', /Jumping over lava just in time/.test(await options()), await options());
+    await opt('Jumping over lava just in time');
+    await waitLog('The concept artist is joining us', 9000);
+    const meet = await p.evaluate(function () { var s = Project.doc().sections; return { play: s.play.text + ' [' + s.play.state + ']', goal: s.goal.text + ' [' + s.goal.state + ']', fun: s.fun.text + ' [' + s.fun.state + ']', cards: Quest.dev.state().cards.slice() }; });
+    check('round 1 writes her own words into the doc, decided', meet.play === 'run and jump with the arrows [decided]' && meet.goal === 'grab every coin, lava gets you [decided]' && meet.fun === 'Jumping over lava just in time [decided]', JSON.stringify(meet));
+    check('each section decided teaches its concept and earns its card', ['core-loop', 'goal', 'reward'].every(function (c) { return meet.cards.indexOf(c) >= 0; }) && meet.cards.indexOf('genre') < 0 && /Designers call that the goal/.test(await log()), meet.cards.join(', '));
+    await shot(p, 'p02a-design-meeting');
+    where = 'the first day: her hero, after the meeting';
     await waitLog('What’s yours?', 9000);
+    check('back on the game for the hero', await p.evaluate(function () { return Views.current() === 'game'; }));
     check('the hero is Art\'s: the Mentor hands over to the concept artist (Jay, Sept 30)', await p.$eval('#dMentor', function (e) { return e.getAttribute('data-who'); }) === 'c');
     await type('idk');
     await p.waitForSelector('#qcard.typed .qopt', { timeout: 6000 });
@@ -477,9 +503,56 @@ async function launch() {
     await waitLog('Ticket closed!', 9000);
     await p.waitForFunction(function (id) { return Quest.dev.state().tickets[id].status === 'done'; }, own.id, { timeout: 9000 });
     check('changed and tested, "fixed" closes it, crossed out on the board', await p.$eval('#ticketList [data-key="ticket:' + own.id + '"]', function (b) { return b.classList.contains('done'); }));
+
+    /* 4b. the design meeting with a stand-in designer (spec D48): the page keeps the doc honest. A
+       write-up of things she never said is refused for her own words, a card on a section's first
+       answer is not shown, and a card after that is, with its pick landing in the doc. */
+    where = 'the design meeting with a stand-in designer';
+    let dTold = '';
+    const DSTUB = {
+      'you win if you escape the kitchen': { reply: 'Escape the kitchen! How do you lose?', doc: { goal: 'Collect 100 gold stars on the moon.' }, decided: false,
+        card: { text: 'Too early for a card', options: [{ text: 'One', sub: 'a' }, { text: 'Two', sub: 'b' }] } },
+      'if the forks get you': { reply: 'Forks! What happens when one gets you?', doc: { goal: 'Escape the kitchen. The forks chase you.' }, decided: false,
+        card: { text: 'When a fork gets you, what happens?', options: [{ text: 'Start over', sub: 'Back to the start. Hard!' }, { text: 'Lose a slice', sub: 'Three slices, three lives.' }] } },
+      'Picked: Lose a slice': { reply: 'Three slices, three lives. Fair!', doc: { goal: 'Escape the kitchen. A fork hit costs a slice; lose all three and you lose.' }, decided: true },
+      'dodging at the last second, and a boss fork': { reply: 'A last-second dodge, yes!', doc: { fun: 'Dodging a fork at the last second.' }, decided: true, idea: 'A boss fork at the end' }
+    };
+    await p.route('**/api/ai', async function (route) {
+      const b = JSON.parse(route.request().postData() || '{}');
+      if (b.agent === 'designer') dTold = b.studio || '';
+      const a = DSTUB[b.message] || { reply: 'Tell me more?', doc: {}, decided: false };
+      await route.fulfill({ status: 200, contentType: 'application/json', body: JSON.stringify(Object.assign({ card: null, idea: null, tickets: [] }, a)) });
+    });
+    await p.evaluate(function () {
+      Quest.dev.aiBack(); Project.writeDoc('goal', '', 'kid'); Project.writeDoc('fun', '', 'kid');
+      Quest.dev.jump('first-day', Quest.dev.course().quests['first-day'].beats.map(function (b) { return b.id; }).indexOf('design-1'));
+    });
+    const dlog = function () { return p.evaluate(function () { return document.getElementById('log').textContent; }); };
+    await p.waitForFunction(function () { return /How do you win\? How do you lose, like/.test(document.getElementById('log').textContent); }, null, { timeout: 9000 });
+    await type('you win if you escape the kitchen');
+    await waitLog('Escape the kitchen! How do you lose?', 9000);
+    const g1 = await p.evaluate(function () { return Project.doc().sections.goal; });
+    check('stand-in designer: a write-up of what she never said is refused, and her own words go in', g1.text === 'you win if you escape the kitchen' && g1.by === 'kid' && g1.state === 'started', JSON.stringify(g1));
+    check('stand-in designer: no card on a section\'s first answer', await p.isHidden('#qcard'));
+    check('stand-in designer: it is told the section it is on, and that a card is not allowed yet', /NOW: "goal"/.test(dTold) && /No card yet/.test(dTold), dTold.split('\n').filter(function (x) { return /^NOW/.test(x); })[0] || '(no NOW line)');
+    await type('if the forks get you');
+    await p.waitForSelector('#qcard:not([hidden]) .qopt', { timeout: 9000 });
+    check('stand-in designer: a card for a fork in HER idea, after the first answer', /Lose a slice/.test(await options()) && /When a fork gets you/.test(await p.innerText('#qcard')), await options());
+    check('stand-in designer: the reply leads into the card without asking its question twice', /Forks!/.test(await dlog()) && !/Forks! What happens when one gets you\?/.test(await dlog()));
+    await shot(p, 'p04b-design-card');
+    await opt('Lose a slice');
+    await p.waitForFunction(function () { return Project.doc().sections.goal.state === 'decided'; }, null, { timeout: 9000 });
+    const g2 = await p.evaluate(function () { return Project.doc().sections.goal; });
+    check('stand-in designer: the pick is decided, in the write-up that is hers', /A fork hit costs a slice/.test(g2.text) && g2.by === 'ai', JSON.stringify(g2));
+    await waitLog('why is it fun, like', 9000);
+    await type('dodging at the last second, and a boss fork');
+    await waitLog('The concept artist is joining us', 9000);
+    const f2 = await p.evaluate(function () { return { fun: Project.doc().sections.fun, ideas: Project.doc().ideas.slice(-2) }; });
+    check('stand-in designer: the fun is decided, and the boss she mentioned is kept for later', f2.fun.state === 'decided' && f2.ideas.indexOf('A boss fork at the end') >= 0, JSON.stringify(f2));
+    await p.unroute('**/api/ai');
   } catch (e) {
     check('the playthrough got through ' + where, false, e.message.split('\n')[0]);
-    await shot(p, 'pzz-failed').catch(function () {});
+    await shot(p, 'pzz-design-failed').catch(function () {});
   }
 
   /* 5. the interview with a stand-in AI. Each thing the kid types gets a canned director's answer,

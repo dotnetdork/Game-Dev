@@ -100,15 +100,27 @@ beats:
       from: tickets
       then: again          # back here after each ticket, until the board is clear
 
+  # The design meeting (spec D47-D50; Jay, Sept 30: "After they complete all the beats, before the
+  # create a character, I'd like them to move on to building a game design document"). It opens on
+  # the cards the board earned them, since every game has those, then round 1 (studio/design.js) asks
+  # the core of THEIR game into the Design doc tab: the idea, how you play, the goal, the fun.
   - id: its-yours
-    do: { stop: true, close_inspector: true }
+    do: { stop: true, close_inspector: true, reveal: [doc] }
     say:
-      - The board is clear! Every fix went into YOUR game, @name.
-      - Now your hero. Art’s concept artist designs how things look. Over to them!
+      - The board is clear, @name! Fixing it earned you {cards}. Every game has those.
+      - Now let’s design YOUR game. I’ll write it down as we go.
+
+  - id: design-1
+    goal: Plan your game with the Mentor
+    ask:
+      text: Four quick questions, then we build it.
+      from: design
+      round: 1
 
   # The hero is Art's to draw, and within Art the concept artist's, who designs characters and assets
   # (Jay, Sept 30: "this here should be a handoff to a specific branch of the art department that
-  # handles designing assets"). The Mentor guides the day; the departments do the work.
+  # handles designing assets"). The Mentor guides the day; the departments do the work. Round 1's
+  # last line hands over to them (design.js ROUNDS), so the hero is part of the meeting.
   - id: your-hero
     goal: Describe your game’s hero
     character: concept-artist
@@ -116,6 +128,7 @@ beats:
       text: Hi @name! Every game needs a hero. What’s yours? A dragon, a robot, a pizza… anything!
       from: heroes
       examples: [A dragon, A robot, A cat, A pizza with legs]
+    award: { card: player-character }   # the doc's hero section's concept (spec D50)
 
   - id: play-yours
     goal: Play your game and grab a coin
