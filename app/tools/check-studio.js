@@ -103,7 +103,7 @@ check('every event the quests wait on is one the game sends', never.length === 0
 
 /* 5: what a kid must never get */
 const server = read(path.join(__dirname, '..', 'server.js'));
-const guard = server.indexOf("app.get('/studio/dev.js'"), stat = server.indexOf("app.use(express.static(path.join(ROOT, 'public')))");
+const guard = server.indexOf("app.get('/studio/dev.js'"), stat = server.indexOf("app.use(express.static(path.join(ROOT, 'public')");
 check('the dev panel is refused on a real deployment, before static files are served',
   guard > 0 && stat > guard && /auth\.isHosted\(\)\) return res\.status\(404\)/.test(server.slice(guard, guard + 200)));
 check('the kids\' page has no reviewer controls', !/Skip ahead|Restart the day|revSkip/.test(PAGES['index.html']));

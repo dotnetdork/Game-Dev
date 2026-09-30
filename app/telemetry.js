@@ -77,7 +77,45 @@ function record(ev, fields) {
       line = TAG + JSON.stringify({ t: e.t, ev: e.ev, who: e.who, oversize: line.length });
     }
     console.log(line);
+    student(e.who, e);
   } catch (e) { /* see the rule at the top of this file */ }
+}
+
+/* ---------------------------------------------------------------------------------------------
+ * ONE LOG PER STUDENT, WHEN A PLAYTEST TURNS IT ON (Jay, Sept 30: "set up chat logging, so that I
+ * can run a test with the chat and you can see what the chat said, what triggers were triggered, and
+ * what the bot actually did", and "configurable because when I turn it on for testing I want logs for
+ * each student and their progress throughout the entire course").
+ *
+ * STUDENT_LOGS=1 in .env. Off, nothing below writes anything. On, every event above is also
+ * appended, whole (not cut to fit a log line), to app/.data/logs/<student>.jsonl, which is on the
+ * gamedev_state volume, so it lasts the whole course across restarts and deploys. The studio sends
+ * its side too once it knows logging is on (/api/quests says so): every line the chat showed, every
+ * trigger, every AI turn with what the page did with it. tools/student-log.js reads a file back as a
+ * transcript and a list of what to fix.
+ *
+ * These files hold what children typed. They are for playtests, and are switched off (and the
+ * folder emptied) before the course is in front of a class.
+ *
+ * Appends are asynchronous and their failures are dropped: the rule at the top holds here too. */
+const fs = require('fs');
+const path = require('path');
+const LOG_DIR = path.join(__dirname, '.data', 'logs');
+function logging() { return /^(1|on|true|yes)$/i.test(String(process.env.STUDENT_LOGS || '')); }
+let dirMade = false;
+function student(who, e) {
+  try {
+    if (!logging() || !who || who === 'anon') return;
+    const file = path.join(LOG_DIR, String(who).toLowerCase().replace(/[^a-z0-9@._-]+/g, '_').slice(0, 80) + '.jsonl');
+    const write = function () { fs.appendFile(file, JSON.stringify(e) + '\n', function () {}); };
+    if (dirMade) return write();
+    fs.mkdir(LOG_DIR, { recursive: true }, function () { dirMade = true; write(); });
+  } catch (x) { /* silence */ }
+}
+/* An event for the student's file only: too big for a stdout line (the whole studio context the AI
+   was given, its raw answer), and only wanted when a playtest is logging. */
+function detail(ev, fields) {
+  try { if (logging()) student(fields && fields.who, Object.assign({ t: new Date().toISOString(), ev: String(ev) }, fields)); } catch (e) { /* silence */ }
 }
 
 /* Who is asking, from the signed session cookie and nowhere else.
@@ -97,4 +135,4 @@ function who(auth, req) {
   } catch (e) { return 'anon'; }
 }
 
-module.exports = { record: record, who: who, TAG: TAG };
+module.exports = { record: record, detail: detail, logging: logging, who: who, TAG: TAG, LOG_DIR: LOG_DIR };

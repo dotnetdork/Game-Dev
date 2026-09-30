@@ -445,6 +445,15 @@ function mount(app, deps) {
         raw = await callAI(spec, mentorSystem, message, true, history, null, onTool);
         // the same one retry as the interviewer's, for the empty answer a model sometimes gives
         if (!String(raw || '').trim() && Date.now() < spec.deadline - 20000) raw = await callAI(spec, mentorSystem, message, true, history, null, onTool);
+        /* ...and one for prose instead of JSON: prose loses `choose` and `actions`, so the kid is told
+           something was done that wasn't (provider.js, jsonNow, has the story). The prose goes back as
+           the model's own turn, to be put into the shape rather than written again. */
+        if (String(raw || '').trim() && !extractJSON(raw) && Date.now() < spec.deadline - 20000) {
+          const prose = String(raw).trim();
+          const again = await callAI(spec, mentorSystem, 'That answer was not JSON. Put it into the JSON object your instructions describe, `read` first, with `choose`, `actions` or `ticket` filled if it meant one.',
+            history.concat([{ role: 'user', content: message }, { role: 'assistant', content: prose }]), null, onTool).catch(function () { return null; });
+          if (extractJSON(again)) raw = again;
+        }
       }
       catch (e) { return res.status(502).json({ reply: 'The mentor is not reachable right now (' + e.message + ').' }); }
       const m = extractJSON(raw) || { reply: String(raw || '').trim() };
@@ -471,6 +480,12 @@ function mount(app, deps) {
       const ticket = (tk && typeof tk === 'object' && str(tk.title, 70)) ? { title: str(tk.title, 70),
         department: ['engineering', 'art', 'audio', 'design'].indexOf(tk.department) >= 0 ? tk.department : null,
         detail: str(tk.detail, 200), done: str(tk.done, 160) } : null;
+      /* The whole turn, for a playtest's student log (telemetry.js, STUDENT_LOGS): what the AI was told
+         and what it answered, above all its `read`, which is what it understood the kid to mean and is
+         never sent to the page. "It isn't comprehending me" is answered here, not guessed at. */
+      tel.detail('mentor-turn', { who: seen.who, said: message, where: seen.where, studio: String((req.body && req.body.studio) || '').slice(0, 12000),
+        raw: String(raw || '').slice(0, 6000), parsed: !!extractJSON(raw), read: m.read || null, reply: m.reply || null, fellBack: !String(m.reply || '').trim(),
+        choose: choose, actions: actions, build: build, hero: hero, ticket: ticket, ms: Date.now() - t0 });
       return res.json({ reply: String(m.reply || '').trim().slice(0, 800) || 'Hmm, say that another way?', choose: choose, actions: actions,
         build: build, hero: hero, ticket: ticket });
     }

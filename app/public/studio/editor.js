@@ -987,7 +987,6 @@ var Editor = (function () {
     b.setAttribute('aria-pressed', String(on));
     b.setAttribute('aria-label', on ? 'Open the ' + n : 'Minimize the ' + n);
     b.setAttribute('data-tip', on ? 'Open it' : 'Minimize');
-    b.querySelector('use').setAttribute('href', on ? '#i-plus' : '#i-minus');
   }
   function minimize(d, on) {
     var name = d.getAttribute('data-panel'); if (!L || !PANELS[name]) return;
@@ -1216,14 +1215,14 @@ var Editor = (function () {
       // every docked panel folds; the Game view in the middle doesn't (there'd be nothing left)
       if (PANELS[d.getAttribute('data-panel')]) {
         var m = document.createElement('button'); m.type = 'button'; m.className = 'x minb';
-        m.innerHTML = '<svg class="i" aria-hidden="true"><use href="#i-minus"/></svg>';
+        m.innerHTML = '<svg class="i" aria-hidden="true"><use href="#i-fold"/></svg>';   // a chevron that points where the panel goes (studio.css, .minb)
         m.addEventListener('click', function () { minimize(d); });
         row.insertBefore(m, row.querySelector(':scope > .x'));
       }
       row.insertBefore(b, row.querySelector(':scope > .x:not(.minb)'));   // minimize, big, then close
       row.addEventListener('dblclick', function (e) { if (e.target.closest('.tab')) { unmin(d); maximize(d); } });
-      // a tap on a folded panel's tab opens it (a drag still moves it: tabUp only runs a real drag)
-      row.addEventListener('click', function (e) { if (e.target.closest('.tab') && d.classList.contains('min')) minimize(d, false); });
+      // a tap anywhere on a folded panel's strip opens it (a drag still moves it: tabUp only runs a real drag)
+      row.addEventListener('click', function (e) { if (d.classList.contains('min') && !e.target.closest('.x')) minimize(d, false); });
       paintMax(d); paintMin(d);
     });
     $('pFolders').addEventListener('keydown', folderKeys);

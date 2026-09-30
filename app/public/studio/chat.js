@@ -161,6 +161,7 @@ var Chat = (function () {
       r.querySelector('span:last-child').textContent = 'You’re talking to the ' + (k === 'm' ? 'Mentor' : who(k)[0].toLowerCase()) + ' now';
       box.appendChild(r);
       announcer.textContent = who(k)[0] + ' is talking to you now';
+      tap('handover', k, who(k)[0]);
       then();
     };
     // the first speaker of a session, or a chat with nothing in it yet: no pause
@@ -184,6 +185,7 @@ var Chat = (function () {
     if (changed) hideHint();
     hintButton();
     taskEl.hidden = false;
+    if (changed) tap('task', active, text);
     if (changed) { taskEl.classList.remove('fresh'); void taskEl.offsetWidth; taskEl.classList.add('fresh'); announcer.textContent = 'Your task: ' + fill(text); }
   }
 
@@ -192,6 +194,7 @@ var Chat = (function () {
      anywhere but the callout and the Hint buttons, typing in the box, or a new task. */
   function hint(text, n, total) {
     var hb = $('hintBox'); if (!hb) return;
+    tap('hint', active, text, { n: n, of: total });
     rich($('hintText'), fill(text));
     $('hintN').textContent = total > 1 ? 'Hint ' + n + ' of ' + total : 'Hint';
     var was = !hb.hidden;
@@ -213,7 +216,12 @@ var Chat = (function () {
   function quieten() {
     Array.prototype.forEach.call(box.querySelectorAll('.msg:not(.old), .step:not(.old)'), function (m) { m.classList.add('old'); });
   }
+  /* Everything the chat shows, as it is shown, for the student log (quest.js, when logging is on):
+     who said it, what kind of line it is, and its words. A listener that throws is ignored. */
+  var taps = [];
+  function tap(kind, k, text, extra) { taps.forEach(function (fn) { try { fn(kind, k, fill(String(text || '')), extra); } catch (e) {} }); }
   function line(k, text) {
+    tap(k === 'k' ? 'kid' : 'said', k, text);
     var last = box.lastElementChild;
     var b = document.createElement('div');
     b.className = 'msg in' + (k === 'k' ? ' kid' : '');
@@ -246,6 +254,7 @@ var Chat = (function () {
   function event(text, icon, opts) {
     opts = opts || {};
     var ic = icon || 'i-pad', when = stamp(), words = fill(text);
+    tap('event', null, words);
     if (opts.chat) {
       var last = box.lastElementChild;
       if (last && last.classList.contains('evt') && last.getAttribute('data-text') === words) again(last, '.times');
@@ -317,6 +326,7 @@ var Chat = (function () {
   }
   /* An instruction: what to do now, as a row that isn't a bubble (the header says why). */
   function step(k, text) {
+    tap('step', k, text);
     var r = document.createElement('div'); r.className = 'step'; r.setAttribute('data-from', k);
     r.innerHTML = '<svg class="i" aria-hidden="true"><use href="#i-next"/></svg><p></p>';
     rich(r.querySelector('p'), fill(text));
@@ -378,6 +388,7 @@ var Chat = (function () {
      footer with Skip (only when the question may be skipped) and Send. While a card is up it IS the
      place to type: the chat's own box steps aside, so there is one way to answer, not two. */
   function showCard(q) {
+    tap('card', q.who || active, q.text, { options: (q.options || []).map(function (o) { return o.text; }), typed: !!q.typed });
     var a = document.activeElement;
     var wasHere = card.contains(a) || a === document.body || (box && box.contains(a)) || a === input;
     card.innerHTML = '';
@@ -583,5 +594,5 @@ var Chat = (function () {
            thinking: thinking, hide: function () { hideCard(true); }, question: function () { return question; },
            event: event, expecting: expectingNow, active: function () { return active; }, pick: function (n) { pick(n); },
            send: function (t) { if (t) typed(String(t).slice(0, 240)); },
-           history: turns, WHO: WHO, hint: hint, hideHint: hideHint, nudge: nudge, rich: rich, placeholder: placeholder };
+           onLine: function (fn) { taps.push(fn); }, history: turns, WHO: WHO, hint: hint, hideHint: hideHint, nudge: nudge, rich: rich, placeholder: placeholder };
 })();

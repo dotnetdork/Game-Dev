@@ -75,6 +75,13 @@ async function chatOnce(spec, system, msgs, wantJSON, withTools) {
        mid-string, extractJSON returns null, and the student gets "I didn't change anything" for an
        answer the model actually wrote. Output is billed as used, so the higher ceiling costs
        nothing on the turns that do not need it. */
+    /* Anthropic has no JSON mode like the two below, so a JSON agent is TOLD, on the turn it answers.
+       Without this the studio's mentor answered a conversation of plain chat lines in plain prose,
+       every time (the first student log, Sept 30: 5 of 5 turns unparsed), so its `choose`, `actions`
+       and `read` never arrived: "coin" was said to be "going on the board" and never filed, and "put
+       stone for lava" was never done. The system prompt asked for JSON; forty lines of chat history
+       outweighed it. Said at the end of the last user turn, where it is read last. */
+    if (wantJSON && !withTools) msgs = jsonNow(msgs);
     const body = { model: model, max_tokens: 8000, system: system, messages: msgs };
     if (withTools) body.tools = tools.anthropicSpecs();
     const r = await fetch('https://api.anthropic.com/v1/messages', {
@@ -160,6 +167,18 @@ function toolResultMessage(provider, call, result) {
  * user turn carrying tool_result blocks, and Anthropic wants tool results and the text that follows
  * them in the same turn. When the last message is not a user turn (the model stopped calling tools
  * on its own), a fresh user turn is correct and is what happens. */
+const JSON_NOW = 'Answer with the single JSON object your instructions describe, starting with {, and nothing else.';
+function jsonNow(msgs) {
+  const out = msgs.slice(), last = out[out.length - 1];
+  if (!last || last.role !== 'user') return out;
+  const already = JSON.stringify(last.content).indexOf('JSON object your instructions describe') >= 0;   // answerNow said it
+  if (already) return out;
+  out[out.length - 1] = Array.isArray(last.content)
+    ? { role: 'user', content: last.content.concat([{ type: 'text', text: JSON_NOW }]) }
+    : { role: 'user', content: String(last.content) + '\n\n(' + JSON_NOW + ')' };
+  return out;
+}
+
 function answerNow(provider, msgs, wantJSON) {
   const nudge = 'The tools are switched off for this reply — there are no more lookups. '
     + (wantJSON

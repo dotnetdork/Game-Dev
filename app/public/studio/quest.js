@@ -111,6 +111,18 @@ var Quest = (function () {
     try { fetch('/api/events', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: body, keepalive: true }).catch(function () {}); } catch (e) {}
   }
   window.addEventListener('pagehide', flush);
+  /* A playtest's student log (telemetry.js, STUDENT_LOGS; the server says whether it is on, with the
+     course): everything, so the log alone says what happened. `log` sends only then, so a class with
+     logging off sends nothing extra. */
+  function log(ev, fields) { if (COURSE && COURSE.logging) track(ev, fields); }
+  function logOn() {
+    if (!COURSE.logging) return;
+    Chat.onLine(function (kind, k, text, extra) {
+      log('chat', { kind: kind, from: k === 'k' ? 'kid' : (BY_VOICE[k] || k || undefined), text: String(text).slice(0, 600), extra: extra || undefined });
+    });
+    window.addEventListener('error', function (e) { log('page-error', { text: String(e.message || '').slice(0, 300), at: String(e.filename || '').split('/').pop() + ':' + e.lineno }); });
+    log('session', { screen: innerWidth + 'x' + innerHeight, ua: navigator.userAgent.slice(0, 160), stars: S.stars || 0, done: (S.done || []).slice(), tickets: Object.keys(S.tickets || {}).map(function (id) { return id + ':' + S.tickets[id].status; }) });
+  }
 
   /* ---------- conditions ---------- */
   function stateOk(map) {
@@ -640,7 +652,7 @@ var Quest = (function () {
     /* On the first day the level is grey boxes, and nothing says which box is what (Jay, Sept 30:
        "theres no way to know thats lava"). The Mentor may say what a thing is, never what's wrong
        with it, so the AI is told the names, and the script names the two a kid can't guess. */
-    var LEVEL = 'The level is all grey today, so the kid may not know what things are: the grey circles are coins; the dip in the floor between the coins is the lava; the grey block standing on the left is the player. Say what a thing is if that helps them.';
+    var LEVEL = 'The level is all grey today, so the kid may not know what things are: the grey circles are coins; the dip in the floor between the coins is the lava; the grey block standing on the left is the player. Say what a thing is only when they mention it, never to point them at something new. They are 10 and write short and misspell: "i fall", "i walk den i fell", "no soud" say what happened, and what happened is all a report needs. Never ask why or what caused it: that is the fix, and working it out is the shift\'s job.';
     var NAMES = [[/\b(gap|dip|pit|dent|low(er)? (bit|part))\b/i, 'That dip between the coins is meant to be lava.'], [/\b(dots?|circles?|balls?|round things?)\b/i, 'Those circles are coins.']];
     function named(said) { var t = said.join(' '), n = NAMES.filter(function (x) { return x[0].test(t); })[0]; return n ? n[1] + ' ' : ''; }
     /* A dig that names a planned thing is about that ticket, the same as a nudge: "There are dots ...
@@ -661,6 +673,7 @@ var Quest = (function () {
     function dig(said) {
       var n = (pending && pending.kind === 'dig' ? pending.n : 0) + 1, feel = (said.join(' ').match(FEEL) || [])[1];
       pending = { kind: 'dig', said: said, n: n, aim: (pending && pending.aim) || about(said.join(' ')) };
+      log('report', { step: 'dig', n: n, aim: pending.aim });
       var plain = named(said) + (n === 1 ? (feel ? '“' + cap(feel) + '” how? What did you see or hear that made it feel ' + feel + '?' : 'What happened with it? Tell me what you did, and what the game did.')
         : n === 2 ? 'Where in the level was that? What were you doing right then?'
         : 'Try it again and watch closely. What does the game do?');
@@ -719,6 +732,7 @@ var Quest = (function () {
     }
     // a nudge that didn't land: one more try, then leave it for its department
     function retry() {
+      log('report', { step: 'retry', aim: pending.aim, n: pending.n });
       if (pending.n === 0) { pending.n = 1; say(['Press Play and try it, then tell me what happened.'], who); Chat.placeholder(); return false; }
       return onward('That’s okay. We’ll come back to it.');
     }
@@ -784,8 +798,13 @@ var Quest = (function () {
       var planned = function () { return fresh.length ? filed(fresh, words) : hit.length ? onward('That’s ticket #' + number(hit[0].id) + ' already. Good detail.') : null; };
       var unplanned = function () { return !aim && said.length >= 2 && !STUCK.test(text) ? filedOwn({ title: said[0] }, words) : aim ? retry() : dig(said); };
       if (hit.length && !aiUp()) return planned();
+      /* Said twice, it's the finding. A kid who writes "i fall" and then "i just walk and den i fell"
+         has told us what happened, twice, in the floor ticket's own words; being asked a third time is
+         the studio not listening (Jay's playthrough, Sept 30). */
+      var again = pending && pending.kind === 'dig' ? fresh.filter(function (t) { return concrete(pending.said.join(' ')).indexOf(t) >= 0; }) : [];
+      if (again.length === 1) return filed(again, words);
       // still no problem after the follow-ups: keep it, and move on kindly
-      if (aim && pending.n >= 2) return retry();
+      if (aim && pending.n >= 2 && !fresh.length) return retry();
       if (pending && pending.n >= 3) { idea(words, true); return onward('I’ve kept that as an idea.'); }
       // a feeling is always asked about first, never sorted into a ticket on its own
       if (!pending && FEEL.test(text)) return dig(said);
@@ -800,7 +819,7 @@ var Quest = (function () {
       var aimAt = aim ? unfiled.indexOf(aim) + 1 : 0;
       mentor(words, hidden, who, 'TASK: the kid is reporting something they found while playing.' + (aim ? ' You just asked them: "' + aim.nudge + '"' + (aimAt ? ' That question is about problem ' + aimAt + ': if their answer shows it, even in part, choose ' + aimAt + ', never a new ticket.' : '') : '') + ' Everything they said about it: "' + said.join(' / ') + '". ' + LEVEL + (filedNow ? ' Already on the board: ' + filedNow + '. Only say it is one of those if it clearly is.' : '')
         + ' The studio planned the listed problems, but a kid finds real ones nobody planned, and those count just as much. Decide which it is.'
-        + ' (1) It clearly describes one of the listed problems: choose it and reply in one short line. Sharing a word is not enough: "it felt floaty when I was jumping over the gap" is about the jump, not the lava.'
+        + ' (1) It clearly describes one of the listed problems: choose it and reply in one short line. What happened is enough, however short or misspelled: "i fall" is the falling problem. Sharing a word is not enough, though: "it felt floaty when I was jumping over the gap" is about the jump, not the lava.'
         + ' (2) A clear problem that is not listed (they said what went wrong): choose option ' + NEW + ' and fill `ticket`: a short board title in plain words ("The jump feels floaty"), the department that fixes it (engineering: how things move, collide and work; art: how things look; audio: sounds and music; design: whether it is fair, fun, too hard or too easy), `detail`, one sentence of what is wrong, and `done`, one sentence of how they will know it is fixed. Reply in one short line that says which department it goes to.'
         + ' Whichever you choose, never say what should happen instead ("coins and lava should look different"): the studio asks them that next, and it is theirs to say.'
         + ' (3) A wish for something new rather than something broken: choose option ' + IDEA + '.'
@@ -816,7 +835,12 @@ var Quest = (function () {
           if (c === NEW) { filedOwn(res.ticket || { title: said[0] }, words, res.reply); return; }
           if (c === IDEA) { idea(words); onward(res.reply || 'That’s a great idea for later. I saved it.'); return; }
           if (c && unfiled[c - 1]) { filed([unfiled[c - 1]], words, res.reply); return; }
-          if (res && res.reply && /\?\s*["”]?\s*$/.test(res.reply)) { pending = { kind: 'dig', said: said, n: (pending && pending.kind === 'dig' ? pending.n : 0) + 1, aim: (aim && aim.id) || about(said.join(' ') + ' ' + res.reply) }; say([res.reply], who); Chat.placeholder(); return; }
+          /* The dig's aim comes from the kid's words before the AI's. "i fall" hit the floor ticket, the AI
+             asked where and said the lava was the dip, and the lava became the aim; "no i just walk on norm
+             floor den it hapenn" missed it and got "We'll come back to it" (Jay's playthrough, Sept 30).
+             The AI's reply still counts when the kid's words name nothing ("Those circles are the coins.
+             What happened?", about()). */
+          if (res && res.reply && /\?\s*["”]?\s*$/.test(res.reply)) { pending = { kind: 'dig', said: said, n: (pending && pending.kind === 'dig' ? pending.n : 0) + 1, aim: (aim && aim.id) || (fresh.length === 1 ? fresh[0].id : null) || about(said.join(' ') + ' ' + res.reply) }; log('report', { step: 'dig', by: 'ai', n: pending.n, aim: pending.aim }); say([res.reply], who); Chat.placeholder(); return; }
           if (aim) retry(); else dig(said);   // no question from the AI ("noted!"): the ladder asks its own
         });
       return false;   // still listening: returning false keeps the box expecting a finding (chat.js expect)
@@ -1011,6 +1035,7 @@ var Quest = (function () {
   function handle(ev) {
     if (!S || !COURSE) return;
     remember(ev);
+    if (!(ev.type === 'event' && ev.name === 'coin')) log('did', { type: ev.type, name: ev.name || undefined, set: ev.type === 'set' && ev.detail ? ev.detail.id + '.' + ev.detail.key + ' = ' + JSON.stringify(ev.detail.value) : undefined });
     if (ev.type === 'play' || ev.type === 'select') Editor.point(null);   // the pointer's job is done once they act
     if (ev.type === 'event' || ev.type === 'set' || ev.type === 'play') checkTickets(ev);
     if (ev.type === 'event') Chat.event(EVENT_WORDS[ev.name] || ev.name, EVENT_ICON[ev.name] || 'i-pad');
@@ -1029,9 +1054,10 @@ var Quest = (function () {
       f.fired[key] = true;
       if (h.flag) f.flags[h.flag] = true;
       if (h.cue) Editor.cue(h.cue);
+      log('trigger', { on: key, when: h.when });
       speak(h);
     });
-    if (b && b.wait_for && !f.completing && matches(b.wait_for, ev, f)) complete();
+    if (b && b.wait_for && !f.completing && matches(b.wait_for, ev, f)) { log('step-done', { when: b.wait_for }); complete(); }
     paintDev();
   }
   /* The game's events, as the rows the Log shows (the chat never does: chat.js, event). */
@@ -1145,7 +1171,9 @@ var Quest = (function () {
     var wait = Chat.thinking(who);
     var ctl = typeof AbortController === 'function' ? new AbortController() : null;
     var timer = setTimeout(function () { if (ctl) ctl.abort(); }, AI_MS);
-    var f = frame();
+    var f = frame(), t0 = Date.now();
+    // the page's side of an AI turn, for the student log: the server logs what the AI said (mentor-turn)
+    var out = function (how, j) { log('ai', { how: how, said: String(text).slice(0, 300), task: task ? String(task).slice(0, 160) : undefined, reply: j && j.reply, choose: j && j.choose, actions: j && j.actions && j.actions.length ? j.actions : undefined, build: j && j.build || undefined, ms: Date.now() - t0 }); };
     return fetch('/api/ai', {
       method: 'POST', headers: { 'Content-Type': 'application/json' }, signal: ctl ? ctl.signal : undefined,
       body: JSON.stringify({ agent: 'mentor', message: text, history: Chat.history(),
@@ -1154,9 +1182,9 @@ var Quest = (function () {
     }).then(function (r) { return r.json().catch(function () { return {}; }).then(function (j) { return { ok: r.ok, j: j }; }); })
       .then(function (res) {
         clearTimeout(timer); wait.done();
-        if (!res.ok || !res.j.reply) { aiFails++; return null; }
-        aiFails = 0; return res.j;
-      }, function () { clearTimeout(timer); wait.done(); aiFails++; return null; });
+        if (!res.ok || !res.j.reply) { aiFails++; out(res.ok ? 'empty' : 'failed ' + (res.j.error || ''), res.j); return null; }
+        aiFails = 0; out('ok', res.j); return res.j;
+      }, function (e) { clearTimeout(timer); wait.done(); aiFails++; out(e && e.name === 'AbortError' ? 'timeout' : 'offline'); return null; });
   }
   /* Something the kid wanted, kept so it isn't lost: the design doc's "Ideas for later" (project.js),
      which is Project › Docs › Ideas until the doc itself has been opened up. */
@@ -1299,6 +1327,7 @@ var Quest = (function () {
     });
     Chat.onAsk(typed);
     watchBuilder();
+    logOn();
     // Put the screen back the way this kid left it.
     S.shown.forEach(reveal);
     if (S.stars) Editor.stars(S.stars);

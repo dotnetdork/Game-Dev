@@ -164,7 +164,11 @@ app.get('/studio/dev.js', (req, res, next) => {
   if (auth.isHosted()) return res.status(404).end();
   next();
 });
-app.use(express.static(path.join(ROOT, 'public')));
+/* `no-cache` for the page and its scripts, for the reason given at /content below. Without it a
+   browser kept the old studio/quest.js after a restart (Sept 30: a playtest ran yesterday's page
+   against today's server), and after a deploy a class would too. Art and vendored libraries above
+   keep the default: they change rarely, and nothing breaks when they're a version behind. */
+app.use(express.static(path.join(ROOT, 'public'), { setHeaders: (res) => res.setHeader('Cache-Control', 'no-cache') }));
 /* Authored course content: YAML, Markdown and the lesson diagrams (read-only).
    `no-cache` means "revalidate before reusing", not "do not store" — the ETag comes back with it,
    so an unchanged file still costs a 304 and no bytes.
@@ -350,7 +354,8 @@ app.get('/api/quests', (req, res) => {
   const q = questCache.body;
   if (q.problems.length) return res.status(500).json({ error: 'The course has problems.', problems: q.problems });
   res.setHeader('Cache-Control', 'no-cache');
-  res.json({ tickets: q.tickets, quests: q.quests });
+  // logging: a playtest's student logs are on (telemetry.js, STUDENT_LOGS), so the studio sends its side too
+  res.json({ tickets: q.tickets, quests: q.quests, logging: tel.logging() });
 });
 
 /* ---- which models are running, and whether they can look anything up ----

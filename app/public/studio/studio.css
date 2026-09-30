@@ -202,8 +202,20 @@ svg.i { width: 18px; height: 18px; fill: none; stroke: currentColor; stroke-widt
 .dock.min { flex: 0 0 40px !important; min-height: 40px; }
 .dock.min > :not(.tabs) { display: none !important; }
 .area.bottom > .dock.min { flex: 0 0 auto !important; min-width: 0; }
-.dock.min .tab { cursor: pointer; }
-.dock.min { background: var(--frame); }
+/* A folded panel is a strip, not a tab with nothing under it (Jay, Sept 30, of the Log folded to "Log
+   3  +  ⤢" on a black bar: "improve how they look when minimized, I'm not sure + is the best
+   symbol"). The tab sits in the strip rather than hanging off it, the whole strip opens it, and the
+   button is a chevron pointing the way the panel will go: down into the bottom row or up to its tab
+   when open, back out when folded (VS Code's and Unity's convention). Maximize waits until it's open.
+   A bottom row that is all folded shares its width, so no bare bar is left beside the tabs. */
+.dock.min { background: var(--frame); box-shadow: inset 0 1px 0 var(--line-soft); cursor: pointer; transition: background-color .15s ease-out; }
+.dock.min:hover { background: var(--panel); }
+.dock.min > .tabs { align-items: center; background: transparent; }
+.dock.min .tab { height: 30px; border-radius: 6px; background: transparent; color: var(--ink-2); }
+.dock.min .maxb { display: none; }
+.area.bottom:not(:has(> .dock:not(.min):not(.closed))) > .dock.min { flex: 1 1 0 !important; }
+.minb svg { transition: transform .2s var(--ease); }
+.area:not(.bottom) > .dock:not(.min) .minb svg, .area.bottom > .dock.min .minb svg { transform: rotate(180deg); }
 .dock.min + .split.panels, .split.panels:has(+ .dock.min) { pointer-events: none; }
 .dock.closed { background: var(--ground); box-shadow: inset 0 0 0 1px var(--closed-outline); pointer-events: none; }
 .dock > * { transition: opacity .45s var(--ease); }

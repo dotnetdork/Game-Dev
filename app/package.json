@@ -12,6 +12,7 @@
     "check:release": "node tools/check-release.js",
     "session:watch": "node tools/session-capture.js",
     "session:report": "node tools/session-report.js",
+    "log": "node tools/student-log.js",
     "build:images": "python tools/resize-brand-images.py",
     "build:doclets": "node tools/build-phaser-doclets.js",
     "build:docs": "node tools/build-phaser-doclets.js && node --max-old-space-size=4096 tools/build-phaser-docs.js",
