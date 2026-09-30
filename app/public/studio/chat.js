@@ -67,6 +67,7 @@ var Chat = (function () {
     m: ['Mentor', 'The studio’s AI', 'i-bot'],
     p: ['Lead programmer', 'Engineering', 'i-code'],
     a: ['Art director', 'Art', 'i-palette'],
+    c: ['Concept artist', 'Art · characters and assets', 'i-pen'],   // designs how things look: the hero first
     u: ['Sound designer', 'Audio', 'i-wave'],
     d: ['Lead designer', 'Design', 'i-puzzle'],
     r: ['Studio Director', 'Runs the studio', 'i-clapper']   // the interview's host, back at the end of a day

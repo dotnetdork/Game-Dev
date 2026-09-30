@@ -101,12 +101,19 @@ beats:
       then: again          # back here after each ticket, until the board is clear
 
   - id: its-yours
-    goal: Describe your game’s hero
     do: { stop: true, close_inspector: true }
     say:
-      - The board is clear! This level is yours now, @name, and every fix went into YOUR game.
+      - The board is clear! Every fix went into YOUR game, @name.
+      - Now your hero. Art’s concept artist designs how things look. Over to them!
+
+  # The hero is Art's to draw, and within Art the concept artist's, who designs characters and assets
+  # (Jay, Sept 30: "this here should be a handoff to a specific branch of the art department that
+  # handles designing assets"). The Mentor guides the day; the departments do the work.
+  - id: your-hero
+    goal: Describe your game’s hero
+    character: concept-artist
     ask:
-      text: Every game needs a hero. What’s yours? A dragon, a robot, a pizza… anything!
+      text: Hi @name! Every game needs a hero. What’s yours? A dragon, a robot, a pizza… anything!
       from: heroes
       examples: [A dragon, A robot, A cat, A pizza with legs]
 

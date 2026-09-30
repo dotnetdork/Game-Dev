@@ -412,6 +412,7 @@ async function launch() {
     });
     await waitLog('The board is clear!', 9000);
     await waitLog('What’s yours?', 9000);
+    check('the hero is Art\'s: the Mentor hands over to the concept artist (Jay, Sept 30)', await p.$eval('#dMentor', function (e) { return e.getAttribute('data-who'); }) === 'c');
     await type('idk');
     await p.waitForSelector('#qcard.typed .qopt', { timeout: 6000 });
     await shot(p, 'p02b-hero-card');
@@ -425,9 +426,11 @@ async function launch() {
     check('a frog becomes a frog-shaped hero (the script\'s own, with the AI off)', await p.evaluate(function () { var h = Project.part('player'); return h.look === 'hero' && h.shape && h.shape.body === 'wide'; }));
     check('the filler is not its name: "uhh maybe like a frog" is a frog', /Here’s your frog!/.test(await log()) && !/your uhh/i.test(await log()), (await log()).slice(-160));
     await type('purple with big eyes');
+    // said by the concept artist, before the day hands back to the Mentor and the chat clears
+    const closer = await waitLog('closer I get', 12000).then(function () { return true; }, function () { return false; });
     await waitLog('Grab a coin.', 12000);
     check('what she describes is drawn with the rest: still a frog, now purple', await p.evaluate(function () { var h = Project.part('player').shape; return h.body === 'wide' && h.color === '#8e24aa'; }), JSON.stringify(await p.evaluate(function () { return Project.part('player').shape; })));
-    check('the Mentor says describing got it closer only because the drawing changed', /closer I get/.test(await log()));
+    check('the concept artist says describing got it closer only because the drawing changed', closer);
     check('her hero goes in the design doc, in her words, as a start', await p.evaluate(function () { var s = Project.doc().sections.hero; return s.text === 'frog' && s.state === 'started' && s.by === 'kid'; }));
     check('the game\'s name is not asked on the first day: it belongs to the design doc', !/called\?/.test(await log()));
     await runJump(3000); await waitLog('first star', 9000);

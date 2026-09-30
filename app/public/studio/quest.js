@@ -41,8 +41,8 @@
    through the Builder (builder.js) for anything the settings can't do. */
 var Quest = (function () {
   var COURSE = null, S = null, hintTimer = null, lastFired = {}, aiFails = 0;
-  var VOICE = { mentor: 'm', 'lead-programmer': 'p', 'art-director': 'a', 'sound-designer': 'u', 'lead-designer': 'd', director: 'r' };
-  var NAME = { mentor: 'the Mentor', 'lead-programmer': 'the lead programmer', 'art-director': 'the art director', 'sound-designer': 'the sound designer', 'lead-designer': 'the lead designer', director: 'the Studio Director' };
+  var VOICE = { mentor: 'm', 'lead-programmer': 'p', 'art-director': 'a', 'concept-artist': 'c', 'sound-designer': 'u', 'lead-designer': 'd', director: 'r' };
+  var NAME = { mentor: 'the Mentor', 'lead-programmer': 'the lead programmer', 'art-director': 'the art director', 'concept-artist': 'the concept artist', 'sound-designer': 'the sound designer', 'lead-designer': 'the lead designer', director: 'the Studio Director' };
   var BY_VOICE = {}; Object.keys(VOICE).forEach(function (k) { BY_VOICE[VOICE[k]] = k; });
   var DEPT = { engineering: 'Engineering', art: 'Art', audio: 'Audio', design: 'Design', studio: 'Studio' };
   /* What a quest's `reveal:` names, and where it is. `pause` brings Pause and Step into the toolbar
