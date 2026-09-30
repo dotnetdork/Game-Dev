@@ -72,6 +72,10 @@
   <symbol id="i-pick" viewBox="0 0 24 24"><circle cx="12" cy="12" r="1"/><circle cx="12" cy="12" r="10"/></symbol>
   <symbol id="i-next" viewBox="0 0 24 24"><path d="M15 10l5 5-5 5M4 4v7a4 4 0 0 0 4 4h12"/></symbol>
   <symbol id="i-search" viewBox="0 0 24 24"><path d="m21 21-4.34-4.34"/><circle cx="11" cy="11" r="8"/></symbol>
+  <!-- a design doc section's state (views.js): nothing yet, started, decided -->
+  <symbol id="i-sec-empty" viewBox="0 0 24 24"><circle cx="12" cy="12" r="8" stroke-dasharray="3.2 3"/></symbol>
+  <symbol id="i-sec-started" viewBox="0 0 24 24"><circle cx="12" cy="12" r="8"/><path d="M12 4a8 8 0 0 1 0 16z" fill="currentColor"/></symbol>
+  <symbol id="i-sec-decided" viewBox="0 0 24 24"><circle cx="12" cy="12" r="8"/><path d="M8.5 12.2l2.4 2.4 4.6-4.9"/></symbol>
 </svg>
 
 <div class="editor" id="editor">
@@ -116,12 +120,13 @@
   </div>
 
   <section class="dock game closed" id="dGame" data-panel="game" aria-label="Game">
-    <!-- The centre's three views, as Unity's (views.js): Scene arrives with the Hierarchy, game.js
-         when the kid opens it from the Project window. Scene and game.js lie over the Game view,
-         which stays underneath so the game frame keeps its size. -->
+    <!-- The centre's views, as Unity's (views.js): Scene arrives with the Hierarchy, the Design doc
+         with the first design round, game.js when the kid opens it from the Project window. They lie
+         over the Game view, which stays underneath so the game frame keeps its size. -->
     <div class="tabs"><div class="vtabs" role="tablist" aria-label="Views">
         <button type="button" class="tab vtab" role="tab" id="vtScene" aria-controls="sceneView" aria-selected="false" tabindex="-1" hidden data-tip="Scene: the level's parts, to look at and pick"><svg class="i" aria-hidden="true"><use href="#i-scene"/></svg>Scene</button>
         <button type="button" class="tab vtab" role="tab" id="vtGame" aria-controls="gamebody" aria-selected="true" data-tip="Game: your game, as a player sees it"><svg class="i" aria-hidden="true"><use href="#i-pad"/></svg>Game</button>
+        <button type="button" class="tab vtab" role="tab" id="vtDoc" aria-controls="docView" aria-selected="false" tabindex="-1" hidden data-tip="Design doc: your game, written down. The Builder builds what it says"><svg class="i" aria-hidden="true"><use href="#i-doc"/></svg>Design doc</button>
         <button type="button" class="tab vtab" role="tab" id="vtCode" aria-controls="codeView" aria-selected="false" tabindex="-1" hidden data-tip="game.js: your game's code"><svg class="i" aria-hidden="true"><use href="#i-script"/></svg>game.js<span class="dirty" id="codeDirty" hidden aria-hidden="true"></span></button>
       </div>
       <button type="button" class="tclose" id="codeClose" hidden aria-label="Close game.js" data-tip="Close game.js"><svg class="i" aria-hidden="true"><use href="#i-x"/></svg></button>
@@ -148,6 +153,12 @@
         <button type="button" class="tbtn quiet" id="codeErrGo">Go to line</button>
         <button type="button" class="tbtn quiet" id="codeErrAsk"><svg class="i" aria-hidden="true"><use href="#i-chat"/></svg><span>Ask for help</span></button>
         <button type="button" class="tbtn quiet" id="codeErrBack"><svg class="i" aria-hidden="true"><use href="#i-undo"/></svg><span>Put back what worked</span></button></div>
+    </div>
+    <!-- The design doc (views.js draws it from project.js): every section, what's decided, and the
+         ideas for later. Each section is typed into where it sits. -->
+    <div class="view docview" id="docView" role="tabpanel" aria-labelledby="vtDoc" hidden>
+      <div class="codebar"><span class="crumbs">Docs › Design doc</span><span class="codestate" id="docState" role="status"></span></div>
+      <div class="dochost" id="docHost"></div>
     </div>
   </section>
 

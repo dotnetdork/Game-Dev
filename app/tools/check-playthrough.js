@@ -16,9 +16,11 @@
         the coins first through the Clip's picker, describe a hero, type the game's name, and then the
         floor ticket is still there: read on its page, picked from it, the tile tapped in the Scene
         view and fixed. Then game.js, opened from the Project window: broken on purpose, saved, the
-        error back with its line, and put back.
+        error back with its line, and put back. Then the design doc: her hero is already in it, and a
+        section typed there is kept and queued for the next build.
      4. Log in from a second browser: a wrong class code is refused and points at that box; both codes
-        show the class list, the kid confirms it's them, and the studio resumes where they were.
+        show the class list, the kid confirms it's them, and the studio resumes where they were, with
+        her design doc.
      5. The interview again, with a stand-in AI (a page route answers /api/ai, so no model is needed):
         a "you're hired" before the why is refused, a game the kid never typed is not taken, the goal
         is done by the code once the card holds a game, a part and a why, and a director that doesn't
@@ -261,6 +263,7 @@ async function launch() {
     await type('a frog');
     await waitLog('called?', 12000);
     check('a frog becomes a frog-shaped hero (the script\'s own, with the AI off)', await p.evaluate(function () { var h = Project.part('player'); return h.look === 'hero' && h.shape && h.shape.body === 'wide'; }));
+    check('her hero goes in the design doc, in her words, as a start', await p.evaluate(function () { var s = Project.doc().sections.hero; return s.text === 'frog' && s.state === 'started' && s.by === 'kid'; }));
     await type('Frog Lava Run'); await waitLog('Grab a coin.');
     check('the game is named from what she typed', await p.$eval('#projText', function (e) { return e.textContent; }) === 'Frog Lava Run');
     await runJump(3000); await waitLog('first star', 9000);
@@ -307,6 +310,21 @@ async function launch() {
     check('Put back what worked puts the code back', await p.evaluate(function () { return document.querySelector('#codeHost .CodeMirror').CodeMirror.getValue().indexOf('notAThing') < 0 && !/notAThing/.test(Project.get().code || ''); }));
     await p.click('#codeClose');
     check('closing game.js goes back to the Game view', await p.evaluate(function () { return Views.current(); }) === 'game' && await p.isHidden('#vtCode'));
+    where = 'the design doc';
+    check('the Design doc tab waits for the first design round', await p.isHidden('#vtDoc'));
+    await p.evaluate(function () { Views.revealDoc(true); });   // the round that reveals it is design.js's
+    await p.click('#vtDoc');
+    await p.waitForSelector('.dsec[data-sec="hero"] textarea');
+    check('the doc shows her hero, and every section left is "Not decided yet"', await p.$eval('.dsec[data-sec="hero"] textarea', function (t) { return t.value; }) === 'frog'
+      && await p.$$eval('.dsec[data-state="empty"] .sw', function (l) { return l.length === 8 && l.every(function (e) { return e.textContent === 'Not decided yet'; }); }));
+    await p.fill('.dsec[data-sec="idea"] textarea', 'A frog hops over lava to grab coins');
+    await p.click('#vtDoc');   // out of the box: kept on blur
+    const idea = await p.evaluate(function () { var d = Project.doc(); return { s: d.sections.idea, changed: d.changed, mark: document.querySelector('.dsec[data-sec="idea"]').getAttribute('data-state') }; });
+    check('typing in a section keeps it, as decided, and queues it for the next build', idea.s.text === 'A frog hops over lava to grab coins' && idea.s.state === 'decided' && idea.s.by === 'kid'
+      && idea.changed.indexOf('idea') >= 0 && idea.mark === 'decided', JSON.stringify(idea));
+    await shot(p, 'p03b-doc');
+    if (SHOTS) { await p.setViewportSize({ width: 1100, height: 720 }); await shot(p, 'p03c-doc-narrow'); await p.setViewportSize({ width: 1366, height: 720 }); }
+    await p.click('#vtGame');
     where = 'a panel made big';
     await p.click('#dProject .maxb');
     const big = await p.evaluate(function () { var d = document.getElementById('dProject'), r = d.getBoundingClientRect(); return { max: d.classList.contains('max'), w: r.width, h: r.height, under: document.getElementById('dHier').inert, chat: document.getElementById('dMentor').inert }; });
@@ -336,6 +354,8 @@ async function launch() {
     await q.waitForFunction(function () { return window.Quest && Quest.dev.where() !== '(no quest)'; }, null, { timeout: 15000 });
     const there = await q.evaluate(function () { return { at: Quest.dev.where(), floor: (Quest.dev.state().tickets.floor || {}).status }; });
     check('log in: the studio resumes where she was, on the other browser', there.at + ' / floor ' + there.floor === firstAt, JSON.stringify(there) + ', first browser at ' + firstAt);
+    const doc2 = await q.evaluate(function () { return Project.doc().sections.idea.text; });
+    check('log in: her design doc came with her', doc2 === 'A frog hops over lava to grab coins', doc2);
   } catch (e) {
     check('the playthrough got through ' + where, false, e.message.split('\n')[0]);
     await shot(p, 'pzz-failed').catch(function () {});

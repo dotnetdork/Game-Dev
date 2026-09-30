@@ -20,7 +20,7 @@ const DIR = path.join(__dirname, 'content', 'quests');
 /* The vocabulary. Adding a word here is adding a feature to the engine; the two must move together. */
 const DEPARTMENTS = ['studio', 'engineering', 'art', 'audio', 'design'];
 const CHARACTERS = ['mentor', 'lead-programmer', 'art-director', 'sound-designer', 'lead-designer', 'director', 'department'];
-const PANELS = ['game', 'play', 'hierarchy', 'inspector', 'tickets', 'quest', 'project', 'script', 'stars', 'pause', 'console'];
+const PANELS = ['game', 'play', 'hierarchy', 'inspector', 'tickets', 'quest', 'project', 'script', 'stars', 'pause', 'console', 'doc'];
 const EVENTS = ['fell', 'coin', 'lava', 'hurt', 'crossed', 'cleared'];  // what the game itself reports (cleared: every coin grabbed)
 /* The parts a quest may name, and their settings. The Inspector's own list is public/studio/schema.js
    (the browser's); check-studio.js checks every setting here is one the schema has. */

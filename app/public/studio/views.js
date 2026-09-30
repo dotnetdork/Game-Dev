@@ -30,12 +30,21 @@
    with its line (runner.js reports it) and a way to ask for help or put back the version that
    worked. Tapping a line number asks the chat what that line does, as the old read-only list did.
 
+   THE DESIGN DOC (spec D41) is the fourth tab, between Game and game.js: the kid's game written
+   down, section by section (project.js has the sections and why they're in that order), with each
+   one's state beside its title and the ideas for later at the end. It arrives with the first design
+   round (a quest's `reveal: [doc]`), so it is never a blank page nobody has explained. Each section
+   is typed into where it sits, with no Edit button and no Save: a change is kept as the kid types,
+   and lands in the doc's `changed` list, which is what the next build is sent. A section the kid is
+   typing in is never redrawn under them, even when the chat writes to another one.
+
    Needs, loaded before it: ui.js, project.js, schema.js, runner.js, builder.js, chat.js, editor.js.
    Nothing but `Views` is global. */
 var Views = (function () {
   function $(id) { return document.getElementById(id); }
-  var current = 'game', beforePlay = null, sceneOn = false, codeOpen = false;
-  var TABS = { scene: ['vtScene', 'sceneView'], game: ['vtGame', 'gamebody'], code: ['vtCode', 'codeView'] };
+  var current = 'game', beforePlay = null, sceneOn = false, codeOpen = false, docOn = false;
+  var TABS = { scene: ['vtScene', 'sceneView'], game: ['vtGame', 'gamebody'], doc: ['vtDoc', 'docView'], code: ['vtCode', 'codeView'] };
+  var ORDER = ['scene', 'game', 'doc', 'code'];
 
   /* ---------- the tabs ---------- */
   /* auto: Play or Stop moved it. A view the kid picks during Play is where Stop leaves them. */
@@ -43,6 +52,7 @@ var Views = (function () {
     if (!auto) beforePlay = null;
     if (name === 'scene' && !sceneOn) name = 'game';
     if (name === 'code' && !codeOpen) name = 'game';
+    if (name === 'doc' && !docOn) name = 'game';
     current = name;
     Object.keys(TABS).forEach(function (k) {
       var tab = $(TABS[k][0]), on = k === name;
@@ -52,14 +62,16 @@ var Views = (function () {
     $('gamebody').inert = name !== 'game';   // under a view: nothing in it can take focus
     if (name === 'scene') { paintScene(); Runner.askThumbs(); }   // a picture the game drew since the last ask
     if (name === 'code' && cm) setTimeout(function () { cm.refresh(); }, 0);
+    if (name === 'doc') paintDoc();
   }
   function tabKeys(e) {
     var d = { ArrowRight: 1, ArrowLeft: -1 }[e.key]; if (!d) return;
-    var list = ['scene', 'game', 'code'].filter(function (k) { return !$(TABS[k][0]).hidden; });
+    var list = ORDER.filter(function (k) { return !$(TABS[k][0]).hidden; });
     var n = list[(list.indexOf(current) + d + list.length) % list.length];
     e.preventDefault(); show(n); $(TABS[n][0]).focus();
   }
   function revealScene(on) { sceneOn = !!on; $('vtScene').hidden = !sceneOn; if (!sceneOn && current === 'scene') show('game'); }
+  function revealDoc(on) { docOn = !!on; $('vtDoc').hidden = !docOn; if (!docOn && current === 'doc') show('game'); }
   /* Play shows the game; Stop goes back to where the kid was. */
   function playing(on) {
     if (on && current !== 'game') { beforePlay = current; show('game', true); }
@@ -316,8 +328,70 @@ var Views = (function () {
     });
   }
 
+  /* ---------- the design doc ---------- */
+  var STATE_WORDS = { empty: 'Not decided yet', started: 'Started', decided: 'Decided' };
+  var MARKS = { empty: 'i-sec-empty', started: 'i-sec-started', decided: 'i-sec-decided' };
+  var docBuilt = false, typing = {};
+  /* Built once: a heading, one section per entry in Project.SECTIONS, the ideas. paintDoc fills it. */
+  function buildDoc() {
+    var host = $('docHost'); if (!host || docBuilt) return;
+    docBuilt = true;
+    var art = document.createElement('article'); art.className = 'gdd';
+    art.innerHTML = '<header><h2></h2><p>Your game, written down. The Builder builds what this says, so change anything you like.</p></header>';
+    Project.SECTIONS.forEach(function (s) {
+      var sec = document.createElement('section'); sec.className = 'dsec'; sec.setAttribute('data-sec', s[0]);
+      sec.innerHTML = '<h3 id="ds-' + s[0] + '"><svg class="i mark" aria-hidden="true"><use href="#i-sec-empty"/></svg><span class="st"></span><span class="sw"></span></h3>'
+        + '<textarea rows="2" maxlength="600" spellcheck="true" aria-labelledby="ds-' + s[0] + '" data-key="doc:' + s[0] + '"></textarea>';
+      sec.querySelector('.st').textContent = s[1];
+      var t = sec.querySelector('textarea');
+      t.placeholder = s[2];
+      t.addEventListener('input', function () { grow(t); clearTimeout(typing[s[0]]); typing[s[0]] = setTimeout(function () { keep(s[0], t); }, 700); });
+      t.addEventListener('change', function () { keep(s[0], t); });
+      t.addEventListener('blur', function () { keep(s[0], t); });
+      art.appendChild(sec);
+    });
+    var ideas = document.createElement('section'); ideas.className = 'dideas';
+    ideas.innerHTML = '<h3 id="ds-ideas"><svg class="i" aria-hidden="true"><use href="#i-bulb"/></svg><span class="st">Ideas for later</span></h3><ul aria-labelledby="ds-ideas"></ul>';
+    art.appendChild(ideas);
+    host.appendChild(art);
+  }
+  /* A box as tall as its words (the CSS does it where field-sizing works; this is for the rest). */
+  var FIELD_SIZING = !!(window.CSS && CSS.supports && CSS.supports('field-sizing', 'content'));
+  function grow(t) { if (FIELD_SIZING) return; t.style.height = 'auto'; if (t.scrollHeight) t.style.height = (t.scrollHeight + 2) + 'px'; }
+  function keep(key, t) {
+    clearTimeout(typing[key]); typing[key] = null;
+    if (Project.writeDoc(key, t.value, 'kid')) {
+      $('docState').textContent = 'Saved. ' + progress();
+      Chat.event('You changed ' + Project.SECTIONS.filter(function (s) { return s[0] === key; })[0][1] + ' in the design doc', 'i-doc', { consoleOnly: true });
+    }
+  }
+  function progress() {
+    var secs = Project.doc().sections, n = Project.SECTIONS.filter(function (s) { return secs[s[0]].state === 'decided'; }).length;
+    return n + ' of ' + Project.SECTIONS.length + ' decided';
+  }
+  function paintDoc() {
+    if (current !== 'doc') return;
+    buildDoc();
+    var d = Project.doc(), game = window.Quest && Quest.progress ? Quest.progress().game : '';
+    document.querySelector('.gdd h2').textContent = game || 'Your game';
+    Project.SECTIONS.forEach(function (s) {
+      var sec = document.querySelector('.dsec[data-sec="' + s[0] + '"]'), v = d.sections[s[0]];
+      sec.setAttribute('data-state', v.state);
+      sec.querySelector('.mark use').setAttribute('href', '#' + MARKS[v.state]);
+      sec.querySelector('.sw').textContent = STATE_WORDS[v.state];
+      var t = sec.querySelector('textarea');
+      // never under the kid's fingers: the box they are in keeps what they're typing
+      if (document.activeElement !== t && !typing[s[0]] && t.value !== v.text) { t.value = v.text; grow(t); }
+    });
+    var ul = document.querySelector('.dideas ul'); ul.innerHTML = '';
+    if (!d.ideas.length) { var e = document.createElement('li'); e.className = 'empty'; e.textContent = 'Nothing yet. Anything you ask for that isn’t built yet is kept here.'; ul.appendChild(e); }
+    d.ideas.slice().reverse().forEach(function (x) { var li = document.createElement('li'); li.textContent = x; ul.appendChild(li); });
+    $('docState').textContent = progress();
+  }
+  function openDoc() { if (!docOn) return; show('doc'); $('vtDoc').focus(); }
+
   function init() {
-    ['scene', 'game', 'code'].forEach(function (k) {
+    ORDER.forEach(function (k) {
       var tab = $(TABS[k][0]);
       tab.addEventListener('click', function () { show(k); });
       tab.addEventListener('keydown', tabKeys);
@@ -335,6 +409,7 @@ var Views = (function () {
     svg.addEventListener('pointerup', sceneUp);
     svg.addEventListener('pointercancel', sceneUp);
     Editor.on(function (name) { if (name === 'select' || name === 'deselect' || name === 'set') paintScene(); });
+    Project.onDoc(paintDoc);
     Runner.on(function (name) { if (name === 'thumbs' || name === 'ready') paintScene(); if (name === 'play') playing(true); if (name === 'stop') playing(false); });
     if (window.Builder) Builder.on(function (name) {
       if (name !== 'built' && name !== 'reverted') return;
@@ -348,5 +423,6 @@ var Views = (function () {
   }
 
   return { init: init, show: show, openCode: openCode, revealScene: revealScene, paintScene: paintScene,
+           revealDoc: revealDoc, openDoc: openDoc, paintDoc: paintDoc, docOn: function () { return docOn; },
            current: function () { return current; } };
 })();

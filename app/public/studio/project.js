@@ -30,9 +30,37 @@ var Project = (function () {
     ];
   }
 
+  /* THE DESIGN DOC (spec D41): the kid's game written down, section by section, and what the Builder
+     builds from. It is filled in the chat, in rounds (design.js), and the kid can change any of it in
+     the Design doc tab (views.js). The sections are in Jed's order (Sept 30): "start with the things
+     that make the game play, then move on", so gameplay comes first and the art, sound and writing
+     after it. Each section is { text, state, by, at }:
+       state  'empty' (nothing yet), 'started' (something, still to finish), 'decided'
+       by     who wrote the words last: 'kid' (typed it in the tab, or said it) or 'ai' (the designer,
+              from what the kid said)
+     `changed` lists the sections written since the last build, which is what "Build it" sends;
+     `builtAt` is when that last build landed. `ideas` are the things the kid asked for that don't
+     belong in a section yet ("Ideas for later"). */
+  /* [key, the kid's title, what the section asks]. The question is the empty section's prompt in the
+     tab and the scripted question when the AI is down (design.js), so it is written once, here. */
+  var SECTIONS = [['idea', 'The idea', 'What kind of game is it? Say it in one sentence.'],
+                  ['play', 'How you play', 'What does the player do? Which keys do what?'],
+                  ['goal', 'The goal', 'How do you win? How do you lose?'],
+                  ['fun', 'What makes it fun', 'What’s the best moment in it, and why is it fun?'],
+                  ['obstacles', 'Obstacles and enemies', 'What gets in the player’s way?'],
+                  ['hero', 'Your hero', 'Who do you play as? What can they do?'],
+                  ['world', 'World and look', 'Where does it happen? What does it look like?'],
+                  ['sound', 'Sound and music', 'What does it sound like? Music, sound effects?'],
+                  ['story', 'Story and writing', 'Is there a story? What words are on screen?']];
+  function freshDoc() {
+    var s = {};
+    SECTIONS.forEach(function (x) { s[x[0]] = { text: '', state: 'empty', by: null, at: 0 }; });
+    return { v: 1, sections: s, ideas: [], builtAt: 0, changed: [] };
+  }
+
   var state = null;
   function fresh() {
-    return { v: 3, parts: internsParts(), code: null, quest: null };   // quest: the engine's own state (quest.js)
+    return { v: 3, parts: internsParts(), code: null, quest: null, doc: freshDoc() };   // quest: the engine's own state (quest.js)
   }
   /* A save from before a setting existed gets that setting, at the intern's value, rather than the
      whole game being thrown away (V1's rule: migrate, never wipe). The old Kenney looks the first
@@ -46,6 +74,14 @@ var Project = (function () {
       delete p.note;
       if (p.kind === 'player' && OLD_LOOKS[p.look]) p.look = p.shape ? 'hero' : null;
     });
+    // a save from before the design doc: a blank one, with the hero and the ideas the kid already gave
+    if (!s.doc || s.doc.v !== 1 || !s.doc.sections) {
+      s.doc = freshDoc();
+      var q = s.quest || {};
+      if (q.hero) s.doc.sections.hero = { text: q.hero, state: 'started', by: 'kid', at: Date.now() };
+      if (Array.isArray(q.ideas)) s.doc.ideas = q.ideas.slice();
+    }
+    SECTIONS.forEach(function (x) { if (!s.doc.sections[x[0]]) s.doc.sections[x[0]] = { text: '', state: 'empty', by: null, at: 0 }; });
     return s;
   }
   function load() {
@@ -86,6 +122,31 @@ var Project = (function () {
   function part(id) { return state.parts.filter(function (p) { return p.id === id; })[0] || null; }
   function clone(parts) { return JSON.parse(JSON.stringify(parts)); }
 
+  /* The design doc's one way in: every writer (the tab, the rounds, the quest's hero question) comes
+     through here, so `changed` and the listeners are never skipped. Words that don't change anything
+     change nothing, so a kid clicking in and out of a section doesn't queue a build. */
+  var onDoc = [];
+  function docChanged(key) { onDoc.forEach(function (fn) { try { fn(key); } catch (e) { console.error(e); } }); }
+  function writeDoc(key, text, by, st8) {
+    var d = state.doc, s = d.sections[key]; if (!s) return false;
+    text = String(text || '').trim().slice(0, 600);
+    st8 = st8 || (text ? 'decided' : 'empty');
+    if (s.text === text && s.state === st8) return false;
+    d.sections[key] = { text: text, state: text ? st8 : 'empty', by: by === 'ai' ? 'ai' : 'kid', at: Date.now() };
+    if (s.text !== text && d.changed.indexOf(key) < 0) d.changed.push(key);
+    save(); docChanged(key);
+    return true;
+  }
+  function docIdea(text) {
+    var d = state.doc; d.ideas.push(String(text).slice(0, 200)); if (d.ideas.length > 40) d.ideas.shift();
+    save(); docChanged(null);
+  }
+  /* A build landed (quest.js): what it was sent is built now. A rollback never calls this, so the
+     next "Build it" sends the same changes again. */
+  function docBuilt() { state.doc.changed = []; state.doc.builtAt = Date.now(); save(); docChanged(null); }
+
   return { load: load, save: save, onSave: function (fn) { onSave.push(fn); }, KEY: KEY, reset: reset, flush: flush, freeze: freeze, code: code, part: part, clone: clone,
-           get: function () { return state; }, internsParts: internsParts, migrate: migrate };
+           get: function () { return state; }, internsParts: internsParts, migrate: migrate,
+           SECTIONS: SECTIONS, doc: function () { return state.doc; }, writeDoc: writeDoc, docIdea: docIdea, docBuilt: docBuilt,
+           onDoc: function (fn) { onDoc.push(fn); } };
 })();

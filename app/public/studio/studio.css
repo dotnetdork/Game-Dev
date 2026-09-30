@@ -325,6 +325,32 @@ body.resizing-x iframe, body.resizing-y iframe { pointer-events: none; }   /* th
 .codeerr[hidden] { display: none; }
 .codeerr p { flex: 1 1 260px; margin: 0; font: 13.5px/1.4 ui-monospace, "Cascadia Mono", Menlo, monospace; color: var(--ink); }
 .codeerr .tbtn { height: 36px; }
+
+/* the design doc: a page, not a form. One reading column; each section's words sit in a quiet box
+   that is plainly somewhere to type (a border at rest, the field edge on hover, the focus ring when
+   in). The state is a drawn mark and a word beside the title: grey and dashed with nothing yet, half
+   full when started, green with a tick when decided. No red: an empty section is not a mistake. */
+.dochost { flex: 1; min-height: 0; overflow-y: auto; scrollbar-gutter: stable; }
+.gdd { max-width: 70ch; margin: 0 auto; padding: 22px 24px 40px; display: grid; gap: 18px; }
+.gdd header h2 { margin: 0 0 4px; font-size: 22px; line-height: 1.2; font-weight: 700; text-wrap: balance; }
+.gdd header p { margin: 0; font-size: 14px; color: var(--ink-2); max-width: 60ch; }
+.dsec h3, .dideas h3 { display: flex; align-items: center; gap: 8px; margin: 0 0 6px; font-size: 15px; font-weight: 650; color: var(--ink); }
+.dsec .mark { width: 18px; height: 18px; color: var(--ink-3); }
+.dsec[data-state="started"] .mark { color: var(--ink-2); }
+.dsec[data-state="decided"] .mark { color: var(--good); stroke-width: 2; }
+.dsec .sw { margin-left: auto; font-size: 12.5px; font-weight: 500; color: var(--ink-3); }
+.dsec[data-state="decided"] .sw { color: var(--good); }
+.dsec textarea { display: block; width: 100%; min-height: 3.1em; field-sizing: content; resize: none; margin: 0; padding: 9px 12px;
+                 border: 1px solid var(--line-soft); border-radius: 8px; background: var(--panel); color: var(--ink);
+                 font: inherit; font-size: 15px; line-height: 1.5; transition: border-color .15s var(--ease), background-color .15s var(--ease); }
+.dsec textarea::placeholder { color: var(--ink-3); }
+.dsec textarea:hover { border-color: var(--edge); }
+.dsec textarea:focus-visible { outline: 2px solid var(--focus); outline-offset: 1px; border-color: var(--edge); background: var(--panel-2); }
+.dideas { padding-top: 14px; border-top: 1px solid var(--line-soft); }
+.dideas h3 svg { color: var(--ink-2); }
+.dideas ul { margin: 0; padding: 0 0 0 26px; display: grid; gap: 4px; color: var(--ink-2); font-size: 14.5px; }
+.dideas li.empty { list-style: none; margin-left: -26px; color: var(--ink-3); }
+@media (max-width: 1100px) { .gdd { padding: 16px 16px 32px; gap: 16px; } }
 .codeerr .tbtn[hidden] { display: none; }
 
 /* the game's keys (editor.js, hint): a strip at the bottom centre of the game that the pointer goes

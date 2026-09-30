@@ -47,7 +47,7 @@ var Quest = (function () {
   var DEPT = { engineering: 'Engineering', art: 'Art', audio: 'Audio', design: 'Design', studio: 'Studio' };
   /* What a quest's `reveal:` names, and where it is. `pause` brings Pause and Step into the toolbar
      beside Play. */
-  var PANEL = { game: 'dGame', hierarchy: 'dHier', tickets: 'dTickets', play: 'transport', stars: 'stars', project: 'dProject', pause: 'stepTools', console: 'dConsole' };
+  var PANEL = { game: 'dGame', hierarchy: 'dHier', tickets: 'dTickets', play: 'transport', stars: 'stars', project: 'dProject', pause: 'stepTools', console: 'dConsole', doc: 'vtDoc' };
   var AI_MS = 20000;   // a reasoned answer from a big model takes longer than 12s on a school network
   // an apostrophe may be straight or curly: a tablet's keyboard curls it
   var HELP = /^\s*(help|hint|stuck|idk|i ?d(on|o)n?['’]?t know|i['’]?m stuck|what do i do|what now|\?+)\b/i;   // not "how": "how do I make it spin" is a question for the AI
@@ -417,6 +417,7 @@ var Quest = (function () {
   function reveal(p) {
     if (S.shown.indexOf(p) < 0) { S.shown.push(p); save(); }
     var id = PANEL[p]; if (!id) return;
+    if (p === 'doc') { Views.revealDoc(true); Editor.project(); return; }   // a centre tab, not a dock
     if (p === 'play' || p === 'stars' || p === 'pause') Editor.reveal(id, true); else Editor.openDock(id, true);
     if (p === 'hierarchy') Editor.tree(true);
   }
@@ -580,7 +581,8 @@ var Quest = (function () {
     if (!shape) return;
     Editor.set('player', 'shape', shape);
     if (Project.part('player').look !== 'hero') Editor.set('player', 'look', 'hero');
-    if (word) { S.hero = word; save(); card({ hero: word }); }
+    // the kid's own words go in the doc as a start; the second round digs into the hero (design.js)
+    if (word) { S.hero = word; save(); card({ hero: word }); Project.writeDoc('hero', word, 'kid', 'started'); }
     setTimeout(Runner.askThumbs, 600);
   }
   function examples(a) { return (a.examples || []).map(function (x) { return { text: x }; }); }
@@ -750,7 +752,7 @@ var Quest = (function () {
     }).filter(Boolean).join('; ') + '. Sprites: ' + Object.keys(Schema.SPRITES).map(function (k) { return k + ' (' + Schema.SPRITES[k][0] + ')'; }).join(', ') + '. Sounds: ' + Object.keys(Schema.SOUNDS).map(function (k) { return k + ' (' + Schema.SOUNDS[k][0] + ')'; }).join(', ') + '.');
     out.push('HERO (for `hero`): body ' + BODIES.join('/') + '; color, belly, eyeColor as #rrggbb; eyes ' + EYES.join('/') + '; up to 5 extras, each {kind, color}, kinds: ' + EXTRAS.join(', ') + '.'
       + (Project.part('player') && Project.part('player').shape ? ' Their hero now: ' + JSON.stringify(Project.part('player').shape) + '.' : ''));
-    out.push('Their game: ' + (S.name || 'not named yet') + '. Ideas they’ve had: ' + (S.ideas.slice(-5).join(' | ') || 'none') + '.');
+    out.push('Their game: ' + (S.name || 'not named yet') + '. Ideas they’ve had: ' + (Project.doc().ideas.slice(-5).join(' | ') || 'none') + '.');
     return out.join('\n').slice(0, 7000);
   }
   /* The last few things the game and the kid did, for context(): the AI's "game log". */
@@ -796,11 +798,12 @@ var Quest = (function () {
         aiFails = 0; return res.j;
       }, function () { clearTimeout(timer); wait.done(); aiFails++; return null; });
   }
-  /* Something the kid wanted, kept in Project › Docs › Ideas so it isn't lost. */
+  /* Something the kid wanted, kept so it isn't lost: the design doc's "Ideas for later" (project.js),
+     which is Project › Docs › Ideas until the doc itself has been opened up. */
   function idea(text, quiet) {
-    S.ideas.push(String(text).slice(0, 200)); if (S.ideas.length > 40) S.ideas.shift(); save();
+    Project.docIdea(text);
     Editor.project();
-    if (!quiet) Chat.event('Saved to your Ideas (Project › Docs)', 'i-bulb');
+    if (!quiet) Chat.event(S.shown.indexOf('doc') >= 0 ? 'Saved to Ideas for later, in your design doc' : 'Saved to your Ideas (Project › Docs)', 'i-bulb');
   }
   var ASKS_FOR = /\b(make|add|can you|could you|i want|put|give|change|turn|let'?s|build|create)\b/i;
   function typed(text, qOnScreen, who) {
@@ -883,9 +886,10 @@ var Quest = (function () {
   function start(course) {
     COURSE = course;
     var st = Project.get();
-    if (!st.quest) st.quest = { stack: [], tickets: {}, done: [], taught: [], shown: [], stars: 0, cards: [], ideas: [] };
+    if (!st.quest) st.quest = { stack: [], tickets: {}, done: [], taught: [], shown: [], stars: 0, cards: [] };
     S = st.quest;
-    S.seen = S.seen || {}; S.ideas = S.ideas || [];
+    S.seen = S.seen || {};
+    delete S.ideas;   // they live in the design doc now; project.js moved an older save's across
     Object.keys(S.tickets).forEach(function (id) { if (!ticketOf(id)) delete S.tickets[id]; });   // a ticket the course no longer has
     if (S.stack.some(function (f) { return !COURSE.quests[f.quest]; })) S.stack = [];             // a quest it no longer has
     if (Object.keys(S.tickets).length && S.reported === undefined) S.reported = true;              // a save from before findings
@@ -918,7 +922,7 @@ var Quest = (function () {
 
   return { start: start, handle: handle, clockOut: clockOut,
     cards: function () { return S ? S.cards.map(cardOf) : []; },
-    ideas: function () { return S ? S.ideas.slice() : []; },
+    ideas: function () { return Project.doc().ideas.slice(); },
     doneFirstDay: function () { return !!S && S.done.indexOf('first-day') >= 0; },
     /* For the kid's own menu (editor.js ME_ITEMS): the numbers, and what they're on now. */
     progress: function () {

@@ -546,10 +546,15 @@ var Editor = (function () {
           tip: 'Your game’s code. Open it to read and change it', run: function () { Views.openCode(); } }));
       }
       if (folder === 'docs') {
-        if (openDoc) return doc(openDoc);
-        [['Ideas', 'i-bulb'], ['Design doc', 'i-doc']].forEach(function (d) {
-          grid.appendChild(tile('<svg class="i" aria-hidden="true"><use href="#' + d[1] + '"/></svg>', d[0], { key: 'doc:' + d[0], run: function () { openDoc = d[0]; paintProject(); } }));
-        });
+        /* Before the first design round, the Ideas the kid has asked for; after it, the design doc,
+           which opens in the centre (views.js) and keeps the ideas at its end. */
+        if (window.Views && Views.docOn()) {
+          grid.appendChild(tile('<svg class="i" aria-hidden="true"><use href="#i-doc"/></svg>', 'Design doc', { key: 'doc:Design doc',
+            tip: 'Your game, written down. Open it to read and change it', run: function () { Views.openDoc(); } }));
+        } else {
+          if (openDoc) return doc(openDoc);
+          grid.appendChild(tile('<svg class="i" aria-hidden="true"><use href="#i-bulb"/></svg>', 'Ideas', { key: 'doc:Ideas', run: function () { openDoc = 'Ideas'; paintProject(); } }));
+        }
       }
       if (folder === 'cards') {
         var list = cardList();
@@ -575,18 +580,12 @@ var Editor = (function () {
     $('pBody').appendChild(v);
     return v;
   }
+  /* The Ideas, before the design doc arrives (the doc then lists them as "Ideas for later"). */
   function doc(name) {
-    var v = view(name), st = Project.get(), S = st.quest || {};
+    var v = view(name);
     var ul = document.createElement('ul'); ul.className = 'docl';
-    var rows = [];
-    if (name === 'Ideas') {
-      rows = (S.ideas || []).slice().reverse();
-      if (!rows.length) rows = ['Nothing yet. Anything you ask for that can’t be built right away is kept here.'];
-    } else {
-      rows = ['Game: ' + (S.name || 'not named yet'), 'Hero: ' + (S.hero || 'not picked yet'),
-        'Fixed: ' + (Object.keys(S.tickets || {}).filter(function (k) { return S.tickets[k].status === 'done'; }).length) + ' tickets',
-        'Built with the AI: ' + (S.built || 0) + ' changes', 'Parts: ' + st.parts.map(function (p) { return p.name; }).join(', ')];
-    }
+    var rows = Project.doc().ideas.slice().reverse();
+    if (!rows.length) rows = ['Nothing yet. Anything you ask for that can’t be built right away is kept here.'];
     rows.forEach(function (r) { var li = document.createElement('li'); li.textContent = r; ul.appendChild(li); });
     v.appendChild(ul);
   }
@@ -602,6 +601,7 @@ var Editor = (function () {
       /* File: the game as a file. Signing out is in the kid's own menu (the circle at the right). */
       { id: 'file', label: 'File', items: [
         { label: 'Save', icon: 'i-save', keys: 'Ctrl+S', tip: 'Your game saves by itself; this saves it right now', run: saveNow },
+        window.Views && Views.docOn() && { label: 'Open design doc', icon: 'i-doc', tip: 'Your game, written down. The Builder builds what it says', run: function () { Views.openDoc(); } },
         isOpen('dProject') && window.Views && { label: 'Open game.js', icon: 'i-script', tip: 'Your game’s code, in the code editor', run: function () { Views.openCode(); } },
         doneDay && { sep: true },
         doneDay && { label: 'Clock out', icon: 'i-clapper', tip: 'End today’s shift. The Studio Director sums it up', run: function () { Quest.clockOut(); } }
