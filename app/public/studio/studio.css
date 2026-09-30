@@ -178,13 +178,32 @@ svg.i { width: 18px; height: 18px; fill: none; stroke: currentColor; stroke-widt
 .maxb { margin-left: auto; align-self: center; min-width: 36px; min-height: 32px; }
 .paused-tag:not([hidden]) + .maxb { margin-left: 0; }
 .inspector .maxb { margin-right: -6px; }
+.minb { margin-left: auto; align-self: center; min-width: 36px; min-height: 32px; }
+.minb + .maxb { margin-left: 0; }
 .area:not(.bottom) > .inspector { flex: 0 0 50%; }   /* one height whichever part is picked, so the chat below doesn't jump */
+/* ...unless nothing else in its column is open: alone, it fills it (Jay's screenshot, Sept 30, with
+   the Chat moved out: half the column stood empty under it) */
+.area:not(.bottom):not(:has(> .dock:not(.inspector):not(.closed):not(.min))) > .inspector { flex: 1 1 0 !important; }
 .area > .inspector[style*="flex"] { max-height: none; }
 .inspector:not(.open) { display: none; }
 .inspector.open { animation: inspIn .35s var(--ease); }
 @keyframes inspIn { from { opacity: 0; transform: translateY(-8px); } to { opacity: 1; transform: none; } }
 
 .dock { background: var(--panel); display: flex; flex-direction: column; min-height: 0; min-width: 0; }
+/* ANY PANEL, ANYWHERE (Jay, Sept 30: "factor in kids moving/redocking things"). Moved above the
+   Tickets, the Chat was squeezed shorter than its header, task line and box, and its rows spilled
+   over the Tickets. So a panel never draws outside itself, and the Chat keeps room to talk in: a
+   squeeze takes it from the panels beside it (share() stops at their 90px). */
+.dock:not(.inspector) { overflow: hidden; }
+.area:not(.bottom) > .dock[data-panel="chat"]:not(.min):not(.max) { min-height: 320px; }   /* its header, task line, a few lines and the box */
+.area.bottom > .dock[data-panel="chat"]:not(.min):not(.max) { min-width: 300px; }
+/* minimized (editor.js, minimize): just its tab row, and the room goes to the others */
+.dock.min { flex: 0 0 40px !important; min-height: 40px; }
+.dock.min > :not(.tabs) { display: none !important; }
+.area.bottom > .dock.min { flex: 0 0 auto !important; min-width: 0; }
+.dock.min .tab { cursor: pointer; }
+.dock.min { background: var(--frame); }
+.dock.min + .split.panels, .split.panels:has(+ .dock.min) { pointer-events: none; }
 .dock.closed { background: var(--ground); box-shadow: inset 0 0 0 1px var(--closed-outline); pointer-events: none; }
 .dock > * { transition: opacity .45s var(--ease); }
 .dock.closed > * { opacity: 0; }
@@ -218,14 +237,16 @@ svg.i { width: 18px; height: 18px; fill: none; stroke: currentColor; stroke-widt
 .split.edge.left::after, .split.edge.right::after { top: 0; bottom: 0; left: 3px; width: 3px; }
 .split.edge.bottom::after { left: 0; right: 0; top: 3px; height: 3px; }
 .area.empty > .split.edge { display: none; }
-.inspector:not(.open) + .split, .split:has(+ .inspector:not(.open)) { display: none; }
-.dock.closed + .split, .split:has(+ .dock.closed) { visibility: hidden; }
+/* only the splitters between panels: the edge's splitter comes last in its area, after a closed
+   Console, and these hid it, so the Project window couldn't be dragged taller (Jay, Sept 30) */
+.inspector:not(.open) + .split.panels, .split.panels:has(+ .inspector:not(.open)) { display: none; }
+.dock.closed + .split.panels, .split.panels:has(+ .dock.closed) { visibility: hidden; }
 /* A panel not yet revealed gives its room to an open one beside it, instead of standing there as an
    empty box (Jay, 2026-09-30: "whats the gap between project and the chat window?"). It comes back
    when a quest reveals it. An area with nothing open yet keeps its outline, so the frame reads whole. */
 .area:has(> .dock:not(.closed):not(.inspector)) > .dock.closed { display: none; }
-.area:has(> .dock:not(.closed):not(.inspector)) > .dock.closed + .split,
-.area:has(> .dock:not(.closed):not(.inspector)) > .split:has(+ .dock.closed) { display: none; }
+.area:has(> .dock:not(.closed):not(.inspector)) > .dock.closed + .split.panels,
+.area:has(> .dock:not(.closed):not(.inspector)) > .split.panels:has(+ .dock.closed) { display: none; }
 /* and the bottom row, with nothing in it open yet, is no row at all: a tall empty band under the game
    read as a broken panel, and the game had that room to use (it opens with the Project window) */
 .editor:not(.dragging):not(:has(#aBottom > .dock:not(.closed))) { --bh: 0px !important; }
@@ -304,6 +325,12 @@ body.resizing-x iframe, body.resizing-y iframe { pointer-events: none; }   /* th
           color: var(--ink-2); cursor: pointer; }
 .tclose:hover { background: var(--hover); color: var(--ink); }
 .tclose[hidden] { display: none; }
+/* game.js's close, inside its own tab (index.html, tabwrap) */
+.tabwrap { position: relative; display: flex; align-self: flex-end; }
+.tabwrap:has(> .vtab[hidden]) { display: none; }
+.tabwrap > .vtab { padding-right: 36px; }
+.tabwrap > .tclose { position: absolute; right: 5px; top: 50%; transform: translateY(-50%); width: 24px; height: 24px; border-radius: 4px; }
+.tabwrap > .tclose .i { width: 14px; height: 14px; }
 .view { position: absolute; top: 40px; left: 0; right: 0; bottom: 0; display: flex; flex-direction: column; background: var(--game-well); }
 .view[hidden] { display: none; }
 

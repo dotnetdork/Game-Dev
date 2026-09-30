@@ -1,4 +1,4 @@
-/* chat.js: the conversation, in the right-hand dock, and the Console beside the Project window.
+/* chat.js: the conversation, in the right-hand dock, and the Log beside the Project window.
 
    It should feel like a chat, not a form (Jay, 2026-09-28). Two playthroughs settled the rest:
    - ONE CONVERSATION, ONE CHARACTER AT A TIME (Jay, 2026-09-29, which undid a tab per character:
@@ -21,10 +21,10 @@
          line in the chat with an example in it, and the box's placeholder says what to type. No
          card, so the kid answers in their own words (Jay, Sept 30: drop the multiple choice). Saying "idk" or tapping Hint brings up suggestions (expect). Suggestions are examples of
          the shape of an answer ("a dragon", "a robot"), never the answer the step is teaching.
-   - GAME EVENTS ARE NOT SPEECH. What the game did ("Play started", "Ticket filed") is a thin row
-     with an icon, not a bubble, and it also goes to the Console, where every event is kept with its
-     time. The same event again, straight after, is the same row with a count ("×4"), not a new row:
-     falling off the level ten times read as spam.
+   - GAME EVENTS ARE NOT SPEECH. What the game did ("Play started", "Ticket filed") goes to the Log,
+     where every event is kept with its time, and not to the chat (Jay, Sept 30: "The status stuff in
+     the chat should move to log"). The same event again, straight after, is the same row with a
+     count ("×4"), not a new row: falling off the level ten times read as spam.
    - ONE SPEAKER, ONE MESSAGE (Jay, 2026-09-29, which replaced "one idea per bubble", review §4
      rule 4: his first-day screenshot showed the Mentor's welcome as four bubbles). The lines said
      together land as one bubble after one typing beat; lines caused by something the kid did are a
@@ -231,9 +231,9 @@ var Chat = (function () {
     scroll();
   }
 
-  /* A game event, as a row rather than a bubble, in the chat and in the Console. `quiet` rows skip
-     the Console (they are about the chat, not the game); `consoleOnly` ones skip the chat. The same
-     row again, straight after, counts up instead. */
+  /* A game event, as a row in the Log. Only a `chat` row is also in the chat, and a `quiet` one
+     skips the Log (it is about the chat, not the game). The same row again, straight after, counts
+     up instead. */
   function stamp() { var s = Math.floor((Date.now() - t0) / 1000); return Math.floor(s / 60) + ':' + ('0' + (s % 60)).slice(-2); }
   function again(row, sel) {
     var n = (+row.getAttribute('data-n') || 1) + 1;
@@ -245,7 +245,7 @@ var Chat = (function () {
   function event(text, icon, opts) {
     opts = opts || {};
     var ic = icon || 'i-pad', when = stamp(), words = fill(text);
-    if (!opts.consoleOnly) {
+    if (opts.chat) {
       var last = box.lastElementChild;
       if (last && last.classList.contains('evt') && last.getAttribute('data-text') === words) again(last, '.times');
       else {

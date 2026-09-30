@@ -39,6 +39,7 @@ var Editor = (function () {
   function openDock(id, open) {
     var d = $(id); if (!d) return;
     if (open && maxed && maxed !== d) unmaximize();   // a panel arriving is shown, not hidden under a big one
+    if (open && d.classList.contains('closed')) unmin(d);   // ...nor folded (minimize)
     d.classList.toggle('closed', !open); d.inert = !open; d.setAttribute('aria-hidden', String(!open));
     // Undo and Layout arrive with the first panel whose contents the kid can change or move.
     if (id === 'dHier' && open) { reveal('editTools', true); reveal('layoutTools', true); }
@@ -462,7 +463,11 @@ var Editor = (function () {
     var p = Project.part(id); if (!p) return;
     var before = p[key];
     if (before === value) return;
-    if (!replay) record(id, key, before, value, quiet);
+    /* A Sprite or a Color, never both (Jay, Sept 30: "you can use a sprite/texture, and also color.
+       It should be one or the other"): picking one clears the other, and Undo puts both back. */
+    var other = { look: 'tint', tint: 'look' }[key], g = null;
+    if (!replay && other && value && p.kind !== 'level' && p[other]) { g = Date.now() + Math.random(); record(id, other, p[other], null, false, g); p[other] = null; Runner.set(id, other, null); }
+    if (!replay) record(id, key, before, value, quiet, g);
     p[key] = value;
     Runner.set(id, key, value);
     if (!Runner.isPlaying()) Project.save();
@@ -484,11 +489,11 @@ var Editor = (function () {
   var undos = [], redos = [], playMark = 0;
   var WORD = { solid: 'Box Collider', hurts: 'Hazard', look: 'Sprite', sound: 'Clip', size: 'Scale', tint: 'Color', shape: 'hero', gravityScale: 'Gravity Scale', jump: 'Jump Force', w: 'Width',
                x: 'Position', y: 'Position', spots: 'Position', pieces: 'Position', name: 'name', names: 'name' };
-  function record(id, key, before, after, quiet) {
+  function record(id, key, before, after, quiet, g) {
     var last = undos[undos.length - 1], t = Date.now();
     // one slider drag is one step, not forty
-    if (quiet && last && last.id === id && last.key === key && t - last.t < 1200) { last.after = after; last.t = t; }
-    else undos.push({ id: id, key: key, before: before, after: after, t: t });
+    if (quiet && !g && last && last.id === id && last.key === key && t - last.t < 1200) { last.after = after; last.t = t; }
+    else undos.push({ id: id, key: key, before: before, after: after, t: t, g: g || null });
     if (undos.length > 50) { undos.shift(); playMark = Math.max(0, playMark - 1); }
     redos = [];
    
@@ -500,12 +505,15 @@ var Editor = (function () {
     if (!canUndo()) return;
     var e = undos.pop(); redos.push(e);
     set(e.id, e.key, e.before, false, true);
+    // a step made of two changes (a Sprite that cleared a Color) comes back whole
+    while (e.g && canUndo() && undos[undos.length - 1].g === e.g) { var e2 = undos.pop(); redos.push(e2); set(e2.id, e2.key, e2.before, false, true); }
     status('Undid: ' + what(e));
   }
   function redo() {
     if (!canRedo()) return;
     var e = redos.pop(); undos.push(e);
     set(e.id, e.key, e.after, false, true);
+    while (e.g && redos.length && redos[redos.length - 1].g === e.g) { var e2 = redos.pop(); undos.push(e2); set(e2.id, e2.key, e2.after, false, true); e = e2; }
     status('Redid: ' + what(e));
   }
 
@@ -568,6 +576,7 @@ var Editor = (function () {
       if (el) el = el.closest('.ofield') || (el.type === 'range' && el.closest('.irow')) || el;
     } else el = $('tree').querySelector('[data-key="part:' + id + '"]');
     if (!el) return;
+    unmin(el);   // a place lit inside a minimized panel is opened, or it is no cue
     el.classList.add('cue');
     // a cue below the fold is no cue (the Clip slot sat under the chat in a short Inspector): the
     // first time a place is lit, it is scrolled into view; a repaint of the same place leaves it be
@@ -745,7 +754,7 @@ var Editor = (function () {
      works. A menu with nothing in it yet isn't on the bar. */
   var PANEL_NAMES = { tickets: ['Tickets', 'i-ticket', 'dTickets'], hierarchy: ['Hierarchy', 'i-tree', 'dHier'], game: ['Game', 'i-pad', 'dGame'],
                       inspector: ['Inspector', 'i-sliders', 'inspector'], chat: ['Chat', 'i-chat', 'dMentor'], project: ['Project', 'i-folder', 'dProject'],
-                      console: ['Console', 'i-terminal', 'dConsole'] };
+                      console: ['Log', 'i-list', 'dConsole'] };
   function MENUS() {
     var doneDay = window.Quest && Quest.doneFirstDay && Quest.doneFirstDay();
     return [
@@ -924,14 +933,14 @@ var Editor = (function () {
   /* ---------- docks: where each panel sits, and how big ---------- */
   var AREAS = { left: 'aLeft', right: 'aRight', bottom: 'aBottom' };
   /* Tickets sit above the Hierarchy (a ticket is what the kid is working on; the Hierarchy is where),
-     and the Console beside the Project window, as Unity's are. */
+     and the Log beside the Project window, as Unity's Console is. */
   var PANELS = { tickets: 'dTickets', hierarchy: 'dHier', inspector: 'inspector', chat: 'dMentor', project: 'dProject', console: 'dConsole' };
-  /* The bottom row is tall (Jay, Sept 30: "The project tab should be a lot taller than it is"): 232
-     showed one row of assets and a half. On a short screen sizes() gives way to the Game view
-     (limits()). */
-  var DEFAULT = { left: ['tickets', 'hierarchy'], right: ['inspector', 'chat'], bottom: ['project', 'console'], lw: 264, rw: 388, bh: 340, grow: { tickets: 2, hierarchy: 3, project: 3, console: 2 } };
+  /* The bottom row shows two rows of assets (Jay, Sept 30: "The project tab should be a lot taller",
+     then his screenshot of the size he meant: two rows, the Project window and the Log half each).
+     On a short screen sizes() gives way to the Game view (limits()). */
+  var DEFAULT = { left: ['tickets', 'hierarchy'], right: ['inspector', 'chat'], bottom: ['project', 'console'], lw: 264, rw: 388, bh: 262, grow: { tickets: 2, hierarchy: 3, project: 1, console: 1 }, min: {} };
   var BIG = { left: ['tickets', 'hierarchy'], right: ['inspector', 'chat'], bottom: ['project', 'console'], lw: 200, rw: 316, bh: 120, grow: { tickets: 2, hierarchy: 3, project: 3, console: 2 } };
-  var LAYOUT_KEY = 'studio.layout.v3', L = null;
+  var LAYOUT_KEY = 'studio.layout.v4', L = null;   // v4: the Log open, and minimized panels
   function copy(o) { return JSON.parse(JSON.stringify(o)); }
   function layoutIs(d) { return JSON.stringify(L) === JSON.stringify(d); }
   function loadLayout() {
@@ -939,7 +948,7 @@ var Editor = (function () {
     // only a layout that still names every panel exactly once; anything else is from an older studio
     var names = s && [].concat(s.left || [], s.right || [], s.bottom || []).sort().join();
     L = names === Object.keys(PANELS).sort().join() ? s : copy(DEFAULT);
-    L.grow = L.grow || {};
+    L.grow = L.grow || {}; L.min = L.min || {};
   }
   function saveLayout() { try { if (layoutIs(DEFAULT)) localStorage.removeItem(LAYOUT_KEY); else localStorage.setItem(LAYOUT_KEY, JSON.stringify(L)); } catch (e) {} }
   function useLayout(d) { L = copy(d); saveLayout(); applyLayout(); status(d === DEFAULT ? 'Panels are back where they started' : 'The game is as big as it goes'); }
@@ -952,6 +961,7 @@ var Editor = (function () {
         if (i) area.appendChild(splitter('panels', a, i));
         area.appendChild(d);
         d.style.flex = L.grow[name] ? L.grow[name] + ' 1 0' : '';
+        d.classList.toggle('min', !!L.min[name]); paintMin(d);
       });
       area.classList.toggle('empty', !L[a].length);
       if (!area.querySelector(':scope > .split.edge')) area.appendChild(splitter('edge', a));
@@ -963,8 +973,33 @@ var Editor = (function () {
     var ed = $('editor');
     ed.style.setProperty('--lw', (L.left.length ? L.lw : 0) + 'px');
     ed.style.setProperty('--rw', (L.right.length ? L.rw : 0) + 'px');
-    ed.style.setProperty('--bh', (L.bottom.length ? (ed.clientHeight ? clamp(L.bh, limits('bottom')) : L.bh) : 0) + 'px');
+    // a bottom row whose open panels are all minimized is only as tall as their tabs
+    var shut = L.bottom.length && L.bottom.every(function (n) { var d = $(PANELS[n]); return L.min[n] || d.classList.contains('closed'); }) && L.bottom.some(function (n) { return L.min[n]; });
+    ed.style.setProperty('--bh', (!L.bottom.length ? 0 : shut ? 41 : ed.clientHeight ? clamp(L.bh, limits('bottom')) : L.bh) + 'px');
   }
+  /* Minimized (Jay, Sept 30: "make tabs minimizeable"): a panel folds down to its tab row, and its
+     room goes to the panels beside it. The button again, or a tap on its tab, opens it. Kept with
+     the layout, wherever the kid has docked it. The story opening or pointing into a folded panel
+     opens it first (unmin). */
+  function paintMin(d) {
+    var b = d.querySelector('.minb'); if (!b) return;
+    var on = d.classList.contains('min'), n = panelName(d);
+    b.setAttribute('aria-pressed', String(on));
+    b.setAttribute('aria-label', on ? 'Open the ' + n : 'Minimize the ' + n);
+    b.setAttribute('data-tip', on ? 'Open it' : 'Minimize');
+    b.querySelector('use').setAttribute('href', on ? '#i-plus' : '#i-minus');
+  }
+  function minimize(d, on) {
+    var name = d.getAttribute('data-panel'); if (!L || !PANELS[name]) return;
+    if (on === undefined) on = !L.min[name];
+    if (!!L.min[name] === on) return;
+    if (on && d === maxed) unmaximize();
+    if (on) L.min[name] = true; else delete L.min[name];
+    d.classList.toggle('min', on); paintMin(d);
+    saveLayout(); sizes();
+    status(panelName(d) + (on ? ' minimized. Its tab opens it again' : ' is open'));
+  }
+  function unmin(el) { var d = el && el.closest && el.closest('.dock'); if (d && d.classList.contains('min')) minimize(d, false); }
   /* A splitter: `edge` sits on an area's inner edge and resizes the area; `panels` sits between two
      panels in one area and shares the room between them. Both work from the keyboard too (a
      separator with arrow keys), and neither is ever the only way to see anything. */
@@ -1177,10 +1212,19 @@ var Editor = (function () {
       var row = d.querySelector(':scope > .tabs'); if (!row) return;
       var b = document.createElement('button'); b.type = 'button'; b.className = 'x maxb';
       b.innerHTML = '<svg class="i" aria-hidden="true"><use href="#i-grow"/></svg>';
-      b.addEventListener('click', function () { maximize(d); });
-      row.insertBefore(b, row.querySelector(':scope > .x'));
-      row.addEventListener('dblclick', function (e) { if (e.target.closest('.tab')) maximize(d); });
-      paintMax(d);
+      b.addEventListener('click', function () { unmin(d); maximize(d); });
+      // every docked panel folds; the Game view in the middle doesn't (there'd be nothing left)
+      if (PANELS[d.getAttribute('data-panel')]) {
+        var m = document.createElement('button'); m.type = 'button'; m.className = 'x minb';
+        m.innerHTML = '<svg class="i" aria-hidden="true"><use href="#i-minus"/></svg>';
+        m.addEventListener('click', function () { minimize(d); });
+        row.insertBefore(m, row.querySelector(':scope > .x'));
+      }
+      row.insertBefore(b, row.querySelector(':scope > .x:not(.minb)'));   // minimize, big, then close
+      row.addEventListener('dblclick', function (e) { if (e.target.closest('.tab')) { unmin(d); maximize(d); } });
+      // a tap on a folded panel's tab opens it (a drag still moves it: tabUp only runs a real drag)
+      row.addEventListener('click', function (e) { if (e.target.closest('.tab') && d.classList.contains('min')) minimize(d, false); });
+      paintMax(d); paintMin(d);
     });
     $('pFolders').addEventListener('keydown', folderKeys);
     paintProject();
@@ -1208,7 +1252,7 @@ var Editor = (function () {
     $('starCount').textContent = n + (n === 1 ? ' star' : ' stars');
   }
 
-  return { init: init, on: on, openDock: openDock, reveal: reveal, tree: tree, allow: allow, select: select,
+  return { init: init, on: on, openDock: openDock, reveal: reveal, unmin: unmin, tree: tree, allow: allow, select: select,
            inspect: inspect, closeInspector: closeInspector, set: set, place: place, refOf: refOf, togglePlay: togglePlay, cue: cue, point: point,
            paintPlay: paintPlay, me: me, setProjectName: setProjectName, stars: stars, project: paintProject, undo: undo, redo: redo,
            selected: function () { return selected; }, allowed: function () { return allowed; } };

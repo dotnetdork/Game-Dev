@@ -84,7 +84,7 @@ var Schema = (function () {
       ] },
       { name: 'Sprite Renderer', icon: 'i-image', gate: 'heroArt', fields: [
         { key: 'look', type: 'sprite', of: 'player', label: 'Sprite', tip: 'Sprite: the picture the hero is drawn with' },
-        { key: 'tint', type: 'color', label: 'Color', tip: 'Color: tints the picture' }
+        { key: 'tint', type: 'color', label: 'Color', tip: 'Color: a plain colour instead of a picture. Pick one or the other' }
       ] },
       { name: 'Rigidbody 2D', icon: 'i-sliders', gate: 'playerMove', fields: [
         num('gravityScale', 'Gravity Scale', 'Gravity Scale: 1 is normal, 0 floats, 2 falls fast', 0, 3, 0.1, '×')
@@ -98,7 +98,7 @@ var Schema = (function () {
       { name: 'Transform', icon: 'i-cube', fields: [PLACE.x, PLACE.y, PLACE.w] },
       { name: 'Sprite Renderer', icon: 'i-image', gate: 'floorArt', fields: [
         { key: 'look', type: 'sprite', of: 'floor', label: 'Sprite', tip: 'Sprite: the picture this part is drawn with' },
-        { key: 'tint', type: 'color', label: 'Color', tip: 'Color: tints the picture' }
+        { key: 'tint', type: 'color', label: 'Color', tip: 'Color: a plain colour instead of a picture. Pick one or the other' }
       ] },
       { name: 'Box Collider 2D', icon: 'i-cube', toggle: 'solid', tip: 'Box Collider 2D: tick it and things can stand on this part',
         on: 'Things stand on it.', off: 'Things fall through.' }
@@ -109,7 +109,7 @@ var Schema = (function () {
       ] },
       { name: 'Sprite Renderer', icon: 'i-image', gate: 'lavaArt', fields: [
         { key: 'look', type: 'sprite', of: 'lava', label: 'Sprite', tip: 'Sprite: the picture this part is drawn with' },
-        { key: 'tint', type: 'color', label: 'Color', tip: 'Color: tints the picture' }
+        { key: 'tint', type: 'color', label: 'Color', tip: 'Color: a plain colour instead of a picture. Pick one or the other' }
       ] },
       { name: 'Hazard (Script)', icon: 'i-script', gate: 'hazard', toggle: 'hurts', tip: 'Hazard: a script. Tick it and touching this part sends the player back',
         on: 'Touching it sends you back.', off: 'It’s just a floor.' }
@@ -120,7 +120,7 @@ var Schema = (function () {
       ] },
       { name: 'Sprite Renderer', icon: 'i-image', gate: 'coinArt', fields: [
         { key: 'look', type: 'sprite', of: 'coin', label: 'Sprite', tip: 'Sprite: the picture this part is drawn with' },
-        { key: 'tint', type: 'color', label: 'Color', tip: 'Color: tints the picture' }
+        { key: 'tint', type: 'color', label: 'Color', tip: 'Color: a plain colour instead of a picture. Pick one or the other' }
       ] },
       { name: 'Audio Source', icon: 'i-sound', gate: 'coinSound', fields: [
         { key: 'sound', type: 'sound', label: 'Clip', tip: 'Clip: the sound that plays when a coin is grabbed' },

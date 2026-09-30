@@ -43,6 +43,8 @@
   <symbol id="i-x" viewBox="0 0 24 24"><path d="M6 6l12 12M18 6L6 18"/></symbol>
   <symbol id="i-check" viewBox="0 0 24 24"><path d="M5 12.5l4.5 4.5L19 7.5"/></symbol>
   <symbol id="i-plus" viewBox="0 0 24 24"><path d="M12 5.5v13M5.5 12h13"/></symbol>
+  <symbol id="i-minus" viewBox="0 0 24 24"><path d="M5.5 12h13"/></symbol>
+  <symbol id="i-list" viewBox="0 0 24 24"><path d="M8 6h13M8 12h13M8 18h13M3.5 6h.01M3.5 12h.01M3.5 18h.01"/></symbol>
   <symbol id="i-save" viewBox="0 0 24 24"><path d="M5.5 4h10.5l3.5 3.5v11a1.5 1.5 0 0 1-1.5 1.5h-12A1.5 1.5 0 0 1 4.5 18.5v-13A1.5 1.5 0 0 1 5.5 4zM8 4v4.5h7V4M8 20v-5.5h8V20"/></symbol>
   <symbol id="i-exit" viewBox="0 0 24 24"><path d="M14 4.5h4.5a1 1 0 0 1 1 1v13a1 1 0 0 1-1 1H14M10 8l-4 4 4 4M6.5 12h9"/></symbol>
   <symbol id="i-help" viewBox="0 0 24 24"><path d="M12 20.5a8.5 8.5 0 1 0 0-17 8.5 8.5 0 0 0 0 17zM9.6 9.6a2.5 2.5 0 1 1 3.4 2.3c-.6.3-1 .8-1 1.5v.4M12 16.8h.01"/></symbol>
@@ -127,9 +129,9 @@
         <button type="button" class="tab vtab" role="tab" id="vtScene" aria-controls="sceneView" aria-selected="false" tabindex="-1" hidden data-tip="Scene: the level's parts, to look at and pick"><svg class="i" aria-hidden="true"><use href="#i-scene"/></svg>Scene</button>
         <button type="button" class="tab vtab" role="tab" id="vtGame" aria-controls="gamebody" aria-selected="true" data-tip="Game: your game, as a player sees it"><svg class="i" aria-hidden="true"><use href="#i-pad"/></svg>Game</button>
         <button type="button" class="tab vtab" role="tab" id="vtDoc" aria-controls="docView" aria-selected="false" tabindex="-1" hidden data-tip="Design doc: your game, written down. The Builder builds what it says"><svg class="i" aria-hidden="true"><use href="#i-doc"/></svg>Design doc</button>
-        <button type="button" class="tab vtab" role="tab" id="vtCode" aria-controls="codeView" aria-selected="false" tabindex="-1" hidden data-tip="game.js: your game's code"><svg class="i" aria-hidden="true"><use href="#i-script"/></svg>game.js<span class="dirty" id="codeDirty" hidden aria-hidden="true"></span></button>
+        <!-- the close sits inside its tab, as an editor's does (Jay, Sept 30); a button can't hold a button, so they share a wrapper -->
+        <span class="tabwrap" role="presentation"><button type="button" class="tab vtab" role="tab" id="vtCode" aria-controls="codeView" aria-selected="false" tabindex="-1" hidden data-tip="game.js: your game's code"><svg class="i" aria-hidden="true"><use href="#i-script"/></svg>game.js<span class="dirty" id="codeDirty" hidden aria-hidden="true"></span></button><button type="button" class="tclose" id="codeClose" hidden aria-label="Close game.js" data-tip="Close game.js"><svg class="i" aria-hidden="true"><use href="#i-x"/></svg></button></span>
       </div>
-      <button type="button" class="tclose" id="codeClose" hidden aria-label="Close game.js" data-tip="Close game.js"><svg class="i" aria-hidden="true"><use href="#i-x"/></svg></button>
       <span class="paused-tag" id="pausedTag" hidden>Paused</span></div>
     <div class="gamebody" id="gamebody">
       <div class="stage" id="stage"></div>
@@ -213,10 +215,12 @@
         </div>
       </div>
     </section>
-    <!-- The Console: every event the game and the studio report, with its time. The chat shows the
-         ones that matter as rows; this keeps them all (chat.js event()). -->
-    <section class="dock closed" id="dConsole" data-panel="console" aria-label="Console">
-      <div class="tabs"><span class="tab" data-drag><svg class="i" aria-hidden="true"><use href="#i-terminal"/></svg>Console <small id="consoleCount"></small></span></div>
+    <!-- The Log: every event the game and the studio report, with its time, and the only place they
+         go: the chat is talk (chat.js event()). Called the Log, not the Console (Jay, Sept 30: "those
+         are two different things"): a console is where code prints. Open from the start. Its ids
+         still say console. -->
+    <section class="dock" id="dConsole" data-panel="console" aria-label="Log">
+      <div class="tabs"><span class="tab" data-drag><svg class="i" aria-hidden="true"><use href="#i-list"/></svg>Log <small id="consoleCount"></small></span></div>
       <div class="dock-body console"><ol class="clog" id="consoleList"></ol></div>
     </section>
   </div>
@@ -238,7 +242,7 @@
      runner.js   the game frame and Play mode. Needs Project.
      builder.js  the Builder: the AI's changes to the game's code and parts. Needs Project, Runner;
                  calls Editor at run time only, so it may load before it.
-     chat.js     the conversation and the Console. Needs Runner (it won't steal focus from a running game).
+     chat.js     the conversation and the Log. Needs Runner (it won't steal focus from a running game).
      editor.js   menus, docks, Hierarchy, Inspector, Project, Play, Undo. Needs UI, Project, Schema,
                  Runner, Chat, Save.
      views.js    the centre's Scene, Game and game.js views. Needs Project, Runner, Builder, Chat,

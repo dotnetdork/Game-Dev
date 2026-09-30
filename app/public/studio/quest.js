@@ -449,7 +449,7 @@ var Quest = (function () {
     if (!b || !b.hints) return false;
     var n = Math.min(f.rung || 0, b.hints.length - 1);
     Chat.hint(fill(b.hints[n]), n + 1, b.hints.length);
-    Chat.event('Hint ' + (n + 1) + ' of ' + b.hints.length, 'i-bulb', { consoleOnly: true });
+    Chat.event('Hint ' + (n + 1) + ' of ' + b.hints.length, 'i-bulb');
     track('stuck', { rung: n + 1, why: why });
     f.rung = n + 1; hints();
     return true;
@@ -1013,7 +1013,7 @@ var Quest = (function () {
     remember(ev);
     if (ev.type === 'play' || ev.type === 'select') Editor.point(null);   // the pointer's job is done once they act
     if (ev.type === 'event' || ev.type === 'set' || ev.type === 'play') checkTickets(ev);
-    if (ev.type === 'event') Chat.event(EVENT_WORDS[ev.name] || ev.name, EVENT_ICON[ev.name] || 'i-pad', { consoleOnly: !S.reported || !IN_CHAT[ev.name] });
+    if (ev.type === 'event') Chat.event(EVENT_WORDS[ev.name] || ev.name, EVENT_ICON[ev.name] || 'i-pad');
     if (ev.type === 'select' || ev.type === 'set' || ev.type === 'play' || ev.type === 'stop') busyKid();
     var f = frame(); if (!f) return;
     // for claimFixed: when the game last changed, and when it was last tested
@@ -1034,11 +1034,9 @@ var Quest = (function () {
     if (b && b.wait_for && !f.completing && matches(b.wait_for, ev, f)) complete();
     paintDev();
   }
-  /* The game's events, as the rows the chat and the Console show. On the first day, before the kid
-     has reported what they found, they go to the Console only: the chat doesn't tell them. */
+  /* The game's events, as the rows the Log shows (the chat never does: chat.js, event). */
   var EVENT_WORDS = { fell: 'The player fell off the level', coin: 'Coin grabbed', lava: 'The player touched the lava', hurt: 'The lava sent the player back', crossed: 'The player stood on the floor tile', cleared: 'Every coin grabbed' };
   var EVENT_ICON = { fell: 'i-flag', coin: 'i-star', lava: 'i-flag', hurt: 'i-flag', crossed: 'i-check', cleared: 'i-star' };
-  var IN_CHAT = { fell: true, hurt: true, cleared: true };   // the rest would be a row per coin: Console only
 
   /* ---------- typed messages: the character whose thread is open answers ---------- */
   /* What the AI may set: what schema.js says the part can hold, on a component the kid can see, and
@@ -1290,10 +1288,10 @@ var Quest = (function () {
     Runner.on(function (name) {
       if (name === 'play' || name === 'stop' || name === 'reverted') handle({ type: name });
       else if (EVENT_WORDS[name]) handle({ type: 'event', name: name });
-      if (name === 'play') Chat.event('Play', 'i-play', { consoleOnly: true });
-      if (name === 'stop') Chat.event('Stop', 'i-stop', { consoleOnly: true });
+      if (name === 'play') Chat.event('Play', 'i-play');
+      if (name === 'stop') Chat.event('Stop', 'i-stop');
       if (name === 'reverted') Chat.event('Stop put back what changed in Play mode', 'i-undo');
-      if (name === 'error') Chat.event('Error: ' + arguments[1], 'i-flag', { kind: 'bad', consoleOnly: true });
+      if (name === 'error') Chat.event('Error: ' + arguments[1], 'i-flag', { kind: 'bad' });
     });
     Editor.on(function (name, d) {
       if (name === 'select') handle({ type: 'select', name: d });

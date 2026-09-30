@@ -334,7 +334,7 @@ var Views = (function () {
     st.code = code; st.codeEdited = true; saved = code; lastError = null;
     Project.save(); paintCode();
     $('codeState').textContent = 'Saved. Starting your game…';
-    Chat.event('You changed game.js', 'i-script', { consoleOnly: true });
+    Chat.event('You changed game.js', 'i-script');
     watching = true;
     Runner.mount($('stage'), code, st.parts, UI.muted()).then(function () { if (!lastError) $('codeState').textContent = 'Saved. Your game restarted with it'; setTimeout(Runner.askThumbs, 600); });
   }
@@ -388,7 +388,7 @@ var Views = (function () {
     clearTimeout(typing[key]); typing[key] = null;
     if (Project.writeDoc(key, t.value, 'kid')) {
       $('docState').textContent = 'Saved. ' + progress();
-      Chat.event('You changed ' + Project.SECTIONS.filter(function (s) { return s[0] === key; })[0][1] + ' in the design doc', 'i-doc', { consoleOnly: true });
+      Chat.event('You changed ' + Project.SECTIONS.filter(function (s) { return s[0] === key; })[0][1] + ' in the design doc', 'i-doc');
     }
   }
   function progress() {

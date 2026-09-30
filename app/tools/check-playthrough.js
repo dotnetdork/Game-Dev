@@ -376,8 +376,8 @@ async function launch() {
     check('the Project window can be made big, with the Chat still beside it', big.max && big.w > 800 && big.h > 500 && big.under && !big.chat, JSON.stringify(big));
     await p.keyboard.press('Escape');
     check('Escape puts it back', await p.evaluate(function () { return !document.querySelector('.dock.max') && !document.getElementById('dHier').inert; }));
-    const rows = await p.evaluate(function () { Chat.event('A test row', 'i-flag'); Chat.event('A test row', 'i-flag'); Chat.event('A test row', 'i-flag'); var r = document.querySelectorAll('#log .evt[data-text="A test row"]'); return r.length + ' ' + (r[0] && r[0].textContent); });
-    check('the same event again is one row with a count, not spam', rows === '1 A test row×3', rows);
+    const rows = await p.evaluate(function () { Chat.event('A test row', 'i-flag'); Chat.event('A test row', 'i-flag'); Chat.event('A test row', 'i-flag'); var r = document.querySelectorAll('#consoleList .crow[data-text="A test row"]'); return r.length + ' ' + (r[0] && r[0].querySelector('span').textContent + r[0].querySelector('.times').textContent) + ' ' + document.querySelectorAll('#log .evt').length; });
+    check('an event goes to the Log, not the chat (Jay, Sept 30), and the same one again is one row with a count', rows === '1 A test row×3 0', rows);
     const firstAt = await p.evaluate(function () { return Quest.dev.where() + ' / floor ' + Quest.dev.state().tickets.floor.status; });
     await p.waitForTimeout(2500);   // save.js sends it to the server
 
