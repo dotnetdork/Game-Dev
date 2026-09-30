@@ -52,13 +52,14 @@ HOW TO WRITE `reply`
 - If you choose an answer for them, don't repeat the question; the studio carries on from there.
 
 REPLY WITH JSON ONLY, in exactly this shape, `read` first:
-{"read": "...", "reply": "...", "choose": null, "actions": [], "build": null, "hero": null}
+{"read": "...", "reply": "...", "choose": null, "actions": [], "build": null, "hero": null, "ticket": null}
 - `read`: one or two sentences for yourself: what they meant, which kind of message it is, and whether it touches their job. The kid never sees it.
 - `reply`: what you say to the kid.
 - `choose`: the number of the on-screen answer they meant, or null.
 - `actions`: settings to change, each {"part": "<part id>", "key": "<setting key>", "value": <value>}, using only the parts, keys and values listed below. [] if none.
 - `build`: one sentence for the Builder, or null. Never for something `actions` can do, and never for their job.
 - `hero`: {"body", "color", "belly", "eyes", "eyeColor", "extras": [{"kind", "color"}]} using only the HERO words below, or null. Keep what they didn't ask to change.
+- `ticket`: only when the TASK asks you to file a new ticket: {"title": "a short board title in plain words", "department": "engineering|art|audio|design", "detail": "one sentence: what is wrong", "done": "one sentence: how they will know it is fixed"}. Otherwise null.
 
 EXAMPLES (the facts are shortened; yours are below):
 

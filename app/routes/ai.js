@@ -463,8 +463,16 @@ function mount(app, deps) {
          browser owns the drawer, so it owns the vocabulary and drops any word it does not know. */
       const h = m.hero;
       const hero = (h && typeof h === 'object' && !Array.isArray(h) && JSON.stringify(h).length <= 1500) ? h : null;
+      /* `ticket`: a problem the kid reported that the course never planned, written up for the board
+         (quest.js fileOwn): a title, the department that fixes it, what is wrong, how they'll know it's
+         fixed. Short strings and a known department, or nothing; the browser files it only when it
+         asked for one. */
+      const tk = m.ticket, str = function (v, n) { return typeof v === 'string' && v.trim() ? v.trim().slice(0, n) : null; };
+      const ticket = (tk && typeof tk === 'object' && str(tk.title, 70)) ? { title: str(tk.title, 70),
+        department: ['engineering', 'art', 'audio', 'design'].indexOf(tk.department) >= 0 ? tk.department : null,
+        detail: str(tk.detail, 200), done: str(tk.done, 160) } : null;
       return res.json({ reply: String(m.reply || '').trim().slice(0, 800) || 'Hmm, say that another way?', choose: choose, actions: actions,
-        build: build, hero: hero });
+        build: build, hero: hero, ticket: ticket });
     }
 
     /* INTERVIEWER: the studio director in the hiring interview (ai/agents/interviewer.md, V2). It leads

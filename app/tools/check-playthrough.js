@@ -431,6 +431,49 @@ async function launch() {
     check('her hero goes in the design doc, in her words, as a start', await p.evaluate(function () { var s = Project.doc().sections.hero; return s.text === 'frog' && s.state === 'started' && s.by === 'kid'; }));
     check('the game\'s name is not asked on the first day: it belongs to the design doc', !/called\?/.test(await log()));
     await runJump(3000); await waitLog('first star', 9000);
+
+    /* A problem nobody planned (Jay, Sept 30: "It should be able to file and create tickets for
+       different departments. It also just kinda shoots for the expected tickets"): filed in her words,
+       given to a department, fixed in that department's shift, and closed only once it's tested. */
+    where = 'a ticket she found herself';
+    await p.evaluate(function () { delete Quest.dev.state().tickets['silent-coins']; delete Quest.dev.state().tickets['harmless-lava']; Quest.dev.jump('first-day', Quest.dev.course().quests['first-day'].beats.map(function (b) { return b.id; }).indexOf('report')); });
+    await waitLog('What was broken?', 9000);
+    // Jay's playthrough (Sept 30): "Nothing happen", to what happened with the dots, was dug at and kept as an idea
+    await type('There are dots on the level when walk into dem');
+    await waitLog('Those circles are coins', 9000);
+    await type('Nothing happen');
+    await p.waitForFunction(function () { return !!Quest.dev.state().tickets['silent-coins']; }, null, { timeout: 9000 });
+    check('a dig that names the coins is about the coins: "Nothing happen" is the finding, in all her words', /dots.*Nothing happen/.test((await state()).tickets['silent-coins'].words), (await state()).tickets['silent-coins'].words);
+    await type('it should ding');
+    await p.waitForFunction(function () { return Quest.dev.state().tickets['silent-coins'].should === 'it should ding'; }, null, { timeout: 9000 });
+    await type('the jump feels floaty');
+    await waitLog('What happened with it?', 9000);
+    await type('when I jump I float down really slowly');
+    await p.waitForFunction(function () { return Object.keys(Quest.dev.state().own || {}).length === 1; }, null, { timeout: 9000 });
+    const own = await p.evaluate(function () { var S = Quest.dev.state(), id = Object.keys(S.own)[0]; return { t: S.own[id], mine: S.tickets[id], id: id }; });
+    check('a finding no ticket planned for is filed anyway, in her words, for a department', own.t.title === 'The jump feels floaty' && own.t.department === 'engineering' && own.mine && own.mine.status === 'open', JSON.stringify(own.t));
+    await waitLog('It goes to Engineering', 9000);
+    check('and the board shows it, with its department', /Engineering.*The jump feels floaty/.test(await p.$eval('#ticketList [data-key="ticket:' + own.id + '"]', function (e) { return e.textContent; })));
+    await type('it should fall faster');
+    await p.waitForFunction(function (id) { return !!Quest.dev.state().tickets[id].should; }, own.id, { timeout: 9000 });
+    check('her half of the report goes on it too', (await p.evaluate(function (id) { return Quest.dev.state().tickets[id].should; }, own.id)) === 'it should fall faster');
+    await type('theres a gap in the floor i walk near');
+    await p.waitForFunction(function () { return !!Quest.dev.state().tickets['harmless-lava']; }, null, { timeout: 9000 });
+    await waitLog('What should we fix first', 12000);
+    await type('the jump one');
+    await waitLog('I’m the lead programmer! You found this one yourself', 12000);
+    check('picked, it is Engineering\'s shift: the lead programmer takes it', await p.$eval('#dMentor', function (e) { return e.getAttribute('data-who'); }) === 'p' && await task() === 'Fix it, then test it with Play', await task());
+    await type('fixed');
+    await waitLog('Nothing in the game has changed yet', 9000);
+    await p.evaluate(function () { Editor.set('player', 'gravityScale', 1.6); });
+    await type('fixed');
+    await waitLog('Test it first!', 9000);
+    check('"fixed" is not taken on its word: first a change, then a test with Play', await p.evaluate(function (id) { return Quest.dev.state().tickets[id].status; }, own.id) === 'doing');
+    await p.click('#bPlay'); await p.waitForTimeout(800); await p.click('#bStop');
+    await type('it’s fixed now');
+    await waitLog('Ticket closed!', 9000);
+    await p.waitForFunction(function (id) { return Quest.dev.state().tickets[id].status === 'done'; }, own.id, { timeout: 9000 });
+    check('changed and tested, "fixed" closes it, crossed out on the board', await p.$eval('#ticketList [data-key="ticket:' + own.id + '"]', function (b) { return b.classList.contains('done'); }));
   } catch (e) {
     check('the playthrough got through ' + where, false, e.message.split('\n')[0]);
     await shot(p, 'pzz-failed').catch(function () {});

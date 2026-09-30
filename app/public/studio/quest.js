@@ -56,17 +56,37 @@ var Quest = (function () {
   function frame() { return S.stack[S.stack.length - 1] || null; }
   function quest(f) { f = f || frame(); return f && COURSE.quests[f.quest]; }
   function beat(f) { f = f || frame(); var q = quest(f); return q && q.beats[f.beat]; }
-  function ticketOf(id) { return COURSE.tickets.filter(function (k) { return k.id === id; })[0] || null; }
+  /* A ticket is one of the course's (tickets.yaml) or one the kid found that the course never planned
+     (S.own, filed by askFindings through fileOwn). An own ticket has what the board shows (title,
+     department, detail, done) and is fixed in your-ticket.yaml's shift; it has no words, nudge or
+     fixed_when, since nothing knew about it before the kid did. */
+  function ticketOf(id) { return COURSE.tickets.filter(function (k) { return k.id === id; })[0] || (S && S.own && S.own[id]) || null; }
+  function allTickets() { return COURSE.tickets.concat(Object.keys(S.own || {}).map(function (id) { return S.own[id]; })); }
+  // the ticket a frame is fixing: its quest's, or, for your-ticket, the one it was started for
+  function ticketFor(f) { return f && (f.ticket || (quest(f) && quest(f).ticket !== 'own' && quest(f).ticket)) || null; }
+  function ownShift(f) { var q = f && quest(f); return !!(q && q.ticket === 'own' && f.ticket); }
+  // who leads each department, for a shift whose character is `department`
+  var LEADS = { engineering: 'lead-programmer', art: 'art-director', audio: 'sound-designer', design: 'lead-designer', studio: 'mentor' };
   function save() { Project.save(); }
 
   /* ---------- the character talking ---------- */
   function character(b, f) {
+    f = f || frame();
     var q = quest(f);
     var c = (b && b.character) || (q && q.character) || 'mentor';
-    return c === 'department' ? (S.lastCharacter || 'mentor') : c;
+    if (c !== 'department') return c;
+    var t = ownShift(f) && ticketOf(f.ticket);
+    return t ? LEADS[t.department] || 'mentor' : (S.lastCharacter || 'mentor');
   }
   function voice() { return frame() ? (VOICE[character(beat())] || 'm') : (Chat.active() || 'm'); }
-  function fill(t) { return String(t).replace(/\{game\}/g, S.name || 'your game'); }
+  /* {game}: the game's name. {role}: who is talking ("the lead programmer"). {ticket}: the ticket this
+     shift is fixing, as the board titles it. */
+  function fill(t) {
+    var f = frame(), tk = f && ticketFor(f) && ticketOf(ticketFor(f));
+    return String(t).replace(/\{game\}/g, S.name || 'your game')
+      .replace(/\{role\}/g, NAME[character(f && beat(f), f)] || 'the Mentor')
+      .replace(/\{ticket\}/g, tk ? tk.title.charAt(0).toLowerCase() + tk.title.slice(1) : 'this ticket');
+  }
   function say(lines, who) { if (lines && lines.length) Chat.say(lines.map(function (l) { return [who || voice(), fill(l)]; })); }
   /* A step's words: its talk, then its instruction (`instruct`), which the chat draws as a step row
      rather than a bubble (chat.js, "the chat is the conversation"). */
@@ -111,7 +131,7 @@ var Quest = (function () {
     if (c.playing !== undefined && Runner.isPlaying() !== c.playing) return false;
     return true;
   }
-  var TRIGGERS = ['event', 'set', 'select', 'play', 'stop', 'reverted', 'filed', 'built'];
+  var TRIGGERS = ['event', 'set', 'select', 'play', 'stop', 'reverted', 'filed', 'built', 'fixed'];
   /* ev: { type, name, detail }. A condition with a trigger needs that trigger now; one with only
      guards (state, flags) is true whenever its guards are. */
   function matches(c, ev, f) {
@@ -124,6 +144,7 @@ var Quest = (function () {
       if (trig === 'stop' && ev.type !== 'stop') return false;
       if (trig === 'reverted' && ev.type !== 'reverted') return false;
       if (trig === 'built' && ev.type !== 'built') return false;
+      if (trig === 'fixed' && ev.type !== 'fixed') return false;
       if (trig === 'filed' && !(ev.type === 'filed' && ev.name === c.filed)) return false;
       if (trig === 'select' && !(ev.type === 'select' && ev.name === c.select)) return false;
       if (trig === 'set') {
@@ -149,6 +170,24 @@ var Quest = (function () {
     handle({ type: 'filed', name: id });
     return true;
   }
+  /* A ticket the course never planned: { title, department, detail, done } from the AI, or, with it
+     down, the kid's own first line as the title and the department its words point to. Returns it. */
+  var DEPT_WORDS = [['audio', /\b(sound|sounds|music|noise|noisy|quiet|loud|hear|heard|silent|beep|ding)\b/i],
+    ['art', /\b(look|looks|colou?rs?|gr[ae]y|ugly|pictures?|drawn|sprites?|dark|bright|invisible|see)\b/i],
+    ['design', /\b(boring|hard|easy|fun|unfair|confus\w*|too (many|few|long|short))\b/i]];
+  function fileOwn(t, words) {
+    var n = Object.keys(S.own).length + 1, id = 'own-' + n;
+    while (S.own[id]) id = 'own-' + (++n);
+    var title = String(t.title || '').replace(/\s+/g, ' ').trim().replace(/[.!?]+$/, '').slice(0, 70);
+    title = title.charAt(0).toUpperCase() + title.slice(1);
+    var dept = DEPT[t.department] && t.department !== 'studio' ? t.department
+      : ((DEPT_WORDS.filter(function (d) { return d[1].test(words || title); })[0] || ['engineering'])[0]);
+    S.own[id] = { id: id, own: true, title: title || 'Something you found', department: dept, quest: 'your-ticket',
+      detail: String(t.detail || words || title).slice(0, 200),
+      done: String(t.done || 'You test it with Play, and it does what should happen.').slice(0, 160) };
+    file(id, words);
+    return S.own[id];
+  }
   function checkTickets(ev) {
     COURSE.tickets.forEach(function (t) {
       if (t.found_by && !S.tickets[t.id] && matches(t.found_by, ev, { flags: {} })) {
@@ -167,7 +206,7 @@ var Quest = (function () {
   function titleOf(t) { var mine = S.tickets[t.id]; return t.title + (mine && mine.words ? ' (they reported it as “' + mine.words + '”)' : ''); }
   function number(id) { var mine = S.tickets[id]; return (mine && mine.n) || Object.keys(S.tickets).indexOf(id) + 1; }
   var STATUS = { open: 'Open', doing: 'In progress', done: 'Fixed' };
-  function lead(t) { var q = COURSE.quests[t.quest]; return VOICE[(q && q.character) || 'mentor'] || 'm'; }
+  function lead(t) { var q = COURSE.quests[t.quest]; return VOICE[t.own ? LEADS[t.department] : (q && q.character) || 'mentor'] || 'm'; }
   function el(tag, cls, text) { var e = document.createElement(tag); if (cls) e.className = cls; if (text !== undefined) e.textContent = text; return e; }
   function icon(id) { var ns = 'http://www.w3.org/2000/svg', svg = document.createElementNS(ns, 'svg'), use = document.createElementNS(ns, 'use'); svg.setAttribute('class', 'i'); svg.setAttribute('aria-hidden', 'true'); use.setAttribute('href', '#' + id); svg.appendChild(use); return svg; }
   function pill(status) { var p = el('span', 'pill ' + status, STATUS[status]); if (status === 'done') p.insertBefore(icon('i-check'), p.firstChild); return p; }
@@ -251,7 +290,7 @@ var Quest = (function () {
       if (why) { go.disabled = true; act.appendChild(go); act.appendChild(el('p', 'tnote', why)); }
       else { go.addEventListener('click', function () { fixTicket(t); }); act.appendChild(go); }
     } else if (mine.status === 'doing') {
-      var f = frame(), here = f && f.quest === t.quest, b = here && beat(f);
+      var f = frame(), here = f && ticketFor(f) === t.id, b = here && beat(f);
       if (b && b.goal) { var now = el('p', 'tnow'); now.appendChild(el('small', '', 'Your task now')); now.appendChild(document.createTextNode(fill(b.goal))); act.appendChild(now); }
       if (b && b.hints) {
         var h = el('button', 'tbtn'); h.type = 'button'; h.setAttribute('data-key', 'hint');
@@ -260,6 +299,13 @@ var Quest = (function () {
         act.appendChild(h);
         act.appendChild(el('p', 'tnote', 'The hint opens under your task. You can ask ' + asker + ' anything in the chat too.'));
       } else act.appendChild(el('p', 'tnote', 'Stuck? Ask ' + asker + ' in the chat.'));
+      // a ticket the kid filed is closed by the kid, once they've tested it (claimFixed)
+      if (here && ownShift(f)) {
+        var fx = el('button', 'tbtn on'); fx.type = 'button'; fx.setAttribute('data-key', 'fixed');
+        fx.appendChild(icon('i-check')); fx.appendChild(el('span', '', 'It’s fixed'));
+        fx.addEventListener('click', function () { claimFixed(who); });
+        act.insertBefore(fx, act.firstChild);
+      }
     } else {
       var q = COURSE.quests[t.quest], c = q && q.concept && S.cards.indexOf(q.concept) >= 0 ? cardOf(q.concept) : null;
       var fixed = el('p', 'tnote good'); fixed.appendChild(icon('i-check'));
@@ -272,7 +318,7 @@ var Quest = (function () {
   /* Why "Fix this one" can't start it now, in words; null when it can. */
   function whyNot(t) {
     if (pickable(t) >= 0) return null;
-    var on = S.stack.map(function (f) { return quest(f).ticket; }).filter(Boolean)[0];
+    var on = S.stack.map(ticketFor).filter(Boolean)[0];
     if (on) return 'Finish ticket #' + number(on) + ' first.';
     if (busyWithQuest()) return 'You’ll pick one to fix when the Mentor asks.';
     return null;
@@ -290,7 +336,7 @@ var Quest = (function () {
     if (whyNot(t)) return status(whyNot(t));
     startTicket(t);
   }
-  function busyWithQuest() { var f = frame(); return !!(f && (quest(f).ticket || S.done.indexOf('first-day') < 0)); }
+  function busyWithQuest() { var f = frame(); return !!(f && (ticketFor(f) || S.done.indexOf('first-day') < 0)); }
   function status(text) { $('statusMsg').textContent = text; }
 
   /* ---------- running beats ---------- */
@@ -340,13 +386,14 @@ var Quest = (function () {
     enter();
   }
   function endQuest() {
-    var f = S.stack.pop(), q = COURSE.quests[f.quest];
+    var f = S.stack[S.stack.length - 1], q = COURSE.quests[f.quest], tid = ticketFor(f), who = character(null, f);
+    S.stack.pop();
     clearTimeout(hintTimer);
     // back to the board, where it is crossed off (Jay, Sept 30: "completing a ticket should close the
     // ticket (still show it, but cross it out)"); its page stayed open and the board never showed it
-    if (q.ticket && S.tickets[q.ticket]) { S.tickets[q.ticket].status = 'done'; if (openTicket === q.ticket) openTicket = null; paintTickets(); }
-    if (S.done.indexOf(q.id) < 0) S.done.push(q.id);
-    if (q.character !== 'mentor') S.lastCharacter = q.character;
+    if (tid && S.tickets[tid]) { S.tickets[tid].status = 'done'; if (openTicket === tid) openTicket = null; paintTickets(); }
+    if (S.done.indexOf(q.id) < 0 && q.ticket !== 'own') S.done.push(q.id);   // your-ticket runs once per ticket
+    if (who !== 'mentor') S.lastCharacter = who;
     track('quest-done', { quest: q.id });
     if (q.id === 'first-day') { Editor.allow(Schema.GATES); Chat.event('Every component is open to you now', 'i-sliders', { kind: 'good' }); }
     save();
@@ -368,7 +415,7 @@ var Quest = (function () {
      it has hints. A beat with no goal only says its lines and moves on, so the last task stays up,
      except at a quest's start, where it would belong to the quest before. */
   function setTask(f, b) {
-    if (b.goal) Chat.task(b.goal, { hint: b.hints ? function () { hintNow('button'); } : null });
+    if (b.goal) Chat.task(fill(b.goal), { hint: b.hints ? function () { hintNow('button'); } : null });
     else if (f.beat === 0) Chat.task(null);
     if (openTicket) paintTickets();   // its page shows the task too
   }
@@ -512,7 +559,7 @@ var Quest = (function () {
   }
   function askTickets(a, who) {
     var f = frame();
-    var open = function () { return COURSE.tickets.filter(function (t) { return S.tickets[t.id] && S.tickets[t.id].status === 'open'; }); };
+    var open = function () { return allTickets().filter(function (t) { return S.tickets[t.id] && S.tickets[t.id].status === 'open'; }).sort(function (x, y) { return number(x.id) - number(y.id); }); };
     if (!open().length) { f.completing = false; return next(beat(f).next); }
     var go = function (t) {
       picking = null; Chat.stopExpecting();
@@ -542,7 +589,7 @@ var Quest = (function () {
   }
   function startTicket(t) {
     S.tickets[t.id].status = 'doing'; paintTickets();
-    S.stack.push({ quest: t.quest, beat: 0, flags: {}, fired: {} });
+    S.stack.push({ quest: t.quest, beat: 0, flags: {}, fired: {}, ticket: t.own ? t.id : undefined });
     save();
     enter();
   }
@@ -596,6 +643,13 @@ var Quest = (function () {
     var LEVEL = 'The level is all grey today, so the kid may not know what things are: the grey circles are coins; the dip in the floor between the coins is the lava; the grey block standing on the left is the player. Say what a thing is if that helps them.';
     var NAMES = [[/\b(gap|dip|pit|dent|low(er)? (bit|part))\b/i, 'That dip between the coins is meant to be lava.'], [/\b(dots?|circles?|balls?|round things?)\b/i, 'Those circles are coins.']];
     function named(said) { var t = said.join(' '), n = NAMES.filter(function (x) { return x[0].test(t); })[0]; return n ? n[1] + ' ' : ''; }
+    /* A dig that names a planned thing is about that ticket, the same as a nudge: "There are dots ...
+       when walk into dem", "Those circles are the coins. What happened?", "Nothing happen" was dug at
+       twice more and kept as an idea, and "nothing" to "that dip is the lava: what happens when you walk
+       into it?" three times over (Jay's playthrough, Sept 30). With the ticket as the aim, its
+       `nudge_yes` hears "nothing" as the finding. */
+    var ABOUT = [[/\b(lava|gap|dip|pit|dent)\b/i, 'harmless-lava'], [/\b(coins?|dots?|circles?|balls?)\b/i, 'silent-coins']];
+    function about(t) { var a = ABOUT.filter(function (x) { return x[0].test(t) && !S.tickets[x[1]]; })[0]; return a ? a[1] : null; }
     function concrete(text) { return COURSE.tickets.filter(function (t) { return t.words && new RegExp('\\b(?:' + t.words + ')', 'i').test(text); }); }
     function cap(s) { return s.charAt(0).toUpperCase() + s.slice(1); }
     // one question to the kid: the AI's wording when it is up, the plain one when it isn't or fails
@@ -606,28 +660,33 @@ var Quest = (function () {
     }
     function dig(said) {
       var n = (pending && pending.kind === 'dig' ? pending.n : 0) + 1, feel = (said.join(' ').match(FEEL) || [])[1];
-      pending = { kind: 'dig', said: said, n: n, aim: pending && pending.aim };
+      pending = { kind: 'dig', said: said, n: n, aim: (pending && pending.aim) || about(said.join(' ')) };
       var plain = named(said) + (n === 1 ? (feel ? '“' + cap(feel) + '” how? What did you see or hear that made it feel ' + feel + '?' : 'What happened with it? Tell me what you did, and what the game did.')
         : n === 2 ? 'Where in the level was that? What were you doing right then?'
         : 'Try it again and watch closely. What does the game do?');
       Chat.placeholder();
-      return put(said[said.length - 1], 'TASK: the kid is reporting what seemed wrong in the game, but it is not a clear problem yet. Everything they said so far: "' + said.join(' / ') + '". ' + LEVEL + ' Ask ONE short question that pushes them to explain more: what exactly they saw, heard or did, where, or what happens when they try the thing they mentioned (you may say what a thing is, like "those circles are coins: what happens when you grab one?"). Never say what is wrong. No praise, no list.', plain);
+      return put(said[said.length - 1], 'TASK: the kid is reporting what seemed wrong in the game, but it is not a clear problem yet. Everything they said so far: "' + said.join(' / ') + '". ' + LEVEL + ' Ask ONE short question that pushes them to explain more: what exactly they saw, heard or did, where, or what happens when they try the thing they mentioned (you may say what a thing is, like "those circles are coins: what happens when you grab one?"). Never say what is wrong or what causes it. If they already said what happened ("nothing happens"), that is the answer: do not ask it again in other words. No praise, no list.', plain);
     }
     function filed(ts, words, reply, by) {
       pending = null;
       ts.forEach(function (t) { file(t.id, words, by); });
       track('finding', { text: words, tickets: ts.map(function (t) { return t.id; }) });
       reveal('tickets'); paintTickets();
+      var t0 = ticketOf(ts[0].id);
       var ack = reply || (ts.length > 1 ? 'Good catches. Those are tickets now.' : ACKS[acked++ % ACKS.length].replace('#N', '#' + number(ts[0].id)));
+      // one nobody planned says where it goes: every ticket belongs to a department
+      if (t0.own && !reply) ack += ' It goes to ' + DEPT[t0.department] + '.';
       /* "What should have happened?" is asked once, the first time, to teach the other half of a bug
          report. After that the Mentor says it (critique, Sept 30: the same scripted question after
-         every finding made the Mentor sound like it wasn't listening). */
-      if (taught) return onward(ack + ' ' + ticketOf(ts[0].id).should);
+         every finding made the Mentor sound like it wasn't listening). A ticket nobody planned has no
+         `should` to say, so it is always asked: only the kid knows. */
+      if (taught && !t0.own) return onward(ack + ' ' + t0.should);
       pending = { kind: 'should', ticket: ts[0].id, n: 1 };
-      say([ack, ticketOf(ts[0].id).should_q || 'What should have happened instead?'], who);
+      say([ack, t0.should_q || (t0.own && taught ? 'What should happen instead?' : 'What should have happened instead?')], who);
       Chat.placeholder();
       return false;
     }
+    function filedOwn(spec, words, reply) { return filed([fileOwn(spec, words)], words, reply); }
     var ACKS = ['Good catch. That’s ticket #N now.', 'Nice find. That’s ticket #N.', 'Spotted it. Ticket #N is on the board.', 'Yes! That’s ticket #N.'], acked = 0;
     // the next problem to send them looking for: one they ran into first, then the rest in order
     function unfound() { return COURSE.tickets.filter(function (t) { return !S.tickets[t.id] && !tried[t.id] && t.nudge; }).sort(function (x, y) { return (S.seen[y.id] ? 1 : 0) - (S.seen[x.id] ? 1 : 0); }); }
@@ -667,18 +726,19 @@ var Quest = (function () {
       var t = ticketOf(pending.ticket), tk = S.tickets[pending.ticket];
       if (FINISH.test(text)) return wantsOut();
       var stuck = STUCK.test(text) || text.trim().length < 3;
+      var lead2 = t.should_ask || 'Think of a game you like. What would happen there instead?';
       if (stuck && pending.n === 1) {
         pending.n = 2;
-        return put(text, 'TASK: the kid does not know what should have happened for this problem: "' + t.title + '". Ask ONE short, friendly question that leads them there from what any player knows, like "' + t.should_ask + '" Do not give the answer.', t.should_ask);
+        return put(text, 'TASK: the kid does not know what should have happened for this problem: "' + t.title + '". Ask ONE short, friendly question that leads them there from what any player knows, like "' + lead2 + '" Do not give the answer.', lead2);
       }
       pending = null;
       // the first time, name what they just did: both halves make a bug report
       var lead = function (first) { return first + (taught ? '' : ' That’s a real bug report: what happened, and what should have.'); };
       var wasTaught = taught; taught = true;
-      if (stuck) return onward(lead('Here’s the idea: ' + t.should.charAt(0).toLowerCase() + t.should.slice(1)));
+      if (stuck) return onward(lead(t.should ? 'Here’s the idea: ' + t.should.charAt(0).toLowerCase() + t.should.slice(1) : 'That’s okay. We’ll work it out when we fix it.'));
       if (tk) { tk.should = String(text).slice(0, 120); save(); paintTickets(); }
       if (!aiUp()) return onward(lead(wasTaught ? 'Exactly.' : 'Yes, that’s it.'));
-      mentor(text, null, who, 'TASK: the kid said what should have happened for the problem "' + t.title + '": "' + text + '". The idea to reach: "' + t.should + '". In ONE short line, build on their own words: if they have it, say so; if not quite, lead them the rest of the way. Nothing else.')
+      mentor(text, null, who, 'TASK: the kid said what should have happened for the problem "' + t.title + '": "' + text + '". ' + (t.should ? 'The idea to reach: "' + t.should + '". In ONE short line, build on their own words: if they have it, say so; if not quite, lead them the rest of the way.' : 'Nobody planned this problem, so there is no set answer: in ONE short line, build on their words, and if it is unclear, say what you think they mean.') + ' Nothing else.')
         .then(function (res) { if (frame() !== f) return; onward(lead((res && res.reply) || 'Yes, that’s it.')); });
       return false;
     }
@@ -691,10 +751,13 @@ var Quest = (function () {
         pending = null;
       }
       var aim = pending && pending.aim ? ticketOf(pending.aim) : null;
-      // the answer to a nudge: "nothing", to what did you hear, is the finding
-      if (aim && !S.tickets[aim.id] && !IDK.test(text) && aim.nudge_yes && new RegExp('\\b(?:' + aim.nudge_yes + ')', 'i').test(text)) {
-        var own = text.trim().length >= 12;   // "nothing" alone would read oddly on the ticket's page
-        return filed([aim], own ? text : null, null, own ? null : 'You');
+      /* The answer to a nudge: "nothing", to what did you hear, is the finding. So is an answer in that
+         ticket's own words: "they are both grey", to the coins-and-lava nudge, was filed by the AI as a
+         new ticket, "Coins and lava look the same", beside the grey-box one it was (Jay, Sept 30). */
+      var aimed = aim && !S.tickets[aim.id] && !IDK.test(text) && ((aim.nudge_yes && new RegExp('\\b(?:' + aim.nudge_yes + ')', 'i').test(text)) || concrete(text).some(function (t) { return t.id === aim.id; }));
+      if (aimed) {
+        var all = (pending.said || []).concat([text]).join('. '), own = all.trim().length >= 12;   // "nothing" alone would read oddly on the ticket's page
+        return filed([aim], own ? all : null, null, own ? null : 'You');
       }
       /* A question back ("what lava?") is not the finding: the AI took it as one in Jay's playthrough
          (Sept 30) and filed the lava for a kid who didn't know there was any. Answered once, by
@@ -708,28 +771,52 @@ var Quest = (function () {
       }
       if (DONE.test(text) || FINISH.test(text)) return wantsOut();
       var said = pending && pending.kind === 'dig' ? pending.said.concat([text]) : [text], words = said.join('. ');
+      /* NOT ONLY THE PLANNED TICKETS (Jay, Sept 30: "It should be able to file and create tickets for
+         different departments. It also just kinda shoots for the expected tickets"). "I jumped and it
+         felt floaty ... when I was jumping over the gap" was filed as the lava, on the word "gap". With
+         the AI up, the words are only a hint and the AI decides: one of the planned problems, a real
+         problem nobody planned (a new ticket for its department, fileOwn), an idea for something new,
+         or not a problem yet (ask more). With it down, the words decide, and a finding the kid has
+         explained once that matches nothing is filed in their own words. */
       var hit = concrete(text), fresh = hit.filter(function (t) { return !S.tickets[t.id]; });
-      if (fresh.length) return filed(fresh, words);
       var unfiled = COURSE.tickets.filter(function (t) { return !S.tickets[t.id]; });
-      // a word shared with a filed ticket is not proof it's the same problem: the AI, when it's up, decides
-      if (hit.length && (!unfiled.length || !aiUp())) return onward('That’s ticket #' + number(hit[0].id) + ' already. Good detail.');
+      // the words' own reading, for when there is no AI to ask (down, or the call failed)
+      var planned = function () { return fresh.length ? filed(fresh, words) : hit.length ? onward('That’s ticket #' + number(hit[0].id) + ' already. Good detail.') : null; };
+      var unplanned = function () { return !aim && said.length >= 2 && !STUCK.test(text) ? filedOwn({ title: said[0] }, words) : aim ? retry() : dig(said); };
+      if (hit.length && !aiUp()) return planned();
       // still no problem after the follow-ups: keep it, and move on kindly
       if (aim && pending.n >= 2) return retry();
       if (pending && pending.n >= 3) { idea(words, true); return onward('I’ve kept that as an idea.'); }
       // a feeling is always asked about first, never sorted into a ticket on its own
       if (!pending && FEEL.test(text)) return dig(said);
-      if (!unfiled.length || !aiUp()) return aim ? retry() : dig(said);
-      // the last option: they're done, or asking to move on ("ok where", "where are the tickets?"):
-      // the conversation moves the day on, not a magic phrase (Jay, 2026-09-30)
+      if (!aiUp()) return unplanned();
+      // the last options: a problem nobody planned, an idea, or they're done ("ok where", "where are the
+      // tickets?"): the conversation moves the day on, not a magic phrase (Jay, 2026-09-30)
+      var n = unfiled.length, NEW = n + 1, IDEA = n + 2, OUT = n + 3;
       var hidden = { text: 'Which problem did the kid just report?', options: unfiled.map(function (t) { return { text: t.title + (t.says ? ' (a kid might say “' + t.says + '”)' : '') }; })
+        .concat([{ text: 'A real problem that is not on this list: file it as a new ticket' }, { text: 'Not a problem but an idea for something new, like “add a boss”: keep it for later' }])
         .concat(more() ? [{ text: 'None: they are done reporting, or asking what happens next' }] : []) };
-      var filedNow = COURSE.tickets.filter(function (t) { return S.tickets[t.id]; }).map(function (t) { return '#' + number(t.id) + ' ' + t.title; }).join('; ');
-      mentor(words, hidden, who, 'TASK: the kid is reporting something broken they found while playing.' + (aim ? ' You just asked them: "' + aim.nudge + '"' : '') + ' Everything they said about it: "' + said.join(' / ') + '". ' + LEVEL + (filedNow ? ' Already on the board: ' + filedNow + '. Only say it is one of those if it clearly is.' : '') + ' Only if that clearly describes one of the listed problems, set choose to it and reply in one short line. If it is vague, a feeling, or a thing with no problem yet, do not choose: ask ONE short question that pushes them to explain what exactly they saw, heard or did (you may say what a thing is, like "that dip is meant to be lava: what happens when you walk into it?"). If they are done or asking what is next, choose the "done" option and reply in one short line. Never say what is wrong with anything, and never bring up a thing they have not mentioned, even if the game saw them touch it: finding it is their job.')
+      var filedNow = allTickets().filter(function (t) { return S.tickets[t.id]; }).map(function (t) { return '#' + number(t.id) + ' ' + t.title; }).join('; ');
+      var aimAt = aim ? unfiled.indexOf(aim) + 1 : 0;
+      mentor(words, hidden, who, 'TASK: the kid is reporting something they found while playing.' + (aim ? ' You just asked them: "' + aim.nudge + '"' + (aimAt ? ' That question is about problem ' + aimAt + ': if their answer shows it, even in part, choose ' + aimAt + ', never a new ticket.' : '') : '') + ' Everything they said about it: "' + said.join(' / ') + '". ' + LEVEL + (filedNow ? ' Already on the board: ' + filedNow + '. Only say it is one of those if it clearly is.' : '')
+        + ' The studio planned the listed problems, but a kid finds real ones nobody planned, and those count just as much. Decide which it is.'
+        + ' (1) It clearly describes one of the listed problems: choose it and reply in one short line. Sharing a word is not enough: "it felt floaty when I was jumping over the gap" is about the jump, not the lava.'
+        + ' (2) A clear problem that is not listed (they said what went wrong): choose option ' + NEW + ' and fill `ticket`: a short board title in plain words ("The jump feels floaty"), the department that fixes it (engineering: how things move, collide and work; art: how things look; audio: sounds and music; design: whether it is fair, fun, too hard or too easy), `detail`, one sentence of what is wrong, and `done`, one sentence of how they will know it is fixed. Reply in one short line that says which department it goes to.'
+        + ' Whichever you choose, never say what should happen instead ("coins and lava should look different"): the studio asks them that next, and it is theirs to say.'
+        + ' (3) A wish for something new rather than something broken: choose option ' + IDEA + '.'
+        + ' (4) Vague, a feeling, or a thing with no problem yet: do not choose. Ask ONE short question that pushes them to explain what exactly they saw, heard or did (you may say what a thing is, like "that dip is meant to be lava: what happens when you walk into it?").'
+        + (more() ? ' (5) They are done, or asking what is next: choose option ' + OUT + ' and reply in one short line.' : '')
+        + ' Never say what is wrong with anything, never say what causes it or which setting or component is to blame ("sounds like the collider isn\'t doing its job" gives away the fix: working that out is the shift\'s job), and never bring up a thing they have not mentioned, even if the game saw them touch it: finding it is their job.'
+        + ' Never argue with a fair answer or correct it with the problem ("they\'re both grey, so shape can\'t tell them apart" found it for them): say what is right about it, and ask about one other thing they could look at.')
         .then(function (res) {
           if (frame() !== f) return;
-          if (res && res.choose === unfiled.length + 1 && more()) { wantsOut(); return; }
-          if (res && res.choose && unfiled[res.choose - 1]) { filed([unfiled[res.choose - 1]], words, res.reply); return; }
-          if (res && res.reply && /\?\s*["”]?\s*$/.test(res.reply)) { pending = { kind: 'dig', said: said, n: (pending && pending.kind === 'dig' ? pending.n : 0) + 1, aim: aim && aim.id }; say([res.reply], who); Chat.placeholder(); return; }
+          if (!res) return planned() === null ? unplanned() : undefined;   // no answer: the words decide
+          var c = res.choose;
+          if (c === OUT && more()) { wantsOut(); return; }
+          if (c === NEW) { filedOwn(res.ticket || { title: said[0] }, words, res.reply); return; }
+          if (c === IDEA) { idea(words); onward(res.reply || 'That’s a great idea for later. I saved it.'); return; }
+          if (c && unfiled[c - 1]) { filed([unfiled[c - 1]], words, res.reply); return; }
+          if (res && res.reply && /\?\s*["”]?\s*$/.test(res.reply)) { pending = { kind: 'dig', said: said, n: (pending && pending.kind === 'dig' ? pending.n : 0) + 1, aim: (aim && aim.id) || about(said.join(' ') + ' ' + res.reply) }; say([res.reply], who); Chat.placeholder(); return; }
           if (aim) retry(); else dig(said);   // no question from the AI ("noted!"): the ladder asks its own
         });
       return false;   // still listening: returning false keeps the box expecting a finding (chat.js expect)
@@ -929,6 +1016,8 @@ var Quest = (function () {
     if (ev.type === 'event') Chat.event(EVENT_WORDS[ev.name] || ev.name, EVENT_ICON[ev.name] || 'i-pad', { consoleOnly: !S.reported || !IN_CHAT[ev.name] });
     if (ev.type === 'select' || ev.type === 'set' || ev.type === 'play' || ev.type === 'stop') busyKid();
     var f = frame(); if (!f) return;
+    // for claimFixed: when the game last changed, and when it was last tested
+    if (ownShift(f)) { if (ev.type === 'set' || ev.type === 'built') f.changedAt = Date.now(); if (ev.type === 'play') f.playedAt = Date.now(); }
     var q = quest(f), b = beat(f);
     ((b && b.on) || []).concat(q.on || []).forEach(function (h, n) {
       var key = (b && b.on && n < b.on.length ? 'b' : 'q') + n;
@@ -957,7 +1046,7 @@ var Quest = (function () {
   function protectedKeys() {
     var out = {};
     S.stack.forEach(function (f) {
-      var t = quest(f).ticket && ticketOf(quest(f).ticket);
+      var t = ticketFor(f) && ticketOf(ticketFor(f));
       if (t && t.fixed_when && t.fixed_when.state) Object.keys(t.fixed_when.state).forEach(function (k) { out[k] = true; });
     });
     return out;
@@ -982,13 +1071,17 @@ var Quest = (function () {
     var f = frame(), q = f && quest(f), b = f && beat(f), out = [];
     out.push('You are speaking as ' + NAME[BY_VOICE[who] || 'mentor'] + '.');
     if (q) {
-      var tk = q.ticket && ticketOf(q.ticket), idea = q.concept && CARDS[q.concept];
+      var tk = ticketFor(f) && ticketOf(ticketFor(f)), idea = q.concept && CARDS[q.concept];
       out.push('Quest: "' + q.title + '" (' + DEPT[q.department] + ').'
         + (tk ? ' It fixes the ticket ' + titleOf(tk) + ': ' + tk.detail : '')
         + (idea ? ' The idea it teaches: ' + idea[0] + ' (' + idea[1] + ')' : ''));
       if (b && b.goal) out.push('The task line on their screen: "' + fill(b.goal) + '".');
       if (b && b.say) out.push('This step just said: ' + b.say.map(fill).join(' ') + (b.instruct ? ' Then: ' + fill(b.instruct) : ''));
-      if (b && b.wait_for) {
+      /* A ticket the kid filed has no set answer, so it isn't "their job to figure out" the way a planned
+         one is: the lead helps them find the cause, and does the change when they say it clearly. */
+      if (b && b.wait_for && b.wait_for.fixed) {
+        out.push('This is a ticket the kid found and filed themselves' + (tk && S.tickets[tk.id] && S.tickets[tk.id].should ? ', and they said it should: "' + S.tickets[tk.id].should + '"' : '') + '. There is no set answer: help them fix it. Ask what they think causes it and which part it is about, and point them at the Hierarchy and the Inspector. When they say clearly what to change, do it (actions, or build for what the settings can\'t do) and say it worked because they said exactly what they wanted. When it\'s changed, tell them to press Play and test it, then say "fixed" or press It\'s fixed on the ticket.');
+      } else if (b && b.wait_for) {
         var rung = Math.min(f.rung || 0, (b.hints || []).length);
         out.push('The step is done when they ' + describe(b.wait_for) + '. THIS IS THEIR JOB TO FIGURE OUT: do not do it for them, and do not name the exact setting before the last hint.');
         if (b.hints) out.push('The hint ladder (they have had ' + rung + ' of ' + b.hints.length + '): ' + b.hints.map(function (h, n) { return (n + 1) + '. ' + fill(h); }).join(' ')
@@ -1044,6 +1137,7 @@ var Quest = (function () {
     if (c.state) return 'set ' + Object.keys(c.state).map(function (k) { return k + ' to ' + JSON.stringify(c.state[k]); }).join(' and ');
     if (c.stop) return 'press Stop';
     if (c.reverted) return 'change something while playing, then press Stop and see it undo';
+    if (c.fixed) return 'fix it, test it with Play, and say it is fixed';
     return 'carry on';
   }
   function aiUp() { return aiFails < 2; }
@@ -1083,10 +1177,26 @@ var Quest = (function () {
     var best = Math.max.apply(null, scores.concat([0]));
     return best > 0 && scores.filter(function (s) { return s === best; }).length === 1 ? scores.indexOf(best) : -1;
   }
+  /* "It's fixed", on a ticket the kid filed: taken only once something has changed and been tested
+     with Play since, because a ticket is closed by testing it, not by saying so. Anything short of
+     that gets the step that's missing. True when it answered. */
+  var FIXED = /\b(fixed|it works|works now|working now|solved|all good|that did it)\b/i, NOT_FIXED = /\b(not|isn['’]?t|still|didn['’]?t|doesn['’]?t|how|why|\?)/i;
+  function claimFixed(who) {
+    var f = frame(); if (!ownShift(f)) return false;
+    who = who || voice();
+    if (!f.changedAt) { say(['Nothing in the game has changed yet. What do you think is causing it?'], who); return true; }
+    if (!(f.playedAt > f.changedAt)) {
+      Chat.say([[who, 'Test it first!'], [who, 'Press Play and try it, then tell me.', 'step']]);
+      Editor.cue('play'); return true;
+    }
+    handle({ type: 'fixed' });
+    return true;
+  }
   function typed(text, qOnScreen, who) {
     who = who || Chat.active() || 'm';
     track('typed', { to: who, text: text.slice(0, 200) });
     busyKid();
+    if (ownShift(frame()) && who === voice() && FIXED.test(text) && !NOT_FIXED.test(text) && claimFixed(who)) return;
     // help, instantly and with no AI: the next rung of the ladder
     if (HELP.test(text) && frame() && beat() && beat().hints && Chat.active() === voice()) { giveHint('asked'); return; }
     /* An answer typed instead of tapped ("the box collider" for "Its Box Collider") is that answer, at
@@ -1171,6 +1281,7 @@ var Quest = (function () {
     if (!st.quest) st.quest = { stack: [], tickets: {}, done: [], taught: [], shown: [], stars: 0, cards: [] };
     S = st.quest;
     S.seen = S.seen || {};
+    S.own = S.own || {};   // the tickets the kid found that the course didn't plan (fileOwn)
     delete S.ideas;   // they live in the design doc now; project.js moved an older save's across
     Object.keys(S.tickets).forEach(function (id) { if (!ticketOf(id)) delete S.tickets[id]; });   // a ticket the course no longer has
     if (S.stack.some(function (f) { return !COURSE.quests[f.quest]; })) S.stack = [];             // a quest it no longer has

@@ -1,0 +1,32 @@
+# The shift for a ticket the kid filed that the course never planned: "the jump feels floaty" (Jay,
+# Sept 30: "It should be able to file and create tickets for different departments. It also just kinda
+# shoots for the expected tickets"). The report files it (quest.js askFindings, fileOwn), and picking it
+# from the board runs this, with that department's lead (`character: department`).
+#
+# There is no set answer, so there is no `fixed_when` and no protected setting: the lead helps the kid
+# work out the cause, and when the kid says clearly what to change, the AI does it (actions, or the
+# Builder). Telling an AI exactly what you want is part of the lesson (mentor.md, TEACH THEM TO ASK).
+# The shift ends the way a real ticket does: changed, tested with Play, and closed by the one who
+# tested it (the `fixed` condition; quest.js claimFixed won't take "fixed" before a test).
+id: your-ticket
+title: Your ticket
+department: studio
+character: department
+ticket: own
+beats:
+  - id: meet
+    goal: "Fix it, then test it with Play"
+    do: { reveal: [hierarchy], stop: true }
+    say:
+      - Hi @name, I’m {role}! You found this one yourself, so it’s ours to fix together.
+    instruct: What do you think is causing it? Tell me.
+    hints_after: 30
+    hints:
+      - Which part of the level is it about? Find that part in the Hierarchy.
+      - Look at that part’s components in the Inspector. Which setting could cause it?
+      - Or tell me exactly what to change, like “make the jump higher”, and I’ll do it.
+    wait_for: { fixed: true }
+    pass: true
+    award: { stars: 1 }
+    done_say:
+      - Ticket closed! You found it, filed it, fixed it and tested it. That’s the whole job.

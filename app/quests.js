@@ -46,7 +46,9 @@ const GOAL_WORDS = 12;
 const DO_KEYS = ['reveal', 'point', 'cue', 'play', 'stop', 'allow', 'close_inspector', 'file', 'recap'];
 const ANSWER_KEYS = ['text', 'sub', 'say', 'goto', 'correct'];
 const HANDLER_KEYS = ['when', 'say', 'instruct', 'once', 'flag', 'cue'];
-const COND_KEYS = ['event', 'set', 'select', 'play', 'stop', 'reverted', 'state', 'flag', 'not_flag', 'seen_at_least', 'seen_none', 'playing', 'filed', 'built'];
+/* `fixed`: the kid says a ticket they filed themselves is fixed, after testing it with Play (quest.js
+   claimFixed). It is how a shift with no set answer ends (your-ticket.yaml). */
+const COND_KEYS = ['event', 'set', 'select', 'play', 'stop', 'reverted', 'state', 'flag', 'not_flag', 'seen_at_least', 'seen_none', 'playing', 'filed', 'built', 'fixed'];
 const ASK_KEYS = ['text', 'answers', 'from', 'then', 'if_none', 'examples'];
 /* One speaker, one message (Jay, 2026-09-29; chat.js says why): the lines of one `say` land as ONE
    bubble, so the whole list is what's counted. A hint is shown alone, so each hint is counted alone.
@@ -145,8 +147,12 @@ function checkQuest(q, file, ticketIds) {
   if (q.id && path.basename(file, '.yaml') !== q.id) problem(list, w0, 'id "' + q.id + '" must match the file name');
   if (!q.title) problem(list, w0, 'needs a title');
   if (DEPARTMENTS.indexOf(q.department) < 0) problem(list, w0, 'department must be one of ' + DEPARTMENTS.join(', '));
-  if (CHARACTERS.indexOf(q.character) < 0 || q.character === 'department') problem(list, w0, 'character must be one of ' + CHARACTERS.slice(0, -1).join(', '));
-  if (q.ticket && ticketIds.indexOf(q.ticket) < 0) problem(list, w0, 'ticket "' + q.ticket + '" is not in tickets.yaml');
+  /* `ticket: own` is the shift for a ticket the kid filed that the course never planned (Jay, Sept
+     30: "It should be able to file and create tickets for different departments"). Its department is
+     the ticket's, so its character is `department`: whoever leads that department. */
+  const own = q.ticket === 'own';
+  if (CHARACTERS.indexOf(q.character) < 0 || (q.character === 'department' && !own)) problem(list, w0, 'character must be one of ' + CHARACTERS.slice(0, -1).join(', ') + (own ? ', or department' : ''));
+  if (q.ticket && !own && ticketIds.indexOf(q.ticket) < 0) problem(list, w0, 'ticket "' + q.ticket + '" is not in tickets.yaml');
   (q.allow || []).forEach(function (c) { if (COMPONENTS.indexOf(c) < 0) problem(list, w0, 'allow: unknown component "' + c + '"'); });
   /* next_quest: what starts when this one ends with nothing under it, so the course never stops at
      "that's everything for now" (Jay's playthrough: a dead end after the tickets). */

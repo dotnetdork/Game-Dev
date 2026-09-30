@@ -72,8 +72,10 @@ tickets:
     should_q: What should it look like instead?
     should_ask: If everything looks the same, how would a player tell a coin from lava?
     should: Each thing should look different, so a player can tell good from dangerous.
-    nudge: Look at the coins and the lava. How can you tell which is which?
-    nudge_yes: "can['’]?t|cannot|same|no way|not really|hard to"
+    # what colour, not "how can you tell which is which?": "their shape" was a fair answer to that, and
+    # the AI argued with it and said the problem itself (Jay's playthrough, Sept 30)
+    nudge: Look at the coins and the lava. What colour is each one?
+    nudge_yes: "gr[ae]y|both|same|can['’]?t|cannot|no way|not really|hard to"
     department: art
     quest: greybox
     # Not found by an event: it is plain to see. If the kid doesn't say it, the art director files it
