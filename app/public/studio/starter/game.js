@@ -239,16 +239,34 @@ const SPRITES = {
 // when you describe a hero) says which body, colours, eyes and extras.
 const DEFAULT_HERO = { body: 'box', color: '#5aa9e6', eyes: 'dots', extras: [] };
 // Where each body sits in the 80×88 picture: [x, y, width, height]. The game stands on this box.
-const HERO_BODIES = { box: [20, 24, 40, 56], round: [18, 28, 44, 52], tall: [24, 18, 32, 62], blob: [14, 40, 52, 40], wide: [12, 36, 56, 44] };
+// A slice is a triangle, point down, with its crust along the top: a pizza, a cheese wedge, a cone.
+const HERO_BODIES = { box: [20, 24, 40, 56], round: [18, 28, 44, 52], tall: [24, 18, 32, 62], blob: [14, 40, 52, 40], wide: [12, 36, 56, 44], slice: [12, 22, 56, 60] };
 const heroBody = s => HERO_BODIES[s.body] || HERO_BODIES.box;
+// Where a pattern goes on the body: u across and v down, both -1 to 1 from the middle. A spot
+// placed at (u, v) lands inside whatever shape the body is, so pepperoni stays on the pizza.
+const ROUNDED = { round: 1, blob: 1 };
+function onBody(s, u, v) {
+  const [x, y, w, h] = heroBody(s), t = (v + 1) / 2;
+  const squeeze = s.body === 'slice' ? Math.max(0, 1 - t) * 0.85 : ROUNDED[s.body] ? Math.sqrt(Math.max(0, 1 - v * v)) * 0.8 : 0.85;
+  return [x + w / 2 + u * squeeze * w / 2, y + h / 2 + v * h / 2 * 0.85];
+}
+// How wide the body is at height v, for stripes and drips
+function across(s, v) {
+  const [, , w] = heroBody(s), t = (v + 1) / 2;
+  return s.body === 'slice' ? w * (1 - t) : ROUNDED[s.body] ? w * Math.sqrt(Math.max(0, 1 - v * v)) : w;
+}
+// The spots' places, one set for each spots extra, so red pepperoni and black olives don't overlap
+const SPOTS = [[[-0.5, 0.2], [0.45, 0.45], [-0.1, 0.7]], [[0.6, 0.1], [-0.4, 0.5], [0.2, 0.75]], [[-0.7, -0.1], [0.05, 0.4], [0.7, 0.55]]];
+const SPRINKLES = [[-0.6, 0.1], [-0.3, 0.35], [0.1, 0.55], [0.45, 0.3], [0.65, 0.6], [-0.5, 0.7], [0.2, 0.85], [-0.1, 0.2], [0.55, 0.05], [-0.25, 0.9]];
 function drawHero(scene, s) {
   if (scene.textures.exists('hero')) scene.textures.remove('hero');
   const g = scene.make.graphics({ add: false });
   const col = (v, d) => parseInt(String(v || d).replace('#', ''), 16);
   const main = col(s.color, '#5aa9e6'), dark = 0x10202e;
   const [x, y, w, h] = heroBody(s), mid = x + w / 2;
-  const extras = (s.extras || []).slice(0, 5), has = k => extras.some(e => e.kind === k);
+  const extras = (s.extras || []).slice(0, 6), has = k => extras.some(e => e.kind === k);
   const ex = k => col((extras.filter(e => e.kind === k)[0] || {}).color, s.color);
+  const all = k => extras.filter(e => e.kind === k);
   // behind the body
   if (has('cape')) g.fillStyle(ex('cape')).fillTriangle(x + 4, y + h * 0.3, x - 10, y + h, x + w * 0.6, y + h);
   if (has('wings')) { g.fillStyle(ex('wings')); g.fillTriangle(x + 4, y + h * 0.35, x - 16, y + h * 0.15, x + 2, y + h * 0.7); g.fillTriangle(x + w - 4, y + h * 0.35, x + w + 16, y + h * 0.15, x + w - 2, y + h * 0.7); }
@@ -256,9 +274,28 @@ function drawHero(scene, s) {
   if (has('spikes')) { g.fillStyle(ex('spikes')); for (let i = 0; i < 4; i++) g.fillTriangle(x + 2 + i * (w / 4), y + 2, x + 6 + i * (w / 4), y - 8, x + 10 + i * (w / 4), y + 2); }
   // the body
   g.fillStyle(main);
-  if (s.body === 'round' || s.body === 'blob') g.fillEllipse(mid, y + h / 2, w, h); else g.fillRoundedRect(x, y, w, h, 6);
-  if (s.belly) g.fillStyle(col(s.belly)).fillEllipse(mid, y + h * 0.68, w * 0.6, h * 0.4);
-  g.fillStyle(dark).fillRect(x + 6, y + h - 4, 10, 4).fillRect(x + w - 16, y + h - 4, 10, 4);   // feet
+  if (s.body === 'slice') g.fillTriangle(x, y + 4, x + w, y + 4, mid, y + h);
+  else if (ROUNDED[s.body]) g.fillEllipse(mid, y + h / 2, w, h); else g.fillRoundedRect(x, y, w, h, 6);
+  // a slice's belly is its crust, along the top
+  if (s.belly && s.body === 'slice') g.fillStyle(col(s.belly)).fillRoundedRect(x - 3, y - 2, w + 6, 10, 5);
+  else if (s.belly) g.fillStyle(col(s.belly)).fillEllipse(mid, y + h * 0.68, w * 0.6, h * 0.4);
+  // on the body: patterns, then an outline over their edges
+  all('stripes').forEach(e => { g.fillStyle(col(e.color, '#10202e')); [0.1, 0.4, 0.7].forEach(v => { const c = across(s, v) * 0.92, [, py] = onBody(s, 0, v); g.fillRect(mid - c / 2, py - 2.5, c, 5); }); });
+  all('spots').forEach((e, i) => { g.fillStyle(col(e.color, '#c62828')); SPOTS[i % SPOTS.length].forEach(([u, v]) => { const [px, py] = onBody(s, u, v); g.fillCircle(px, py, Math.max(3.5, w * 0.1)); }); });
+  all('sprinkles').forEach(e => { g.fillStyle(col(e.color, '#ffffff')); SPRINKLES.forEach(([u, v]) => { const [px, py] = onBody(s, u, v); g.fillRect(px - 1.5, py - 1.5, 3, 3); }); });
+  if (has('outline')) {
+    g.lineStyle(4, ex('outline'));
+    if (s.body === 'slice') g.strokeTriangle(x, y + 4, x + w, y + 4, mid, y + h);
+    else if (ROUNDED[s.body]) g.strokeEllipse(mid, y + h / 2, w, h); else g.strokeRoundedRect(x, y, w, h, 6);
+  }
+  if (has('drips')) {   // cheese, slime or icing, running down from the top
+    const v = s.body === 'slice' ? -0.8 : -0.72, c = across(s, v), [, py] = onBody(s, 0, v);
+    g.fillStyle(col(all('drips')[0].color, '#ffd54f')).fillRoundedRect(mid - c / 2, py - 4, c, 8, 4);
+    [-0.3, 0.05, 0.35].forEach((u, i) => g.fillEllipse(mid + u * c, py + 5 + (i % 2) * 3, 6, 10 + (i % 2) * 5));
+  }
+  // feet: under a slice they meet at its point
+  const fx1 = s.body === 'slice' ? mid - 13 : x + 6, fx2 = s.body === 'slice' ? mid + 3 : x + w - 16;
+  g.fillStyle(dark).fillRect(fx1, y + h - 4, 10, 4).fillRect(fx2, y + h - 4, 10, 4);
   // on the head
   const top = y;
   if (has('horns')) { g.fillStyle(ex('horns')); g.fillTriangle(x + w * 0.2, top + 4, x + w * 0.28, top - 12, x + w * 0.38, top + 4); g.fillTriangle(x + w * 0.62, top + 4, x + w * 0.72, top - 12, x + w * 0.8, top + 4); }
@@ -289,6 +326,7 @@ function drawHero(scene, s) {
   else if (has('beak')) g.fillStyle(ex('beak')).fillTriangle(x + w - 4, ey + 2, x + w + 12, ey + 7, x + w - 4, ey + 12);
   else if (has('mustache')) { const m = extras.filter(e => e.kind === 'mustache')[0]; g.fillStyle(col(m.color, '#3e2723')).fillEllipse(mid, ey + 12, 14, 7).fillEllipse(mid + 11, ey + 12, 14, 7); }
   else if (s.eyes !== 'visor') g.fillStyle(dark).fillRect(mid - 2, ey + 10, 12, 3);   // a smile
+  if (has('glasses')) { g.lineStyle(2.5, ex('glasses') === main ? dark : ex('glasses')); g.strokeCircle(e1, ey, 8).strokeCircle(e2, ey, 8); g.lineBetween(e1 + 8, ey, e2 - 8, ey); }
   if (has('whiskers')) { g.lineStyle(2, dark); g.lineBetween(x + w - 6, ey + 10, x + w + 10, ey + 6); g.lineBetween(x + w - 6, ey + 13, x + w + 10, ey + 14); }
   if (has('scarf')) { g.fillStyle(ex('scarf')).fillRect(x, y + h * 0.55, w, 7); g.fillRect(x + 4, y + h * 0.55, 7, 16); }
   g.generateTexture('hero', 80, 88);

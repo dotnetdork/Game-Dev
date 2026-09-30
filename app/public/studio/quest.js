@@ -855,9 +855,9 @@ var Quest = (function () {
   /* A hero, typed: "a dragon", "a pizza with legs". The AI composes one from the drawer's parts
      (decision R2: shape heroes, drawn by the game's own code); without it, the nearest of a table
      of presets, said honestly as a guess. Either way the kid can ask for changes after. */
-  var BODIES = ['box', 'round', 'tall', 'blob', 'wide'];
+  var BODIES = ['box', 'round', 'tall', 'blob', 'wide', 'slice'];
   var EYES = ['dots', 'big', 'visor', 'angry', 'sleepy', 'one'];
-  var EXTRAS = ['horns', 'ears-cat', 'ears-round', 'ears-bunny', 'antenna', 'crown', 'hat-wizard', 'helmet', 'cape', 'wings', 'tail', 'spikes', 'snout', 'beak', 'fins', 'flame', 'leaf', 'whiskers', 'bow', 'scarf', 'cap', 'mustache'];
+  var EXTRAS = ['horns', 'ears-cat', 'ears-round', 'ears-bunny', 'antenna', 'crown', 'hat-wizard', 'helmet', 'cape', 'wings', 'tail', 'spikes', 'snout', 'beak', 'fins', 'flame', 'leaf', 'whiskers', 'bow', 'scarf', 'cap', 'mustache', 'spots', 'sprinkles', 'stripes', 'drips', 'outline', 'glasses'];
   function hex(v) { return typeof v === 'string' && /^#[0-9a-f]{6}$/i.test(v) ? v.toLowerCase() : null; }
   function cleanHero(h) {
     if (!h || typeof h !== 'object') return null;
@@ -866,7 +866,7 @@ var Quest = (function () {
       color: hex(h.color) || '#5aa9e6', belly: hex(h.belly),
       eyes: EYES.indexOf(h.eyes) >= 0 ? h.eyes : 'dots', eyeColor: hex(h.eyeColor),
       extras: (Array.isArray(h.extras) ? h.extras : []).filter(function (e) { return e && EXTRAS.indexOf(e.kind) >= 0; })
-        .slice(0, 5).map(function (e) { return { kind: e.kind, color: hex(e.color) }; })
+        .slice(0, 6).map(function (e) { return { kind: e.kind, color: hex(e.color) }; })
     };
   }
   function X(kind, color) { return { kind: kind, color: color || null }; }
@@ -889,7 +889,12 @@ var Quest = (function () {
     [/fire|flame|lava/, { body: 'round', color: '#ff7043', eyes: 'angry', extras: [X('flame')] }],
     [/plant|tree|sprout|flower/, { body: 'round', color: '#8bc34a', eyes: 'sleepy', extras: [X('leaf', '#43a047')] }],
     [/monster|beast/, { body: 'wide', color: '#8e24aa', eyes: 'one', extras: [X('horns', '#fff3c4'), X('spikes', '#ce93d8')] }],
-    [/pizza|food|burger|cookie/, { body: 'wide', color: '#ffca28', belly: '#e53935', eyes: 'big', extras: [] }],
+    [/pizza/, { body: 'slice', color: '#ffca28', belly: '#d9822b', eyes: 'big', extras: [X('spots', '#c62828'), X('drips', '#ffe082')] }],
+    [/cookie|biscuit/, { body: 'round', color: '#c68642', eyes: 'big', extras: [X('spots', '#4e342e')] }],
+    [/donut|doughnut|cupcake|cake/, { body: 'round', color: '#f48fb1', eyes: 'big', extras: [X('sprinkles', '#ffffff'), X('drips', '#fce4ec')] }],
+    [/food|burger|taco|sandwich/, { body: 'wide', color: '#ffca28', belly: '#e53935', eyes: 'big', extras: [] }],
+    [/bee|tiger|zebra/, { body: 'round', color: '#fdd835', eyes: 'big', extras: [X('stripes', '#212121'), X('wings', '#e3f2fd')] }],
+    [/cow|dalmatian|ladybug|ladybird/, { body: 'round', color: '#f5f5f5', eyes: 'dots', extras: [X('spots', '#212121')] }],
     [/bear|panda/, { body: 'round', color: '#8d6e63', belly: '#d7ccc8', eyes: 'dots', extras: [X('ears-round')] }],
     [/mario|plumber/, { body: 'round', color: '#e53935', belly: '#1e88e5', eyes: 'dots', extras: [X('cap', '#e53935'), X('mustache')] }],
     [/luigi/, { body: 'tall', color: '#43a047', belly: '#1e88e5', eyes: 'dots', extras: [X('cap', '#43a047'), X('mustache')] }],
@@ -921,7 +926,7 @@ var Quest = (function () {
     if (gone.length) { p.hero.extras = p.hero.extras.filter(function (x) { return gone.indexOf(x) < 0; }); plain = 'I took the ' + gone.map(function (x) { return x.kind.replace(/-/g, ' '); }).join(' and the ') + ' off.'; }
     else if (said.length > 1) plain = 'I changed it. Take a look.';
     if (!aiUp()) { setHero(p.hero, word); return then(plain); }
-    mentor(said[said.length - 1], null, who, 'TASK: the kid is describing their game’s hero. Everything they said about it: "' + said.join(' / ') + '". Set `hero` to a hero drawn from the parts listed under HERO, as close to that as the parts allow (a cap and mustache for a plumber, say), and change what they asked to change. Reply in one short, excited line saying what you drew. It shows in the Game view.')
+    mentor(said[said.length - 1], null, who, 'TASK: the kid is describing their game’s hero. Everything they said about it: "' + said.join(' / ') + '". Set `hero` to a hero drawn from the parts listed under HERO, as close to that as the parts allow (a cap and mustache for a plumber, say), and change what they asked to change. Draw it now, every time: never offer a choice or ask whether to go ahead ("pepperoni olive" means red spots and black spots, drawn this turn, not "want me to try spikes?"). No part for it at all? Draw the nearest and say plainly what you used. Reply in one short, excited line saying what you drew. It shows in the Game view.')
       .then(function (res) { var shape = res && cleanHero(res.hero); setHero(shape || p.hero, word); then((shape && res.reply) || plain); });
   }
   /* A hero, typed, and the first lesson in telling an AI what you want (Jay, 2026-09-30: "Kids are
@@ -1135,7 +1140,7 @@ var Quest = (function () {
       var ok = Schema.describe(p).split(', ').filter(function (d) { var k = d.split(' ')[0]; return visible(p, k) && !keep[p.id + '.' + k]; });
       return ok.length ? p.id + ': ' + ok.join(', ') : '';
     }).filter(Boolean).join('; ') + '. Sprites: ' + Object.keys(Schema.SPRITES).map(function (k) { return k + ' (' + Schema.SPRITES[k][0] + ')'; }).join(', ') + '. Sounds: ' + Object.keys(Schema.SOUNDS).map(function (k) { return k + ' (' + Schema.SOUNDS[k][0] + ')'; }).join(', ') + '.');
-    out.push('HERO (for `hero`): body ' + BODIES.join('/') + '; color, belly, eyeColor as #rrggbb; eyes ' + EYES.join('/') + '; up to 5 extras, each {kind, color}, kinds: ' + EXTRAS.join(', ') + '.'
+    out.push('HERO (for `hero`): body ' + BODIES.join('/') + '; color, belly, eyeColor as #rrggbb; eyes ' + EYES.join('/') + '; up to 6 extras, each {kind, color}, kinds: ' + EXTRAS.join(', ') + '. A kind may be used twice in two colours (red spots for pepperoni and black spots for olives). What each is for: slice is a triangle body, point down, whose belly is a crust along the top (pizza, cheese, cone); spots are round marks on the body (pepperoni, cow spots, polka dots, freckles); sprinkles are tiny dots (sprinkles, seeds, stars); stripes (tiger, bee, a shirt); drips run down from the top (cheese, slime, icing); outline is a thick edge round the body (crust, shell, a cartoon line); glasses go over the eyes.'
       + (Project.part('player') && Project.part('player').shape ? ' Their hero now: ' + JSON.stringify(Project.part('player').shape) + '.' : ''));
     out.push('Their game: ' + (S.name || 'not named yet') + '. Ideas they’ve had: ' + (Project.doc().ideas.slice(-5).join(' | ') || 'none') + '.');
     return out.join('\n').slice(0, 7000);
