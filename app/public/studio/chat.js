@@ -335,10 +335,23 @@ var Chat = (function () {
     if (next[0] === '@to') { busy = true; handover(next[1], function () { busy = false; pump(); }); return; }
     if (next[0] === 'k') { line('k', next[1]); pump(); return; }
     busy = true;
-    if (next[2] === 'step') { setTimeout(function () { step(next[0], next[1]); busy = false; pump(); }, reduced() ? 60 : 380); return; }
-    var wait = reduced() ? 80 : Math.min(900, 320 + String(next[1]).length * 3);   // snappy, but long enough to see someone is typing
-    var d = dots(next[0]);
-    setTimeout(function () { d.remove(); line(next[0], next[1]); busy = false; pump(); }, wait);
+    var out = function () { inflight = null; if (d) d.remove(); (next[2] === 'step' ? step : line)(next[0], next[1]); busy = false; };
+    var d = next[2] === 'step' ? null : dots(next[0]);
+    var wait = next[2] === 'step' ? (reduced() ? 60 : 380) : reduced() ? 80 : Math.min(900, 320 + String(next[1]).length * 3);   // snappy, but long enough to see someone is typing
+    inflight = { out: out, timer: setTimeout(function () { out(); pump(); }, wait) };
+  }
+  var inflight = null;
+  /* The kid typed while a character was still "typing": what they were saying lands first, at once,
+     and the kid's line after it. Otherwise the kid's line sat above the Mentor's half-said one and the
+     Mentor looked like it was answering them without having listened (critique, Sept 30: "kid lines
+     land above the Mentor's pending line"). A handover still waits its turn. */
+  function flush() {
+    if (inflight) { clearTimeout(inflight.timer); inflight.out(); }
+    while (queue.length && queue[0][0] !== '@to') {
+      var l = queue.shift();
+      (l[2] === 'step' ? step : line)(l[0], l[1]);
+    }
+    if (queue.length) setTimeout(pump, 0);   // after the kid's line, which the caller adds now
   }
   function settled() { return !busy && !queue.length; }
 
@@ -469,7 +482,11 @@ var Chat = (function () {
      kid types "idk", "help" or the like, or taps Hint. Then they are a card with Skip, and tapping
      one is typing it. A question whose answers are the point (what did you find?) has no
      suggestions: "idk" there is the step's next hint, which says where to look, never what. */
-  var HELP_ME = /^\s*(idk|i ?d(on|o)n?['’]?t know|dunno|no idea|not sure|help( me)?|hint|i['’]?m stuck|stuck|you (pick|choose|decide)|\?+)\s*[.!?]*\s*$/i;
+  var HELP_ME = /^\s*(idk|i ?d(on|o)n?['’]?t know|dunno|no idea|(i['’]?m |im )?not sure|help( me)?|hint|i['’]?m stuck|stuck|you (pick|choose|decide)|\?+)\s*[.!?]*\s*$/i;
+  // what's said first: [when there are suggestions, when there is a hint]
+  var HELPED = [['No problem. Here are some ideas, or say your own.', 'No problem. Here’s a hint.'],
+                ['That’s okay. Pick one of these, or type something else.', 'That’s okay. Try this hint.'],
+                ['Here are a few to get you going.', 'Here’s a hint to get you going.']], helped = 0;
   function expect(ph, fn, opts) {
     opts = opts || {};
     expecting = { fn: fn, ph: ph, card: opts.card || null, who: opts.who || active, takesHelp: opts.takesHelp || null }; asked++;
@@ -490,15 +507,18 @@ var Chat = (function () {
   }
   function answer(text) {
     var e = expecting, q = question && question.typed && !card.hidden ? question : null;
-    quieten();
+    quieten(); flush();
     if (q) line(q.who, q.text);   // the question the card asked goes into the log, as a tapped one does
     line('k', text);
     if (!e) return;
-    if (!q && e.card && HELP_ME.test(text)) { offerCard(); return; }   // asked for ideas: here they are
+    /* "idk" is always answered in the chat, then the help comes (critique, Sept 30: typed "idk" opened
+       the hint box and the chat said nothing, so the kid who admitted being stuck was ignored). */
+    var help = !q && HELP_ME.test(text);
+    if (help && e.card) { say([[e.who || active || 'm', HELPED[helped++ % HELPED.length][0]]]); offerCard(); return; }   // asked for ideas: here they are
     // a question with no suggestions (what did you find: a list would be the answers) gets the step's
     // next hint instead, the same as tapping Hint. Unless the asker takes "idk" itself right now
     // (`takesHelp`): mid-question, the Mentor leads them on from what they said (quest.js, askFindings)
-    if (!q && !e.card && hintHandler && HELP_ME.test(text) && !(e.takesHelp && e.takesHelp())) { hintHandler(); return; }
+    if (help && !e.card && hintHandler && !(e.takesHelp && e.takesHelp())) { say([[e.who || active || 'm', HELPED[helped++ % HELPED.length][1]]]); hintHandler(); return; }
     expecting = null; question = null; hideCard(); placeholder(); hintButton();
     /* false keeps listening, unless the answer already moved on (a new question, or a stop): the hero's
        answer, drawn at once with the AI down, asked the name, and putting the hero's handler back made
@@ -547,7 +567,7 @@ var Chat = (function () {
 
   function typed(text) {
     if (expecting) return answer(text);
-    quieten();
+    quieten(); flush();
     line('k', text);
     if (askHandler) askHandler(text, question, active);
   }

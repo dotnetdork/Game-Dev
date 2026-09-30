@@ -2,8 +2,8 @@
 # reworked by Jay's playthrough, docs/rework/v2-review-2026-09-28.md §4).
 # The kid plays the intern's broken greybox level, then TELLS the Mentor what they found, in their own
 # words; each finding becomes a ticket. They pick one and its department fixes it with them (the
-# ticket's own quest runs inside this one). Then they make the Play-mode mistake, describe their hero,
-# name their game, and fix the rest of the board. Nothing here narrates a problem for them.
+# ticket's own quest runs inside this one). Then they make the Play-mode mistake, fix the rest of the
+# board, and only then describe their hero. Nothing here narrates a problem for them.
 id: first-day
 title: Your first day
 department: studio
@@ -88,25 +88,31 @@ beats:
     done_say:
       - They shrank back! Play mode is a test run, and Stop puts everything back, the same as in Unity.
 
+  # The board first, then the hero (Jay, Sept 30: "its asking me all these things before I even
+  # finish the tickets"). The hero and the name had come straight after the first ticket, with three
+  # still open. The name is not asked on the first day at all: "That can be covered when we get into
+  # game design documents" (design.js; askName stays in quest.js for that).
+  - id: next-ticket
+    goal: Pick your next ticket
+    do: { stop: true, reveal: [tickets] }
+    ask:
+      text: What should we fix next?
+      from: tickets
+      then: again          # back here after each ticket, until the board is clear
+
   - id: its-yours
     goal: Describe your game’s hero
     do: { stop: true, close_inspector: true }
     say:
-      - This level is yours now, @name, and every fix goes into YOUR game.
+      - The board is clear! This level is yours now, @name, and every fix went into YOUR game.
     ask:
       text: Every game needs a hero. What’s yours? A dragon, a robot, a pizza… anything!
       from: heroes
       examples: [A dragon, A robot, A cat, A pizza with legs]
 
-  - id: name-it
-    goal: Give your game a name
-    ask:
-      text: And what’s your game called?
-      from: names
-
   - id: play-yours
     goal: Play your game and grab a coin
-    do: { play: true }
+    do: { play: true, reveal: [stars] }
     say:
       - Your game, @name!
     instruct: Grab a coin.
@@ -114,11 +120,3 @@ beats:
     award: { stars: 1 }
     done_say:
       - Your first star!
-
-  - id: next-ticket
-    goal: Pick your next ticket
-    do: { stop: true, reveal: [tickets, stars] }
-    ask:
-      text: What should we fix next?
-      from: tickets
-      then: again          # back here after each ticket, until the board is clear

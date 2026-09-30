@@ -15,16 +15,19 @@ on:
     instruct: Make the fix while the game is stopped.
 beats:
   - id: meet
-    goal: Find the part you fell through
+    # Direct (Jay, Sept 30: "the AI should also tell them more in that sentence so there is no
+    # ambiguity ... instructions should be direct"): the greeting is followed at once by what to
+    # click, as a step row (a "do this" goes in instruct:, and a message is at most 28 words).
+    goal: Click Floor tile in the Hierarchy
     do: { reveal: [hierarchy], point: hierarchy, stop: true, cue: tile }
     say:
       - Hi @name, I’m the lead programmer! You fell through part of the floor, so let’s find out why.
+    instruct: Go ahead and click Floor tile in the Hierarchy.
     skip_if: { state: { tile.solid: true } }
     hints_after: 20
     hints:
-      - Every part of the level is listed in the Hierarchy.
-      - Which part were you standing on when you fell? Find it in the list.
-      - Tap Floor tile in the Hierarchy.
+      - The Hierarchy is the list on the left. It has every part of the level in it.
+      - Click the words Floor tile in that list. It’s the part you fell through.
     wait_for: { select: tile }
 
   # Guided (Jay, Sept 30: "it should explain what they are seeing"): what the Inspector is, then a

@@ -19,6 +19,8 @@
 # the AI pushing them deeper into explaining it"). Once a finding is filed the Mentor asks what should
 # have happened; a kid who doesn't know gets `should_ask`, a question that leads there from what any
 # player knows; still stuck, the Mentor says `should`. Neither names a problem the kid hasn't found.
+# It is asked once, for the first finding; after that the Mentor says `should` itself (quest.js,
+# filed). `should_q` replaces "What should have happened instead?" for a problem that is a look.
 #
 # `nudge` is for "that's all" said with problems still unfound (Jay, 2026-09-30: "The bot should have
 # responded with are you sure?"). The Mentor asks "Are you sure?" and sends them to look, one problem
@@ -41,7 +43,9 @@ tickets:
     department: engineering
     quest: floor-is-a-picture
     found_by: { event: fell }
-    words: "fell|fall|floor|hole|through|ground|tile|drop"
+    # what happened, not the thing it happened to: "floor" was here, and "a gap in the floor between
+    # the coins that does nothing", which is the lava, was told it was this ticket (Jay, Sept 30)
+    words: "fell|fall|through|drop|sank|sink|hole"
     fixed_when: { state: { tile.solid: true } }
 
   - id: silent-coins
@@ -64,6 +68,8 @@ tickets:
     says: Everything is grey
     detail: Every part is a plain grey block, so a player can’t tell coins from danger.
     done: The coins and the lava each have a picture a player can tell apart.
+    # a look, not something that happens: "happened? dont you mean look like?" (Jay, Sept 30)
+    should_q: What should it look like instead?
     should_ask: If everything looks the same, how would a player tell a coin from lava?
     should: Each thing should look different, so a player can tell good from dangerous.
     nudge: Look at the coins and the lava. How can you tell which is which?
@@ -79,14 +85,17 @@ tickets:
   - id: harmless-lava
     title: The lava doesn’t hurt the player
     says: The lava doesn’t hurt
-    detail: The lava looks dangerous, but touching it does nothing.
+    detail: The dip between the coins is meant to be lava, but touching it does nothing.
     done: Touching the lava sends the player back to the start.
     should_ask: In most games, what happens when you touch lava?
     should: Lava should hurt you, so it is something to get past.
-    nudge: What happened when you touched the lava?
+    # In a grey level nothing says which grey shape is lava (Jay, Sept 30: "theres no way to know thats
+    # lava"), so the nudge says what it is and where, and still not what is wrong with it.
+    nudge: See the dip in the floor between the coins? That’s meant to be lava. What happened when you walked into it?
     nudge_yes: "nothing|no ?thing|didn['’]?t (die|hurt|do)|was fine|walked (on|over|through)|stood"
     department: design
     quest: harmless-lava
     found_by: { event: lava }
-    words: "lava|hurt|damage|die|danger|safe|burn"
+    # and what a kid sees there before they know it is lava: a gap, a dip, a pit that does nothing
+    words: "lava|hurt|damage|die|danger|safe|burn|gap|dip|pit|dent|does nothing|nothing happens"
     fixed_when: { state: { lava.hurts: true } }

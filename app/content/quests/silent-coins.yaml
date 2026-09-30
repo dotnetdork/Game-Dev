@@ -14,15 +14,17 @@ on:
     instruct: Pick the sound while the game is stopped.
 beats:
   - id: meet
-    goal: Find the part that should make the sound
+    # direct: says what to click (floor-is-a-picture.yaml, meet)
+    goal: Click Coins in the Hierarchy
     do: { reveal: [hierarchy], point: hierarchy, stop: true, cue: coins }
     say:
       - Hi @name, I’m the sound designer! A silent coin doesn’t feel like anything, so let’s fix that.
+    instruct: Go ahead and click Coins in the Hierarchy.
     skip_if: { state: { coins.sound: set } }
     hints_after: 20
     hints:
-      - Which part makes the sound? Find it in the Hierarchy.
-      - Tap Coins in the Hierarchy.
+      - The Hierarchy is the list on the left. It has every part of the level in it.
+      - Click the words Coins in that list. The sound belongs to them.
     wait_for: { select: coins }
 
   - id: fix

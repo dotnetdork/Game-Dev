@@ -575,7 +575,7 @@ button.qopt:hover .n, button.qopt:focus-visible .n { background: var(--accent); 
 .tk.doing { box-shadow: inset 0 0 0 1.5px var(--accent); }
 .tk.done { background: transparent; box-shadow: inset 0 0 0 1px var(--line-soft); }
 .tk.done:hover { background: var(--panel-2); }
-.tk.done .tt { color: var(--ink-2); }
+.tk.done .tt { color: var(--ink-2); text-decoration: line-through; text-decoration-thickness: 1.5px; text-decoration-color: var(--ink-3, currentColor); }
 .tk:focus-visible { outline-offset: -2px; }
 .tmeta { display: flex; align-items: center; gap: 8px; margin: 0; min-width: 0; font-size: 12px; font-weight: 600; }
 .tid { font: 600 12px/1 ui-monospace, "Cascadia Mono", Menlo, monospace; color: var(--ink-3); font-variant-numeric: tabular-nums; }

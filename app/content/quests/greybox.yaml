@@ -15,15 +15,17 @@ on:
     instruct: Pick sprites while the game is stopped.
 beats:
   - id: meet
-    goal: Find the coins in the Hierarchy
+    # direct: says what to click (floor-is-a-picture.yaml, meet)
+    goal: Click Coins in the Hierarchy
     do: { reveal: [hierarchy], point: hierarchy, stop: true, cue: coins }
     say:
       - Hi @name, I’m the art director! This greybox is plain blocks for testing, so a player can’t tell good from dangerous.
+    instruct: Go ahead and click Coins in the Hierarchy.
     skip_if: { state: { coins.look: set, lava.look: set } }
     hints_after: 20
     hints:
-      - Every part is in the Hierarchy, on the left.
-      - Tap Coins in the Hierarchy.
+      - The Hierarchy is the list on the left. It has every part of the level in it.
+      - Click the words Coins in that list. We’ll start with them.
     wait_for: { select: coins }
 
   - id: fix

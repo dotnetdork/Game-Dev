@@ -213,6 +213,7 @@ function checkTickets(t, file) {
     // the report's second question, what should have happened (tickets.yaml says why)
     if (!k.should_ask || !/\?\s*$/.test(k.should_ask)) problem(list, w, 'needs should_ask: a question that leads a kid to what should happen');
     if (!k.should) problem(list, w, 'needs should: what should happen, in a kid\'s words, said if they stay stuck');
+    if (k.should_q !== undefined && !/\?\s*$/.test(k.should_q)) problem(list, w, 'should_q, the question itself for a problem that is not something happening, must be a question');
     // "that's all" with this one unfound: the question that sends them to look (tickets.yaml says why)
     if (!k.nudge || !/\?\s*$/.test(k.nudge)) problem(list, w, 'needs nudge: a question that says where to look, not what is wrong');
     if (k.nudge_yes !== undefined) { try { new RegExp(k.nudge_yes, 'i'); } catch (e) { problem(list, w, 'nudge_yes is not a valid pattern (' + e.message + ')'); } }
