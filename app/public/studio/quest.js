@@ -200,7 +200,15 @@ var Quest = (function () {
         b.appendChild(top);
         b.appendChild(el('span', 'tt', t.title));
         b.setAttribute('aria-label', 'Ticket ' + number(id) + ': ' + t.title + '. ' + DEPT[t.department] + ', ' + STATUS[mine.status] + '. Open its page.');
-        b.addEventListener('click', function () { showTicket(t.id); });
+        /* While the Mentor is asking which to fix, tapping one picks it (Jay, 2026-09-30: "clicking a
+           ticket should make the ticket the selected one"); its page opens as the shift starts. Any
+           other time a tap opens the page. */
+        var picks = mine.status === 'open' && pickable(t) >= 0;
+        if (picks) b.setAttribute('aria-label', 'Ticket ' + number(id) + ': ' + t.title + '. ' + DEPT[t.department] + '. Fix this one.');
+        b.addEventListener('click', function () {
+          if (mine.status === 'open' && pickable(t) >= 0) { fixTicket(t); showTicket(t.id); }
+          else showTicket(t.id);
+        });
         li.appendChild(b); ul.appendChild(li);
       });
     });
@@ -567,12 +575,21 @@ var Quest = (function () {
           said) and the Mentor asks what should have happened. "idk" gets the ticket's `should_ask`, a
           question that leads there from what any player knows; still stuck, the Mentor says `should`
           (tickets.yaml). Their answer goes on the ticket's page.
+       3. ARE YOU SURE? The report doesn't end on a magic phrase (Jay, same day: "gating them to say
+          thats all is a bad idea. The conversation should feel natural", and "The bot should have
+          responded with are you sure?"). The Mentor just asks what else; the first "that's all" with
+          problems unfound gets "Are you sure?" and a `nudge` for each, one at a time: where to look,
+          never what is wrong. A nudge not found after one more try is left for its department to
+          file (`file: rest`, first-day.yaml); "that's all" again ends the report there.
        The code runs the ladder, so it works with the AI down; the AI, when up, words each question
-       from what the kid actually said. `pending` is the rung in progress. */
-    var pending = null, taught = false;
+       from what the kid actually said. `pending` is the rung in progress; its `aim` is the problem a
+       nudge is about. */
+    var pending = null, taught = false, looking = false, tried = {};
     var FEEL = /\b(boring|bored|dull|meh|lame|bad|weird|strange|odd|ugly|annoying|sucks?|dumb|stupid|confusing|off|wrong|broken|buggy|glitchy|hard|easy|not fun|no fun)\b/i;
+    var IDK = /^\s*(idk|i ?d(on|o)n?['’]?t know|dunno|no idea|not sure|um+|uh+|\?+)\s*[.!?]*\s*$/i;
     var STUCK = /^\s*(idk|i ?d(on|o)n?['’]?t know|dunno|no idea|not sure|nothing|no+|nope|um+|uh+|\?+)\s*[.!?]*\s*$/i;
     var FINISH = /^\s*(that['’]?s (it|all|everything)|thats? all|(i['’]?m |all )?done|finished|no more|move on|next)\s*[.!]*\s*$/i;
+    var ELSE = ['What else did you notice?', 'Anything else seem off?', 'Good. What else?'];
     function concrete(text) { return COURSE.tickets.filter(function (t) { return t.words && new RegExp('\\b(?:' + t.words + ')', 'i').test(text); }); }
     function cap(s) { return s.charAt(0).toUpperCase() + s.slice(1); }
     // one question to the kid: the AI's wording when it is up, the plain one when it isn't or fails
@@ -583,16 +600,16 @@ var Quest = (function () {
     }
     function dig(said) {
       var n = (pending && pending.kind === 'dig' ? pending.n : 0) + 1, feel = (said.join(' ').match(FEEL) || [])[1];
-      pending = { kind: 'dig', said: said, n: n };
+      pending = { kind: 'dig', said: said, n: n, aim: pending && pending.aim };
       var plain = n === 1 ? (feel ? '“' + cap(feel) + '” how? What did you see or hear that made it feel ' + feel + '?' : 'What happened with it? Tell me what you did, and what the game did.')
         : n === 2 ? 'Where in the level was that? What were you doing right then?'
         : 'Try it again and watch closely. What does the game do?';
       Chat.placeholder();
       return put(said[said.length - 1], 'TASK: the kid is reporting what seemed wrong in the game, but it is not a clear problem yet. Everything they said so far: "' + said.join(' / ') + '". Ask ONE short question that pushes them to explain more: what exactly they saw, heard or did, where, or what happens when they try the thing they mentioned (you may say what a thing is, like "those dots are coins: what happens when you grab one?"). Never say what is wrong. No praise, no list.', plain);
     }
-    function filed(ts, words, reply) {
+    function filed(ts, words, reply, by) {
       pending = null;
-      ts.forEach(function (t) { file(t.id, words); });
+      ts.forEach(function (t) { file(t.id, words, by); });
       track('finding', { text: words, tickets: ts.map(function (t) { return t.id; }) });
       reveal('tickets'); paintTickets();
       pending = { kind: 'should', ticket: ts[0].id, n: 1 };
@@ -600,10 +617,43 @@ var Quest = (function () {
       Chat.placeholder();
       return false;
     }
-    function anythingElse() { return 'Anything else? If not, say “that’s all”.'; }
+    // the next problem to send them looking for: one they ran into first, then the rest in order
+    function unfound() { return COURSE.tickets.filter(function (t) { return !S.tickets[t.id] && !tried[t.id] && t.nudge; }).sort(function (x, y) { return (S.seen[y.id] ? 1 : 0) - (S.seen[x.id] ? 1 : 0); }); }
+    function nudge(t, lead) {
+      tried[t.id] = true;
+      pending = { kind: 'dig', said: [], n: 0, aim: t.id };
+      say([lead, t.nudge].filter(Boolean), who);
+      Chat.placeholder();
+      return false;
+    }
+    // after a finding, or a nudge that found nothing: on, the way a person would carry on talking
+    function onward(lead) {
+      pending = null;
+      var left = unfound();
+      if (!left.length && (looking || !COURSE.tickets.some(function (t) { return !S.tickets[t.id]; }))) return finish(lead);
+      if (looking) return nudge(left[0], lead);
+      say([lead, ELSE[(Object.keys(S.tickets).length - 1) % ELSE.length]].filter(Boolean), who);
+      Chat.placeholder();
+      return false;
+    }
+    // they think they're done: the first time, if there's more to find, are they sure?
+    function wantsOut() {
+      if (pending && pending.kind === 'dig' && pending.said.length && !pending.aim) idea(pending.said.join('. '), true);
+      pending = null;
+      if (!Object.keys(S.tickets).length) { say(['Nothing yet? Let’s look again.'], who); next(a.if_none); return; }
+      var left = unfound();
+      if (looking || !left.length) return finish();
+      looking = true;
+      return nudge(left[0], 'Are you sure? There’s more to find. Let’s look together.');
+    }
+    // a nudge that didn't land: one more try, then leave it for its department
+    function retry() {
+      if (pending.n === 0) { pending.n = 1; say(['Press Play and try it, then tell me what happened.'], who); Chat.placeholder(); return false; }
+      return onward('That’s okay. We’ll come back to it.');
+    }
     function should(text) {
       var t = ticketOf(pending.ticket), tk = S.tickets[pending.ticket];
-      if (FINISH.test(text)) { pending = null; return finish(); }
+      if (FINISH.test(text)) return wantsOut();
       var stuck = STUCK.test(text) || text.trim().length < 3;
       if (stuck && pending.n === 1) {
         pending.n = 2;
@@ -611,17 +661,16 @@ var Quest = (function () {
       }
       pending = null;
       // the first time, name what they just did: both halves make a bug report
-      var tail = (taught ? [] : ['That’s a real bug report: what happened, and what should have.']).concat([anythingElse()]);
-      var lines = function (first) { return [first].concat(tail); };
-      taught = true;
-      if (stuck) { say(lines('Here’s the idea: ' + t.should.charAt(0).toLowerCase() + t.should.slice(1)), who); Chat.placeholder(); return false; }
+      var lead = function (first) { return first + (taught ? '' : ' That’s a real bug report: what happened, and what should have.'); };
+      var wasTaught = taught; taught = true;
+      if (stuck) return onward(lead('Here’s the idea: ' + t.should.charAt(0).toLowerCase() + t.should.slice(1)));
       if (tk) { tk.should = String(text).slice(0, 120); save(); paintTickets(); }
-      if (!aiUp()) { say(lines('Yes, that’s it.'), who); Chat.placeholder(); return false; }
+      if (!aiUp()) return onward(lead(wasTaught ? 'Exactly.' : 'Yes, that’s it.'));
       mentor(text, null, who, 'TASK: the kid said what should have happened for the problem "' + t.title + '": "' + text + '". The idea to reach: "' + t.should + '". In ONE short line, build on their own words: if they have it, say so; if not quite, lead them the rest of the way. Nothing else.')
-        .then(function (res) { if (frame() !== f) return; say(lines((res && res.reply) || 'Yes, that’s it.'), who); Chat.placeholder(); });
+        .then(function (res) { if (frame() !== f) return; onward(lead((res && res.reply) || 'Yes, that’s it.')); });
       return false;
     }
-    Chat.expect(function () { return pending && pending.kind === 'should' ? 'Like “it should…”' : pending ? 'Say what you saw, heard or did…' : more() ? 'Another one, or “that’s all”…' : 'Like “the jump feels floaty”…'; }, function (text) {
+    Chat.expect(function () { return pending && pending.kind === 'should' ? 'Like “it should…”' : pending ? 'Say what you saw, heard or did…' : more() ? 'Something else you noticed…' : 'Like “the jump feels floaty”…'; }, function (text) {
       if (frame() !== f) return;
       if (pending && pending.kind === 'should') {
         // "oh and the lava doesn't hurt" is a new finding, not the answer to what should have happened
@@ -629,39 +678,41 @@ var Quest = (function () {
         if (!other.length || /\bshould\b/i.test(text)) return should(text);
         pending = null;
       }
+      var aim = pending && pending.aim ? ticketOf(pending.aim) : null;
+      // the answer to a nudge: "nothing", to what did you hear, is the finding
+      if (aim && !S.tickets[aim.id] && !IDK.test(text) && aim.nudge_yes && new RegExp('\\b(?:' + aim.nudge_yes + ')', 'i').test(text)) {
+        var own = text.trim().length >= 12;   // "nothing" alone would read oddly on the ticket's page
+        return filed([aim], own ? text : null, null, own ? null : 'You');
+      }
+      if (aim && STUCK.test(text)) return retry();
       // stuck mid-dig ("idk", "nothing"): the next rung, a different way in, without their "idk" in the ticket
       if (pending && pending.kind === 'dig' && STUCK.test(text)) {
-        if (pending.n >= 3) { idea(pending.said.join('. '), true); pending = null; say(['That’s okay. I’ve kept it as an idea.', 'Anything else that seemed broken?'], who); return false; }
+        if (pending.n >= 3) { idea(pending.said.join('. '), true); return onward('That’s okay. I’ve kept it as an idea.'); }
         return dig(pending.said);
       }
-      if (DONE.test(text)) {
-        if (pending) { idea(pending.said.join('. '), true); pending = null; }
-        if (Object.keys(S.tickets).length) return finish();
-        say(['Nothing yet? Let’s look again.'], who);
-        next(a.if_none);
-        return;
-      }
+      if (DONE.test(text) || FINISH.test(text)) return wantsOut();
       var said = pending && pending.kind === 'dig' ? pending.said.concat([text]) : [text], words = said.join('. ');
       var hit = concrete(text), fresh = hit.filter(function (t) { return !S.tickets[t.id]; });
       if (fresh.length) return filed(fresh, words);
-      if (hit.length) { pending = null; say(['That’s ticket #' + number(hit[0].id) + ' already. Good detail.', anythingElse()], who); return false; }
-      // three follow-ups and still no problem: keep it, and move on kindly
-      if (pending && pending.n >= 3) { idea(words, true); pending = null; say(['I’ve kept that as an idea.', 'Anything else that seemed broken?'], who); return false; }
+      if (hit.length) return onward('That’s ticket #' + number(hit[0].id) + ' already. Good detail.');
+      // still no problem after the follow-ups: keep it, and move on kindly
+      if (aim && pending.n >= 2) return retry();
+      if (pending && pending.n >= 3) { idea(words, true); return onward('I’ve kept that as an idea.'); }
       // a feeling is always asked about first, never sorted into a ticket on its own
       if (!pending && FEEL.test(text)) return dig(said);
       var unfiled = COURSE.tickets.filter(function (t) { return !S.tickets[t.id]; });
-      if (!unfiled.length || !aiUp()) return dig(said);
+      if (!unfiled.length || !aiUp()) return aim ? retry() : dig(said);
       // the last option: they're done, or asking to move on ("ok where", "where are the tickets?"):
       // the conversation moves the day on, not a magic phrase (Jay, 2026-09-30)
       var hidden = { text: 'Which problem did the kid just report?', options: unfiled.map(function (t) { return { text: t.title + (t.says ? ' (a kid might say “' + t.says + '”)' : '') }; })
         .concat(more() ? [{ text: 'None: they are done reporting, or asking what happens next' }] : []) };
-      mentor(words, hidden, who, 'TASK: the kid is reporting something broken they found while playing. Everything they said about it: "' + said.join(' / ') + '". Only if that clearly describes one of the listed problems, set choose to it and reply in one short line. If it is vague, a feeling, or a thing with no problem yet, do not choose: ask ONE short question that pushes them to explain what exactly they saw, heard or did (you may say what a thing is, like "those dots are coins: what happens when you grab one?"). If they are done or asking what is next, choose the "done" option and reply in one short line. Never say what is wrong with anything.')
+      mentor(words, hidden, who, 'TASK: the kid is reporting something broken they found while playing.' + (aim ? ' You just asked them: "' + aim.nudge + '"' : '') + ' Everything they said about it: "' + said.join(' / ') + '". Only if that clearly describes one of the listed problems, set choose to it and reply in one short line. If it is vague, a feeling, or a thing with no problem yet, do not choose: ask ONE short question that pushes them to explain what exactly they saw, heard or did (you may say what a thing is, like "those dots are coins: what happens when you grab one?"). If they are done or asking what is next, choose the "done" option and reply in one short line. Never say what is wrong with anything.')
         .then(function (res) {
           if (frame() !== f) return;
-          if (res && res.choose === unfiled.length + 1 && more()) { Chat.stopExpecting(); finish(res.reply); return; }
+          if (res && res.choose === unfiled.length + 1 && more()) { wantsOut(); return; }
           if (res && res.choose && unfiled[res.choose - 1]) { filed([unfiled[res.choose - 1]], words, res.reply); return; }
-          if (res && res.reply && /\?\s*["”]?\s*$/.test(res.reply)) { pending = { kind: 'dig', said: said, n: (pending && pending.kind === 'dig' ? pending.n : 0) + 1 }; say([res.reply], who); Chat.placeholder(); return; }
-          dig(said);   // no question from the AI ("noted!"): the ladder asks its own
+          if (res && res.reply && /\?\s*["”]?\s*$/.test(res.reply)) { pending = { kind: 'dig', said: said, n: (pending && pending.kind === 'dig' ? pending.n : 0) + 1, aim: aim && aim.id }; say([res.reply], who); Chat.placeholder(); return; }
+          if (aim) retry(); else dig(said);   // no question from the AI ("noted!"): the ladder asks its own
         });
       return false;   // still listening: returning false keeps the box expecting a finding (chat.js expect)
     }, { who: who, takesHelp: function () { return !!pending; } });
@@ -677,7 +728,7 @@ var Quest = (function () {
      of presets, said honestly as a guess. Either way the kid can ask for changes after. */
   var BODIES = ['box', 'round', 'tall', 'blob', 'wide'];
   var EYES = ['dots', 'big', 'visor', 'angry', 'sleepy', 'one'];
-  var EXTRAS = ['horns', 'ears-cat', 'ears-round', 'ears-bunny', 'antenna', 'crown', 'hat-wizard', 'helmet', 'cape', 'wings', 'tail', 'spikes', 'snout', 'beak', 'fins', 'flame', 'leaf', 'whiskers', 'bow', 'scarf'];
+  var EXTRAS = ['horns', 'ears-cat', 'ears-round', 'ears-bunny', 'antenna', 'crown', 'hat-wizard', 'helmet', 'cape', 'wings', 'tail', 'spikes', 'snout', 'beak', 'fins', 'flame', 'leaf', 'whiskers', 'bow', 'scarf', 'cap', 'mustache'];
   function hex(v) { return typeof v === 'string' && /^#[0-9a-f]{6}$/i.test(v) ? v.toLowerCase() : null; }
   function cleanHero(h) {
     if (!h || typeof h !== 'object') return null;
@@ -710,7 +761,10 @@ var Quest = (function () {
     [/plant|tree|sprout|flower/, { body: 'round', color: '#8bc34a', eyes: 'sleepy', extras: [X('leaf', '#43a047')] }],
     [/monster|beast/, { body: 'wide', color: '#8e24aa', eyes: 'one', extras: [X('horns', '#fff3c4'), X('spikes', '#ce93d8')] }],
     [/pizza|food|burger|cookie/, { body: 'wide', color: '#ffca28', belly: '#e53935', eyes: 'big', extras: [] }],
-    [/bear|panda/, { body: 'round', color: '#8d6e63', belly: '#d7ccc8', eyes: 'dots', extras: [X('ears-round')] }]
+    [/bear|panda/, { body: 'round', color: '#8d6e63', belly: '#d7ccc8', eyes: 'dots', extras: [X('ears-round')] }],
+    [/mario|plumber/, { body: 'round', color: '#e53935', belly: '#1e88e5', eyes: 'dots', extras: [X('cap', '#e53935'), X('mustache')] }],
+    [/luigi/, { body: 'tall', color: '#43a047', belly: '#1e88e5', eyes: 'dots', extras: [X('cap', '#43a047'), X('mustache')] }],
+    [/sonic|hedgehog/, { body: 'round', color: '#1e88e5', belly: '#ffe0b2', eyes: 'big', extras: [X('spikes', '#1565c0')] }]
   ];
   var COLOR_WORDS = { red: '#e53935', blue: '#1e88e5', green: '#43a047', yellow: '#fdd835', purple: '#8e24aa', pink: '#f06292', orange: '#fb8c00', black: '#37474f', white: '#f5f5f5', gold: '#ffc107', grey: '#9e9e9e', gray: '#9e9e9e', brown: '#8d6e63' };
   function preset(text) {
@@ -729,23 +783,44 @@ var Quest = (function () {
     setTimeout(Runner.askThumbs, 600);
   }
   function examples(a) { return (a.examples || []).map(function (x) { return { text: x }; }); }
+  /* Draw the hero from everything the kid has said about it: the AI from the drawer's parts, or,
+     with it down, the nearest preset with their colour. `then(line)` gets what to say. */
+  function composeHero(said, word, who, then) {
+    var text = said.join('. '), p = preset(text), plain = p.close ? 'Here’s your ' + word + '!' : 'Here’s my best guess at a ' + word + '.';
+    if (!aiUp()) { setHero(p.hero, word); return then(plain); }
+    mentor(said[said.length - 1], null, who, 'TASK: the kid is describing their game’s hero. Everything they said about it: "' + said.join(' / ') + '". Set `hero` to a hero drawn from the parts listed under HERO, as close to that as the parts allow (a cap and mustache for a plumber, say), and change what they asked to change. Reply in one short, excited line saying what you drew. It shows in the Game view.')
+      .then(function (res) { var shape = res && cleanHero(res.hero); setHero(shape || p.hero, word); then((shape && res.reply) || plain); });
+  }
+  /* A hero, typed, and the first lesson in telling an AI what you want (Jay, 2026-09-30: "Kids are
+     10-14 ... arent going to have clear instructions right out the gate for the AI, we need to teach
+     that through this"). A kid says "mario"; the Mentor draws its guess, then asks them to say what
+     it looks like, because it only knows what they tell it. What they describe is drawn with the
+     rest, and the Mentor says why it got closer. One round, then on: a lesson, not a quiz. A kid who
+     describes it the first time is told that was exactly right. */
+  var DESCRIBES = /\b(red|blue|green|yellow|purple|pink|orange|black|white|gold|grey|gray|brown|hat|cap|crown|helmet|wings?|horns?|tail|ears?|eyes?|big|small|tiny|round|tall|fat|wearing|with|has|mustache|moustache|overalls)\b/i;
+  var HAPPY = /^\s*(ok(ay)?|good|fine|perfect|yes|yeah|yep|cool|nice|great|love (it|him|her)|looks? (good|great)|that'?s (it|good|great))\s*[.!]*\s*$/i;
   function askHero(a, who) {
-    var f = frame(), ex = (a.examples || [])[0];
+    var f = frame(), ex = (a.examples || [])[0], said = [], word = null;
     say([fill(a.text)], who);
-    Chat.expect(ex ? 'Like “' + ex.toLowerCase() + '”…' : 'Describe your hero…', function (text) {
+    Chat.expect(function () { return said.length ? 'Like “red, with a cap and a moustache”…' : ex ? 'Like “' + ex.toLowerCase() + '”…' : 'Describe your hero…'; }, function (text) {
       if (frame() !== f) return;
-      var word = text.replace(/^(a|an|my|it'?s|i want)\s+/i, '').slice(0, 40);
-      var done = function (shape, line) { setHero(shape, word); say([line, 'Want it different? Just tell me, any time.'], who); next(); };
-      if (!aiUp()) { var p = preset(text); return done(p.hero, p.close ? 'Here’s your ' + word + '!' : 'Here’s my best guess at a ' + word + '.'); }
-      mentor(text, null, who, 'TASK: the kid is describing their game’s hero. Set `hero` to a hero drawn from the parts listed under HERO, as close to what they said as the parts allow. Reply in one short, excited line.')
-        .then(function (res) {
-          if (frame() !== f) return;
-          var shape = res && cleanHero(res.hero), p = preset(text);
-          done(shape || p.hero, (res && res.reply) || (p.close ? 'Here’s your ' + word + '!' : 'Here’s my best guess at a ' + word + '.'));
-        });
+      var first = !said.length;
+      if (!first && HAPPY.test(text)) { say(['Great, that’s your hero. Want it different later? Just tell me.'], who); Chat.stopExpecting(); next(); return; }
+      said.push(text); S.heroSaid = said.slice(-6);   // the name step may hear more about it
+      if (first) word = text.replace(/^(a|an|my|it'?s|i want)\s+/i, '').slice(0, 40);
+      var clear = DESCRIBES.test(text) || text.trim().split(/\s+/).length >= 5;
+      composeHero(said, word, who, function (line) {
+        if (frame() !== f) return;
+        if (first && !clear) { say([line, 'That’s my guess. I only know what you tell me: what do they look like? Colours, a hat, anything.'], who); Chat.placeholder(); return; }
+        say([line, first ? 'You told me exactly what you wanted. That’s how to get what you want from an AI.' : 'See? The more you tell me, the closer I get. Want changes later? Just ask.'], who);
+        Chat.stopExpecting(); next();
+      });
+      return false;
     }, { who: who, card: { text: fill(a.text), options: examples(a) } });
   }
 
+  var TALK = /^(yeah|yes|no|nah|ok(ay)?|but|wait|i mean|why|what|how|um+|uh+|lol|hey)\b|\b(you|your|didn['’]?t|isn['’]?t|doesn['’]?t|not|looks?|change|made|drew)\b/i;
+  var HERO_TALK = /\b(guy|character|hero|him|her|he|she|looks?|made|drew|colou?r|hat|cap|mustache|moustache)\b/i;
   /* The game's name, typed. "idk" gets three names to pick from, the suggestions (chat.js, expect). */
   function askName(a, who) {
     var f = frame();
@@ -753,6 +828,16 @@ var Quest = (function () {
     say([fill(a.text)], who);
     Chat.expect('Like “' + h + ' Lava Run”…', function (text) {
       if (frame() !== f) return;
+      /* Not every line is the name: "yeah thats just a blue guy" was about the hero, and became the
+         game's title (Jay's playtest, Sept 30). Talk about the hero redraws it; other talk gets the
+         question again, with its example. */
+      if (TALK.test(text) || text.trim().split(/\s+/).length > 6) {
+        if (HERO_TALK.test(text) && S.hero) {
+          S.heroSaid = (S.heroSaid || [S.hero]).concat([text]).slice(-6);
+          composeHero(S.heroSaid, S.hero, who, function (line) { if (frame() === f) say([line, 'And what’s your game called? Just the name, like “' + h + ' Lava Run”.'], who); });
+        } else say(['Got it. First, what’s your game called? Just the name, like “' + h + ' Lava Run”.'], who);
+        return false;
+      }
       var n = text.replace(/^(it'?s |my game is |call it |it is )(called )?/i, '').replace(/^["“']|["”'.!]+$/g, '').trim().slice(0, 40) || text.slice(0, 40);
       // typed all in lower case, as kids type: a title gets its capitals ("dragon dash" → "Dragon Dash")
       if (n === n.toLowerCase()) n = n.replace(/(^|\s)(\S)/g, function (m, s, c) { return s + c.toUpperCase(); });
@@ -875,7 +960,9 @@ var Quest = (function () {
         + qOnScreen.options.map(function (o, n) {
           var k = key && key.filter(function (x) { return x.text === o.text; })[0];
           return (n + 1) + '. ' + o.text + (o.sub ? ' (' + o.sub + ')' : '') + (k && k.correct ? ' [THE RIGHT ANSWER]' : '') + (k && k.say ? ' [the studio replies: ' + k.say.map(fill).join(' ') + ']' : '');
-        }).join('  ') + '.' + (key && key.some(function (x) { return x.correct; }) ? ' It is a quiz: never say which answer is right; help them think it through.' : ''));
+        }).join('  ') + '.' + (key && key.some(function (x) { return x.correct; }) ? ' It is a quiz: never say which answer is right; help them think it through.' : '')
+      // "That's exactly it!" with the card still up asked again what they had just answered (Jay, Sept 30)
+      + ' If what they typed means one of these answers, in any words, set choose to it and let the studio\'s reply do the talking: do not also explain it yourself.');
     } else out.push('No question on screen.');
     out.push('What just happened (oldest first): ' + (recent.length ? recent.map(function (r) { return r[1] + ' (' + Math.round((Date.now() - r[0]) / 1000) + 's ago)'; }).join('; ') : 'nothing yet') + '.');
     out.push('Tickets: ' + (Object.keys(S.tickets).map(function (id) { var t = ticketOf(id); return t ? titleOf(t) + ' [' + S.tickets[id].status + ']' : ''; }).join('; ') || 'none yet') + '.');
@@ -945,12 +1032,26 @@ var Quest = (function () {
     if (!quiet) Chat.event(S.shown.indexOf('doc') >= 0 ? 'Saved to Ideas for later, in your design doc' : 'Saved to your Ideas (Project › Docs)', 'i-bulb');
   }
   var ASKS_FOR = /\b(make|add|can you|could you|i want|put|give|change|turn|let'?s|build|create)\b/i;
+  // which answer on the card the kid's words name: the one sharing the most words with it, if only one does
+  var FILLER_WORD = /^(its?|it['’]s|the|a|an|to|so|of|is|was|you|i|my|that|this|and|or|by|it’s)$/i;
+  function answerFrom(text, options) {
+    function ws(s) { return String(s).toLowerCase().replace(/[^a-z0-9’' ]+/g, ' ').split(/\s+/).filter(function (w) { return w && !FILLER_WORD.test(w); }); }
+    var mine = ws(text);
+    var scores = options.map(function (o) { var theirs = ws(o.text); return mine.filter(function (w) { return theirs.indexOf(w) >= 0; }).length; });
+    var best = Math.max.apply(null, scores.concat([0]));
+    return best > 0 && scores.filter(function (s) { return s === best; }).length === 1 ? scores.indexOf(best) : -1;
+  }
   function typed(text, qOnScreen, who) {
     who = who || Chat.active() || 'm';
     track('typed', { to: who, text: text.slice(0, 200) });
     busyKid();
     // help, instantly and with no AI: the next rung of the ladder
     if (HELP.test(text) && frame() && beat() && beat().hints && Chat.active() === voice()) { giveHint('asked'); return; }
+    /* An answer typed instead of tapped ("the box collider" for "Its Box Collider") is that answer, at
+       once and with no AI: in Jay's playthrough (Sept 30) the AI took it as chat and the card came
+       back, asking again what the kid had just said. */
+    var said = qOnScreen && !qOnScreen.typed ? answerFrom(text, qOnScreen.options) : -1;
+    if (said >= 0) { Chat.choose(said + 1); return; }
     if (!aiUp()) {
       if (ASKS_FOR.test(text)) { say(['I can’t reach the studio’s AI right now, so I can’t build that yet.', 'I saved it to your Ideas so we don’t forget it.'], who); idea(text); }
       else if (frame() && beat() && beat().hints) giveHint('offline');

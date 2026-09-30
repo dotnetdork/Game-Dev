@@ -123,6 +123,11 @@ function checkAsk(list, where, ask, beatIds) {
        read as text "Ha" plus a key called "got it". Quote text that has a comma in it. */
     Object.keys(a || {}).forEach(function (k) { if (ANSWER_KEYS.indexOf(k) < 0) problem(list, w, 'unknown key "' + k + '" (text with a comma must be in quotes)'); });
     if (a.say) checkLines(list, w, a.say);
+    /* Every answer on a card has a line under it saying what it means, as Claude's card does (Jay,
+       2026-09-30: "with details and what not to support each answer"). In a quiz it describes the
+       answer truly without saying which is right. */
+    if (typeof a.sub !== 'string' || !a.sub.trim()) problem(list, w, 'needs sub: one short line under the answer saying what it means');
+    else if (words(a.sub) > INSTRUCT_WORDS) problem(list, w, 'sub is at most ' + INSTRUCT_WORDS + ' words');
     /* again: ask the same question once more, WITHOUT this answer, so "Why does it do that?" can be
        asked once and never loops (it did, in Jay's playthrough). */
     if (a.goto && a.goto !== 'next' && a.goto !== 'end' && a.goto !== 'again' && beatIds.indexOf(a.goto) < 0) problem(list, w, 'goto "' + a.goto + '" is not a beat in this quest');
@@ -208,6 +213,9 @@ function checkTickets(t, file) {
     // the report's second question, what should have happened (tickets.yaml says why)
     if (!k.should_ask || !/\?\s*$/.test(k.should_ask)) problem(list, w, 'needs should_ask: a question that leads a kid to what should happen');
     if (!k.should) problem(list, w, 'needs should: what should happen, in a kid\'s words, said if they stay stuck');
+    // "that's all" with this one unfound: the question that sends them to look (tickets.yaml says why)
+    if (!k.nudge || !/\?\s*$/.test(k.nudge)) problem(list, w, 'needs nudge: a question that says where to look, not what is wrong');
+    if (k.nudge_yes !== undefined) { try { new RegExp(k.nudge_yes, 'i'); } catch (e) { problem(list, w, 'nudge_yes is not a valid pattern (' + e.message + ')'); } }
     if (!k.detail) problem(list, w, 'needs detail: what is wrong, for the ticket\'s page');
     if (!k.done) problem(list, w, 'needs done: how the kid will know it is fixed, for the ticket\'s page');
   });

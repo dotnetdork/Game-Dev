@@ -69,12 +69,15 @@ beats:
       text: What did the sprites do for the player?
       answers:
         - text: Showed what matters
+          sub: A player can tell things apart
           correct: true
           say:
             - Right. Artists call that readability, seeing at a glance what’s good and what’s dangerous.
         - text: Made it faster
+          sub: The game runs quicker
           say:
             - Speed didn’t change. Think about what a player can see now. Try again!
         - text: Nothing, just pretty
+          sub: It only looks nicer
           say:
             - Pretty helps. But could a player tell coin from lava before? Try again!

@@ -14,12 +14,15 @@ beats:
       text: How was today?
       answers:
         - text: Loved it
+          sub: I’d come back tomorrow
           say:
             - That’s what I like to hear.
         - text: It was OK
+          sub: Some parts were fun, some weren’t
           say:
             - Fair. Help me make it better.
         - text: Not for me
+          sub: I didn’t enjoy it much
           say:
             - Thanks for being honest. Tell me why.
 

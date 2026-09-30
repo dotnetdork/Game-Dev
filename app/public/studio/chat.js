@@ -74,7 +74,7 @@ var Chat = (function () {
   var KEEP = 80;
   var box, card, input, send, announcer, consoleList, taskEl;
   var active = null, history = [];
-  var queue = [], busy = false, pendingQ = null, question = null, expecting = null, askHandler = null, hintHandler = null;
+  var queue = [], busy = false, pendingQ = null, question = null, expecting = null, askHandler = null, hintHandler = null, asked = 0;
   var kidName = 'new developer', kidLabel = 'You';
   var t0 = Date.now();
 
@@ -472,7 +472,7 @@ var Chat = (function () {
   var HELP_ME = /^\s*(idk|i ?d(on|o)n?['’]?t know|dunno|no idea|not sure|help( me)?|hint|i['’]?m stuck|stuck|you (pick|choose|decide)|\?+)\s*[.!?]*\s*$/i;
   function expect(ph, fn, opts) {
     opts = opts || {};
-    expecting = { fn: fn, ph: ph, card: opts.card || null, who: opts.who || active, takesHelp: opts.takesHelp || null };
+    expecting = { fn: fn, ph: ph, card: opts.card || null, who: opts.who || active, takesHelp: opts.takesHelp || null }; asked++;
     hideCard(); question = null; placeholder(); hintButton();
     if (!Runner.isPlaying()) input.focus({ preventScroll: true });
   }
@@ -500,7 +500,11 @@ var Chat = (function () {
     // (`takesHelp`): mid-question, the Mentor leads them on from what they said (quest.js, askFindings)
     if (!q && !e.card && hintHandler && HELP_ME.test(text) && !(e.takesHelp && e.takesHelp())) { hintHandler(); return; }
     expecting = null; question = null; hideCard(); placeholder(); hintButton();
-    if (e.fn(text, active) === false) { expecting = e; placeholder(); hintButton(); }
+    /* false keeps listening, unless the answer already moved on (a new question, or a stop): the hero's
+       answer, drawn at once with the AI down, asked the name, and putting the hero's handler back made
+       the next line a hero again, so the game never got its name */
+    var at = asked;
+    if (e.fn(text, active) === false && asked === at) { expecting = e; placeholder(); hintButton(); }
   }
   /* The task line's Hint: during an open question it shows the suggestions; otherwise the step's own
      hints (quest.js), when it has them. */
@@ -515,7 +519,7 @@ var Chat = (function () {
   /* Menus that start a conversation (GameObject › Add a part…, Help › Ask the mentor) put the
      cursor in the box with a hint of what to type; what's typed goes the usual way. */
   function prompt(ph) { if (ph) input.placeholder = ph; input.focus(); }
-  function stopExpecting() { expecting = null; placeholder(); hintButton(); }
+  function stopExpecting() { expecting = null; asked++; placeholder(); hintButton(); }
   function placeholder() {
     if (!input) return;
     var to = active === 'm' || !active ? 'the Mentor' : 'the ' + who(active)[0].toLowerCase();

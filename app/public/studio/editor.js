@@ -807,7 +807,7 @@ var Editor = (function () {
   /* Tickets sit above the Hierarchy (a ticket is what the kid is working on; the Hierarchy is where),
      and the Console beside the Project window, as Unity's are. */
   var PANELS = { tickets: 'dTickets', hierarchy: 'dHier', inspector: 'inspector', chat: 'dMentor', project: 'dProject', console: 'dConsole' };
-  var DEFAULT = { left: ['tickets', 'hierarchy'], right: ['inspector', 'chat'], bottom: ['project', 'console'], lw: 264, rw: 388, bh: 176, grow: { tickets: 2, hierarchy: 3, project: 3, console: 2 } };
+  var DEFAULT = { left: ['tickets', 'hierarchy'], right: ['inspector', 'chat'], bottom: ['project', 'console'], lw: 264, rw: 388, bh: 232, grow: { tickets: 2, hierarchy: 3, project: 3, console: 2 } };
   var BIG = { left: ['tickets', 'hierarchy'], right: ['inspector', 'chat'], bottom: ['project', 'console'], lw: 200, rw: 316, bh: 120, grow: { tickets: 2, hierarchy: 3, project: 3, console: 2 } };
   var LAYOUT_KEY = 'studio.layout.v3', L = null;
   function copy(o) { return JSON.parse(JSON.stringify(o)); }

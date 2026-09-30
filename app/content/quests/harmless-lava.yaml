@@ -72,12 +72,15 @@ beats:
       text: Why did the game get more fun with real lava?
       answers:
         - text: There was a risk to beat
+          sub: You could lose, so getting past felt good
           correct: true
           say:
             - Yes! Designers call it risk. Something to lose makes getting past it feel good.
         - text: The lava looked cooler
+          sub: It changed how it looked
           say:
             - It looked the same! Think about what changed when you touched it. Try again!
         - text: It didn’t
+          sub: It felt the same as before
           say:
             - Fair! But what could happen now that couldn’t before? Try again!

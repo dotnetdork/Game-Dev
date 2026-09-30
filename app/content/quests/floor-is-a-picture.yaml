@@ -79,12 +79,15 @@ beats:
       text: So what made the tile solid?
       answers:
         - text: Its Box Collider
+          sub: The box you ticked in the Inspector
           correct: true
           say:
-            - Yes! A collider is what the game checks when things touch. No collider, no floor.
+            - Yes! A Box Collider is an invisible box around a part. When two boxes touch, the game stops them, so the player stands on it.
         - text: Its colour
+          sub: How the tile looks in the game
           say:
             - Not that. It looked the same the whole time. Try again!
         - text: Pressing Play
+          sub: Starting the game to test it
           say:
             - Play only tests it. What did you change before that?

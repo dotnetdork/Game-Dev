@@ -20,6 +20,12 @@
 # have happened; a kid who doesn't know gets `should_ask`, a question that leads there from what any
 # player knows; still stuck, the Mentor says `should`. Neither names a problem the kid hasn't found.
 #
+# `nudge` is for "that's all" said with problems still unfound (Jay, 2026-09-30: "The bot should have
+# responded with are you sure?"). The Mentor asks "Are you sure?" and sends them to look, one problem
+# at a time: a question about WHERE to look, never what is wrong. `nudge_yes` is what an answer to it
+# can be that means they found it ("nothing", to what did you hear), on top of `words`. Not found
+# after one more try, it is left for its department to file.
+#
 # `quest` is the department shift that fixes it; `fixed_when` closes it early if the kid (or the AI)
 # fixes it first.
 tickets:
@@ -30,6 +36,8 @@ tickets:
     done: The player can walk across the whole floor without falling.
     should_ask: When you walk onto a floor in a game, what should it do?
     should: A floor should hold you up, so you can walk across it.
+    nudge: What happened when you walked across the middle of the floor?
+    nudge_yes: "sank|gap|went (down|through)|under"
     department: engineering
     quest: floor-is-a-picture
     found_by: { event: fell }
@@ -43,6 +51,8 @@ tickets:
     done: Every coin plays a sound when the player grabs it.
     should_ask: When you grab a coin in a game, how do you usually know you got it?
     should: A coin should make a sound, so you know you got it.
+    nudge: What did you hear when you grabbed a coin?
+    nudge_yes: "nothing|no ?thing|none|didn['’]?t hear|did not hear"
     department: audio
     quest: silent-coins
     found_by: { event: coin, state: { coins.sound: null } }
@@ -56,6 +66,8 @@ tickets:
     done: The coins and the lava each have a picture a player can tell apart.
     should_ask: If everything looks the same, how would a player tell a coin from lava?
     should: Each thing should look different, so a player can tell good from dangerous.
+    nudge: Look at the coins and the lava. How can you tell which is which?
+    nudge_yes: "can['’]?t|cannot|same|no way|not really|hard to"
     department: art
     quest: greybox
     # Not found by an event: it is plain to see. If the kid doesn't say it, the art director files it
@@ -71,6 +83,8 @@ tickets:
     done: Touching the lava sends the player back to the start.
     should_ask: In most games, what happens when you touch lava?
     should: Lava should hurt you, so it is something to get past.
+    nudge: What happened when you touched the lava?
+    nudge_yes: "nothing|no ?thing|didn['’]?t (die|hurt|do)|was fine|walked (on|over|through)|stood"
     department: design
     quest: harmless-lava
     found_by: { event: lava }

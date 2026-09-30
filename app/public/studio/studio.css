@@ -220,6 +220,12 @@ svg.i { width: 18px; height: 18px; fill: none; stroke: currentColor; stroke-widt
 .area.empty > .split.edge { display: none; }
 .inspector:not(.open) + .split, .split:has(+ .inspector:not(.open)) { display: none; }
 .dock.closed + .split, .split:has(+ .dock.closed) { visibility: hidden; }
+/* A panel not yet revealed gives its room to an open one beside it, instead of standing there as an
+   empty box (Jay, 2026-09-30: "whats the gap between project and the chat window?"). It comes back
+   when a quest reveals it. An area with nothing open yet keeps its outline, so the frame reads whole. */
+.area:has(> .dock:not(.closed):not(.inspector)) > .dock.closed { display: none; }
+.area:has(> .dock:not(.closed):not(.inspector)) > .dock.closed + .split,
+.area:has(> .dock:not(.closed):not(.inspector)) > .split:has(+ .dock.closed) { display: none; }
 body.resizing-x, body.resizing-x * { cursor: col-resize !important; user-select: none; }
 body.resizing-y, body.resizing-y * { cursor: row-resize !important; user-select: none; }
 body.resizing-x iframe, body.resizing-y iframe { pointer-events: none; }   /* the game frame would swallow the drag */
@@ -482,8 +488,14 @@ p .key, .t .key, .tnow .key { margin: 0 1px; font-size: .86em; line-height: 1.35
    text box of its own, then Skip and Send. Its edge is the asker's colour; the row the kid is on
    lifts to the hover navy with the number in orange, because orange is the thing to do. */
 .qcard { margin: 6px 12px 12px; padding: 12px 10px 10px; border-radius: 10px; background: var(--ground); border: 1.5px solid var(--who, var(--accent));
-         animation: inspIn .3s var(--ease); max-height: 60%; overflow: auto; flex: none; }
+         animation: inspIn .3s var(--ease); flex: none; }
 .qcard[hidden] { display: none; }
+/* Pinned, never a scroll of its own (Jay, 2026-09-30: "a scrollable mess"): the card is drawn whole
+   and the log above it gives up the room, down to a line or two, since the question is on the card */
+.log:has(~ .qcard:not([hidden])) { min-height: 40px; }
+/* and the task line steps aside: "Pick an answer: why does a coin need a sound?" over a card asking
+   "Why does a coin need a sound?" said it twice (Jay, 2026-09-30: "a lot of redundancy") */
+.task:has(~ .qcard:not([hidden])) { display: none; }
 .qcard .q { margin: 0 6px 10px; font-weight: 650; font-size: 15px; line-height: 1.35; color: var(--ink); text-wrap: pretty; }
 .qcard ol { list-style: none; margin: 0; padding: 0; display: grid; gap: 4px; }
 /* each answer is a row you can see is a button (a kid new to computers doesn't hover to find out) */

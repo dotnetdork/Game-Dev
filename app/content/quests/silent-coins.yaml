@@ -56,12 +56,15 @@ beats:
       text: Why does a coin need a sound?
       answers:
         - text: So you know you got it
+          sub: The sound tells you something happened
           correct: true
           say:
             - Exactly. Game designers call that feedback, the game telling you what just happened.
         - text: To make it louder
+          sub: More noise makes it better
           say:
             - Loud isn’t the point. What does the sound tell you? Try again!
         - text: Coins always ding
+          sub: Every game does it that way
           say:
             - Only if someone adds it! What does the ding tell you? Try again!

@@ -33,6 +33,8 @@ beats:
       text: What next?
       answers:
         - text: Build something else
+          sub: Tell the Mentor what to add next
           goto: ask-anything
         - text: Clock out for today
+          sub: Save your game and finish
           goto: next

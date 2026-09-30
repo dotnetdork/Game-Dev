@@ -264,6 +264,7 @@ function drawHero(scene, s) {
   if (has('fins')) g.fillStyle(ex('fins')).fillTriangle(mid - 8, top + 2, mid, top - 14, mid + 8, top + 2);
   if (has('flame')) { g.fillStyle(0xff7a1a).fillTriangle(mid - 12, top + 2, mid - 4, top - 18, mid + 2, top + 2); g.fillStyle(0xffc23d).fillTriangle(mid - 4, top + 2, mid + 4, top - 22, mid + 12, top + 2); }
   if (has('leaf')) { g.fillStyle(0x4b3621).fillRect(mid - 1, top - 8, 2, 8); g.fillStyle(ex('leaf')).fillEllipse(mid + 7, top - 9, 14, 7); }
+  if (has('cap')) { g.fillStyle(ex('cap')).fillEllipse(mid, top + 4, w + 2, 20); g.fillRoundedRect(mid, top + 6, w / 2 + 12, 6, 3); }
   if (has('bow')) g.fillStyle(ex('bow')).fillTriangle(x + w - 14, top + 2, x + w - 4, top - 6, x + w - 4, top + 10).fillTriangle(x + w - 14, top + 2, x + w - 24, top - 6, x + w - 24, top + 10);
   // the face (the hero looks right; the game flips it to walk left)
   const ey = y + (s.body === 'blob' ? h * 0.35 : h * 0.3), e1 = mid - w * 0.12, e2 = mid + w * 0.22, eye = col(s.eyeColor, '#10202e');
@@ -278,6 +279,7 @@ function drawHero(scene, s) {
   }
   if (has('snout')) { g.fillStyle(ex('snout')).fillRoundedRect(x + w - 8, ey + 4, 16, 12, 4); g.fillStyle(dark).fillRect(x + w + 2, ey + 7, 3, 3); }
   else if (has('beak')) g.fillStyle(ex('beak')).fillTriangle(x + w - 4, ey + 2, x + w + 12, ey + 7, x + w - 4, ey + 12);
+  else if (has('mustache')) { const m = extras.filter(e => e.kind === 'mustache')[0]; g.fillStyle(col(m.color, '#3e2723')).fillEllipse(mid, ey + 12, 14, 7).fillEllipse(mid + 11, ey + 12, 14, 7); }
   else if (s.eyes !== 'visor') g.fillStyle(dark).fillRect(mid - 2, ey + 10, 12, 3);   // a smile
   if (has('whiskers')) { g.lineStyle(2, dark); g.lineBetween(x + w - 6, ey + 10, x + w + 10, ey + 6); g.lineBetween(x + w - 6, ey + 13, x + w + 10, ey + 14); }
   if (has('scarf')) { g.fillStyle(ex('scarf')).fillRect(x, y + h * 0.55, w, 7); g.fillRect(x + 4, y + h * 0.55, 7, 16); }
