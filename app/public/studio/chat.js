@@ -13,10 +13,14 @@
    - THE KID ALWAYS KNOWS WHAT'S WANTED (Jay, 2026-09-29: "There is no way for them to know whats
      happening or what the AI wants their answer to be"). Two things answer that. The TASK line
      under the header says what this step wants, in a sentence, with a Hint button when the step
-     has hints (quest.js sets it). And every question, typed or tapped, comes as a QUESTION CARD
-     above the text box: the question, numbered answers, and, when typing is welcome, a line saying
-     they can type their own instead. A typed step's answers are examples of the shape of an answer
-     ("a dragon", "a robot"), never the answer the step is teaching.
+     has hints (quest.js sets it). And a question is asked the way its answer is given:
+       - A QUESTION CARD, only when it is needed (spec D43; Jay, 2026-09-30): a real choice from a
+         closed set (which ticket next, "Ready to build?"), a checkpoint quiz, or suggestions the kid
+         asked for. It sits above the text box, drawn as Claude's is (showCard says how).
+       - Anything open (what they found, their hero, their game's name, a design question) is a
+         line in the chat with an example in it, and the box's placeholder says what to type. No
+         card, so the kid answers in their own words (Jay, Sept 30: drop the multiple choice). Saying "idk" or tapping Hint brings up suggestions (expect). Suggestions are examples of
+         the shape of an answer ("a dragon", "a robot"), never the answer the step is teaching.
    - GAME EVENTS ARE NOT SPEECH. What the game did ("Play started", "Ticket filed") is a thin row
      with an icon, not a bubble, and it also goes to the Console, where every event is kept with its
      time. The same event again, straight after, is the same row with a count ("×4"), not a new row:
@@ -92,7 +96,7 @@ var Chat = (function () {
     card.addEventListener('keydown', cardKeys);
     box.addEventListener('dragstart', function (e) { e.preventDefault(); });
     var hb = $('taskHint');
-    if (hb) hb.addEventListener('click', function () { if (hintHandler) hintHandler(); });
+    if (hb) hb.addEventListener('click', hintTapped);
     $('hintX').addEventListener('click', function () { hideHint(); hb.focus(); });
     input.addEventListener('input', hideHint);
     document.addEventListener('pointerdown', function (e) {
@@ -177,7 +181,7 @@ var Chat = (function () {
     var t = $('taskText'), changed = t.getAttribute('data-text') !== fill(text);
     t.setAttribute('data-text', fill(text)); rich(t, fill(text));
     if (changed) hideHint();
-    $('taskHint').hidden = !hintHandler;
+    hintButton();
     taskEl.hidden = false;
     if (changed) { taskEl.classList.remove('fresh'); void taskEl.offsetWidth; taskEl.classList.add('fresh'); announcer.textContent = 'Your task: ' + fill(text); }
   }
@@ -354,58 +358,86 @@ var Chat = (function () {
     for (var k = a.length - 1; k > 0; k--) { var j = Math.floor(Math.random() * (k + 1)), t = a[k]; a[k] = a[j]; a[j] = t; }
     return a;
   }
+  /* Drawn the way Claude's own question card is (Jay, 2026-09-30, with a screenshot): the question on
+     a title row; each answer a row with its label in bold, a line saying what it means under it, and
+     its key number on the right; a last row, "Something else", that is a text box of its own; and a
+     footer with Skip (only when the question may be skipped) and Send. While a card is up it IS the
+     place to type: the chat's own box steps aside, so there is one way to answer, not two. */
   function showCard(q) {
     var a = document.activeElement;
-    var wasHere = card.contains(a) || a === document.body || (box && box.contains(a));
+    var wasHere = card.contains(a) || a === document.body || (box && box.contains(a)) || a === input;
     card.innerHTML = '';
     card.setAttribute('data-who', q.who);
     card.classList.toggle('typed', !!q.typed);
     var h = rich(document.createElement('p'), fill(q.text)); h.className = 'q'; h.id = 'qText';
     card.appendChild(h);
-    if (q.options.length) {
-      var ol = document.createElement('ol'); ol.setAttribute('aria-labelledby', 'qText');
-      q.options.forEach(function (o, n) {
-        var li = document.createElement('li'), b = document.createElement('button');
-        b.type = 'button'; b.className = 'qopt'; b.setAttribute('data-key', 'q:' + n);
-        b.innerHTML = '<span class="n" aria-hidden="true">' + (n + 1) + '</span><span class="t"></span><svg class="i go" aria-hidden="true"><use href="#i-send"/></svg>';
-        rich(b.querySelector('.t'), o.text);
-        if (o.sub) { var s = document.createElement('small'); s.textContent = o.sub; b.querySelector('.t').appendChild(s); }
-        b.addEventListener('click', function () { pick(n); });
-        li.appendChild(b); ol.appendChild(li);
-      });
-      card.appendChild(ol);
+    var ol = document.createElement('ol'); ol.setAttribute('aria-labelledby', 'qText');
+    q.options.forEach(function (o, n) {
+      var li = document.createElement('li'), b = document.createElement('button');
+      b.type = 'button'; b.className = 'qopt'; b.setAttribute('data-key', 'q:' + n);
+      b.innerHTML = '<span class="t"><b></b></span><kbd class="n" aria-hidden="true">' + (n + 1) + '</kbd>';
+      rich(b.querySelector('b'), o.text);
+      if (o.sub) { var s = document.createElement('small'); s.textContent = o.sub; b.querySelector('.t').appendChild(s); }
+      b.addEventListener('click', function () { pick(n); });
+      li.appendChild(b); ol.appendChild(li);
+    });
+    // "Something else": typing here answers, as the chat box would (a typed step takes it as the
+    // answer; any other question passes it to whoever is talking, with the question on screen)
+    var oli = document.createElement('li'), row = document.createElement('label');
+    row.className = 'qopt qother'; row.htmlFor = 'qOther';
+    row.innerHTML = '<span class="t"><b>Something else</b><span class="qin"><input id="qOther" type="text" autocomplete="off" maxlength="200">'
+      + '<button type="button" class="send" id="qSend" disabled aria-label="Send" data-tip="Send (Enter)"><svg class="i" aria-hidden="true"><use href="#i-send"/></svg></button></span></span>'
+      + '<kbd class="n" aria-hidden="true">' + (q.options.length + 1) + '</kbd>';
+    var other = row.querySelector('input'), go = row.querySelector('#qSend');
+    other.placeholder = q.typed ? 'Type your own answer…' : 'Type something else…';
+    other.setAttribute('aria-label', 'Something else: type your own answer');
+    go.addEventListener('click', function (e) { e.preventDefault(); sendOther(); });
+    oli.appendChild(row); ol.appendChild(oli);
+    card.appendChild(ol);
+    // Skip only where the question may be skipped (the suggestions: the question itself stays open)
+    if (q.skip) {
+      var foot = document.createElement('div'); foot.className = 'qfoot';
+      var sk = document.createElement('button'); sk.type = 'button'; sk.className = 'tbtn quiet'; sk.id = 'qSkip'; sk.textContent = 'Skip';
+      sk.addEventListener('click', function () { var f = q.skip; question = null; hideCard(); f(); });
+      foot.appendChild(sk);
+      card.appendChild(foot);
     }
-    if (q.typed) {
-      var t = document.createElement('p'); t.className = 'or';
-      t.innerHTML = '<svg class="i" aria-hidden="true"><use href="#i-chat"/></svg><span></span>';
-      t.querySelector('span').textContent = q.options.length ? 'Or type your own answer below.' : 'Type your answer below.';
-      card.appendChild(t);
-    }
+    other.addEventListener('input', function () { go.disabled = !other.value.trim(); });
+    other.addEventListener('keydown', function (e) {
+      if (e.key === 'Enter') { e.preventDefault(); sendOther(); }
+      e.stopPropagation();   // digits and arrows are typing here, not picking
+    });
     card.hidden = false;
-    // a typed step puts the cursor in the box; a tapped one puts focus on the card (number keys and
-    // arrows work there), with nothing lit until the kid moves
-    if (!Runner.isPlaying()) {
-      if (q.typed && (wasHere || a === input)) input.focus({ preventScroll: true });
-      else if (wasHere || a === input) { card.tabIndex = -1; card.focus({ preventScroll: true }); }
-    }
-    announcer.textContent = fill(q.text) + ' ' + q.options.map(function (o, n) { return (n + 1) + ', ' + o.text; }).join('. ') + (q.typed ? '. Or type your own.' : '');
+    $('sayForm').hidden = true;
+    // focus on the card (number keys and arrows work there), with nothing lit until the kid moves
+    if (!Runner.isPlaying() && wasHere) { card.tabIndex = -1; card.focus({ preventScroll: true }); }
+    announcer.textContent = fill(q.text) + ' ' + q.options.map(function (o, n) { return (n + 1) + ', ' + o.text; }).join('. ') + '. Or type something else.';
     scroll();
   }
+  function sendOther() {
+    var f = card.querySelector('#qOther'); if (!f) return;
+    var text = f.value.trim().slice(0, 200); if (!text) return;
+    typed(text);
+  }
   function cardKeys(e) {
-    var bs = Array.prototype.slice.call(card.querySelectorAll('.qopt'));
-    if (!bs.length) return;
-    var at = bs.indexOf(document.activeElement);
+    var bs = Array.prototype.slice.call(card.querySelectorAll('button.qopt'));
     if (e.key === 'ArrowDown' || e.key === 'ArrowUp') {
       e.preventDefault();
-      bs[at < 0 ? (e.key === 'ArrowDown' ? 0 : bs.length - 1) : (at + (e.key === 'ArrowDown' ? 1 : -1) + bs.length) % bs.length].focus();
+      var all = bs.concat([card.querySelector('#qOther')]), i = all.indexOf(document.activeElement);
+      all[i < 0 ? (e.key === 'ArrowDown' ? 0 : all.length - 1) : (i + (e.key === 'ArrowDown' ? 1 : -1) + all.length) % all.length].focus();
       return;
     }
     var d = parseInt(e.key, 10);
     if (d >= 1 && d <= bs.length) { e.preventDefault(); pick(d - 1); }
+    else if (d === bs.length + 1) { e.preventDefault(); card.querySelector('#qOther').focus(); }
   }
-  /* `keep` hides the card but keeps the question (a line is being said); otherwise it's gone too. */
+  /* `keep` hides the card but keeps the question (a line is being said); otherwise it's gone too.
+     The chat's own box comes back either way. */
   function hideCard(keep) {
+    var had = card.contains(document.activeElement);
     card.hidden = true; card.innerHTML = '';
+    $('sayForm').hidden = false;
+    if (had && !Runner.isPlaying()) input.focus({ preventScroll: true });
     if (keep && question) pendingQ = question; else pendingQ = null;
   }
 
@@ -428,24 +460,32 @@ var Chat = (function () {
 
   /* The step asked for something typed (a name, a description, a finding): the next line typed is
      that. `fn` returns false to say "that wasn't it, keep waiting" (it has already replied).
-     `opts.card` is the question card to show with it, { text, options: [{ text, sub, say }] }, or a
-     function that makes one (the findings card shrinks as tickets are filed). */
+     `opts.card` is the suggestions, { text, options: [{ text, sub, say }] }, or a function that makes
+     them (the findings shrink as tickets are filed).
+
+     AN OPEN QUESTION HAS NO CARD (spec D43; Jay, 2026-09-30: questions only when necessary). The
+     question is a line in the chat with an example in it, and the box's placeholder says what to
+     type, so a kid knows how to answer without a menu. The suggestions come only when asked for: the
+     kid types "idk", "help" or the like, or taps Hint. Then they are a card with Skip, and tapping
+     one is typing it. */
+  var HELP_ME = /^\s*(idk|i ?d(on|o)n?['’]?t know|dunno|no idea|not sure|help( me)?|hint|i['’]?m stuck|stuck|you (pick|choose|decide)|\?+)\s*[.!?]*\s*$/i;
   function expect(ph, fn, opts) {
     opts = opts || {};
     expecting = { fn: fn, ph: ph, card: opts.card || null, who: opts.who || active };
-    hideCard(); question = null; placeholder();
-    offerCard();
+    hideCard(); question = null; placeholder(); hintButton();
     if (!Runner.isPlaying()) input.focus({ preventScroll: true });
   }
   function typedCard() {
     if (!expecting || !expecting.card) return null;
     var c = typeof expecting.card === 'function' ? expecting.card() : expecting.card;
-    return c ? { text: c.text, who: expecting.who || active, options: c.options || [], typed: true } : null;
+    return c ? { text: c.text, who: expecting.who || active, options: c.options || [], typed: true,
+                 skip: function () { placeholder(); if (!Runner.isPlaying()) input.focus({ preventScroll: true }); } } : null;
   }
   function offerCard() {
-    var q = typedCard(); if (!q) return;
+    var q = typedCard(); if (!q) return false;
     question = q;
     if (settled()) showCard(q); else pendingQ = q;
+    return true;
   }
   function answer(text) {
     var e = expecting, q = question && question.typed && !card.hidden ? question : null;
@@ -453,13 +493,24 @@ var Chat = (function () {
     if (q) line(q.who, q.text);   // the question the card asked goes into the log, as a tapped one does
     line('k', text);
     if (!e) return;
-    expecting = null; question = null; hideCard(); placeholder();
-    if (e.fn(text, active) === false) { expecting = e; placeholder(); offerCard(); }
+    if (!q && e.card && HELP_ME.test(text)) { offerCard(); return; }   // asked for ideas: here they are
+    expecting = null; question = null; hideCard(); placeholder(); hintButton();
+    if (e.fn(text, active) === false) { expecting = e; placeholder(); hintButton(); }
+  }
+  /* The task line's Hint: during an open question it shows the suggestions; otherwise the step's own
+     hints (quest.js), when it has them. */
+  function hintButton() {
+    var b = $('taskHint'); if (!b) return;
+    b.hidden = !hintHandler && !(expecting && expecting.card);
+  }
+  function hintTapped() {
+    if (expecting && expecting.card) { if (card.hidden) offerCard(); return; }
+    if (hintHandler) hintHandler();
   }
   /* Menus that start a conversation (GameObject › Add a part…, Help › Ask the mentor) put the
      cursor in the box with a hint of what to type; what's typed goes the usual way. */
   function prompt(ph) { if (ph) input.placeholder = ph; input.focus(); }
-  function stopExpecting() { expecting = null; placeholder(); }
+  function stopExpecting() { expecting = null; placeholder(); hintButton(); }
   function placeholder() {
     if (!input) return;
     var to = active === 'm' || !active ? 'the Mentor' : 'the ' + who(active)[0].toLowerCase();

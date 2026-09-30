@@ -43,8 +43,9 @@ beats:
 
   - id: what-first
     goal: Pick a ticket to fix first
-    # Art files the grey itself if the kid didn't: it's plain to see, and a colleague would say so.
-    do: { file: [greybox], reveal: [tickets] }
+    # The departments file whatever the kid didn't report (spec D44): a colleague would have spotted
+    # it, and a missed finding must never stall the day. One finding is enough to get here.
+    do: { file: rest, reveal: [tickets] }
     say:
       - Each ticket goes to a department, and you pick which we fix first.
     ask:

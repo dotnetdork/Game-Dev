@@ -216,23 +216,27 @@ async function launch() {
     check('Stop stops', await p.evaluate(function () { return !Runner.isPlaying(); }) && await p.isDisabled('#bStop'));
     await waitLog('What did you find?');
     where = 'the first day: the report';
-    await p.waitForSelector('#qcard.typed .qopt', { timeout: 6000 });
-    const met = await options();
-    check('the report card offers what she ran into (and only that), in a kid\'s words, and says she can type', /I fell through the floor/.test(met) && /The coins don’t make a sound/.test(met) && /lava/i.test(met) === !!st.seen['harmless-lava']
-      && /type your own/.test(await p.$eval('#qcard', function (e) { return e.textContent; })), met);
+    await p.waitForTimeout(600);
+    check('an open question has no card: it is a line, and the box says what to type, with an example', await p.isHidden('#qcard') && /^Like “/.test(await p.getAttribute('#say', 'placeholder')), await p.getAttribute('#say', 'placeholder'));
     await type('the coins dont make any sound');
     await p.waitForFunction(function () { return !!Quest.dev.state().tickets['silent-coins']; }, null, { timeout: 9000 });
-    await p.waitForFunction(function () { var c = document.getElementById('qcard'); return !c.hidden && /Anything else/.test(c.textContent) && !/make a sound/.test(c.textContent); }, null, { timeout: 9000 });
+    await type('idk');
+    await p.waitForSelector('#qcard.typed .qopt', { timeout: 6000 });
+    const met = await options();
+    await shot(p, 'p01b-suggestions');
+    check('"idk" brings the suggestions: what she ran into and hasn\'t said (only that), in a kid\'s words, with Something else and Skip', /I fell through the floor/.test(met) && !/make a sound/.test(met) && /lava/i.test(met) === !!st.seen['harmless-lava']
+      && /Something else/.test(met) && await p.isVisible('#qSkip') && await p.isHidden('#sayForm'), met);
     await opt('I fell through the floor');
     await p.waitForFunction(function () { return !!Quest.dev.state().tickets.floor; }, null, { timeout: 9000 });
-    await p.waitForFunction(function () { return /That’s all/.test(document.getElementById('qcard').textContent); }, null, { timeout: 9000 });
+    check('tapping a suggestion is saying it, and the card goes, the chat box back', await p.isHidden('#qcard') && await p.isVisible('#sayForm'));
     await type('that’s all');
     await p.waitForSelector('#qcard .qopt', { timeout: 12000 });
     st = await state();
-    check('what she said became tickets, in her words, and Art filed the grey', st.tickets['silent-coins'].words === 'the coins dont make any sound' && st.tickets.floor.words === 'I fell through the floor' && !!st.tickets.greybox,
-      Object.keys(st.tickets).join(', '));
+    check('what she said became tickets, in her words, and the departments filed what she missed', st.tickets.floor.words === 'I fell through the floor' && st.tickets['silent-coins'].words === 'the coins dont make any sound'
+      && ['greybox', 'harmless-lava'].every(function (id) { return st.tickets[id] && st.tickets[id].by && !st.tickets[id].words; }), JSON.stringify(st.tickets));
+    check('and nothing stalled: the day moved on to picking a ticket', /What should we fix first/.test(await p.$eval('#qcard', function (e) { return e.textContent; })));
     const board = await p.$$eval('#ticketList button.tk', function (x) { return x.map(function (e) { return e.textContent; }); });
-    check('the Tickets dock lists them as buttons, numbered, with a clear title and a status', board.length === 3
+    check('the Tickets dock lists them as buttons, numbered, with a clear title and a status', board.length === 4
       && board.some(function (t) { return /^#\d.*Open.*The player falls through a floor tile$/.test(t); }), board.join(' | '));
     await p.click('#ticketList [data-key="ticket:floor"]');
     const tpage = await p.$eval('#ticketPage', function (e) { return e.hidden ? '(hidden)' : e.textContent; });

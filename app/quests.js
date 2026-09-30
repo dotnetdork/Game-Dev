@@ -31,8 +31,9 @@ const COMPONENTS = ['coinArt', 'coinSound', 'coinSize', 'lavaArt', 'lavaSize', '
 /* A question whose answers come from the game, not the file. `findings`, `heroes`, `names` and
    `feedback` are TYPED: the kid says what they found, what their hero is, what their game is called,
    what they thought of the day, in their own words (Jay, 2026-09-28: the game name typed in chat,
-   not a preselected card). Their card still shows the question and a few `examples` of an answer
-   (Jay, 2026-09-29: without them a kid can't tell what's wanted); tapping one is typing it. */
+   not a preselected card). They are asked in the chat with no card (spec D43); their `examples` are
+   the placeholder's example and the suggestions a kid gets by saying "idk" (Jay, 2026-09-29: without
+   them a kid can't tell what's wanted); tapping one is typing it. */
 const PICKERS = ['tickets', 'findings', 'heroes', 'names', 'feedback'];
 /* `hints` is a ladder, where → which → how (review §4, rule 3): one rung every `hints_after` seconds,
    or at once when the kid types "help", "stuck" or "idk". Never the answer before the last rung. */
@@ -164,7 +165,9 @@ function checkQuest(q, file, ticketIds) {
       (b.do.reveal || []).forEach(function (p) { if (PANELS.indexOf(p) < 0) problem(list, w, 'reveal: unknown panel "' + p + '"'); });
       if (b.do.point && PANELS.indexOf(b.do.point) < 0) problem(list, w, 'point: unknown panel "' + b.do.point + '"');
       (b.do.allow || []).forEach(function (c) { if (COMPONENTS.indexOf(c) < 0) problem(list, w, 'allow: unknown component "' + c + '"'); });
-      (b.do.file || []).forEach(function (t) { if (ticketIds.indexOf(t) < 0) problem(list, w, 'file: no ticket "' + t + '"'); });
+      // `file: rest` files every ticket the kid didn't report, each by its department (quest.js act)
+      if (b.do.file !== undefined && b.do.file !== 'rest' && !Array.isArray(b.do.file)) problem(list, w, 'file is a list of tickets, or "rest"');
+      if (Array.isArray(b.do.file)) b.do.file.forEach(function (t) { if (ticketIds.indexOf(t) < 0) problem(list, w, 'file: no ticket "' + t + '"'); });
     }
     if (b.ask) checkAsk(list, w, b.ask, ids);
     if (b.wait_for) checkCond(list, w + ' wait_for', b.wait_for);

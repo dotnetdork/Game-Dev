@@ -403,7 +403,13 @@ var Quest = (function () {
   function act(d) {
     if (!d) return;
     (d.reveal || []).forEach(reveal);
-    (d.file || []).forEach(function (id) { var t = ticketOf(id); file(id, null, t ? DEPT[t.department] : 'The studio'); });
+    /* `file: rest` (spec D44): every problem the kid didn't report is filed by its own department, so
+       a finding missed never stalls the day. A colleague would have spotted it; the Mentor says so. */
+    if (d.file === 'rest') {
+      var rest = COURSE.tickets.filter(function (t) { return !S.tickets[t.id]; });
+      rest.forEach(function (t) { file(t.id, null, DEPT[t.department]); });
+      if (rest.length) say([rest.length > 1 ? 'The team spotted ' + rest.length + ' more and filed them too.' : 'The team spotted one more and filed it too.'], voice());
+    } else (d.file || []).forEach(function (id) { var t = ticketOf(id); file(id, null, t ? DEPT[t.department] : 'The studio'); });
     if (d.stop && Runner.isPlaying()) Editor.togglePlay();
     if (d.play && !Runner.isPlaying()) Editor.togglePlay();
     if (d.close_inspector) Editor.closeInspector();
@@ -499,7 +505,9 @@ var Quest = (function () {
       return { text: Object.keys(S.tickets).length > before ? 'Anything else you found?' : fill(a.text),
                options: met.map(function (t) { return { text: t.says }; }).concat([{ text: any ? 'That’s all' : 'Nothing' }]) };
     };
-    Chat.expect('Type what you found…', function (text) {
+    // an open question: said, with an example that isn't one of the problems (chat.js, expect)
+    say([fill(a.text)], who);
+    Chat.expect('Like “the jump feels floaty”…', function (text) {
       if (frame() !== f) return;
       if (DONE.test(text)) {
         if (Object.keys(S.tickets).length) { S.reported = true; save(); say(['Great report. Those are your tickets now.'], who); next(); return; }
@@ -587,8 +595,9 @@ var Quest = (function () {
   }
   function examples(a) { return (a.examples || []).map(function (x) { return { text: x }; }); }
   function askHero(a, who) {
-    var f = frame();
-    Chat.expect('Describe your hero…', function (text) {
+    var f = frame(), ex = (a.examples || [])[0];
+    say([fill(a.text)], who);
+    Chat.expect(ex ? 'Like “' + ex.toLowerCase() + '”…' : 'Describe your hero…', function (text) {
       if (frame() !== f) return;
       var word = text.replace(/^(a|an|my|it'?s|i want)\s+/i, '').slice(0, 40);
       var done = function (shape, line) { setHero(shape, word); say([line, 'Want it different? Just tell me, any time.'], who); next(); };
@@ -602,24 +611,18 @@ var Quest = (function () {
     }, { who: who, card: { text: fill(a.text), options: examples(a) } });
   }
 
-  /* The game's name, typed. "idk" gets three ideas to pick from (that card is a real choice). */
-  var SHRUG = /^\s*(idk|i ?d(on|o)n?['’]?t know|dunno|no idea|you (pick|choose|decide)|anything|\?+|not sure)\s*[.!?]*\s*$/i;
+  /* The game's name, typed. "idk" gets three names to pick from, the suggestions (chat.js, expect). */
   function askName(a, who) {
     var f = frame();
     var h = (S.hero || 'hero').replace(/\b\w/g, function (c) { return c.toUpperCase(); });
-    Chat.expect('Type your game’s name…', function (text) {
+    say([fill(a.text)], who);
+    Chat.expect('Like “' + h + ' Lava Run”…', function (text) {
       if (frame() !== f) return;
-      if (SHRUG.test(text)) {
-        Chat.ask('How about one of these?', [h + ' Lava Run', 'Coin Quest', 'Leap of Fire'].map(function (n) {
-          return { text: n, run: function () { setName(n, who); } };
-        }), { who: who, keepOrder: true });
-        return;
-      }
       var n = text.replace(/^(it'?s |my game is |call it |it is )(called )?/i, '').replace(/^["“']|["”'.!]+$/g, '').trim().slice(0, 40) || text.slice(0, 40);
       // typed all in lower case, as kids type: a title gets its capitals ("dragon dash" → "Dragon Dash")
       if (n === n.toLowerCase()) n = n.replace(/(^|\s)(\S)/g, function (m, s, c) { return s + c.toUpperCase(); });
       setName(n, who);
-    }, { who: who, card: { text: fill(a.text), options: [h + ' Lava Run', 'Coin Quest', 'Leap of Fire'].map(function (n) { return { text: n }; }) } });
+    }, { who: who, card: { text: 'How about one of these?', options: [h + ' Lava Run', 'Coin Quest', 'Leap of Fire'].map(function (n) { return { text: n }; }) } });
   }
   /* The class list shows each kid's game and hero, so a returning kid can spot theirs. */
   function card(fields) { if (!window.__studioKid) return; fetch('/auth/studio/profile', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(fields) }).catch(function () {}); }
@@ -632,8 +635,9 @@ var Quest = (function () {
 
   /* The end-of-day questions: typed, sent to whoever runs the playtest, and thanked. */
   function askFeedback(a, who) {
-    var f = frame();
-    Chat.expect('Type your answer…', function (text) {
+    var f = frame(), ex = (a.examples || [])[0];
+    say([fill(a.text)], who);
+    Chat.expect(ex ? 'Like “' + ex + '”…' : 'Type your answer…', function (text) {
       if (frame() !== f) return;
       track('survey', { q: a.text, a: text.slice(0, 200) });
       say(['Thanks. That helps a lot.'], who);
