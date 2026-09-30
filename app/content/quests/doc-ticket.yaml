@@ -30,3 +30,13 @@ beats:
     award: { stars: 1 }
     done_say:
       - Built and tested, straight from your design. That’s how a studio works.
+
+  # The designer's playtest review (spec D50): one quick question about how it played, each a
+  # concept (quest.js askReview). Skippable, and whatever they say that calls for a change is kept
+  # in Ideas for later.
+  - id: review
+    character: lead-designer
+    goal: Tell the lead designer how it played
+    ask:
+      text: Playtest time!
+      from: review

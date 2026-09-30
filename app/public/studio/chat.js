@@ -166,8 +166,15 @@ var Chat = (function () {
     };
     // the first speaker of a session, or a chat with nothing in it yet: no pause
     if (!was || !box.querySelector('.msg')) return go();
-    box.classList.add('leaving');
-    setTimeout(function () { box.classList.remove('leaving'); go(); }, reduced() ? 60 : 1100);
+    /* Long enough to read the last thing said before the thread is cleared: a fixed 1.1 s swept the lead
+       designer's two-line playtest answer away before a kid could read it (Sept 30). So it stays up about
+       a quarter second a word (0.7 to 3 s), then fades (.log.leaving) and the new thread starts. */
+    var msgs = box.querySelectorAll('.msg'), last = msgs[msgs.length - 1];
+    var n = last ? last.textContent.trim().split(/\s+/).length : 0;
+    setTimeout(function () {
+      box.classList.add('leaving');
+      setTimeout(function () { box.classList.remove('leaving'); go(); }, reduced() ? 30 : 400);
+    }, reduced() ? 30 : Math.max(700, Math.min(3000, n * 250)));
   }
   function scroll() { requestAnimationFrame(function () { box.scrollTop = box.scrollHeight; }); }
   function trim() { while (box.children.length > KEEP) box.removeChild(box.firstElementChild); }
@@ -520,7 +527,10 @@ var Chat = (function () {
   function answer(text) {
     var e = expecting, q = question && question.typed && !card.hidden ? question : null;
     quieten(); flush();
-    if (q) line(q.who, q.text);   // the question the card asked goes into the log, as a tapped one does
+    // the question the card asked goes into the log, as a tapped one does: typed under the playtest
+    // card, "not really" sat in the log under nothing (Sept 30)
+    var up = question && !card.hidden ? question : null;
+    if (up) line(up.who, up.text);
     line('k', text);
     if (!e) return;
     /* "idk" is always answered in the chat, then the help comes (critique, Sept 30: typed "idk" opened

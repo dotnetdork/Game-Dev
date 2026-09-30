@@ -35,8 +35,9 @@ const COMPONENTS = ['coinArt', 'coinSound', 'coinSize', 'lavaArt', 'lavaSize', '
    the placeholder's example and the suggestions a kid gets by saying "idk" (Jay, 2026-09-29: without
    them a kid can't tell what's wanted); tapping one is typing it. */
 /* `design` is a round of the design meeting (studio/design.js): its `text` is the round's opening line,
-   and `round` says which sections it covers (design.js ROUNDS). */
-const PICKERS = ['tickets', 'findings', 'heroes', 'names', 'feedback', 'design'];
+   and `round` says which sections it covers (design.js ROUNDS). `review` is the playtest question after
+   a build (quest.js askReview): its `text` is the lead-in, and the question itself takes turns. */
+const PICKERS = ['tickets', 'findings', 'heroes', 'names', 'feedback', 'design', 'review'];
 const ROUNDS = [1, 2, 3, 'more'];
 /* `hints` is a ladder, where → which → how (review §4, rule 3): one rung every `hints_after` seconds,
    or at once when the kid types "help", "stuck" or "idk". Never the answer before the last rung. */

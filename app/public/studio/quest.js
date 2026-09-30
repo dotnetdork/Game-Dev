@@ -409,6 +409,8 @@ var Quest = (function () {
     f.completing = true;
     if (b.pass) { UI.sound('good'); UI.feel($('dGame'), 'good'); }
     if (b.award) { award(b.award); f.awarded = true; }
+    // closed the moment it's tested and said fixed, not when the shift ends: the playtest review comes after (doc-ticket.yaml)
+    if (b.wait_for && b.wait_for.fixed) ticketDone(ticketFor(f));
     say(b.done_say);
     if (b.ask) { f.completing = false; return ask(b.ask); }
     var delay = b.pass ? 1600 : 0, q = f.quest, at = f.beat;
@@ -424,13 +426,14 @@ var Quest = (function () {
     if (f.beat >= q.beats.length) return endQuest();
     enter();
   }
+  function ticketDone(tid) { if (tid && S.tickets[tid]) { S.tickets[tid].status = 'done'; if (openTicket === tid) openTicket = null; paintTickets(); save(); } }
   function endQuest() {
     var f = S.stack[S.stack.length - 1], q = COURSE.quests[f.quest], tid = ticketFor(f), who = character(null, f);
     S.stack.pop();
     clearTimeout(hintTimer);
     // back to the board, where it is crossed off (Jay, Sept 30: "completing a ticket should close the
     // ticket (still show it, but cross it out)"); its page stayed open and the board never showed it
-    if (tid && S.tickets[tid]) { S.tickets[tid].status = 'done'; if (openTicket === tid) openTicket = null; paintTickets(); }
+    ticketDone(tid);
     if (S.done.indexOf(q.id) < 0 && q.ticket !== 'own') S.done.push(q.id);   // your-ticket runs once per ticket
     if (who !== 'mentor') S.lastCharacter = who;
     track('quest-done', { quest: q.id });
@@ -569,6 +572,7 @@ var Quest = (function () {
     if (a.from === 'names') return askName(a, who);
     if (a.from === 'feedback') return askFeedback(a, who);
     if (a.from === 'design') return askDesign(a, who);
+    if (a.from === 'review') return askReview(a, who);
     var quiz = a.answers.some(function (x) { return x.correct; });
     var left = f.left && f.left.q === a.text ? f.left.list : a.answers;
     Chat.ask(fill(a.text), left.map(function (x) {
@@ -1075,6 +1079,61 @@ var Quest = (function () {
     }, { who: who, card: { text: fill(a.text), options: examples(a) } });
   }
 
+  /* The playtest review (spec D50): after a piece of their design is built, the lead designer asks one
+     quick question about how it played, the way a studio's designers playtest every build. Each
+     question is a concept: the first is always Balance, which earns its card, and then they take turns,
+     so the same one never comes twice in a row. A card the kid already holds is named rather than
+     explained again ("That's feedback, one of your cards"). An answer that asks for a change is kept
+     in Ideas for later as a playtest note; "just right" isn't an idea, so it isn't kept. Tapped,
+     typed or skipped: it never holds up the board. */
+  var REVIEWS = [
+    { q: 'How hard was it?', card: 'balance', a: [
+      ['Too easy', 'Then we can make it harder.', 'felt too easy'],
+      ['Just right', 'Just right is what every designer aims for.', null],
+      ['Too hard', 'Then we can make it fairer.', 'felt too hard']] },
+    { q: 'Could you tell when it worked?', card: 'feedback', a: [
+      ['Yes, right away', 'Then it tells the player clearly.', null],
+      ['Kind of', 'Then it could use a sound, a flash or a number.', 'could show more clearly when it works'],
+      ['Not really', 'Then it needs a sound, a flash or a number.', 'needs to show when it works']] },
+    { q: 'Would you play it again?', card: 'reward', a: [
+      ['Yes!', 'Then it gives you something worth coming back for.', null],
+      ['Maybe', 'Something good to win or grab could make it a yes.', 'could use something good to win'],
+      ['Not yet', 'Then it needs something good to win or grab.', 'needs something worth playing again for']] }
+  ];
+  var SKIP_REVIEW = /^\s*(skip|no thanks|nah|later|not now|pass|next)\b/i;
+  function askReview(a, who) {
+    var f = frame(), n = S.reviews || 0, r = REVIEWS[n % REVIEWS.length];
+    var tk = ticketFor(f) && ticketOf(ticketFor(f));
+    var sec = tk && tk.sections && Project.SECTIONS.filter(function (x) { return x[0] === tk.sections[0]; })[0];
+    var about = sec ? 'Playtest of ' + sec[1].charAt(0).toLowerCase() + sec[1].slice(1) + ': ' : 'Playtest: ';
+    var c = cardOf(r.card), word = c.name.toLowerCase();
+    var done = function (lines, note) {
+      Chat.stopExpecting();
+      S.reviews = n + 1;
+      if (note) idea(about + note);
+      say(lines, who);
+      next();
+    };
+    var answered = function (x) {
+      track('answer', { q: r.q, a: x[0] });
+      var had = S.cards.indexOf(r.card) >= 0;
+      done([x[1] + (had ? ' That’s ' + word + ', one of your cards.' : ' Designers call that ' + word + '. ' + c.text)], x[2]);
+      if (!had) award({ card: r.card });
+    };
+    var skip = function () { track('answer', { q: r.q, a: 'skip' }); done(['No problem. Back to the board!']); };
+    Chat.expect('Tell me how it played…', function (text) {
+      if (frame() !== f) return;
+      if (SKIP_REVIEW.test(text)) return skip();
+      var k = answerFrom(text, r.a.map(function (x) { return { text: x[0] }; }));
+      if (k >= 0) return answered(r.a[k]);
+      track('answer', { q: r.q, a: text.slice(0, 200) });
+      done(['Good playtest note. That’s how designers find what to change.'], text.slice(0, 160));
+    }, { who: who });
+    Chat.ask((a.text ? fill(a.text) + ' ' : '') + r.q,   // the beat's lead-in, then this time's question
+      r.a.map(function (x) { return { text: x[0], run: function () { answered(x); } }; })
+        .concat([{ text: 'Skip', sub: 'Back to the board', run: skip }]), { who: who, keepOrder: true });
+  }
+
   /* A round of the design meeting (design.js runs it). It gets the engine's own ways of saying,
      awarding and logging, and `still`, which is false once the kid has moved on (a reload, a new beat),
      so a late answer from the AI lands nowhere. */
@@ -1170,6 +1229,9 @@ var Quest = (function () {
       .sort(function (x, y) { return (secs[y[0]].state === 'decided') - (secs[x[0]].state === 'decided'); })
       .map(function (x) { return x[1] + (secs[x[0]].state === 'decided' ? '' : ' (not decided yet)') + ': ' + secs[x[0]].text; });
     if (docLines.length) out.push(('THEIR DESIGN DOC (their game as they planned it; build what it says): ' + docLines.join(' | ')).slice(0, 1200));
+    /* The cards they hold (spec D50, referring back): when what they do or ask IS one of these, the
+       character names it in a few words instead of teaching it again (mentor.md, designer.md). */
+    if (S.cards.length) out.push('THEIR CARDS (ideas they have learned): ' + S.cards.map(function (c) { var k = cardOf(c); return k.name + ' (' + k.text + ')'; }).join(' ').slice(0, 900));
     if (q) {
       var tk = ticketFor(f) && ticketOf(ticketFor(f)), idea = q.concept && CARDS[q.concept];
       out.push('Quest: "' + q.title + '" (' + DEPT[q.department] + ').'
