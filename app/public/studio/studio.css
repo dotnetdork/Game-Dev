@@ -280,6 +280,18 @@ body.resizing-x iframe, body.resizing-y iframe { pointer-events: none; }   /* th
          padding: 6px 12px; border-radius: 6px; font-weight: 600; font-size: 14px; box-shadow: var(--lift); white-space: nowrap; }
 .dropline { position: fixed; z-index: 59; background: var(--accent); border-radius: 2px; pointer-events: none; }
 .dropline[hidden] { display: none; }
+/* over a tab row: it goes in as a tab there (editor.js, dropAt), so the whole row lights, not a line */
+.dropline.join { background: var(--accent-soft); box-shadow: inset 0 0 0 2px var(--accent); border-radius: 6px; }
+/* Tabbed together (editor.js, TABBED TOGETHER): the tab in front is joined to its panel, as every
+   panel's tab is; the ones behind sit flat in the row until picked, the way a browser's do. */
+.tab.back { background: transparent; color: var(--ink-3); cursor: pointer; transition: background-color .15s ease-out, color .15s ease-out; }
+.tab.back svg { color: var(--ink-3); }
+.tab.back:hover { background: var(--hover); color: var(--ink); }
+.tab.back:hover svg { color: var(--ink-2); }
+.tab.back:focus-visible { outline: 2px solid var(--accent); outline-offset: -2px; }
+.tab.gone { display: none; }
+.tabs .tab + .tab { margin-left: 2px; }
+#dockStore { display: none; }
 
 /* ---------- Hierarchy ---------- */
 .tree { list-style: none; margin: 0; padding: 0; }

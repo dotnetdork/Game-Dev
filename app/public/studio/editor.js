@@ -40,7 +40,11 @@ var Editor = (function () {
     var d = $(id); if (!d) return;
     if (open && maxed && maxed !== d) unmaximize();   // a panel arriving is shown, not hidden under a big one
     if (open && d.classList.contains('closed')) unmin(d);   // ...nor folded (minimize)
+    var arriving = open && d.classList.contains('closed');
     d.classList.toggle('closed', !open); d.inert = !open; d.setAttribute('aria-hidden', String(!open));
+    // a panel the story brings out, tabbed with others, is the one showing: it's what the story means
+    var pn = d.getAttribute('data-panel');
+    if (L && PANELS[pn] && slot(leadOf(pn)).length > 1) { if (arriving) setFront(leadOf(pn), pn); applyLayout(); }
     // Undo and Layout arrive with the first panel whose contents the kid can change or move.
     if (id === 'dHier' && open) { reveal('editTools', true); reveal('layoutTools', true); }
     // ...and the Scene view with the Hierarchy: the parts, to look at and pick (views.js)
@@ -925,6 +929,7 @@ var Editor = (function () {
   function showPanel(k) {
     if (k === 'inspector') { if (selected) inspect(selected); else inspectNothing(); }
     var d = $(PANEL_NAMES[k][2]); if (!d) return;
+    unmin(d);   // behind another tab, or folded: shown
     UI.feel(d, 'good');
     var f = d.querySelector('button:not([disabled]):not([hidden]), input, [tabindex="0"]');
     if (f) f.focus({ preventScroll: false });
@@ -938,34 +943,110 @@ var Editor = (function () {
   /* The bottom row shows two rows of assets (Jay, Sept 30: "The project tab should be a lot taller",
      then his screenshot of the size he meant: two rows, the Project window and the Log half each).
      On a short screen sizes() gives way to the Game view (limits()). */
-  var DEFAULT = { left: ['tickets', 'hierarchy'], right: ['inspector', 'chat'], bottom: ['project', 'console'], lw: 264, rw: 388, bh: 262, grow: { tickets: 2, hierarchy: 3, project: 1, console: 1 }, min: {} };
-  var BIG = { left: ['tickets', 'hierarchy'], right: ['inspector', 'chat'], bottom: ['project', 'console'], lw: 200, rw: 316, bh: 120, grow: { tickets: 2, hierarchy: 3, project: 3, console: 2 } };
-  var LAYOUT_KEY = 'studio.layout.v4', L = null;   // v4: the Log open, and minimized panels
+  /* TABBED TOGETHER (Jay, Sept 30: "the tabs could be side by side while one is active at a time, not
+     in two separate dock points side by side"), as Unity's are. A place in an area (L.left, L.right,
+     L.bottom) is named by its first panel, its lead; `L.tabs[lead]` lists every panel tabbed there, in
+     tab order, and `L.front[lead]` the one showing. Size and folding belong to the place (grow and
+     min are keyed by the lead). The panels behind wait in #dockStore, outside the areas, so an area's
+     children are only the docks on show and the splitters between them, and every rule in studio.css
+     about a dock and its neighbours still holds. Their tabs sit in the front one's tab row.
+     By default the Tickets and the Log share a place beside the Project window (Jay: "Probably should
+     have tickets be docked with log"): the board is what the kid works from, the Log a record they
+     glance at, so one of them is enough on screen, and the Log's count says when it has news. The
+     Hierarchy gets the left column to itself. */
+  var DEFAULT = { left: ['hierarchy'], right: ['inspector', 'chat'], bottom: ['project', 'tickets'], tabs: { tickets: ['tickets', 'console'] }, front: {}, lw: 264, rw: 388, bh: 262, grow: { project: 1, tickets: 1 }, min: {} };
+  var BIG = { left: ['hierarchy'], right: ['inspector', 'chat'], bottom: ['project', 'tickets'], tabs: { tickets: ['tickets', 'console'] }, front: {}, lw: 200, rw: 316, bh: 120, grow: { project: 3, tickets: 2 } };
+  var LAYOUT_KEY = 'studio.layout.v5', L = null;   // v5: panels tabbed together
   function copy(o) { return JSON.parse(JSON.stringify(o)); }
   function layoutIs(d) { return JSON.stringify(L) === JSON.stringify(d); }
   function loadLayout() {
     var s = null; try { s = JSON.parse(localStorage.getItem(LAYOUT_KEY) || 'null'); } catch (e) {}
     // only a layout that still names every panel exactly once; anything else is from an older studio
-    var names = s && [].concat(s.left || [], s.right || [], s.bottom || []).sort().join();
+    var names = s && [].concat(s.left || [], s.right || [], s.bottom || []).reduce(function (all, n) { return all.concat((s.tabs && s.tabs[n]) || [n]); }, []).sort().join();
     L = names === Object.keys(PANELS).sort().join() ? s : copy(DEFAULT);
-    L.grow = L.grow || {}; L.min = L.min || {};
+    L.grow = L.grow || {}; L.min = L.min || {}; L.tabs = L.tabs || {}; L.front = L.front || {};
   }
+  var AREA_KEYS = ['left', 'right', 'bottom'];
+  function slot(lead) { return (L.tabs && L.tabs[lead]) || [lead]; }
+  function leadOf(name) { for (var k in L.tabs) if (L.tabs[k].indexOf(name) >= 0) return k; return name; }
+  function shut(name) { return $(PANELS[name]).classList.contains('closed'); }
+  // the one showing: the chosen one if the story has brought it out, else the first that is out
+  function frontOf(lead) {
+    var ms = slot(lead), out = ms.filter(function (n) { return !shut(n); }), f = L.front[lead];
+    return out.indexOf(f) >= 0 ? f : out[0] || ms[0];
+  }
+  function shown(lead) { return $(PANELS[frontOf(lead)]); }
+  // take a panel out of wherever it is; a place whose lead leaves is led by the next tab
+  function detach(name) {
+    var lead = leadOf(name), ms = slot(lead);
+    if (ms.length < 2) { AREA_KEYS.forEach(function (a) { L[a] = L[a].filter(function (n) { return n !== name; }); }); delete L.min[name]; delete L.grow[name]; return; }
+    var rest = ms.filter(function (n) { return n !== name; }), nl = rest[0], was = L.front[lead];
+    delete L.tabs[lead]; delete L.front[lead];
+    if (rest.length > 1) L.tabs[nl] = rest;
+    if (was && was !== name) L.front[nl] = was;
+    if (lead !== name) return;
+    AREA_KEYS.forEach(function (a) { var i = L[a].indexOf(name); if (i >= 0) L[a][i] = nl; });
+    if (L.grow[name]) L.grow[nl] = L.grow[name]; delete L.grow[name];
+    if (L.min[name]) L.min[nl] = true; delete L.min[name];
+  }
+  function join(name, lead) {
+    if (leadOf(name) !== lead) { detach(name); L.tabs[lead] = slot(lead).concat([name]); }
+    setFront(lead, name);
+  }
+  // the first tab showing is the default, and says nothing (so Layout › Default still matches)
+  function setFront(lead, name) { if (slot(lead)[0] === name) delete L.front[lead]; else L.front[lead] = name; }
+  // a tab behind, picked (or the story opening or pointing into it): it comes to the front
+  function bringFront(name) {
+    var lead = leadOf(name); if (slot(lead).length < 2 || frontOf(lead) === name) return false;
+    setFront(lead, name); saveLayout(); applyLayout();
+    status(PANEL_NAMES[name][0] + ' is showing');
+    return true;
+  }
+  // every panel's tab home to its own row, then a place's tabs into its front one's row
+  function paintTabs() {
+    Object.keys(PANELS).forEach(function (n) {
+      var t = TAB[n], row = $(PANELS[n]).querySelector(':scope > .tabs'); if (!t || !row) return;
+      row.insertBefore(t, row.firstChild);
+      t.classList.remove('back', 'gone'); t.removeAttribute('tabindex'); t.removeAttribute('role'); t.removeAttribute('aria-selected');
+      row.removeAttribute('role');
+    });
+    AREA_KEYS.forEach(function (a) {
+      L[a].forEach(function (lead) {
+        var ms = slot(lead); if (ms.length < 2) return;
+        var f = frontOf(lead), row = $(PANELS[f]).querySelector(':scope > .tabs');
+        row.setAttribute('role', 'tablist');
+        ms.slice().reverse().forEach(function (n) {
+          var t = TAB[n]; row.insertBefore(t, row.firstChild);
+          t.setAttribute('role', 'tab'); t.setAttribute('aria-selected', String(n === f));
+          t.tabIndex = 0;   // the front one too: focus stays on the tab a kid just chose
+          if (n !== f) t.classList.add('back');
+          if (n !== f && shut(n)) t.classList.add('gone');   // not out yet: no tab for it
+        });
+      });
+    });
+  }
+  var TAB = {};
   function saveLayout() { try { if (layoutIs(DEFAULT)) localStorage.removeItem(LAYOUT_KEY); else localStorage.setItem(LAYOUT_KEY, JSON.stringify(L)); } catch (e) {} }
   function useLayout(d) { L = copy(d); saveLayout(); applyLayout(); status(d === DEFAULT ? 'Panels are back where they started' : 'The game is as big as it goes'); }
   function applyLayout() {
+    var store = $('dockStore');
     Object.keys(AREAS).forEach(function (a) {
       var area = $(AREAS[a]);
       Array.prototype.forEach.call(area.querySelectorAll(':scope > .split'), function (s) { s.remove(); });
-      L[a].forEach(function (name, i) {
-        var d = $(PANELS[name]);
+      L[a].forEach(function (lead, i) {
+        var f = frontOf(lead);
         if (i) area.appendChild(splitter('panels', a, i));
-        area.appendChild(d);
-        d.style.flex = L.grow[name] ? L.grow[name] + ' 1 0' : '';
-        d.classList.toggle('min', !!L.min[name]); paintMin(d);
+        slot(lead).forEach(function (name) {
+          var d = $(PANELS[name]);
+          (name === f ? area : store).appendChild(d);
+          d.style.flex = L.grow[lead] ? L.grow[lead] + ' 1 0' : '';
+          d.classList.toggle('min', !!L.min[lead]); paintMin(d);
+        });
       });
       area.classList.toggle('empty', !L[a].length);
       if (!area.querySelector(':scope > .split.edge')) area.appendChild(splitter('edge', a));
     });
+    paintTabs();
     sizes();
     requestAnimationFrame(function () { var lg = $('log'); lg.scrollTop = lg.scrollHeight; });
   }
@@ -974,8 +1055,8 @@ var Editor = (function () {
     ed.style.setProperty('--lw', (L.left.length ? L.lw : 0) + 'px');
     ed.style.setProperty('--rw', (L.right.length ? L.rw : 0) + 'px');
     // a bottom row whose open panels are all minimized is only as tall as their tabs
-    var shut = L.bottom.length && L.bottom.every(function (n) { var d = $(PANELS[n]); return L.min[n] || d.classList.contains('closed'); }) && L.bottom.some(function (n) { return L.min[n]; });
-    ed.style.setProperty('--bh', (!L.bottom.length ? 0 : shut ? 41 : ed.clientHeight ? clamp(L.bh, limits('bottom')) : L.bh) + 'px');
+    var folded = L.bottom.length && L.bottom.every(function (n) { return L.min[n] || shown(n).classList.contains('closed'); }) && L.bottom.some(function (n) { return L.min[n]; });
+    ed.style.setProperty('--bh', (!L.bottom.length ? 0 : folded ? 41 : ed.clientHeight ? clamp(L.bh, limits('bottom')) : L.bh) + 'px');
   }
   /* Minimized (Jay, Sept 30: "make tabs minimizeable"): a panel folds down to its tab row, and its
      room goes to the panels beside it. The button again, or a tap on its tab, opens it. Kept with
@@ -990,15 +1071,20 @@ var Editor = (function () {
   }
   function minimize(d, on) {
     var name = d.getAttribute('data-panel'); if (!L || !PANELS[name]) return;
+    name = leadOf(name);   // a place folds with all its tabs
     if (on === undefined) on = !L.min[name];
     if (!!L.min[name] === on) return;
     if (on && d === maxed) unmaximize();
     if (on) L.min[name] = true; else delete L.min[name];
-    d.classList.toggle('min', on); paintMin(d);
+    slot(name).forEach(function (m) { var el = $(PANELS[m]); el.classList.toggle('min', on); paintMin(el); });
     saveLayout(); sizes();
     status(panelName(d) + (on ? ' minimized. Its tab opens it again' : ' is open'));
   }
-  function unmin(el) { var d = el && el.closest && el.closest('.dock'); if (d && d.classList.contains('min')) minimize(d, false); }
+  function unmin(el) {
+    var d = el && el.closest && el.closest('.dock'); if (!d) return;
+    if (d.parentNode && d.parentNode.id === 'dockStore') bringFront(d.getAttribute('data-panel'));   // behind another tab: to the front
+    if (d.classList.contains('min')) minimize(d, false);
+  }
   /* A splitter: `edge` sits on an area's inner edge and resizes the area; `panels` sits between two
      panels in one area and shares the room between them. Both work from the keyboard too (a
      separator with arrow keys), and neither is ever the only way to see anything. */
@@ -1035,14 +1121,14 @@ var Editor = (function () {
      the window being resized. */
   function share(area, at, px) {
     var names = L[area], vertical = area !== 'bottom';
-    var sz = names.map(function (n) { var r = $(PANELS[n]).getBoundingClientRect(); return vertical ? r.height : r.width; });
+    var sz = names.map(function (n) { var r = shown(n).getBoundingClientRect(); return vertical ? r.height : r.width; });
     var a = at - 1, b = at;
     while (a >= 0 && !sz[a]) a--;
     while (b < names.length && !sz[b]) b++;
     if (a < 0 || b >= names.length) return;
     var move = Math.max(-(sz[a] - 90), Math.min(sz[b] - 90, px));
     sz[a] += move; sz[b] -= move;
-    names.forEach(function (n, i) { if (sz[i]) { L.grow[n] = Math.round(sz[i]); $(PANELS[n]).style.flex = L.grow[n] + ' 1 0'; } });
+    names.forEach(function (n, i) { if (sz[i]) { L.grow[n] = Math.round(sz[i]); slot(n).forEach(function (m) { $(PANELS[m]).style.flex = L.grow[n] + ' 1 0'; }); } });
   }
   function startResize(e, s, kind, area, at, across) {
     e.preventDefault(); s.setPointerCapture(e.pointerId);
@@ -1086,7 +1172,7 @@ var Editor = (function () {
     var was = maxed; unmaximize();
     if (!d || was === d) return;
     maxed = d;
-    var chat = $('dMentor'), side = !narrow() && d !== chat && L.right.indexOf('chat') >= 0 && L.right.indexOf(d.getAttribute('data-panel')) < 0;
+    var chat = $('dMentor'), side = !narrow() && d !== chat && L.right.indexOf(leadOf('chat')) >= 0 && L.right.indexOf(leadOf(d.getAttribute('data-panel'))) < 0 && frontOf(leadOf('chat')) === 'chat';
     d.classList.add('max'); d.classList.toggle('side', side);
     cover(true);
     if (side) Array.prototype.forEach.call($('aRight').querySelectorAll('.dock'), function (el) {   // the column left showing
@@ -1108,8 +1194,8 @@ var Editor = (function () {
   function narrow() { return window.matchMedia && matchMedia('(max-width: 900px)').matches; }
   function tabDown(e) {
     var tab = e.target.closest('[data-drag]'); if (!tab || e.button !== 0 || narrow()) return;
-    var dock = tab.closest('.dock'); if (!dock || dock.classList.contains('closed')) return;
-    var name = dock.getAttribute('data-panel'); if (!PANELS[name]) return;
+    // a tab may sit in another panel's row (tabbed together): it drags its own panel
+    var name = tab.getAttribute('data-of'), dock = name && $(PANELS[name]); if (!dock || dock.classList.contains('closed')) return;
     drag = { name: name, dock: dock, x: e.clientX, y: e.clientY, on: false, tab: tab, id: e.pointerId };
     tab.setPointerCapture(e.pointerId);
     tab.addEventListener('pointermove', tabMove); tab.addEventListener('pointerup', tabUp); tab.addEventListener('pointercancel', tabCancel);
@@ -1129,24 +1215,38 @@ var Editor = (function () {
     drag.target = dropAt(e.clientX, e.clientY);
     var t = drag.target, ln = drag.line;
     if (!t) { ln.hidden = true; return; }
-    ln.hidden = false;
+    ln.hidden = false; ln.classList.toggle('join', !!t.join);
     var r = t.rect;
+    if (t.join) { ln.style.left = r.left + 'px'; ln.style.width = r.width + 'px'; ln.style.top = r.top + 'px'; ln.style.height = r.height + 'px'; return; }
     if (t.vertical) { ln.style.left = r.left + 'px'; ln.style.width = r.width + 'px'; ln.style.top = t.edge - 2 + 'px'; ln.style.height = '4px'; }
     else { ln.style.top = r.top + 'px'; ln.style.height = r.height + 'px'; ln.style.left = t.edge - 2 + 'px'; ln.style.width = '4px'; }
   }
   /* Which area the pointer is over, and where in it: before the first panel whose middle is past
      the pointer. An empty area opens as a drop strip while a drag is on (CSS, .dragging). */
   function dropAt(x, y) {
+    /* Over a place's tab row: a tab there, beside the others. Not the Inspector's, which comes and
+       goes with what is picked, and would take its tabs with it. */
+    var into = null;
+    if (drag.name !== 'inspector') AREA_KEYS.forEach(function (a) {
+      L[a].forEach(function (lead) {
+        var ms = slot(lead); if (ms.indexOf('inspector') >= 0 || (ms.length === 1 && lead === drag.name)) return;
+        var d = shown(lead); if (d.classList.contains('closed')) return;
+        var r = d.querySelector(':scope > .tabs').getBoundingClientRect();
+        if (x >= r.left && x <= r.right && y >= r.top && y <= r.bottom) into = { join: lead, rect: r };
+      });
+    });
+    if (into) return into;
     var hit = null;
     Object.keys(AREAS).forEach(function (a) {
       var r = $(AREAS[a]).getBoundingClientRect();
       if (x >= r.left && x <= r.right && y >= r.top && y <= r.bottom) hit = { area: a, rect: r };
     });
     if (!hit) return null;
-    var vertical = hit.area !== 'bottom', names = L[hit.area].filter(function (n) { return n !== drag.name; });
+    // the dragged panel's own place stays if others are tabbed there (detach, in tabUp, keeps it)
+    var vertical = hit.area !== 'bottom', names = L[hit.area].filter(function (n) { return !(n === drag.name && slot(n).length === 1); });
     var idx = names.length, edge = vertical ? hit.rect.bottom : hit.rect.right;
     for (var i = 0; i < names.length; i++) {
-      var r = $(PANELS[names[i]]).getBoundingClientRect(); if (!r.width || !r.height) continue;
+      var r = shown(names[i]).getBoundingClientRect(); if (!r.width || !r.height) continue;
       var mid = vertical ? r.top + r.height / 2 : r.left + r.width / 2;
       if ((vertical ? y : x) < mid) { idx = i; edge = vertical ? r.top : r.left; break; }
     }
@@ -1156,7 +1256,12 @@ var Editor = (function () {
   function tabUp() {
     var d = drag; tabEnd();
     if (!d || !d.on || !d.target) return;
-    Object.keys(AREAS).forEach(function (a) { L[a] = L[a].filter(function (n) { return n !== d.name; }); });
+    if (d.target.join) {
+      join(d.name, d.target.join); saveLayout(); applyLayout();
+      status(PANEL_NAMES[d.name][0] + ' is a tab beside ' + PANEL_NAMES[slot(d.target.join)[0]][0] + ' now. Layout › Default puts it back');
+      return;
+    }
+    detach(d.name);
     L[d.target.area].splice(d.target.index, 0, d.name);
     L.grow = {};   // a new arrangement shares its room evenly again
     saveLayout(); applyLayout();
@@ -1196,7 +1301,6 @@ var Editor = (function () {
   }
 
   function init() {
-    loadLayout(); applyLayout();
     paintBar();
     $('bPlay').addEventListener('click', play);
     $('bStop').addEventListener('click', stop);
@@ -1207,6 +1311,13 @@ var Editor = (function () {
     });
     $('bMe').addEventListener('keydown', function (e) { if (e.key === 'ArrowDown') { e.preventDefault(); popup($('bMe'), ME_ITEMS(), true, false); } });
     $('inspClose').addEventListener('click', function () { closeInspector(); });
+    Object.keys(PANELS).forEach(function (name) {
+      var t = $(PANELS[name]).querySelector(':scope > .tabs > .tab[data-drag]'); if (!t) return;
+      TAB[name] = t; t.setAttribute('data-of', name);
+      t.addEventListener('click', function (e) { if (t.classList.contains('back')) { e.stopPropagation(); bringFront(name); unmin($(PANELS[name])); t.focus(); } });
+      t.addEventListener('keydown', function (e) { if ((e.key === 'Enter' || e.key === ' ') && t.classList.contains('back')) { e.preventDefault(); bringFront(name); } });
+    });
+    loadLayout(); applyLayout();   // after the tabs are known and the store is there
     Array.prototype.forEach.call($('editor').querySelectorAll('.dock'), function (d) {
       var row = d.querySelector(':scope > .tabs'); if (!row) return;
       var b = document.createElement('button'); b.type = 'button'; b.className = 'x maxb';

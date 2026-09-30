@@ -225,6 +225,9 @@
       <div class="dock-body console"><ol class="clog" id="consoleList"></ol></div>
     </section>
   </div>
+  <!-- Where a dock waits while another tab in its group is in front (editor.js, TABBED TOGETHER).
+       Never shown; the panels keep their state here because they are moved, not rebuilt. -->
+  <div id="dockStore" hidden></div>
 
   <div class="pointer" id="pointer" hidden><span id="pointerText"></span></div>
   <p class="sr" id="announce" aria-live="polite"></p>
