@@ -50,7 +50,8 @@ class Level extends Phaser.Scene {
   build(p) {
     const things = [];
     if (p.kind === 'player') things.push(this.makePlayer(p));
-    if (p.kind === 'floor') p.pieces.forEach(([x, w]) => things.push(this.makeFloor(p, x, w)));
+    // each block of floor: [x, width], or [x, width, y] once it has been moved up or down
+    if (p.kind === 'floor') p.pieces.forEach(([x, w, y = p.y]) => things.push(this.makeFloor(p, x, w, y)));
     if (p.kind === 'lava') things.push(this.makeLava(p));
     if (p.kind === 'coin') p.spots.forEach(([x, y]) => things.push(this.makeCoin(p, x, y)));
     this.made[p.id] = things;
@@ -61,9 +62,10 @@ class Level extends Phaser.Scene {
     const where = this.keep || { x: p.x, y: p.y };   // a rebuilt hero stays where it was
     this.keep = null;
     let hero;
+    // drawn even when the player wears another picture, so the hero stays in the Project window
+    const s = p.shape || DEFAULT_HERO;
+    drawHero(this, s);
     if (p.look === 'hero') {
-      const s = p.shape || DEFAULT_HERO;
-      drawHero(this, s);
       hero = this.physics.add.sprite(where.x, where.y, 'hero');
       // The hero's body, not its wings and horns. Its feet go where the grey box's feet were
       // (28 below the middle): a body that starts inside the floor falls straight through it,
@@ -71,6 +73,10 @@ class Level extends Phaser.Scene {
       const [bx, by, bw, bh] = heroBody(s);
       hero.setOrigin((bx + bw / 2) / 80, (by + bh - 28) / 88);
       hero.body.setSize(bw, bh, false).setOffset(bx, by);
+    } else if (p.look && this.textures.exists(p.look)) {
+      // any other picture: its feet where the grey box's feet were
+      hero = this.physics.add.sprite(where.x, where.y, p.look);
+      hero.setOrigin(0.5, Math.max(0, 1 - 28 / hero.height));
     } else {
       hero = this.add.rectangle(where.x, where.y, 40, 56, 0x4f4f4f);   // a grey box until it has a sprite
       this.physics.add.existing(hero);
@@ -85,14 +91,16 @@ class Level extends Phaser.Scene {
   }
 
   // A block 64 pixels tall, plus whatever fills the space below it.
+  // A picture with no _fill of its own (a coin, on a floor) fills with itself.
   block(p, x, y, w, art, grey, greyFill) {
     const top = art
       ? this.add.tileSprite(x + w / 2, y + 32, w, 64, art)
       : this.add.rectangle(x + w / 2, y + 32, w, 64, grey);
     const below = 540 - (y + 64);
     if (below > 0) {
+      const fill = this.textures.exists(art + '_fill') ? art + '_fill' : art;
       const under = art
-        ? this.add.tileSprite(x + w / 2, y + 64 + below / 2, w, below, art + '_fill')
+        ? this.add.tileSprite(x + w / 2, y + 64 + below / 2, w, below, fill)
         : this.add.rectangle(x + w / 2, y + 64 + below / 2, w, below, greyFill);
       paint(under, p.tint);
       under.setData('trim', p.id);
@@ -101,8 +109,8 @@ class Level extends Phaser.Scene {
     return top;
   }
 
-  makeFloor(p, x, w) {
-    const floor = this.block(p, x, p.y, w, p.look, 0x6e6e6e, 0x5f5f5f);
+  makeFloor(p, x, w, y) {
+    const floor = this.block(p, x, y, w, p.look, 0x6e6e6e, 0x5f5f5f);
     this.physics.add.existing(floor, true);
     // Box Collider 2D: only a SOLID floor holds the player up.
     floor.body.enable = p.solid;

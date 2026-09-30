@@ -12,10 +12,12 @@
    grey of the greybox. Tapping a part picks it, the same as tapping it in the Hierarchy (Editor.select),
    and the picked part shows its outline and, as Unity's gizmos do, its collider in green when it has
    one switched on. That is not the answer to the floor ticket: the kid still has to pick the tile,
-   and the Inspector is where it is fixed. The Player can be dragged to where it starts (Position X
-   and Y, through Editor.set, so Undo covers it). Nothing else moves: the level's code places the
-   rest (schema.js, "every part has the same shape"). The tab arrives with the Hierarchy, because
-   before that there are no parts to pick.
+   and the Inspector is where it is fixed. EVERYTHING DRAGS (Jay, Sept 30: "everything in the scene
+   should be editable"): the Player, the lava, each coin and each block of floor, snapped to 8
+   pixels, through Editor.place, so Undo covers it. A coin is one of the Coins' things (schema.js,
+   "every thing in the scene can be moved"): tapping one picks that coin, and dragging it moves
+   just it; with the Coins' own row picked, a drag moves them all, as dragging a parent does in
+   Unity. The tab arrives with the Hierarchy, because before that there are no parts to pick.
 
    THE GAME FRAME IS NEVER HIDDEN. The Scene and code views are laid over the Game view rather than
    swapping it out: an iframe set to display:none gets a zero-size canvas that Phaser doesn't grow
@@ -110,15 +112,18 @@ var Views = (function () {
   function rect(x, y, w, h, fill, extra) { return '<rect x="' + x + '" y="' + y + '" width="' + w + '" height="' + h + '" fill="' + fill + '"' + (extra || '') + '/>'; }
   function image(u, b, extra) { return '<image href="' + u + '" x="' + b[0] + '" y="' + b[1] + '" width="' + b[2] + '" height="' + b[3] + '"' + (extra || '') + '/>'; }
   /* A floor or the lava: a 64px block with its fill below it, as the game's block() draws it. */
-  function block(p, x, w, grey, greyFill) {
-    var art = fillOf(p.look), under = fillOf(p.look && p.look + '_fill'), below = H - (p.y + 64);
-    var out = art ? rect(x, p.y, w, 64, art, tinted(p.tint)) : rect(x, p.y, w, 64, p.tint || grey);
-    if (below > 0) out += under ? rect(x, p.y + 64, w, below, under, tinted(p.tint)) : rect(x, p.y + 64, w, below, p.tint || greyFill);
+  /* A floor block or the lava: 64px tall with its fill below it, as the game's block() draws it. A
+     picture with no fill of its own (a coin's, on a floor) fills with itself, as the game does. */
+  function block(p, x, y, w, grey, greyFill) {
+    var art = fillOf(p.look), under = fillOf(p.look && p.look + '_fill') || art, below = H - (y + 64);
+    var out = art ? rect(x, y, w, 64, art, tinted(p.tint)) : rect(x, y, w, 64, p.tint || grey);
+    if (below > 0) out += under ? rect(x, y + 64, w, below, under, tinted(p.tint)) : rect(x, y + 64, w, below, p.tint || greyFill);
     return out;
   }
-  /* Each part's boxes in level pixels: what's drawn, the outline when picked, the collider gizmo. */
+  /* Each part's boxes in level pixels, one per thing it draws (schema.js, things): what's drawn,
+     what a tap hits, the outline when picked, the collider gizmo. */
   function boxes(p) {
-    if (p.kind === 'floor') return (p.pieces || []).map(function (q) { return [q[0], p.y, q[1], H - p.y]; });
+    if (p.kind === 'floor') return Schema.things(p).map(function (q) { return [q.x, q.y, q.w, H - q.y]; });
     if (p.kind === 'lava') return [[p.x, p.y, p.w, H - p.y]];
     if (p.kind === 'coin') return (p.spots || []).map(function (s) { var z = coinSize(p); return [s[0] - z[0] / 2, s[1] - z[1] / 2, z[0], z[1]]; });
     if (p.kind === 'player') return [heroBox(p)];
@@ -126,16 +131,16 @@ var Views = (function () {
   }
   /* A coin's picture at its own size times Scale, or the grey circle's 30. */
   function coinSize(p) { var d = p.look && dim(Runner.thumb(p.look)), k = p.size || 1; return d ? [d.w * k, d.h * k] : [30 * k, 30 * k]; }
-  /* The grey box is 40×56 on the Player's spot; the hero sprite stands with its feet where the box's
-     feet were (starter/game.js, makePlayer). */
-  function heroArt(p) { var u = p.look === 'hero' && Runner.thumb('hero'); return u && dim(u) ? u : null; }
+  /* The grey box is 40×56 on the Player's spot; a sprite (the hero, or any other the kid gave it)
+     stands with its feet where the box's feet were (starter/game.js, makePlayer). */
+  function heroArt(p) { var u = p.look && Runner.thumb(p.look); return u && dim(u) ? u : null; }
   function heroBox(p) {
-    var d = heroArt(p) && dim(Runner.thumb('hero'));
+    var u = heroArt(p), d = u && dim(u);
     return d ? [p.x - d.w / 2, p.y + 28 - d.h, d.w, d.h] : [p.x - 20, p.y - 28, 40, 56];
   }
   function drawPart(p) {
-    if (p.kind === 'floor') return (p.pieces || []).map(function (q) { return block(p, q[0], q[1], '#6e6e6e', '#5f5f5f'); }).join('');
-    if (p.kind === 'lava') return block(p, p.x, p.w, '#7c7c7c', '#747474');
+    if (p.kind === 'floor') return Schema.things(p).map(function (q) { return block(p, q.x, q.y, q.w, '#6e6e6e', '#5f5f5f'); }).join('');
+    if (p.kind === 'lava') return block(p, p.x, p.y, p.w, '#7c7c7c', '#747474');
     if (p.kind === 'coin') {
       var cu = p.look && Runner.thumb(p.look), art = cu && dim(cu);
       return boxes(p).map(function (b, i) {
@@ -158,15 +163,16 @@ var Views = (function () {
     var body = rect(0, 0, W, H, '#9a9a9a'), bu = level && level.look && Runner.thumb(level.look), bd = dim(bu);
     if (bd) body += image(bu, [W / 2 - bd.w / 2, H / 2 - bd.h / 2, bd.w, bd.h]);
     body += '<rect class="gridover" x="0" y="0" width="' + W + '" height="' + H + '" fill="url(#grid)"/>';
+    var picked = Editor.refOf(sel);
     st.parts.forEach(function (p) {
       if (p.kind === 'level') return;
-      var bx = boxes(p), picked = p.id === sel;
-      body += '<g class="spart' + (picked ? ' on' : '') + (p.id === 'player' ? ' movable' : '') + '" data-part="' + esc(p.id) + '"><title>' + esc(p.name) + '</title>' + drawPart(p)
-        + bx.map(function (b) { return '<rect class="hit" x="' + b[0] + '" y="' + b[1] + '" width="' + b[2] + '" height="' + b[3] + '"/>'; }).join('');
-      if (picked) {
-        body += bx.map(function (b) { return '<rect class="sel" x="' + b[0] + '" y="' + b[1] + '" width="' + b[2] + '" height="' + b[3] + '"/>'; }).join('');
+      var bx = boxes(p), on = p.id === picked.id, mine = function (n) { return on && (picked.i < 0 || picked.i === n); };
+      body += '<g class="spart' + (on ? ' on' : '') + '" data-part="' + esc(p.id) + '"><title>' + esc(p.name) + '</title>' + drawPart(p)
+        + bx.map(function (b, n) { return '<rect class="hit" data-i="' + n + '" x="' + b[0] + '" y="' + b[1] + '" width="' + b[2] + '" height="' + b[3] + '"/>'; }).join('');
+      if (on) {
+        body += bx.map(function (b, n) { return mine(n) ? '<rect class="sel" x="' + b[0] + '" y="' + b[1] + '" width="' + b[2] + '" height="' + b[3] + '"/>' : ''; }).join('');
         // the collider gizmo, Unity's green box, on a part whose Box Collider 2D is switched on
-        if (p.kind === 'floor' && p.solid) body += bx.map(function (b) { return '<rect class="gizmo" x="' + b[0] + '" y="' + b[1] + '" width="' + b[2] + '" height="64"/>'; }).join('');
+        if (p.kind === 'floor' && p.solid) body += bx.map(function (b, n) { return mine(n) ? '<rect class="gizmo" x="' + b[0] + '" y="' + b[1] + '" width="' + b[2] + '" height="64"/>' : ''; }).join('');
       }
       body += '</g>';
     });
@@ -174,20 +180,39 @@ var Views = (function () {
       + Object.keys(pats).map(function (id) { return pats[id]; }).join('') + '</defs>'
       + '<rect x="-400" y="-400" width="' + (W + 800) + '" height="' + (H + 800) + '" fill="url(#grid)"/>'
       + body + '<rect class="bounds" x="0" y="0" width="' + W + '" height="' + H + '"/>';
-    $('sceneHint').textContent = sel === 'player' ? 'Drag the Player to move where it starts.'
-      : sel ? (Project.part(sel) || {}).name + ' is picked. Its components are in the Inspector.' : 'Tap a part to pick it.';
+    var pp = sel && Project.part(picked.id), name = pp ? (picked.i >= 0 ? Schema.childName(pp, picked.i) : pp.name) : '';
+    $('sceneHint').textContent = !pp ? 'Tap anything to pick it. Drag it to move it.'
+      : pp.kind === 'level' ? name + ' is picked. Its settings are in the Inspector.'
+      : Schema.many(pp) && picked.i < 0 ? 'Drag to move all of the ' + name + ', or tap one to move just it.'
+      : 'Drag ' + name + ' to move it, or type its Position in the Inspector.';
+  }
+  /* THE PICKED PART, OUTLINED OVER THE GAME VIEW too, while it's stopped (the Sept 30 critique: a
+     Hierarchy row that lights nothing on screen can't tell a kid which grey block the Floor tile
+     is). The game fits and centres its 960×540 in the frame, and so does this SVG's viewBox, so the
+     boxes land on the game's own things. Play hides it (CSS). */
+  function paintPick() {
+    var svg = $('pickOver'); if (!svg) return;
+    var r = Editor.refOf(Editor.selected()), p = r.id && Project.part(r.id);
+    if (!p || p.kind === 'level') { svg.innerHTML = ''; return; }
+    svg.innerHTML = boxes(p).map(function (b, n) {
+      return r.i < 0 || r.i === n ? '<rect x="' + b[0] + '" y="' + b[1] + '" width="' + b[2] + '" height="' + b[3] + '" rx="2"/>' : '';
+    }).join('');
   }
   /* Level pixels under the pointer. */
   function at(e) { var svg = $('sceneSvg'), pt = svg.createSVGPoint(); pt.x = e.clientX; pt.y = e.clientY; return pt.matrixTransform(svg.getScreenCTM().inverse()); }
   var drag = null;
+  /* What a tap picks: the thing under it (one coin), unless its part is already picked whole, when
+     the drag moves them all. */
   function sceneDown(e) {
     var g = e.target.closest && e.target.closest('[data-part]');
     if (!g) { if (Editor.selected()) Editor.closeInspector(); paintScene(); return; }
-    var id = g.getAttribute('data-part');
-    if (Editor.selected() !== id) Editor.select(id);
-    if (id === 'player' && !Runner.isPlaying()) {
-      var p = Project.part('player'), q = at(e);
-      drag = { dx: q.x - p.x, dy: q.y - p.y, x: p.x, y: p.y, moved: false };
+    var id = g.getAttribute('data-part'), p = Project.part(id), hit = e.target.closest('[data-i]');
+    var i = hit ? +hit.getAttribute('data-i') : 0, sel = Schema.many(p) && Editor.selected() !== id ? id + '#' + (i + 1) : id;
+    if (Editor.selected() !== sel) Editor.select(sel);
+    if (!Runner.isPlaying()) {
+      var w = Schema.where(p, Editor.refOf(sel).i), q = at(e);
+      drag = { sel: sel, dx: q.x - w.x, dy: q.y - w.y, x: w.x, y: w.y, moved: false,
+               one: sel === id && Schema.many(p) ? id + '#' + (i + 1) : null };   // a tap, not a drag, picks the one
       try { $('sceneSvg').setPointerCapture(e.pointerId); } catch (err) {}
     }
     paintScene();
@@ -195,19 +220,20 @@ var Views = (function () {
   function sceneMove(e) {
     if (!drag) return;
     var q = at(e), snap = function (v, max) { return Math.max(0, Math.min(max, Math.round(v / 8) * 8)); };
-    var x = snap(q.x - drag.dx, W), y = snap(q.y - drag.dy, H), p = Project.part('player');
-    if (x !== p.x) Editor.set('player', 'x', x, true, true);   // replay: no undo step for each move
-    if (y !== p.y) Editor.set('player', 'y', y, true, true);
+    var to = { x: snap(q.x - drag.dx, W), y: snap(q.y - drag.dy, H) };
+    if (!drag.moved && to.x === drag.x && to.y === drag.y) return;   // a tap, not a drag
+    Editor.place(drag.sel, to, true, true);   // replay: no undo step for each move
     drag.moved = true; paintScene();
   }
-  /* Letting go: put the Player back where the drag began, then move it there for real, so Undo has
-     the move (as X then Y, the two settings it changed). */
+  /* Letting go: put it back where the drag began, then move it there for real, so Undo has the
+     move as one step (or X then Y, for a part whose position is two settings). */
   function sceneUp() {
     var d = drag; drag = null;
+    if (d && !d.moved && d.one) { Editor.select(d.one); paintScene(); return; }
     if (!d || !d.moved) return;
-    var p = Project.part('player'), x = p.x, y = p.y;
-    Editor.set('player', 'x', d.x, true, true); Editor.set('player', 'y', d.y, true, true);
-    Editor.set('player', 'x', x); Editor.set('player', 'y', y);
+    var r = Editor.refOf(d.sel), end = Schema.where(Project.part(r.id), r.i), to = { x: end.x, y: end.y };
+    Editor.place(d.sel, { x: d.x, y: d.y }, true, true);
+    Editor.place(d.sel, to);
     paintScene();
   }
 
@@ -408,12 +434,12 @@ var Views = (function () {
     svg.addEventListener('pointermove', sceneMove);
     svg.addEventListener('pointerup', sceneUp);
     svg.addEventListener('pointercancel', sceneUp);
-    Editor.on(function (name) { if (name === 'select' || name === 'deselect' || name === 'set') paintScene(); });
+    Editor.on(function (name) { if (name === 'select' || name === 'deselect' || name === 'set') { paintScene(); paintPick(); } });
     Project.onDoc(paintDoc);
-    Runner.on(function (name) { if (name === 'thumbs' || name === 'ready') paintScene(); if (name === 'play') playing(true); if (name === 'stop') playing(false); });
+    Runner.on(function (name) { if (name === 'thumbs' || name === 'ready' || name === 'stop') { paintScene(); paintPick(); } if (name === 'play') playing(true); if (name === 'stop') playing(false); });
     if (window.Builder) Builder.on(function (name) {
       if (name !== 'built' && name !== 'reverted') return;
-      paintScene(); lastError = null;
+      paintScene(); paintPick(); lastError = null;
       if (!codeOpen) return;
       if (!dirty()) return reload();
       // the kid's unsaved edits are kept; they're told that saving replaces what the Builder did

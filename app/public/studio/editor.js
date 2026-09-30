@@ -9,8 +9,8 @@
    - The Hierarchy lists the parts; tapping one opens the Inspector as its own dock above the
      conversation (The No Overlay Rule). Components belong to the part they're on, as in Unity, with
      their on/off checkbox in the header where Unity has one.
-   - Which components the Inspector shows is up to the story (allow()): on the first day each
-     department's job has exactly one knob to find, so a kid isn't handed six.
+   - Which components the Inspector opens is up to the story (allow()): on the first day each
+     department's job has one knob to find, open, and the rest are folded, one tap away.
    - Play works as Unity's does, including the undo on Stop (runner.js says why), and so do Pause
      and Step. Play, Pause and Stop are three buttons, as in Unity and Unreal (Jay, 2026-09-29): one
      Play button that turned into Stop left a kid who wanted to stop hunting for a button that had
@@ -54,24 +54,49 @@ var Editor = (function () {
 
   /* ---------- the Hierarchy ---------- */
   /* Names only, as Unity's is. The first build glossed each row ("not solid!", "looks broken"), which
-     told the kid the answer before they looked (Jay, 2026-09-28: no glosses). */
+     told the kid the answer before they looked (Jay, 2026-09-28: no glosses).
+     A part that draws several things (schema.js, "every thing in the scene can be moved") is a
+     parent row with its things under it, "Coin (1)", "Coin (2)", as a prefab's instances are in
+     Unity. It starts folded, with how many are inside at the end of the row, so the first day's
+     Hierarchy stays six rows a kid can scan; its arrow opens it, and picking one of its things in
+     the Scene view opens it too, so the row that lights up is always on screen. */
+  var unfolded = {};
+  function refOf(sel) { var m = /^(.+)#(\d+)$/.exec(sel || ''); return m ? { id: m[1], i: +m[2] - 1 } : { id: sel, i: -1 }; }
+  function row(ul, key, name, icon, depth, animate, k, pick) {
+    var li = document.createElement('li');
+    li.className = (depth ? 'child' : '') + (depth > 1 ? ' grand' : '') + (animate ? ' snap' : '');
+    var b = document.createElement('button');
+    b.type = 'button';
+    b.setAttribute('data-key', 'part:' + key);
+    b.setAttribute('aria-pressed', String(selected === key));
+    if (animate) b.style.animationDelay = (k * 0.1) + 's';
+    b.innerHTML = (!depth ? '<svg class="i fold" aria-hidden="true"><use href="#i-fold"/></svg>' : '')
+      + '<svg class="i" aria-hidden="true"><use href="#' + icon + '"/></svg><span class="nm"></span>';
+    b.querySelector('.nm').textContent = name;
+    b.addEventListener('click', pick);
+    li.appendChild(b); ul.appendChild(li);
+    return li;
+  }
   function tree(animate) {
     UI.keepFocus($('tree'), function () {
       var ul = $('tree'); ul.innerHTML = '';
       Project.get().parts.forEach(function (p, k) {
-        var li = document.createElement('li');
-        if (p.kind !== 'level') li.className = 'child';
-        if (animate) li.className += ' snap';
-        var b = document.createElement('button');
-        b.type = 'button';
-        b.setAttribute('data-key', 'part:' + p.id);
-        b.setAttribute('aria-pressed', String(selected === p.id));
-        if (animate) b.style.animationDelay = (k * 0.1) + 's';
-        b.innerHTML = (p.kind === 'level' ? '<svg class="i fold" aria-hidden="true"><use href="#i-fold"/></svg>' : '')
-          + '<svg class="i" aria-hidden="true"><use href="#' + (p.kind === 'level' ? 'i-layout' : 'i-cube') + '"/></svg><span class="nm"></span>';
-        b.querySelector('.nm').textContent = p.name;
-        b.addEventListener('click', function () { select(p.id); });
-        li.appendChild(b); ul.appendChild(li);
+        var kids = Schema.many(p) ? Schema.things(p) : null, open = kids && unfolded[p.id];
+        var li = row(ul, p.id, p.name, p.kind === 'level' ? 'i-layout' : kids ? 'i-folder' : 'i-cube', p.kind === 'level' ? 0 : 1, animate, k, function () { select(p.id); });
+        if (!kids) return;
+        var b = li.querySelector('button');
+        b.insertAdjacentHTML('beforeend', '<small>' + kids.length + '</small>');
+        var t = document.createElement('button');
+        t.type = 'button'; t.className = 'twisty'; t.setAttribute('data-key', 'open:' + p.id);
+        t.setAttribute('aria-expanded', String(!!open)); t.setAttribute('aria-label', (open ? 'Fold ' : 'Open ') + p.name + ': ' + kids.length + ' inside');
+        t.setAttribute('data-tip', open ? 'Fold it' : 'Show the ' + kids.length + ' inside');
+        t.innerHTML = '<svg class="i" aria-hidden="true"><use href="#i-fold"/></svg>';
+        t.addEventListener('click', function () { unfolded[p.id] = !open; tree(); });
+        li.classList.add('parent'); li.insertBefore(t, b);
+        if (open) kids.forEach(function (q, i) {
+          var key = p.id + '#' + (i + 1);
+          row(ul, key, Schema.childName(p, i), 'i-cube', 2, false, 0, function () { select(key); });
+        });
       });
     });
     paintCue();
@@ -91,15 +116,19 @@ var Editor = (function () {
        glows.
      - a colour: a swatch that opens the palette.
      Which components open is up to the story (allow()): on the first day each department's job has
-     exactly one to find, so a kid isn't handed six. After it, all of them. The rest are LOCKED
-     headers, not missing ones, and every part opens with its name and a Transform, so the Inspector
-     has the same shape whichever part is picked (schema.js, "every part has the same shape"). */
+     one to find, open, so a kid isn't handed six at once. The rest are FOLDED, not locked (Jay,
+     Sept 30: "the inspector should allow you to manually configure several things if you want
+     to"): a kid who opens one and paints the lava early has fixed that ticket early, and it closes
+     itself (quest.js, fixed_when). After the first day, all of them open. Every part opens with its
+     name and a Transform, so the Inspector has the same shape whichever part is picked (schema.js,
+     "every part has the same shape"). */
   function allow(list) { allowed = {}; (list || []).forEach(function (c) { allowed[c] = true; }); if (selected) inspect(selected); }
 
   var folded = {};
   function esc(t) { return String(t).replace(/[&<>"]/g, function (c) { return { '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' }[c]; }); }
-  function header(c, p) {
-    var id = c.name.replace(/\W+/g, '-').toLowerCase(), shut = !!folded[c.name];
+  /* `later`: a component the story isn't asking about yet starts folded, until the kid opens it. */
+  function header(c, p, later) {
+    var id = c.name.replace(/\W+/g, '-').toLowerCase(), shut = c.name in folded ? !!folded[c.name] : !!later;
     var h = '<div class="comp' + (shut ? ' folded' : '') + '">'
       + '<button type="button" class="fold" data-fold="' + esc(c.name) + '" data-key="fold:' + id + '" aria-expanded="' + !shut + '" aria-controls="cb-' + id + '" aria-label="Fold ' + esc(c.name) + '" data-tip="Fold or open this component"><svg class="i" aria-hidden="true"><use href="#i-fold"/></svg></button>'
       + '<svg class="i cicon" aria-hidden="true"><use href="#' + (c.icon || 'i-cube') + '"/></svg>';
@@ -114,8 +143,8 @@ var Editor = (function () {
     var d = f.step < 0.1 ? 2 : f.step < 1 ? 1 : 0;
     return Number(v).toFixed(d);
   }
-  function numberField(f, p) {
-    var v = typeof p[f.key] === 'number' ? p[f.key] : f.min;
+  function numberField(f, p, v) {
+    if (typeof v !== 'number') v = typeof p[f.key] === 'number' ? p[f.key] : f.min;
     return '<div class="irow num"><label for="r-' + f.key + '" data-tip="' + esc(f.tip || f.label) + '">' + esc(f.label) + '</label>'
       + '<div class="rng"><input id="r-' + f.key + '" type="range" data-key="r:' + f.key + '" data-slide="' + f.key + '" min="' + f.min + '" max="' + f.max + '" step="' + f.step + '" value="' + v + '" aria-valuetext="' + fmt(f, v) + (f.unit || '') + '">'
       + '<input type="number" class="nbox" id="n-' + f.key + '" data-key="n:' + f.key + '" data-num="' + f.key + '" min="' + f.min + '" max="' + f.max + '" step="' + f.step + '" value="' + fmt(f, v) + '" aria-label="' + esc(f.label) + ', exact value"></div></div>';
@@ -145,17 +174,15 @@ var Editor = (function () {
       + '<button type="button" class="cfield' + (v ? '' : ' none') + '" data-key="color:' + f.key + '" data-color="' + f.key + '" aria-label="' + esc(f.label) + ': ' + (v || 'none') + '. Pick a colour">'
       + '<i style="background:' + (v || 'transparent') + '"></i><span>' + (v ? v.toUpperCase() : 'None') + '</span></button></div>';
   }
-  /* A number that can't be changed here: placed by the level (readonly), or on a gate the story
-     hasn't opened. Its value, and a tooltip saying why; no slider, no id, nothing to set. */
-  function fixedField(f, p, why) {
-    var v = f.get ? f.get(p) : p[f.key];
-    return '<div class="irow num fixed"><span class="lbl" data-tip="' + esc(why) + '" tabindex="0">' + esc(f.label) + '</span>'
-      + '<div class="rng"><output class="nbox" aria-label="' + esc(f.label) + '">' + fmt(f, v) + '</output></div></div>';
-  }
-  function fields(c, p) {
+  /* A `place` field is where a thing is (schema.js): of the one picked (i), or of the whole part. A
+     floor's Width belongs to one block, so a floor's own row, standing for three, leaves it out. */
+  function fields(c, p, i) {
     return (c.fields || []).map(function (f) {
-      if (f.readonly) return fixedField(f, p, f.tip);
-      if (f.gate && !allowed[f.gate]) return fixedField(f, p, f.label + ': you’ll unlock this on a later shift');
+      if (f.place) {
+        if (f.one && i < 0 && Schema.many(p)) return '';
+        var at = Schema.where(p, i);
+        return at && typeof at[f.key] === 'number' ? numberField(f, p, at[f.key]) : '';
+      }
       if (f.type === 'number') return numberField(f, p);
       if (f.type === 'sprite' || f.type === 'sound') return objectField(f, p);
       if (f.type === 'color') return colorField(f, p);
@@ -176,48 +203,58 @@ var Editor = (function () {
   }
   /* The top of every Inspector: the part's icon, its name, and what it is, as Unity's has. */
   var KIND_WORDS = { level: 'Level · holds every part', player: 'Game Object · Player', floor: 'Game Object · Floor', lava: 'Game Object · Hazard', coin: 'Game Object · Pickups' };
-  function objectHeader(p) {
-    return '<div class="ohead"><svg class="i" aria-hidden="true"><use href="#' + (p.kind === 'level' ? 'i-layout' : 'i-cube') + '"/></svg>'
-      + '<p><strong>' + esc(p.name) + '</strong><small>' + esc(KIND_WORDS[p.kind] || 'Game Object · Built by the Builder') + '</small></p></div>';
+  function objectHeader(p, i) {
+    var many = Schema.many(p), n = many ? Schema.things(p).length : 0;
+    var name = i >= 0 ? Schema.childName(p, i) : p.name;
+    var what = i >= 0 ? 'Game Object · one of the ' + p.name
+      : many ? 'Prefab · ' + n + ' inside, each in the Hierarchy' : KIND_WORDS[p.kind] || 'Game Object · Built by the Builder';
+    return '<div class="ohead"><svg class="i" aria-hidden="true"><use href="#' + (p.kind === 'level' ? 'i-layout' : many && i < 0 ? 'i-folder' : 'i-cube') + '"/></svg>'
+      + '<p><strong>' + esc(name) + '</strong><small>' + esc(what) + '</small></p></div>'
+      // a prefab's one rule, said where it bites: the rest is shared
+      + (i >= 0 ? '<p class="inote shared">Its Position is its own. Everything else is shared: change it here and every ' + esc(p.kind === 'coin' ? 'coin' : p.name) + ' changes.</p>'
+        : many ? '<p class="inote shared">Moving it moves all ' + n + '. Pick one of them to move just that one.</p>' : '');
   }
-  /* A component the story hasn't opened yet: its header, locked, with nothing in it to find. */
-  function lockedHeader(c) {
-    return '<div class="comp locked" tabindex="0" data-tip="' + esc(c.name) + ': you’ll unlock this on a later shift" aria-label="' + esc(c.name) + ', locked for now">'
-      + '<span class="lock" aria-hidden="true"><svg class="i"><use href="#i-lock"/></svg></span>'
-      + '<svg class="i cicon" aria-hidden="true"><use href="#' + (c.icon || 'i-cube') + '"/></svg><strong class="cname">' + esc(c.name) + '</strong></div>';
-  }
-  function body(p) {
-    var h = objectHeader(p), comps = Schema.components(p.kind);
-    comps.forEach(function (c) {
-      if (c.gate && !allowed[c.gate]) { h += lockedHeader(c); return; }
-      h += header(c, p) + fields(c, p) + '</div>';
-    });
+  function body(p, i) {
+    var h = objectHeader(p, i), comps = Schema.components(p.kind);
+    comps.forEach(function (c) { h += header(c, p, c.gate && !allowed[c.gate]) + fields(c, p, i) + '</div>'; });
     if (!comps.length) h += generic(p) || '<p class="inote">Nothing on ' + esc(p.name) + ' to change yet.</p>';
     return h;
   }
 
+  /* `id` is a part, or one of its things ("coins#2"). The story hears the part: a coin picked is
+     the Coins picked, since what the quest is after (the Clip) is shared by them all. */
   function select(id) {
     selected = selected === id ? null : id;
-    if (selected) cueDone(id);
+    var r = refOf(id);
+    if (selected) { cueDone(r.id); if (r.i >= 0) unfolded[r.id] = true; }
     tree();
     if (selected) inspect(selected); else closeInspector();
-    emit('select', id);
+    emit('select', r.id);
   }
   function openInspector() {
     var el = $('inspector');
     if (!el.classList.contains('open')) { el.classList.add('open'); el.setAttribute('aria-hidden', 'false'); el.inert = false; }
   }
+  /* False when there is nothing by that id any more (the Builder took it away). */
   function inspect(id) {
-    var p = Project.part(id); if (!p) return;
+    var r = refOf(id), p = Project.part(r.id);
+    if (!p || (r.i >= 0 && !(Schema.many(p) && Schema.things(p)[r.i]))) return false;
     selected = id;
     closePicker();
     UI.keepFocus($('inspector'), function () {
-      $('inspBody').innerHTML = body(p);
-      wire(p);
+      $('inspBody').innerHTML = body(p, r.i);
+      wire(p, r.i);
     });
     paintCue();
     glow();
     openInspector();
+    return true;
+  }
+  /* Moving thing i of a part (or all of it, i < 0) to `to`, { x, y, w }: the one way a position
+     changes, from the Inspector or a drag in the Scene view (schema.js, moveTo). */
+  function place(sel, to, quiet, replay) {
+    var r = refOf(sel), p = Project.part(r.id); if (!p) return;
+    Schema.moveTo(p, r.i, to).forEach(function (kv) { set(p.id, kv[0], kv[1], quiet, replay); });
   }
   /* Window › Inspector with nothing picked: Unity's empty Inspector, saying what to do. */
   function inspectNothing() {
@@ -237,26 +274,29 @@ var Editor = (function () {
     if (!out && Schema.rules(p)[key]) out = Schema.rules(p)[key];
     return out;
   }
-  function wire(p) {
-    var box = $('inspBody');
+  function wire(p, i) {
+    var box = $('inspBody'), sel = selected;
     function each(sel, fn) { Array.prototype.forEach.call(box.querySelectorAll(sel), fn); }
+    // a number: a place (where a thing is, schema.js) or the part's own setting
+    function put(f, k, v) { if (f.place) { var to = {}; to[k] = v; place(sel, to, true); } else set(p.id, k, v, true); }
+    function now(f, k) { return f.place ? (Schema.where(p, i) || {})[k] : p[k]; }
     each('[data-set]', function (b) { b.addEventListener('click', function () { var k = b.getAttribute('data-set'); set(p.id, k, !p[k]); }); });
-    each('[data-fold]', function (b) { b.addEventListener('click', function () { var n = b.getAttribute('data-fold'); folded[n] = !folded[n]; inspect(p.id); }); });
+    each('[data-fold]', function (b) { b.addEventListener('click', function () { var n = b.getAttribute('data-fold'); folded[n] = b.getAttribute('aria-expanded') === 'true'; inspect(sel); }); });
     each('[data-slide]', function (r) {
       r.addEventListener('input', function () {
         var k = r.getAttribute('data-slide'), f = fieldOf(p, k), v = parseFloat(r.value), n = $('n-' + k);
         if (n) n.value = fmt(f, v);
         r.setAttribute('aria-valuetext', fmt(f, v) + (f.unit || ''));
-        set(p.id, k, v, true);
+        put(f, k, v);
       });
     });
     each('[data-num]', function (n) {
       n.addEventListener('change', function () {
         var k = n.getAttribute('data-num'), f = fieldOf(p, k), v = parseFloat(n.value);
-        if (!isFinite(v)) { n.value = fmt(f, p[k]); return; }
+        if (!isFinite(v)) { n.value = fmt(f, now(f, k)); return; }
         v = Math.max(f.min, Math.min(f.max, v));
         n.value = fmt(f, v); var r = $('r-' + k); if (r) r.value = v;
-        set(p.id, k, v, true);
+        put(f, k, v);
       });
     });
     each('[data-open]', function (b) {
@@ -298,7 +338,24 @@ var Editor = (function () {
     });
     anchor.closest('.irow').appendChild(el);
     pickerEl = el;
+    float(el, anchor.closest('.ofield, .cfield') || anchor);
     return el;
+  }
+  /* The popover floats over the panels rather than inside the Inspector's scroll: at a Chromebook's
+     768 pixels the Inspector can be 190 tall with the Chat under it, and a list drawn inside it showed
+     two sprites and a clipped third. It opens below the field, or above it when there is more room
+     there, and closes if the Inspector scrolls out from under it. */
+  function float(el, field) {
+    var r = field.getBoundingClientRect(), below = innerHeight - r.bottom - 8, above = r.top - 8;
+    var up = below < 220 && above > below, room = Math.min(280, up ? above : below);
+    el.style.position = 'fixed'; el.style.left = r.left + 'px'; el.style.width = r.width + 'px'; el.style.right = 'auto';
+    el.style.maxHeight = room + 'px';
+    if (up) { el.style.top = 'auto'; el.style.bottom = (innerHeight - r.top + 2) + 'px'; }
+    else el.style.top = (r.bottom + 2) + 'px';
+    setTimeout(function () { addEventListener('scroll', function onScroll(e) {
+      if (el.contains(e.target)) return;   // scrolling the list itself is fine
+      removeEventListener('scroll', onScroll, true); if (pickerEl === el) closePicker();
+    }, true); }, 0);
   }
   function picker(anchor, p, f, kind) {
     var keys = kind === 'sprite' ? Schema.spritesFor(f.of) : Object.keys(Schema.SOUNDS);
@@ -330,7 +387,7 @@ var Editor = (function () {
   var held = null, dragging = null;   // { kind: 'sprite'|'sound', key, of }
   function fits(slot, a) {
     if (slot.getAttribute('data-kind') !== a.kind) return false;
-    return a.kind !== 'sprite' || slot.getAttribute('data-of') === a.of;
+    return a.kind !== 'sprite' || Schema.fits(a.key, slot.getAttribute('data-of'));
   }
   function hold(a) {
     held = held && held.key === a.key ? null : a;
@@ -357,7 +414,7 @@ var Editor = (function () {
     if (!Runner.isPlaying()) Project.save();
     if (key === 'sound' && value) previewSound(value);
     if (key === 'look' || key === 'shape') setTimeout(Runner.askThumbs, 600);   // the Project window shows the new picture
-    if ((!quiet || replay) && selected === id) inspect(id);   // repaint the open Inspector; never open one the kid didn't ask for
+    if ((!quiet || replay) && selected && refOf(selected).id === id) inspect(selected);   // repaint the open Inspector; never open one the kid didn't ask for
     cueDone(id + '.' + key);
     tree();
     emit('set', { id: id, key: key, value: value });
@@ -371,7 +428,8 @@ var Editor = (function () {
 
   /* ---------- Undo and Redo ---------- */
   var undos = [], redos = [], playMark = 0;
-  var WORD = { solid: 'Box Collider', hurts: 'Hazard', look: 'Sprite', sound: 'Clip', size: 'Scale', tint: 'Color', shape: 'hero', gravityScale: 'Gravity Scale', jump: 'Jump Force', w: 'Width' };
+  var WORD = { solid: 'Box Collider', hurts: 'Hazard', look: 'Sprite', sound: 'Clip', size: 'Scale', tint: 'Color', shape: 'hero', gravityScale: 'Gravity Scale', jump: 'Jump Force', w: 'Width',
+               x: 'Position', y: 'Position', spots: 'Position', pieces: 'Position' };
   function record(id, key, before, after, quiet) {
     var last = undos[undos.length - 1], t = Date.now();
     // one slider drag is one step, not forty
@@ -444,7 +502,8 @@ var Editor = (function () {
     Array.prototype.forEach.call(document.querySelectorAll('#tree .cue, #inspBody .cue'), function (el) { el.classList.remove('cue'); });
     if (!cueing || cueing === 'play' || cueing === 'stop') return;
     var bits = cueing.split('.'), id = bits[0], key = bits[1], el = null;
-    if (key && selected === id) {
+    var on = selected && refOf(selected).id;
+    if (key && on === id) {
       el = $('inspBody').querySelector('[data-key="c:' + key + '"], [data-key="slot:' + key + '"], [data-key="r:' + key + '"], [data-key="color:' + key + '"]');
       if (el) el = el.closest('.ofield') || (el.type === 'range' && el.closest('.irow')) || el;
     } else el = $('tree').querySelector('[data-key="part:' + id + '"]');
@@ -452,7 +511,7 @@ var Editor = (function () {
     el.classList.add('cue');
     // a cue below the fold is no cue (the Clip slot sat under the chat in a short Inspector): the
     // first time a place is lit, it is scrolled into view; a repaint of the same place leaves it be
-    var at = (key && selected === id ? 'insp:' : 'tree:') + cueing;
+    var at = (key && on === id ? 'insp:' : 'tree:') + cueing;
     if (at !== cuedAt) { cuedAt = at; el.scrollIntoView({ block: 'nearest', behavior: window.matchMedia && matchMedia('(prefers-reduced-motion: reduce)').matches ? 'auto' : 'smooth' }); }
   }
   var cuedAt = null;
@@ -1087,7 +1146,7 @@ var Editor = (function () {
   }
 
   return { init: init, on: on, openDock: openDock, reveal: reveal, tree: tree, allow: allow, select: select,
-           inspect: inspect, closeInspector: closeInspector, set: set, togglePlay: togglePlay, cue: cue, point: point,
+           inspect: inspect, closeInspector: closeInspector, set: set, place: place, refOf: refOf, togglePlay: togglePlay, cue: cue, point: point,
            paintPlay: paintPlay, me: me, setProjectName: setProjectName, stars: stars, project: paintProject, undo: undo, redo: redo,
            selected: function () { return selected; }, allowed: function () { return allowed; } };
 })();

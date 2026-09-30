@@ -18,9 +18,21 @@
    EVERY PART HAS THE SAME SHAPE (Jay, 2026-09-29: flipping between parts, the Inspector "looks wildly
    different from one area to the next"). So every game object starts with a Transform, Position X
    and Y, the way Unity's always does; components run Transform, Sprite Renderer, physics, sound,
-   scripts; and a component the story hasn't opened is drawn as a locked header, not left out.
-   A `readonly` field is shown and never set: the level's code places the floor, so its position is
-   read from the part (`get`) and is not in rules(), where nothing (the AI included) can change it.
+   scripts. A component the story hasn't opened yet is drawn folded, not left out and not locked
+   (Jay, Sept 30: "the inspector should allow you to manually configure several things if you want
+   to"): the kid can open and set anything; the story's cue says which one it is asking about, and a
+   ticket fixed early closes itself (quest.js, fixed_when).
+
+   EVERY THING IN THE SCENE CAN BE MOVED (Jay, Sept 30: "not sure why i cannot move the position of
+   the coins. Also, the coins should appear as separate objects shouldnt they?"). A part draws one
+   thing or several: the Coins a coin at each of its `spots`, a floor a block for each of its
+   `pieces` ([x, width] or [x, width, y]; y is the part's own when left out). A part with several is
+   a Unity prefab and its instances: each thing is its own row in the Hierarchy ("Coin (1)"), with
+   its own Position, and they share everything else, so setting the Clip on one sets it on every
+   coin. The part's own row moves them all together. things(), where() and moveTo() below are the
+   one account of it: the Inspector, the Scene view and the drag all go through them. A `place`
+   field (Position X, Position Y, a floor's Width) is one of those and is not in rules(): moving
+   things stays the kid's job, and the Builder's in code.
 
    THE ART IS CODE-DRAWN (Jay, 2026-09-28: lay off the Kenney sprites). Each sprite here is drawn by
    the game's own code (starter/game.js, SPRITES), so the kid's code owns its look and the Builder can
@@ -41,13 +53,22 @@ var Schema = (function () {
     buzz: ['Angry buzz', 'sfx-error.ogg']
   };
 
+  /* WHICH SPRITE FITS WHICH SLOT. Any object's picture goes on any object, as in Unity (a star for a
+     coin, stone for the lava, a gem for the Player). Two stay home: a background is the size of the
+     level and drawn behind everything, and Your hero is drawn from its shape, for the Player only. */
+  function fits(key, of) {
+    var s = SPRITES[key]; if (!s) return false;
+    if (s[1] === 'level' || of === 'level') return s[1] === of;
+    return s[1] !== 'player' || of === 'player';
+  }
+
   function num(key, label, tip, min, max, step, unit) { return { key: key, type: 'number', label: label, tip: tip, min: min, max: max, step: step, unit: unit || '' }; }
   function gated(f, gate) { f.gate = gate; return f; }
-  function ro(key, label, get) { return { key: key, type: 'number', readonly: true, label: label, step: 1, get: get, tip: label + ': set by the level. Ask the Builder to move it' }; }
-  function least(list, i) { return Math.min.apply(null, list.map(function (q) { return q[i]; })); }
-  var PLACED = {
-    x: ro('x', 'Position X', function (p) { return p.pieces ? least(p.pieces, 0) : p.spots ? least(p.spots, 0) : p.x; }),
-    y: ro('y', 'Position Y', function (p) { return p.spots ? least(p.spots, 1) : p.y; })
+  function placed(f, one) { f.place = true; if (one) f.one = true; return f; }   // one: a single thing's, not the group's
+  var PLACE = {
+    x: placed(num('x', 'Position X', 'Position X: left to right, in pixels', 0, 960, 8)),
+    y: placed(num('y', 'Position Y', 'Position Y: top to bottom, in pixels', 0, 540, 8)),
+    w: placed(num('w', 'Width', 'Width: how wide it is, in pixels', 32, 960, 16), true)
   };
   var KINDS = {
     level: [
@@ -74,7 +95,7 @@ var Schema = (function () {
       ] }
     ],
     floor: [
-      { name: 'Transform', icon: 'i-cube', fields: [PLACED.x, PLACED.y] },
+      { name: 'Transform', icon: 'i-cube', fields: [PLACE.x, PLACE.y, PLACE.w] },
       { name: 'Sprite Renderer', icon: 'i-image', gate: 'floorArt', fields: [
         { key: 'look', type: 'sprite', of: 'floor', label: 'Sprite', tip: 'Sprite: the picture this part is drawn with' },
         { key: 'tint', type: 'color', label: 'Color', tip: 'Color: tints the picture' }
@@ -83,7 +104,7 @@ var Schema = (function () {
         on: 'Things stand on it.', off: 'Things fall through.' }
     ],
     lava: [
-      { name: 'Transform', icon: 'i-cube', fields: [PLACED.x, PLACED.y,
+      { name: 'Transform', icon: 'i-cube', fields: [PLACE.x, PLACE.y,
         gated(num('w', 'Width', 'Width: how wide the lava is, in pixels', 32, 320, 16), 'lavaSize')
       ] },
       { name: 'Sprite Renderer', icon: 'i-image', gate: 'lavaArt', fields: [
@@ -94,7 +115,7 @@ var Schema = (function () {
         on: 'Touching it sends you back.', off: 'It’s just a floor.' }
     ],
     coin: [
-      { name: 'Transform', icon: 'i-cube', fields: [PLACED.x, PLACED.y,
+      { name: 'Transform', icon: 'i-cube', fields: [PLACE.x, PLACE.y,
         gated(num('size', 'Scale', 'Scale: how big the part is. 1 is its normal size', 0.5, 3, 0.1, '×'), 'coinSize')
       ] },
       { name: 'Sprite Renderer', icon: 'i-image', gate: 'coinArt', fields: [
@@ -112,14 +133,54 @@ var Schema = (function () {
   var COLORS = ['#ffffff', '#ffd75e', '#ff8a65', '#ef5350', '#ec6fcf', '#9c7bff', '#4fc3f7', '#4dd0a8', '#9be36f', '#8d6e63', '#9e9e9e', '#37474f'];
 
   function components(kind) { return KINDS[kind] || []; }
-  function spritesFor(kind) { return Object.keys(SPRITES).filter(function (k) { return SPRITES[k][1] === kind; }); }
+  /* The sprites a slot takes: the ones made for it first, then the rest that fit. */
+  function spritesFor(of) {
+    var all = Object.keys(SPRITES).filter(function (k) { return fits(k, of); });
+    return all.filter(function (k) { return SPRITES[k][1] === of; }).concat(all.filter(function (k) { return SPRITES[k][1] !== of; }));
+  }
+
+  /* ---------- where things are (the header's "every thing in the scene can be moved") ---------- */
+  /* The things a part draws, each { x, y } (and w for a floor's block), or null for a part that is
+     one thing at its own x and y (the Player, the lava). */
+  function things(p) {
+    if (!p) return null;
+    if (p.kind === 'coin' && Array.isArray(p.spots)) return p.spots.map(function (s) { return { x: s[0], y: s[1] }; });
+    if (p.kind === 'floor' && Array.isArray(p.pieces)) return p.pieces.map(function (q) { return { x: q[0], y: typeof q[2] === 'number' ? q[2] : p.y, w: q[1] }; });
+    return null;
+  }
+  /* A part with several things is a prefab: its things are the Hierarchy's rows under it. */
+  function many(p) { var t = things(p); return !!t && t.length > 1; }
+  function childName(p, i) { return (p.kind === 'coin' ? 'Coin' : p.name) + ' (' + (i + 1) + ')'; }
+  /* Where thing i is; i < 0 is the whole part, at its things' top-left corner. */
+  function where(p, i) {
+    var t = things(p);
+    if (!t) return { x: p.x, y: p.y, w: p.w };
+    if (t.length === 1) i = 0;
+    if (i >= 0) return t[i] || null;
+    return { x: Math.min.apply(null, t.map(function (q) { return q.x; })), y: Math.min.apply(null, t.map(function (q) { return q.y; })) };
+  }
+  /* The settings that put thing i (or the whole part, i < 0) at `to` ({ x, y, w }, any of them), as
+     [key, value] pairs for Editor.set. Several things are one setting, a new list (never the old one
+     changed, so Undo keeps what it was); the whole part moves every thing by the same amount. */
+  function moveTo(p, i, to) {
+    var t = things(p);
+    if (!t) return Object.keys(to).filter(function (k) { return p[k] !== to[k]; }).map(function (k) { return [k, to[k]]; });
+    if (t.length === 1) i = 0;
+    var at = where(p, i), dx = 'x' in to ? to.x - at.x : 0, dy = 'y' in to ? to.y - at.y : 0;
+    t = t.map(function (q, n) {
+      if (i >= 0 && n !== i) return q;
+      return { x: q.x + dx, y: q.y + dy, w: n === i && 'w' in to ? to.w : q.w };
+    });
+    if (p.kind === 'coin') return [['spots', t.map(function (q) { return [q.x, q.y]; })]];
+    return [['pieces', t.map(function (q) { return q.y === p.y ? [q.x, q.w] : [q.x, q.w, q.y]; })]];
+  }
   /* Everything a character may set on a part, as field → rule. A part the Builder added (a kind
      with no schema) may have its plain number and on/off settings changed, within reason. */
   function rules(p) {
     var out = {};
     components(p.kind).forEach(function (c) {
       if (c.toggle) out[c.toggle] = { type: 'bool' };
-      (c.fields || []).forEach(function (f) { if (!f.readonly) out[f.key] = f; });
+      (c.fields || []).forEach(function (f) { if (!f.place) out[f.key] = f; });
     });
     if (!KINDS[p.kind]) Object.keys(p).forEach(function (k) {
       if (/^(id|name|kind|note)$/.test(k)) return;
@@ -133,7 +194,7 @@ var Schema = (function () {
     if (!r) return false;
     if (r.type === 'bool') return typeof value === 'boolean';
     if (r.type === 'number') return typeof value === 'number' && isFinite(value) && value >= r.min && value <= r.max;
-    if (r.type === 'sprite') return value === null || (SPRITES[value] && SPRITES[value][1] === r.of) || false;
+    if (r.type === 'sprite') return value === null || fits(value, r.of);
     if (r.type === 'sound') return value === null || !!SOUNDS[value];
     if (r.type === 'color') return value === null || /^#[0-9a-f]{6}$/i.test(String(value));
     return false;
@@ -166,5 +227,6 @@ var Schema = (function () {
   }
 
   return { SPRITES: SPRITES, SOUNDS: SOUNDS, KINDS: KINDS, GATES: GATES, COLORS: COLORS,
-           components: components, spritesFor: spritesFor, rules: rules, can: can, describe: describe, label: label };
+           components: components, spritesFor: spritesFor, fits: fits, rules: rules, can: can, describe: describe, label: label,
+           things: things, many: many, childName: childName, where: where, moveTo: moveTo };
 })();

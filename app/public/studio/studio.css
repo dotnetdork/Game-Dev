@@ -260,6 +260,14 @@ body.resizing-x iframe, body.resizing-y iframe { pointer-events: none; }   /* th
 .tree li button small { margin-left: auto; color: var(--ink-3); font-size: 12px; min-width: 0; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
 .tree li button[aria-pressed="true"] small { color: var(--ink-2); }
 .tree li.snap button { animation: snap .6s var(--ease) both; }
+/* a prefab's row (editor.js, tree): its arrow sits in the row's indent, a target of its own; its
+   things are indented once more under it */
+.tree li.parent { position: relative; }
+.tree li.parent > .twisty { position: absolute; left: 4px; top: 0; width: 26px; min-height: 44px; padding: 0; justify-content: center; border-radius: 5px; z-index: 1; }
+.tree li.parent > .twisty svg { width: 12px; height: 12px; transform: rotate(-90deg); transition: transform .2s var(--ease); }
+.tree li.parent > .twisty[aria-expanded="true"] svg { transform: none; }
+.tree li.parent > .twisty:hover { background: var(--hover); }
+.tree li.grand button { padding-left: 52px; }
 @keyframes snap { from { transform: translateX(-14px); opacity: 0; background: var(--accent-soft); } 60% { background: var(--accent-soft); } to { transform: none; opacity: 1; } }
 
 /* ---------- the Game view ---------- */
@@ -272,6 +280,10 @@ body.resizing-x iframe, body.resizing-y iframe { pointer-events: none; }   /* th
 .gamebody { flex: 1; display: flex; background: var(--game-well); position: relative; min-height: 0; }
 .stage { flex: 1; min-width: 0; position: relative; }
 .stage iframe { position: absolute; inset: 0; width: 100%; height: 100%; border: 0; display: block; background: var(--game-well); }
+/* the picked part's outline over the Game view: the same 960×540 box the game fits and centres */
+.pickover { position: absolute; inset: 0; width: 100%; height: 100%; pointer-events: none; overflow: visible; }
+.pickover rect { fill: rgba(234, 241, 248, .06); stroke: var(--focus); stroke-width: 2; vector-effect: non-scaling-stroke; }
+.gamebody.playing .pickover { display: none; }
 .gamebody.playing::after { content: ''; position: absolute; inset: 0; box-shadow: inset 0 0 0 3px var(--accent); pointer-events: none; }
 /* the centre's tabs (views.js): Scene, Game, game.js. The one showing is the panel colour; the
    others sit back on the frame until hovered. */
@@ -296,9 +308,9 @@ body.resizing-x iframe, body.resizing-y iframe { pointer-events: none; }   /* th
 .scenesvg .gridover { opacity: .35; pointer-events: none; }
 .scenesvg .bounds { fill: none; stroke: var(--grip); stroke-width: 2; stroke-dasharray: 8 6; vector-effect: non-scaling-stroke; pointer-events: none; }
 .spart { cursor: pointer; }
-.spart.movable.on { cursor: move; }
+.spart.on { cursor: move; }
 .spart .hit { fill: transparent; }
-.spart:hover .hit { fill: rgba(234, 241, 248, .08); }
+.spart .hit:hover { fill: rgba(234, 241, 248, .08); }
 .spart .sel { fill: none; stroke: var(--focus); stroke-width: 2; vector-effect: non-scaling-stroke; pointer-events: none; }
 .spart .gizmo { fill: none; stroke: var(--good); stroke-width: 2; vector-effect: non-scaling-stroke; pointer-events: none; }
 .scenehint { position: absolute; left: 12px; bottom: 12px; margin: 0; max-width: calc(100% - 24px); padding: 6px 10px; border-radius: 8px;
@@ -632,13 +644,6 @@ button.qopt:hover .n, button.qopt:focus-visible .n { background: var(--accent); 
 .fold:hover { color: var(--ink); background: var(--hover); }
 .fold svg { transition: transform .2s var(--ease); }
 .comp.folded .fold svg { transform: rotate(-90deg); }
-/* a component the story hasn't opened: there, but locked */
-.comp.locked { background: var(--panel); color: var(--ink-3); }
-.comp.locked .lock { width: 32px; display: grid; place-items: center; flex: none; }
-.comp.locked .lock svg { width: 15px; height: 15px; }
-.comp.locked .cicon { color: var(--ink-3); }
-.comp.locked strong { font-weight: 500; }
-.comp.locked:focus-visible { outline-offset: -2px; }
 .cbox { display: inline-flex; align-items: center; gap: 9px; min-height: 44px; padding: 0 8px 0 4px; border: 0; background: transparent;
         color: var(--ink); cursor: pointer; border-radius: 5px; text-align: left; min-width: 0; }
 .cbox:hover { background: var(--hover); }
@@ -655,6 +660,7 @@ button.qopt:hover .n, button.qopt:focus-visible .n { background: var(--accent); 
 .irow label, .irow .lbl { color: var(--ink-2); }
 .irow .lbl:focus-visible { outline-offset: 1px; border-radius: 3px; }
 .inote { color: var(--ink-2); font-size: 14px; padding: 10px 2px 4px; margin: 0; line-height: 1.45; }
+.inote.shared { padding: 8px 0 2px; font-size: 13px; }   /* a prefab's rule, under the object's name */
 
 /* a number: the slider for feel, the box for an exact value, as Unity's drag-label and field */
 .rng { display: flex; align-items: center; gap: 8px; min-width: 0; }
@@ -667,9 +673,6 @@ button.qopt:hover .n, button.qopt:focus-visible .n { background: var(--accent); 
         color: var(--ink); font-size: 14px; font-weight: 600; text-align: right; font-variant-numeric: tabular-nums; -moz-appearance: textfield; }
 .nbox::-webkit-inner-spin-button, .nbox::-webkit-outer-spin-button { -webkit-appearance: none; margin: 0; }
 .nbox:focus-visible { outline-offset: 0; border-color: var(--ink-2); }
-/* a value that can't be changed here: the box, flat, at the row's end */
-.irow.fixed .rng { justify-content: flex-end; }
-output.nbox { display: inline-grid; align-items: center; justify-content: end; border-color: var(--line-soft); background: transparent; color: var(--ink-2); font-weight: 500; }
 
 /* an object field: Unity's slot for a sprite or a clip. Tap it (or the target) for the picker;
    drag an asset in from the Project window, or hold one there and tap the slot (tap-to-slot) */

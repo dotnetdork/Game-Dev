@@ -110,7 +110,7 @@ var Builder = (function () {
   function repaint() {
     Editor.tree();
     var sel = Editor.selected && Editor.selected();
-    if (sel) { if (Project.part(sel)) Editor.inspect(sel); else Editor.closeInspector(); }
+    if (sel && !Editor.inspect(sel)) Editor.closeInspector();   // gone: the Builder took it away
   }
   function restore(entry) {
     var st = Project.get();
