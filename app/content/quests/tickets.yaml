@@ -86,7 +86,9 @@ tickets:
 
   - id: harmless-lava
     title: The lava doesn’t hurt the player
-    says: The lava doesn’t hurt
+    # both ways a kid says it: "there gap in middle but it do nothing" was filed as a new ticket
+    # beside this one, by an AI that knew it was lava when the kid didn't (student log, Sept 30)
+    says: The lava doesn’t hurt, or the gap in the middle does nothing
     detail: The dip between the coins is meant to be lava, but touching it does nothing.
     done: Touching the lava sends the player back to the start.
     should_ask: In most games, what happens when you touch lava?

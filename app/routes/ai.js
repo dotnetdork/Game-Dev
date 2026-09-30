@@ -457,7 +457,11 @@ function mount(app, deps) {
       }
       catch (e) { return res.status(502).json({ reply: 'The mentor is not reachable right now (' + e.message + ').' }); }
       const m = extractJSON(raw) || { reply: String(raw || '').trim() };
-      const choose = Number.isInteger(m.choose) && m.choose >= 1 && m.choose <= 8 ? m.choose : null;
+      /* `choose` may be a list when one message answers with several: "I fall in lava and dont get hurt.
+         I grab coin but get nothing for coin. I fell off the level" is three tickets (Jay's playthrough,
+         Sept 30). The first is `choose`, as before; the rest are `also`. */
+      const picks = (Array.isArray(m.choose) ? m.choose : [m.choose]).filter(function (n, i, a) { return Number.isInteger(n) && n >= 1 && n <= 8 && a.indexOf(n) === i; }).slice(0, 4);
+      const choose = picks[0] || null, also = picks.slice(1);
       const actions = Array.isArray(m.actions) ? m.actions.slice(0, 6).map(function (a) {
         const v = a && a.value;
         return { part: String((a && a.part) || '').slice(0, 24), key: String((a && a.key) || '').slice(0, 24),
@@ -485,8 +489,8 @@ function mount(app, deps) {
          never sent to the page. "It isn't comprehending me" is answered here, not guessed at. */
       tel.detail('mentor-turn', { who: seen.who, said: message, where: seen.where, studio: String((req.body && req.body.studio) || '').slice(0, 12000),
         raw: String(raw || '').slice(0, 6000), parsed: !!extractJSON(raw), read: m.read || null, reply: m.reply || null, fellBack: !String(m.reply || '').trim(),
-        choose: choose, actions: actions, build: build, hero: hero, ticket: ticket, ms: Date.now() - t0 });
-      return res.json({ reply: String(m.reply || '').trim().slice(0, 800) || 'Hmm, say that another way?', choose: choose, actions: actions,
+        choose: choose, also: also, actions: actions, build: build, hero: hero, ticket: ticket, ms: Date.now() - t0 });
+      return res.json({ reply: String(m.reply || '').trim().slice(0, 800) || 'Hmm, say that another way?', choose: choose, also: also, actions: actions,
         build: build, hero: hero, ticket: ticket });
     }
 

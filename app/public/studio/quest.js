@@ -616,7 +616,7 @@ var Quest = (function () {
        answers"; the point is to find out what THEY found). "idk" or Hint gives the beat's hints,
        which say where to look and how to put it, never what is broken (chat.js, answer). */
     // an open question: said, with an example that isn't one of the problems (chat.js, expect)
-    say([fill(a.text)], who);
+    say([f.early && f.early.length ? 'You told me what you found while you played. Let me write it up.' : fill(a.text)], who);
     /* After the first finding the box says how to finish: in Jay's playthrough (Sept 30) the Mentor
        said "that's a ticket now" and waited, and nothing said that "that's all" was the way on. */
     var more = function () { return Object.keys(S.tickets).length > before; };
@@ -652,7 +652,7 @@ var Quest = (function () {
     /* On the first day the level is grey boxes, and nothing says which box is what (Jay, Sept 30:
        "theres no way to know thats lava"). The Mentor may say what a thing is, never what's wrong
        with it, so the AI is told the names, and the script names the two a kid can't guess. */
-    var LEVEL = 'The level is all grey today, so the kid may not know what things are: the grey circles are coins; the dip in the floor between the coins is the lava; the grey block standing on the left is the player. Say what a thing is only when they mention it, never to point them at something new. They are 10 and write short and misspell: "i fall", "i walk den i fell", "no soud" say what happened, and what happened is all a report needs. Never ask why or what caused it: that is the fix, and working it out is the shift\'s job.';
+    var LEVEL = 'The level is all grey today, so the kid may not know what things are: the grey circles are coins; the dip in the floor between the coins is the lava; the grey block standing on the left is the player. So a gap, dip, hole or pit in the middle that does nothing IS the lava problem, however they put it. Say what a thing is only when they mention it, never to point them at something new. They are 10 and write short and misspell: "i fall", "i walk den i fell", "no soud" say what happened, and what happened is all a report needs. Never ask why or what caused it: that is the fix, and working it out is the shift\'s job.';
     var NAMES = [[/\b(gap|dip|pit|dent|low(er)? (bit|part))\b/i, 'That dip between the coins is meant to be lava.'], [/\b(dots?|circles?|balls?|round things?)\b/i, 'Those circles are coins.']];
     function named(said) { var t = said.join(' '), n = NAMES.filter(function (x) { return x[0].test(t); })[0]; return n ? n[1] + ' ' : ''; }
     /* A dig that names a planned thing is about that ticket, the same as a nudge: "There are dots ...
@@ -756,7 +756,7 @@ var Quest = (function () {
         .then(function (res) { if (frame() !== f) return; onward(lead((res && res.reply) || 'Yes, that’s it.')); });
       return false;
     }
-    Chat.expect(function () { return pending && pending.kind === 'should' ? 'Like “it should…”' : pending ? 'Say what you saw, heard or did…' : more() ? 'Something else you noticed…' : 'Like “the jump feels floaty”…'; }, function (text) {
+    var hear = function (text) {
       if (frame() !== f) return;
       if (pending && pending.kind === 'should') {
         // "oh and the lava doesn't hurt" is a new finding, not the answer to what should have happened
@@ -768,7 +768,10 @@ var Quest = (function () {
       /* The answer to a nudge: "nothing", to what did you hear, is the finding. So is an answer in that
          ticket's own words: "they are both grey", to the coins-and-lava nudge, was filed by the AI as a
          new ticket, "Coins and lava look the same", beside the grey-box one it was (Jay, Sept 30). */
-      var aimed = aim && !S.tickets[aim.id] && !IDK.test(text) && ((aim.nudge_yes && new RegExp('\\b(?:' + aim.nudge_yes + ')', 'i').test(text)) || concrete(text).some(function (t) { return t.id === aim.id; }));
+      /* ...unless it names another thing: "coin do nothing", with the lava as the aim, filed the lava on
+         its "nothing" (Jay's playthrough, Sept 30). */
+      var names = about(text);
+      var aimed = aim && !S.tickets[aim.id] && !IDK.test(text) && (!names || names === aim.id) && ((aim.nudge_yes && new RegExp('\\b(?:' + aim.nudge_yes + ')', 'i').test(text)) || concrete(text).some(function (t) { return t.id === aim.id; }));
       if (aimed) {
         var all = (pending.said || []).concat([text]).join('. '), own = all.trim().length >= 12;   // "nothing" alone would read oddly on the ticket's page
         return filed([aim], own ? all : null, null, own ? null : 'You');
@@ -819,7 +822,7 @@ var Quest = (function () {
       var aimAt = aim ? unfiled.indexOf(aim) + 1 : 0;
       mentor(words, hidden, who, 'TASK: the kid is reporting something they found while playing.' + (aim ? ' You just asked them: "' + aim.nudge + '"' + (aimAt ? ' That question is about problem ' + aimAt + ': if their answer shows it, even in part, choose ' + aimAt + ', never a new ticket.' : '') : '') + ' Everything they said about it: "' + said.join(' / ') + '". ' + LEVEL + (filedNow ? ' Already on the board: ' + filedNow + '. Only say it is one of those if it clearly is.' : '')
         + ' The studio planned the listed problems, but a kid finds real ones nobody planned, and those count just as much. Decide which it is.'
-        + ' (1) It clearly describes one of the listed problems: choose it and reply in one short line. What happened is enough, however short or misspelled: "i fall" is the falling problem. Sharing a word is not enough, though: "it felt floaty when I was jumping over the gap" is about the jump, not the lava.'
+        + ' (1) It clearly describes one of the listed problems: choose it and reply in one short line. Several listed problems in one message: choose all of them, as a list ([1, 3]). What happened is enough, however short or misspelled: "i fall" is the falling problem. Sharing a word is not enough, though: "it felt floaty when I was jumping over the gap" is about the jump, not the lava.'
         + ' (2) A clear problem that is not listed (they said what went wrong): choose option ' + NEW + ' and fill `ticket`: a short board title in plain words ("The jump feels floaty"), the department that fixes it (engineering: how things move, collide and work; art: how things look; audio: sounds and music; design: whether it is fair, fun, too hard or too easy), `detail`, one sentence of what is wrong, and `done`, one sentence of how they will know it is fixed. Reply in one short line that says which department it goes to.'
         + ' Whichever you choose, never say what should happen instead ("coins and lava should look different"): the studio asks them that next, and it is theirs to say.'
         + ' (3) A wish for something new rather than something broken: choose option ' + IDEA + '.'
@@ -834,17 +837,23 @@ var Quest = (function () {
           if (c === OUT && more()) { wantsOut(); return; }
           if (c === NEW) { filedOwn(res.ticket || { title: said[0] }, words, res.reply); return; }
           if (c === IDEA) { idea(words); onward(res.reply || 'That’s a great idea for later. I saved it.'); return; }
-          if (c && unfiled[c - 1]) { filed([unfiled[c - 1]], words, res.reply); return; }
+          if (c && unfiled[c - 1]) { filed([c].concat(res.also || []).map(function (n) { return unfiled[n - 1]; }).filter(Boolean), words, res.reply); return; }
           /* The dig's aim comes from the kid's words before the AI's. "i fall" hit the floor ticket, the AI
              asked where and said the lava was the dip, and the lava became the aim; "no i just walk on norm
              floor den it hapenn" missed it and got "We'll come back to it" (Jay's playthrough, Sept 30).
              The AI's reply still counts when the kid's words name nothing ("Those circles are the coins.
              What happened?", about()). */
-          if (res && res.reply && /\?\s*["”]?\s*$/.test(res.reply)) { pending = { kind: 'dig', said: said, n: (pending && pending.kind === 'dig' ? pending.n : 0) + 1, aim: (aim && aim.id) || (fresh.length === 1 ? fresh[0].id : null) || about(said.join(' ') + ' ' + res.reply) }; log('report', { step: 'dig', by: 'ai', n: pending.n, aim: pending.aim }); say([res.reply], who); Chat.placeholder(); return; }
+          if (res && res.reply && /\?\s*["”]?\s*$/.test(res.reply)) { pending = { kind: 'dig', said: said, n: (pending && pending.kind === 'dig' ? pending.n : 0) + 1, aim: (aim && aim.id) || (fresh.length === 1 ? fresh[0].id : null) || about(res.reply) || (fresh.length ? null : about(said.join(' '))) }; log('report', { step: 'dig', by: 'ai', n: pending.n, aim: pending.aim }); say([res.reply], who); Chat.placeholder(); return; }
           if (aim) retry(); else dig(said);   // no question from the AI ("noted!"): the ladder asks its own
         });
       return false;   // still listening: returning false keeps the box expecting a finding (chat.js expect)
-    }, { who: who, takesHelp: function () { return !!pending; } });
+    };
+    Chat.expect(function () { return pending && pending.kind === 'should' ? 'Like “it should…”' : pending ? 'Say what you saw, heard or did…' : more() ? 'Something else you noticed…' : 'Like “the jump feels floaty”…'; }, hear, { who: who, takesHelp: function () { return !!pending; } });
+    /* What they already told us while playing is the report's start, not something to say again:
+       "I fall in lava and dont get hurt. I grab coin but get nothing for coin. I fell off the level",
+       typed during Play, got "three good finds!", and then "What was broken?" as if it hadn't been
+       said, and "I already said" (Jay's playthrough, Sept 30). typed() keeps it (f.early). */
+    if (f.early && f.early.length) { var early = f.early.join('. '); f.early = null; hear(early); }
     function finish(reply) {
       S.reported = true; save();
       say([reply || 'Great report. Those are your tickets now.'], who);
@@ -1235,6 +1244,14 @@ var Quest = (function () {
        back, asking again what the kid had just said. */
     var said = qOnScreen && !qOnScreen.typed ? answerFrom(text, qOnScreen.options) : -1;
     if (said >= 0) { Chat.choose(said + 1); return; }
+    /* A finding typed while testing, before the report asks for it: kept for the report (askFindings
+       starts from it), and nothing is claimed as written up yet. A question still goes to the AI. */
+    var fr = frame(), nb = fr && quest(fr).beats[fr.beat + 1];
+    if (nb && nb.ask && nb.ask.from === 'findings' && beat() && !beat().ask && !/\?\s*$/.test(text) && !/^\s*(what|where|why|how|who|when|can|is|are|do|does)\b/i.test(text)) {
+      fr.early = (fr.early || []).concat([text]);
+      say([Runner.isPlaying() ? 'Got it! Press Stop when you’re ready, and I’ll write that up.' : 'Got it! Keep testing, and press Stop when you’ve found something.'], who);
+      return;
+    }
     if (!aiUp()) {
       if (ASKS_FOR.test(text)) { say(['I can’t reach the studio’s AI right now, so I can’t build that yet.', 'I saved it to your Ideas so we don’t forget it.'], who); idea(text); }
       else if (frame() && beat() && beat().hints) giveHint('offline');
