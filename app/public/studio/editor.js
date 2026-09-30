@@ -74,6 +74,7 @@ var Editor = (function () {
         li.appendChild(b); ul.appendChild(li);
       });
     });
+    paintCue();
   }
 
   /* ---------- the Inspector ---------- */
@@ -197,6 +198,7 @@ var Editor = (function () {
 
   function select(id) {
     selected = selected === id ? null : id;
+    if (selected) cueDone(id);
     tree();
     if (selected) inspect(selected); else closeInspector();
     emit('select', id);
@@ -213,6 +215,7 @@ var Editor = (function () {
       $('inspBody').innerHTML = body(p);
       wire(p);
     });
+    paintCue();
     glow();
     openInspector();
   }
@@ -355,6 +358,7 @@ var Editor = (function () {
     if (key === 'sound' && value) previewSound(value);
     if (key === 'look' || key === 'shape') setTimeout(Runner.askThumbs, 600);   // the Project window shows the new picture
     if ((!quiet || replay) && selected === id) inspect(id);   // repaint the open Inspector; never open one the kid didn't ask for
+    cueDone(id + '.' + key);
     tree();
     emit('set', { id: id, key: key, value: value });
   }
@@ -416,7 +420,7 @@ var Editor = (function () {
       undos.length = Math.min(undos.length, playMark); redos = [];   // Stop just undid those
       if (selected) inspect(selected); tree();
     } else { playMark = undos.length; Runner.play(st.parts, UI.muted()); UI.sound('play'); played = true; linger(LINGER); }
-    cue(false);
+    if (cueing === 'play' || cueing === 'stop') cue(null);   // a part's cue outlives a test run
     paintPlay();
   }
   /* The buttons: Play starts (or carries on after Pause), Stop ends. Ctrl+P is Unity's toggle. */
@@ -424,8 +428,36 @@ var Editor = (function () {
   function stop() { if (Runner.isPlaying()) togglePlay(); }
   function togglePause() { if (!Runner.isPlaying()) return; Runner.pause(!Runner.isPaused()); paintPlay(); }
   function stepFrame() { Runner.step(); status('One frame on. Press Step again, or Pause to carry on'); }
-  /* cue('play') or cue('stop') pulses that button (the quest's `cue`); anything else stops both. */
-  function cue(which) { $('bPlay').classList.toggle('cue', which === 'play' || which === true); $('bStop').classList.toggle('cue', which === 'stop'); }
+  /* The quest's `cue`: the one thing to click next, pulsing (Jay, 2026-09-30: "how the play button
+     has the highlight, the floor tile should also have the highlight"). It is
+       - 'play' or 'stop': that button;
+       - a part ('tile'): its row in the Hierarchy;
+       - a part's setting ('tile.solid'): that control in the Inspector while the part is open there,
+         and the part's row until it is, so the way to it is lit whatever the kid has open.
+     A cue ends when it is done: the button pressed, the part picked, the setting changed. Anything
+     falsy clears it. tree() and inspect() rebuild their rows, so both call paintCue after. */
+  var cueing = null;
+  function cue(which) { cueing = which === true ? 'play' : which || null; cuedAt = null; paintCue(); }
+  function paintCue() {
+    $('bPlay').classList.toggle('cue', cueing === 'play');
+    $('bStop').classList.toggle('cue', cueing === 'stop');
+    Array.prototype.forEach.call(document.querySelectorAll('#tree .cue, #inspBody .cue'), function (el) { el.classList.remove('cue'); });
+    if (!cueing || cueing === 'play' || cueing === 'stop') return;
+    var bits = cueing.split('.'), id = bits[0], key = bits[1], el = null;
+    if (key && selected === id) {
+      el = $('inspBody').querySelector('[data-key="c:' + key + '"], [data-key="slot:' + key + '"], [data-key="r:' + key + '"], [data-key="color:' + key + '"]');
+      if (el) el = el.closest('.ofield') || (el.type === 'range' && el.closest('.irow')) || el;
+    } else el = $('tree').querySelector('[data-key="part:' + id + '"]');
+    if (!el) return;
+    el.classList.add('cue');
+    // a cue below the fold is no cue (the Clip slot sat under the chat in a short Inspector): the
+    // first time a place is lit, it is scrolled into view; a repaint of the same place leaves it be
+    var at = (key && selected === id ? 'insp:' : 'tree:') + cueing;
+    if (at !== cuedAt) { cuedAt = at; el.scrollIntoView({ block: 'nearest', behavior: window.matchMedia && matchMedia('(prefers-reduced-motion: reduce)').matches ? 'auto' : 'smooth' }); }
+  }
+  var cuedAt = null;
+  /* What the kid just did ends the cue it answers. */
+  function cueDone(what) { if (cueing && cueing === what) cue(null); }
 
   /* The game's keys, as keycaps in a strip at the bottom of the Game view (Jay, 2026-09-29: the keys
      were a line in the chat, "I'd rather that not be in the chat"). It is up before the first Play,

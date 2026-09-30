@@ -16,7 +16,7 @@ on:
 beats:
   - id: meet
     goal: Find the part you fell through
-    do: { reveal: [hierarchy], point: hierarchy, stop: true }
+    do: { reveal: [hierarchy], point: hierarchy, stop: true, cue: tile }
     say:
       - Hi @name, I’m the lead programmer! You fell through part of the floor, so let’s find out why.
     skip_if: { state: { tile.solid: true } }
@@ -27,12 +27,23 @@ beats:
       - Tap Floor tile in the Hierarchy.
     wait_for: { select: tile }
 
+  # Guided (Jay, Sept 30: "it should explain what they are seeing"): what the Inspector is, then a
+  # cue on the Ground to compare, then back to the tile with its setting lit. The kid still sees the
+  # difference for themselves; the cues only light the way there.
   - id: fix
     goal: Find out why the tile doesn’t hold you, and fix it
+    do: { cue: ground }
     say:
-      - Its settings are in the Inspector now. The Ground holds you up and this tile doesn’t, so what’s different?
+      - This is the Inspector. It lists the tile’s components, the pieces that make a part work. The Ground holds you and the tile doesn’t.
+    instruct: Tap the Ground to compare.
     skip_if: { state: { tile.solid: true } }
     on:
+      - when: { select: ground }
+        once: true
+        say:
+          - These are the Ground’s components. Which one is ticked here but not on the tile?
+        instruct: Now tap Floor tile again.
+        cue: tile.solid
       - when: { set: { part: tile, key: solid, value: false } }
         say:
           - That turned it off again.

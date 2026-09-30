@@ -9,9 +9,10 @@
 #
 # `title` is the ticket's name on the board, written the way a studio writes a bug report (Jay,
 # 2026-09-29: "more professional, clear title"); the kid's own words stay on the ticket's page, as
-# "You reported". `says` is the finding as a kid would put it: the "What did you find?" card offers
-# it once the kid has run into it (a card that listed problems they hadn't met would be narrating
-# them). `detail` is what the ticket's page says is wrong, and `done` how the kid will know it's fixed.
+# "You reported". `says` is the finding as a kid would put it, shown only to the AI as an example when
+# it matches a report to a problem. It is never offered to the kid: a card of findings gave the
+# answers away (Jay, 2026-09-30). `detail` is what the ticket's page says is wrong, and `done` how the
+# kid will know it's fixed.
 #
 # `quest` is the department shift that fixes it; `fixed_when` closes it early if the kid (or the AI)
 # fixes it first.

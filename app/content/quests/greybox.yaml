@@ -16,7 +16,7 @@ on:
 beats:
   - id: meet
     goal: Find the coins in the Hierarchy
-    do: { reveal: [hierarchy], point: hierarchy, stop: true }
+    do: { reveal: [hierarchy], point: hierarchy, stop: true, cue: coins }
     say:
       - Hi @name, I’m the art director! This greybox is plain blocks for testing, so a player can’t tell good from dangerous.
     skip_if: { state: { coins.look: set, lava.look: set } }
@@ -28,18 +28,21 @@ beats:
 
   - id: fix
     goal: Give the coins and the lava a picture
+    do: { cue: coins.look }
     say:
-      - The Sprite Renderer draws a part’s picture.
+      - The Inspector shows the Coins’ components. The Sprite Renderer draws a part’s picture, and this one has none yet.
     instruct: Give the coins a sprite, then the Lava.
     on:
       - when: { set: { part: coins, key: look }, state: { lava.look: null } }
         say:
           - Nice!
         instruct: Now the Lava.
+        cue: lava.look
       - when: { set: { part: lava, key: look }, state: { coins.look: null } }
         say:
           - Scary!
         instruct: Now the Coins.
+        cue: coins.look
     hints_after: 25
     hints:
       - Look for the Sprite Renderer in the Inspector.

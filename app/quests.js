@@ -92,7 +92,13 @@ function checkInstruct(list, where, x) {
   if (typeof x.instruct !== 'string' || !x.instruct.trim()) return problem(list, where, 'instruct is one line of what to do now');
   if (words(x.instruct) > INSTRUCT_WORDS) problem(list, where, 'instruct is at most ' + INSTRUCT_WORDS + ' words: "' + x.instruct.slice(0, 40) + '…"');
 }
-function checkCue(list, where, c) { if (c !== undefined && CUES.indexOf(c) < 0) problem(list, where, 'cue must be ' + CUES.join(' or ')); }
+/* A cue is the one thing to click next, pulsing (editor.js cue): Play or Stop, a part's row in the
+   Hierarchy (`tile`), or one of its settings in the Inspector (`tile.solid`). */
+function checkCue(list, where, c) {
+  if (c === undefined || CUES.indexOf(c) >= 0) return;
+  if (typeof c !== 'string') return problem(list, where, 'cue must be ' + CUES.join(' or ') + ', a part, or part.setting');
+  checkPartKey(list, where + ' cue', c);
+}
 
 function checkAsk(list, where, ask, beatIds) {
   if (!ask || typeof ask.text !== 'string') return problem(list, where, 'ask needs text');
@@ -195,9 +201,9 @@ function checkTickets(t, file) {
     if (k.found_by) checkCond(list, w + ' found_by', k.found_by);
     if (k.words !== undefined) { try { new RegExp(k.words, 'i'); } catch (e) { problem(list, w, 'words is not a valid pattern (' + e.message + ')'); } }
     if (k.fixed_when) checkCond(list, w + ' fixed_when', k.fixed_when);
-    /* `says` is the finding in a kid's words, offered on the "What did you find?" card once the kid
-       has run into it (never before: that would be narrating it). `detail` and `done` are the
-       ticket's page: what is wrong, and how the kid will know it's fixed. */
+    /* `says` is the finding in a kid's words, the AI's example when it matches a report (never shown
+       to the kid; tickets.yaml says why). `detail` and `done` are the ticket's page: what is wrong,
+       and how the kid will know it's fixed. */
     if (!k.says) problem(list, w, 'needs says: the finding as a kid would put it');
     if (!k.detail) problem(list, w, 'needs detail: what is wrong, for the ticket\'s page');
     if (!k.done) problem(list, w, 'needs done: how the kid will know it is fixed, for the ticket\'s page');

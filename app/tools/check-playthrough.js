@@ -214,27 +214,28 @@ async function launch() {
     check('and Play carries on after a pause', await p.evaluate(function () { return !Runner.isPaused() && Runner.isPlaying(); }));
     await p.click('#bStop');
     check('Stop stops', await p.evaluate(function () { return !Runner.isPlaying(); }) && await p.isDisabled('#bStop'));
-    await waitLog('What did you find?');
+    await waitLog('What was broken?');
     where = 'the first day: the report';
     await p.waitForTimeout(600);
     check('an open question has no card: it is a line, and the box says what to type, with an example', await p.isHidden('#qcard') && /^Like “/.test(await p.getAttribute('#say', 'placeholder')), await p.getAttribute('#say', 'placeholder'));
     await type('the coins dont make any sound');
     await p.waitForFunction(function () { return !!Quest.dev.state().tickets['silent-coins']; }, null, { timeout: 9000 });
+    await waitLog('say “that’s all”');
+    check('a finding lands on the board as it is said: the Tickets dock opens with it', await p.isVisible('#ticketList') && await p.$$eval('#ticketList button.tk', function (x) { return x.length; }) === 1);
+    check('and the Mentor says how to finish, in the chat and in the box', /^Another one, or “that’s all”/.test(await p.getAttribute('#say', 'placeholder')), await p.getAttribute('#say', 'placeholder'));
     await type('idk');
-    await p.waitForSelector('#qcard.typed .qopt', { timeout: 6000 });
-    const met = await options();
-    await shot(p, 'p01b-suggestions');
-    check('"idk" brings the suggestions: what she ran into and hasn\'t said (only that), in a kid\'s words, with Something else and Skip', /I fell through the floor/.test(met) && !/make a sound/.test(met) && /lava/i.test(met) === !!st.seen['harmless-lava']
-      && /Something else/.test(met) && await p.isVisible('#qSkip') && await p.isHidden('#sayForm'), met);
-    await opt('I fell through the floor');
+    await p.waitForFunction(function () { return !document.getElementById('hintBox').hidden; }, null, { timeout: 6000 });
+    const hintSaid = await p.$eval('#hintText', function (e) { return e.textContent; });
+    await shot(p, 'p01b-report-hint');
+    check('"idk" on the report is a hint, where to look, never the answers: no card, no problem named', await p.isHidden('#qcard') && /Think back/.test(hintSaid) && !/floor|grey|lava|coin/i.test(hintSaid), hintSaid);
+    await type('I fell through the floor');
     await p.waitForFunction(function () { return !!Quest.dev.state().tickets.floor; }, null, { timeout: 9000 });
-    check('tapping a suggestion is saying it, and the card goes, the chat box back', await p.isHidden('#qcard') && await p.isVisible('#sayForm'));
     await type('that’s all');
-    await p.waitForSelector('#qcard .qopt', { timeout: 12000 });
+    await waitLog('Tell me which one', 12000);
     st = await state();
     check('what she said became tickets, in her words, and the departments filed what she missed', st.tickets.floor.words === 'I fell through the floor' && st.tickets['silent-coins'].words === 'the coins dont make any sound'
       && ['greybox', 'harmless-lava'].every(function (id) { return st.tickets[id] && st.tickets[id].by && !st.tickets[id].words; }), JSON.stringify(st.tickets));
-    check('and nothing stalled: the day moved on to picking a ticket', /What should we fix first/.test(await p.$eval('#qcard', function (e) { return e.textContent; })));
+    check('and nothing stalled: the day moved on to picking a ticket, asked in the chat with no card', /What should we fix first/.test(await log()) && await p.isHidden('#qcard') && await p.isVisible('#sayForm'));
     const board = await p.$$eval('#ticketList button.tk', function (x) { return x.map(function (e) { return e.textContent; }); });
     check('the Tickets dock lists them as buttons, numbered, with a clear title and a status', board.length === 4
       && board.some(function (t) { return /^#\d.*Open.*The player falls through a floor tile$/.test(t); }), board.join(' | '));
@@ -245,10 +246,16 @@ async function launch() {
     check('Back goes back to the board', await p.isVisible('#ticketList') && await p.isHidden('#ticketPage'));
     const before = await p.$eval('#log', function (e) { return e.textContent; });
     where = 'the first day: the coins first';
-    await opt('Coins make no sound when grabbed'); await waitLog('talking to the sound designer');
-    check('the hand-over clears the chat: the Mentor\'s lines are gone, the sound designer\'s start', /What did you find/.test(before) && !/What did you find/.test(await p.$eval('#log', function (e) { return e.textContent; }))
+    await type('the coins one'); await waitLog('talking to the sound designer');
+    check('a ticket is picked by saying it: "the coins one" starts the Audio ticket', await p.evaluate(function () { return Quest.dev.state().tickets['silent-coins'].status; }) === 'doing');
+    check('the hand-over clears the chat: the Mentor\'s lines are gone, the sound designer\'s start', /What was broken/.test(before) && !/What was broken/.test(await p.$eval('#log', function (e) { return e.textContent; }))
       && await p.$eval('#dMentor', function (e) { return e.getAttribute('data-who'); }) === 'u');
+    await p.waitForSelector('#tree [data-key="part:coins"].cue', { timeout: 9000 });
+    check('the part to tap is lit in the Hierarchy, the way Play is', true);
     await row('Coins');
+    await waitLog('Inspector shows the Coins’ components');
+    check('picked, the cue moves to the setting to change, and the character says what the Inspector is', !(await p.$('#tree .cue')) && !!(await p.$('#inspBody .ofield[data-slot="sound"].cue')));
+    await shot(p, 'p01c-cue-inspector');
     await p.click('#inspBody .ofield[data-slot="sound"] .opick');
     await p.locator('.opicker .popt', { hasText: 'Sparkly ding' }).click();
     check('the Clip is an object field, filled from the picker', await p.evaluate(function () { return Project.part('coins').sound; }) === 'ding');
@@ -264,6 +271,12 @@ async function launch() {
     check('a change made while playing is undone on Stop', await p.evaluate(function () { return Project.part('coins').size; }) === 1);
     where = 'the first day: her hero and her game';
     await waitLog('What’s yours?', 9000);
+    await type('idk');
+    await p.waitForSelector('#qcard.typed .qopt', { timeout: 6000 });
+    await shot(p, 'p02b-hero-card');
+    check('"idk" on a question with no wrong answer (her hero) brings ideas, with Something else and Skip, and the chat box steps aside', /A dragon/.test(await options()) && /Something else/.test(await options()) && await p.isVisible('#qSkip') && await p.isHidden('#sayForm'), await options());
+    await p.click('#qSkip');
+    check('Skip puts the card away and the question stays open', await p.isHidden('#qcard') && await p.isVisible('#sayForm'));
     await type('a frog');
     await waitLog('called?', 12000);
     check('a frog becomes a frog-shaped hero (the script\'s own, with the AI off)', await p.evaluate(function () { var h = Project.part('player'); return h.look === 'hero' && h.shape && h.shape.body === 'wide'; }));
@@ -271,9 +284,10 @@ async function launch() {
     await type('Frog Lava Run'); await waitLog('Grab a coin.');
     check('the game is named from what she typed', await p.$eval('#projText', function (e) { return e.textContent; }) === 'Frog Lava Run');
     await runJump(3000); await waitLog('first star', 9000);
-    await p.waitForSelector('#qcard .qopt', { timeout: 9000 });
+    await waitLog('What should we fix next', 9000);
     where = 'the first day: the floor, later';
-    check('the floor ticket is still on the board after the coins were fixed first', /falls through a floor tile/.test(await options()), await options());
+    const left = await p.$$eval('#ticketList button.tk', function (x) { return x.map(function (e) { return e.textContent; }).join(' | '); });
+    check('the floor ticket is still on the board after the coins were fixed first', /Open.*falls through a floor tile/.test(left), left);
     await p.click('#ticketList [data-key="ticket:floor"]'); await p.click('#ticketPage [data-key="fix"]');   // picked from its page, not the card
     await waitLog('talking to the lead programmer');
     check('the floor\'s first task, with a Hint button', await task() === 'Find the part you fell through' && await p.isVisible('#taskHint'), await task());
@@ -283,8 +297,11 @@ async function launch() {
     check('the ticket\'s page shows it in progress, with the task and a hint', /In progress.*Your task now.*Find the part you fell through.*Stuck\? Get a hint/.test(await p.$eval('#ticketPage', function (e) { return e.textContent; })));
     await p.click('#ticketPage .back');
     check('the Scene view arrives with the Hierarchy', await p.isVisible('#vtScene'));
+    check('the Floor tile is lit in the Hierarchy', !!(await p.$('#tree [data-key="part:tile"].cue')));
     await p.click('#vtScene'); await p.click('#sceneSvg [data-part="tile"] .hit');
     check('the Scene view: tapping the tile picks it, as the Hierarchy does', await p.evaluate(function () { return Editor.selected(); }) === 'tile' && await p.isVisible('#inspBody'));
+    await waitLog('This is the Inspector');
+    check('picked, the lead programmer says what the Inspector is, and the Ground is lit to compare', !!(await p.$('#tree [data-key="part:ground"].cue')));
     await p.click('#inspBody .cbox'); await waitLog('walk across it');
     check('and a solid floor shows its collider there, in green', await p.$$eval('#sceneSvg [data-part="tile"] .gizmo', function (x) { return x.length; }) === 1);
     await p.click('#bPlay');

@@ -273,10 +273,13 @@ var Quest = (function () {
     return null;
   }
   function pickable(t) {
+    if (picking && picking.f !== frame()) picking = null;   // that question's step is over
+    if (picking && S.tickets[t.id] && S.tickets[t.id].status === 'open') return 0;   // asked in the chat (askTickets)
     var q = Chat.question();
     return q && q.picker === 'tickets' ? q.options.map(function (o) { return o.ticket; }).indexOf(t.id) : -1;
   }
   function fixTicket(t) {
+    if (picking && pickable(t) >= 0) return picking(t);
     var n = pickable(t);
     if (n >= 0) return Chat.pick(n);
     if (whyNot(t)) return status(whyNot(t));
@@ -296,6 +299,7 @@ var Quest = (function () {
     if (b.skip_if && matches(b.skip_if, null, f)) { f.beat++; save(); return enter(); }
     setTask(f, b);
     track('beat', {});
+    Editor.cue(null);   // a cue is the last step's; a beat lights only what it names
     act(b.do);
     if (b.do && b.do.recap) return recap(function () { go(f, b); });
     go(f, b);
@@ -477,12 +481,56 @@ var Quest = (function () {
       } };
     }), { who: who, keepOrder: !quiz });   // a quiz is shuffled; a plain choice keeps its authored order
   }
+  /* Which ticket? Said in the chat, not tapped (Jay, 2026-09-30: "It should trigger from the chat
+     conversation, they shouldn't have to press a multiple choice answer"). The kid names it any way
+     a kid would: its number ("2", "#2"), what it's about ("the floor one", "the grey"), its
+     department ("art"). Recognised here first, then by the AI; "Fix this one" on the ticket's page
+     answers too. The board is on screen beside the chat, so the choices are in view without a card;
+     "idk" or Hint brings them as one (chat.js, expect). */
+  var picking = null;
+  var STOP_WORDS = /^(the|a|an|and|of|is|are|when|with|that|this|one|player|level|whole|part|doesn’t|doesn't)$/i;
+  function ticketFrom(text, open) {
+    var n = String(text).match(/(?:^|[^\d])#?\s*(\d{1,2})(?!\d)/);
+    if (n) { var byNum = open.filter(function (t) { return String(number(t.id)) === n[1]; }); if (byNum.length) return byNum[0]; }
+    var scored = open.map(function (t) {
+      var s = 0;
+      if (t.words && new RegExp('\\b(?:' + t.words + ')', 'i').test(text)) s += 3;
+      if (new RegExp('\\b' + DEPT[t.department] + '\\b', 'i').test(text)) s += 2;
+      String(t.title).split(/[^A-Za-z’']+/).forEach(function (w) {
+        if (w.length > 3 && !STOP_WORDS.test(w) && new RegExp('\\b' + w.replace(/s$/, '') + 's?\\b', 'i').test(text)) s += 1;
+      });
+      return { t: t, s: s };
+    }).filter(function (x) { return x.s > 0; }).sort(function (x, y) { return y.s - x.s; });
+    return scored.length && (scored.length === 1 || scored[0].s > scored[1].s) ? scored[0].t : null;
+  }
   function askTickets(a, who) {
-    var open = COURSE.tickets.filter(function (t) { return S.tickets[t.id] && S.tickets[t.id].status === 'open'; });
-    if (!open.length) { var f = frame(); f.completing = false; return next(beat(f).next); }
-    Chat.ask(fill(a.text), open.map(function (t) {
-      return { text: t.title, sub: '#' + number(t.id) + ' · ' + DEPT[t.department], ticket: t.id, run: function () { startTicket(t); } };
-    }), { who: who, picker: 'tickets' });
+    var f = frame();
+    var open = function () { return COURSE.tickets.filter(function (t) { return S.tickets[t.id] && S.tickets[t.id].status === 'open'; }); };
+    if (!open().length) { f.completing = false; return next(beat(f).next); }
+    var go = function (t) {
+      picking = null; Chat.stopExpecting();
+      track('answer', { q: a.text, a: t.id });
+      startTicket(t);
+    };
+    picking = function (t) { if (frame() === f) go(t); };
+    picking.f = f;
+    say([fill(a.text), 'Tell me which one: its number, or what it’s about.'], who);
+    Chat.expect('Like “#' + number(open()[0].id) + '” or “the ' + DEPT[open()[0].department].toLowerCase() + ' one”…', function (text) {
+      if (frame() !== f) return;
+      var list = open(), t = ticketFrom(text, list);
+      if (t) { say(['Ticket #' + number(t.id) + ', ' + t.title.charAt(0).toLowerCase() + t.title.slice(1) + '. Let’s go!'], who); go(t); return; }
+      if (!aiUp()) { say(['Which one? Say its number from the Tickets board.'], who); return false; }
+      var hidden = { text: 'Which ticket does the kid want to fix?', options: list.map(function (x) { return { text: '#' + number(x.id) + ' ' + x.title }; }) };
+      mentor(text, hidden, who, 'TASK: the kid is picking which ticket to fix next, from the listed ones. If they named or described one, set choose to it and reply in one short line. If they did not pick yet, answer them in one short line and ask which one.')
+        .then(function (res) {
+          if (frame() !== f || !picking) return;
+          if (res && res.choose && list[res.choose - 1]) { if (res.reply) say([res.reply], who); go(list[res.choose - 1]); }
+          else say([(res && res.reply) || 'Which one? Say its number from the Tickets board.'], who);
+        });
+      return false;
+    }, { who: who, card: function () {
+      return { text: fill(a.text), options: open().map(function (t) { return { text: '#' + number(t.id) + ' ' + t.title, sub: DEPT[t.department] }; }) };
+    } });
   }
   function startTicket(t) {
     S.tickets[t.id].status = 'doing'; paintTickets();
@@ -491,23 +539,21 @@ var Quest = (function () {
     enter();
   }
 
-  /* What did you find? Typed, in the kid's words. Recognised here from each ticket's `words` first
+  /* What was broken? Typed, in the kid's words. Recognised here from each ticket's `words` first
      (instant, and works with no AI), then by the AI, which is shown the problems as a hidden
      question and picks the one the kid meant. Anything else they found is kept as an idea. */
-  var DONE = /^\s*(no+,?\s+)?(no+|nope|nah|nothing( else)?|that['’]?s (it|all|everything)|(i['’]?m |all )?done|no more|none|finished|thats? all)\s*[.!]*\s*$/i;   // the whole line: "no sound on the coins" is a finding, not a no
+  var DONE = /^\s*(no+,?\s+)?(no+|nope|nah|nothing( else)?|that['’]?s (it|all|everything)|(i['’]?m |all )?done|no more|none|finished|thats? all|next|what now|what['’]?s next|move on|let['’]?s (go|fix (it|them))|where are (the|my) tickets)\s*[.!?]*\s*$/i;   // the whole line: "no sound on the coins" is a finding, not a no
   function askFindings(a, who) {
     var f = frame(), before = Object.keys(S.tickets).length;
-    /* The card: the problems the kid has RUN INTO (S.seen), and the ones plain to see (no found_by),
-       in a kid's words (tickets.yaml `says`). Never one they haven't met: that would be telling. */
-    var findingsCard = function () {
-      var met = COURSE.tickets.filter(function (t) { return !S.tickets[t.id] && t.says && (S.seen[t.id] || !t.found_by); });
-      var any = Object.keys(S.tickets).length > 0;
-      return { text: Object.keys(S.tickets).length > before ? 'Anything else you found?' : fill(a.text),
-               options: met.map(function (t) { return { text: t.says }; }).concat([{ text: any ? 'That’s all' : 'Nothing' }]) };
-    };
+    /* No suggestions here, ever (Jay, 2026-09-30: a card of what she ran into "just gives the kids the
+       answers"; the point is to find out what THEY found). "idk" or Hint gives the beat's hints,
+       which say where to look and how to put it, never what is broken (chat.js, answer). */
     // an open question: said, with an example that isn't one of the problems (chat.js, expect)
     say([fill(a.text)], who);
-    Chat.expect('Like “the jump feels floaty”…', function (text) {
+    /* After the first finding the box says how to finish: in Jay's playthrough (Sept 30) the Mentor
+       said "that's a ticket now" and waited, and nothing said that "that's all" was the way on. */
+    var more = function () { return Object.keys(S.tickets).length > before; };
+    Chat.expect(function () { return more() ? 'Another one, or “that’s all”…' : 'Like “the jump feels floaty”…'; }, function (text) {
       if (frame() !== f) return;
       if (DONE.test(text)) {
         if (Object.keys(S.tickets).length) { S.reported = true; save(); say(['Great report. Those are your tickets now.'], who); next(); return; }
@@ -521,18 +567,26 @@ var Quest = (function () {
       if (hit.length) { say(['That one’s on the board already.'], who); return false; }
       var unfiled = COURSE.tickets.filter(function (t) { return !S.tickets[t.id]; });
       track('finding', { text: text, tickets: [] });
-      if (!unfiled.length || !aiUp()) { say(['I didn’t catch which problem that is.', 'Say what happened, like “I fell through the floor”.'], who); return false; }
-      var hidden = { text: 'Which problem did the kid just report?', options: unfiled.map(function (t) { return { text: t.title }; }) };
-      mentor(text, hidden, who, 'TASK: the kid is reporting something broken they found while playing. If it means one of the listed problems, set choose to it and reply in one short line. If it is something else, thank them in one line and say you noted it. Never mention a problem they did not describe.')
+      if (!unfiled.length || !aiUp()) { say(['I didn’t catch which problem that is.', 'Say what happened and where, like “the jump feels floaty”.'], who); return false; }
+      // the last option: they're done, or asking to move on ("ok where", "where are the tickets?"):
+      // the conversation moves the day on, not a magic phrase (Jay, 2026-09-30)
+      var hidden = { text: 'Which problem did the kid just report?', options: unfiled.map(function (t) { return { text: t.title + (t.says ? ' (a kid might say “' + t.says + '”)' : '') }; })
+        .concat(more() ? [{ text: 'None: they are done reporting, or asking what happens next' }] : []) };
+      mentor(text, hidden, who, 'TASK: the kid is reporting something broken they found while playing. If it means one of the listed problems, set choose to it and reply in one short line. If they are done or asking what is next, choose the "done" option and reply in one short line. If it is something else, thank them in one line and say you noted it. Never mention a problem they did not describe.')
         .then(function (res) {
           if (frame() !== f) return;
+          if (res && res.choose === unfiled.length + 1 && more()) { Chat.stopExpecting(); S.reported = true; save(); if (res.reply) say([res.reply], who); next(); return; }
           if (res && res.choose && unfiled[res.choose - 1]) { file(unfiled[res.choose - 1].id, text); found(who, 1, res.reply); }
           else { if (res && res.reply) say([res.reply], who); else say(['I didn’t catch which problem that is. Say what happened?'], who); idea(text, true); }
         });
       return false;   // still listening: returning false keeps the box expecting a finding (chat.js expect)
-    }, { who: who, card: findingsCard });
+    }, { who: who });
+    /* Each finding lands on the board as it is said, so the kid sees what a report becomes; the
+       Tickets dock opens with the first one. Then the Mentor asks for more, and says how to stop. */
     function found(who, n, reply) {
-      say([reply || (n > 1 ? 'Good catches. Those are tickets now.' : 'Good catch. That’s a ticket now.')], who);
+      reveal('tickets'); paintTickets();
+      say([reply || (n > 1 ? 'Good catches. Those are tickets now.' : 'Good catch. That’s a ticket now.'), 'Anything else? If not, say “that’s all”.'], who);
+      Chat.placeholder();
       return false;
     }
   }

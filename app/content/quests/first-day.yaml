@@ -35,11 +35,18 @@ beats:
     wait_for: { stop: true, seen_at_least: 1 }
 
   - id: report
-    goal: Tell the Mentor what you found
+    goal: Tell the Mentor what was broken
+    # No suggestions: what the kid found is the point (Jay, Sept 30). The hints say where to look and
+    # how to put it, never what; "idk" gives the next one (chat.js, answer).
     ask:
-      text: What did you find? Tell me in your own words.
+      text: What was broken? Tell me what happened, and I’ll write it up as a ticket.
       from: findings
       if_none: press-play
+    hints_after: 30
+    hints:
+      - Think back to your test. Did anything look, sound or act wrong?
+      - Say what happened and where, like “the jump feels floaty”.
+      - Not sure? Press Play again and try everything, then tell me.
 
   - id: what-first
     goal: Pick a ticket to fix first
@@ -55,7 +62,7 @@ beats:
   - id: play-mode
     goal: Make the coins bigger while the game runs, then press Stop
     character: mentor
-    do: { reveal: [hierarchy], allow: [coinSize], play: true }
+    do: { reveal: [hierarchy], allow: [coinSize], play: true, cue: coins.size }
     say:
       - Quick test while it’s running.
     instruct: Tap Coins, then make them bigger.

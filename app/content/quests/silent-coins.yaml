@@ -15,7 +15,7 @@ on:
 beats:
   - id: meet
     goal: Find the part that should make the sound
-    do: { reveal: [hierarchy], point: hierarchy, stop: true }
+    do: { reveal: [hierarchy], point: hierarchy, stop: true, cue: coins }
     say:
       - Hi @name, I’m the sound designer! A silent coin doesn’t feel like anything, so let’s fix that.
     skip_if: { state: { coins.sound: set } }
@@ -27,8 +27,9 @@ beats:
 
   - id: fix
     goal: Give the coins a sound
+    do: { cue: coins.sound }
     say:
-      - In Unity a sound lives on the part that makes it.
+      - The Inspector shows the Coins’ components, the pieces that make them work. In Unity a sound lives on the part that makes it.
     instruct: Find where the coin’s sound would go.
     skip_if: { state: { coins.sound: set } }
     hints_after: 25

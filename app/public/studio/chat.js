@@ -370,7 +370,15 @@ var Chat = (function () {
     card.setAttribute('data-who', q.who);
     card.classList.toggle('typed', !!q.typed);
     var h = rich(document.createElement('p'), fill(q.text)); h.className = 'q'; h.id = 'qText';
-    card.appendChild(h);
+    // Skip only where the question may be skipped (the suggestions: the question itself stays open).
+    // It sits on the title row: a footer of its own fell below the fold of a short chat dock.
+    var head = document.createElement('div'); head.className = 'qhead'; head.appendChild(h);
+    if (q.skip) {
+      var sk = document.createElement('button'); sk.type = 'button'; sk.className = 'tbtn quiet'; sk.id = 'qSkip'; sk.textContent = 'Skip';
+      sk.addEventListener('click', function () { var f = q.skip; question = null; hideCard(); f(); });
+      head.appendChild(sk);
+    }
+    card.appendChild(head);
     var ol = document.createElement('ol'); ol.setAttribute('aria-labelledby', 'qText');
     q.options.forEach(function (o, n) {
       var li = document.createElement('li'), b = document.createElement('button');
@@ -394,14 +402,6 @@ var Chat = (function () {
     go.addEventListener('click', function (e) { e.preventDefault(); sendOther(); });
     oli.appendChild(row); ol.appendChild(oli);
     card.appendChild(ol);
-    // Skip only where the question may be skipped (the suggestions: the question itself stays open)
-    if (q.skip) {
-      var foot = document.createElement('div'); foot.className = 'qfoot';
-      var sk = document.createElement('button'); sk.type = 'button'; sk.className = 'tbtn quiet'; sk.id = 'qSkip'; sk.textContent = 'Skip';
-      sk.addEventListener('click', function () { var f = q.skip; question = null; hideCard(); f(); });
-      foot.appendChild(sk);
-      card.appendChild(foot);
-    }
     other.addEventListener('input', function () { go.disabled = !other.value.trim(); });
     other.addEventListener('keydown', function (e) {
       if (e.key === 'Enter') { e.preventDefault(); sendOther(); }
@@ -467,7 +467,8 @@ var Chat = (function () {
      question is a line in the chat with an example in it, and the box's placeholder says what to
      type, so a kid knows how to answer without a menu. The suggestions come only when asked for: the
      kid types "idk", "help" or the like, or taps Hint. Then they are a card with Skip, and tapping
-     one is typing it. */
+     one is typing it. A question whose answers are the point (what did you find?) has no
+     suggestions: "idk" there is the step's next hint, which says where to look, never what. */
   var HELP_ME = /^\s*(idk|i ?d(on|o)n?['’]?t know|dunno|no idea|not sure|help( me)?|hint|i['’]?m stuck|stuck|you (pick|choose|decide)|\?+)\s*[.!?]*\s*$/i;
   function expect(ph, fn, opts) {
     opts = opts || {};
@@ -494,6 +495,9 @@ var Chat = (function () {
     line('k', text);
     if (!e) return;
     if (!q && e.card && HELP_ME.test(text)) { offerCard(); return; }   // asked for ideas: here they are
+    // a question with no suggestions (what did you find: a list would be the answers) gets the step's
+    // next hint instead, the same as tapping Hint
+    if (!q && !e.card && hintHandler && HELP_ME.test(text)) { hintHandler(); return; }
     expecting = null; question = null; hideCard(); placeholder(); hintButton();
     if (e.fn(text, active) === false) { expecting = e; placeholder(); hintButton(); }
   }
@@ -514,8 +518,10 @@ var Chat = (function () {
   function placeholder() {
     if (!input) return;
     var to = active === 'm' || !active ? 'the Mentor' : 'the ' + who(active)[0].toLowerCase();
-    input.placeholder = expecting ? expecting.ph : 'Message ' + to + '…';
-    input.setAttribute('aria-label', expecting ? expecting.ph.replace(/…$/, '') : 'Type a message to ' + to);
+    // a function when what's wanted moves on (the findings: an example, then "another, or that's all")
+    var ph = expecting && (typeof expecting.ph === 'function' ? expecting.ph() : expecting.ph);
+    input.placeholder = ph || 'Message ' + to + '…';
+    input.setAttribute('aria-label', ph ? ph.replace(/…$/, '') : 'Type a message to ' + to);
   }
   /* The conversation so far, for the AI, as turns a model API takes: the kid's latest line left off
      (it is the message itself), a run of one side's lines as one turn, and never starting with the
@@ -551,5 +557,5 @@ var Chat = (function () {
            thinking: thinking, hide: function () { hideCard(true); }, question: function () { return question; },
            event: event, expecting: expectingNow, active: function () { return active; }, pick: function (n) { pick(n); },
            send: function (t) { if (t) typed(String(t).slice(0, 240)); },
-           history: turns, WHO: WHO, hint: hint, hideHint: hideHint, nudge: nudge, rich: rich };
+           history: turns, WHO: WHO, hint: hint, hideHint: hideHint, nudge: nudge, rich: rich, placeholder: placeholder };
 })();
