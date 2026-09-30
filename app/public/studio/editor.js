@@ -70,29 +70,71 @@ var Editor = (function () {
     b.setAttribute('data-key', 'part:' + key);
     b.setAttribute('aria-pressed', String(selected === key));
     if (animate) b.style.animationDelay = (k * 0.1) + 's';
-    b.innerHTML = (!depth ? '<svg class="i fold" aria-hidden="true"><use href="#i-fold"/></svg>' : '')
-      + '<svg class="i" aria-hidden="true"><use href="#' + icon + '"/></svg><span class="nm"></span>';
+    b.innerHTML = '<svg class="i" aria-hidden="true"><use href="#' + icon + '"/></svg><span class="nm"></span>';
     b.querySelector('.nm').textContent = name;
     b.addEventListener('click', pick);
+    b.addEventListener('dblclick', function () { renameRow(key); });
+    b.addEventListener('keydown', function (e) { if (e.key === 'F2') { e.preventDefault(); renameRow(key); } });
     li.appendChild(b); ul.appendChild(li);
     return li;
+  }
+  /* Renaming, as in any engine (Jay, Sept 30: "you can rename the level, rename the objects or
+     things in the scene"): double-click a row or press F2 on it, or type in the Inspector's name box.
+     A name is only a name: the quests find a part by its id, so a kid who calls the Floor tile
+     "Trapdoor" still has it pointed at. One coin's name is kept in its prefab's `names`, by its place
+     in the list (schema.js childName). */
+  function nameOf(sel) { var r = refOf(sel), p = Project.part(r.id); return !p ? '' : r.i >= 0 ? Schema.childName(p, r.i) : p.name; }
+  function rename(sel, text) {
+    var r = refOf(sel), p = Project.part(r.id), t = String(text || '').replace(/\s+/g, ' ').trim().slice(0, 32);
+    if (!p || !t || t === nameOf(sel)) return;
+    if (r.i < 0) return set(p.id, 'name', t);
+    var names = (p.names || []).slice(); names[r.i] = t; set(p.id, 'names', names);
+  }
+  function renameRow(sel) {
+    if (selected !== sel) select(sel);   // a double-click's two clicks picked it and put it down again
+    var b = $('tree').querySelector('[data-key="part:' + sel + '"]'); if (!b) return;
+    var box = document.createElement('input'), done = false;
+    box.className = 'rn'; box.value = nameOf(sel); box.maxLength = 32; box.spellcheck = false;
+    box.setAttribute('aria-label', 'New name for ' + nameOf(sel)); box.setAttribute('data-key', 'rename:' + sel);
+    b.hidden = true; b.parentNode.insertBefore(box, b.nextSibling);
+    box.focus(); box.select();
+    function end(keep) {
+      if (done) return; done = true;
+      if (keep) rename(sel, box.value);
+      tree();
+      var nb = $('tree').querySelector('[data-key="part:' + sel + '"]'); if (nb) nb.focus();
+    }
+    box.addEventListener('keydown', function (e) {
+      e.stopPropagation();   // Escape here is "never mind", not "close the Inspector"
+      if (e.key === 'Enter') { e.preventDefault(); end(true); }
+      if (e.key === 'Escape') { e.preventDefault(); end(false); }
+    });
+    box.addEventListener('blur', function () { end(true); });
+  }
+  /* The level folds too: its arrow was a drawing, and Jay (Sept 30) found it "doesn't dropdown". It
+     starts open, since everything the day asks for is inside it. */
+  var levelShut = false;
+  function twisty(li, p, open, n, flip) {
+    var t = document.createElement('button');
+    t.type = 'button'; t.className = 'twisty'; t.setAttribute('data-key', 'open:' + p.id);
+    t.setAttribute('aria-expanded', String(!!open)); t.setAttribute('aria-label', (open ? 'Fold ' : 'Open ') + p.name + ': ' + n + ' inside');
+    t.setAttribute('data-tip', open ? 'Fold it' : 'Show the ' + n + ' inside');
+    t.innerHTML = '<svg class="i" aria-hidden="true"><use href="#i-fold"/></svg>';
+    t.addEventListener('click', function () { flip(); tree(); });
+    li.classList.add('parent'); li.insertBefore(t, li.querySelector('button'));
   }
   function tree(animate) {
     UI.keepFocus($('tree'), function () {
       var ul = $('tree'); ul.innerHTML = '';
-      Project.get().parts.forEach(function (p, k) {
+      var parts = Project.get().parts;
+      parts.forEach(function (p, k) {
+        if (levelShut && p.kind !== 'level') return;
         var kids = Schema.many(p) ? Schema.things(p) : null, open = kids && unfolded[p.id];
         var li = row(ul, p.id, p.name, p.kind === 'level' ? 'i-layout' : kids ? 'i-folder' : 'i-cube', p.kind === 'level' ? 0 : 1, animate, k, function () { select(p.id); });
+        if (p.kind === 'level') return twisty(li, p, !levelShut, parts.length - 1, function () { levelShut = !levelShut; });
         if (!kids) return;
-        var b = li.querySelector('button');
-        b.insertAdjacentHTML('beforeend', '<small>' + kids.length + '</small>');
-        var t = document.createElement('button');
-        t.type = 'button'; t.className = 'twisty'; t.setAttribute('data-key', 'open:' + p.id);
-        t.setAttribute('aria-expanded', String(!!open)); t.setAttribute('aria-label', (open ? 'Fold ' : 'Open ') + p.name + ': ' + kids.length + ' inside');
-        t.setAttribute('data-tip', open ? 'Fold it' : 'Show the ' + kids.length + ' inside');
-        t.innerHTML = '<svg class="i" aria-hidden="true"><use href="#i-fold"/></svg>';
-        t.addEventListener('click', function () { unfolded[p.id] = !open; tree(); });
-        li.classList.add('parent'); li.insertBefore(t, b);
+        li.querySelector('button').insertAdjacentHTML('beforeend', '<small>' + kids.length + '</small>');
+        twisty(li, p, open, kids.length, function () { unfolded[p.id] = !open; });
         if (open) kids.forEach(function (q, i) {
           var key = p.id + '#' + (i + 1);
           row(ul, key, Schema.childName(p, i), 'i-cube', 2, false, 0, function () { select(key); });
@@ -126,11 +168,15 @@ var Editor = (function () {
 
   var folded = {};
   function esc(t) { return String(t).replace(/[&<>"]/g, function (c) { return { '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' }[c]; }); }
-  /* `later`: a component the story isn't asking about yet starts folded, until the kid opens it. */
-  function header(c, p, later) {
-    var id = c.name.replace(/\W+/g, '-').toLowerCase(), shut = c.name in folded ? !!folded[c.name] : !!later;
-    var h = '<div class="comp' + (shut ? ' folded' : '') + '">'
-      + '<button type="button" class="fold" data-fold="' + esc(c.name) + '" data-key="fold:' + id + '" aria-expanded="' + !shut + '" aria-controls="cb-' + id + '" aria-label="Fold ' + esc(c.name) + '" data-tip="Fold or open this component"><svg class="i" aria-hidden="true"><use href="#i-fold"/></svg></button>'
+  /* `later`: a component the story isn't asking about yet starts folded, until the kid opens it.
+     `bare`: nothing under it to set (a Box Collider is only its checkbox), so no fold arrow: an
+     arrow that opens nothing reads as broken (Jay, Sept 30: "Dropdowns should only render if there
+     is stuff attached to that thing"). A spacer keeps the names in line. */
+  function header(c, p, later, bare) {
+    var id = c.name.replace(/\W+/g, '-').toLowerCase(), shut = !bare && (c.name in folded ? !!folded[c.name] : !!later);
+    var h = '<div class="comp' + (shut ? ' folded' : '') + (bare ? ' bare' : '') + '">'
+      + (bare ? '<span class="fold" aria-hidden="true"></span>'
+        : '<button type="button" class="fold" data-fold="' + esc(c.name) + '" data-key="fold:' + id + '" aria-expanded="' + !shut + '" aria-controls="cb-' + id + '" aria-label="Fold ' + esc(c.name) + '" data-tip="Fold or open this component"><svg class="i" aria-hidden="true"><use href="#i-fold"/></svg></button>')
       + '<svg class="i cicon" aria-hidden="true"><use href="#' + (c.icon || 'i-cube') + '"/></svg>';
     if (c.toggle) {
       h += '<button type="button" class="cbox" role="checkbox" data-key="c:' + c.toggle + '" data-set="' + c.toggle + '" aria-checked="' + !!p[c.toggle] + '" data-tip="' + esc(c.tip || c.name) + '">'
@@ -209,14 +255,14 @@ var Editor = (function () {
     var what = i >= 0 ? 'Game Object · one of the ' + p.name
       : many ? 'Prefab · ' + n + ' inside, each in the Hierarchy' : KIND_WORDS[p.kind] || 'Game Object · Built by the Builder';
     return '<div class="ohead"><svg class="i" aria-hidden="true"><use href="#' + (p.kind === 'level' ? 'i-layout' : many && i < 0 ? 'i-folder' : 'i-cube') + '"/></svg>'
-      + '<p><strong>' + esc(name) + '</strong><small>' + esc(what) + '</small></p></div>'
+      + '<p><input class="oname" data-key="oname" value="' + esc(name) + '" maxlength="32" spellcheck="false" aria-label="Name" data-tip="Its name. Type a new one to rename it"><small>' + esc(what) + '</small></p></div>'
       // a prefab's one rule, said where it bites: the rest is shared
       + (i >= 0 ? '<p class="inote shared">Its Position is its own. Everything else is shared: change it here and every ' + esc(p.kind === 'coin' ? 'coin' : p.name) + ' changes.</p>'
         : many ? '<p class="inote shared">Moving it moves all ' + n + '. Pick one of them to move just that one.</p>' : '');
   }
   function body(p, i) {
     var h = objectHeader(p, i), comps = Schema.components(p.kind);
-    comps.forEach(function (c) { h += header(c, p, c.gate && !allowed[c.gate]) + fields(c, p, i) + '</div>'; });
+    comps.forEach(function (c) { var f = fields(c, p, i); h += header(c, p, c.gate && !allowed[c.gate], !f.trim()) + f + '</div>'; });
     if (!comps.length) h += generic(p) || '<p class="inote">Nothing on ' + esc(p.name) + ' to change yet.</p>';
     return h;
   }
@@ -226,7 +272,7 @@ var Editor = (function () {
   function select(id) {
     selected = selected === id ? null : id;
     var r = refOf(id);
-    if (selected) { cueDone(r.id); if (r.i >= 0) unfolded[r.id] = true; }
+    if (selected) { cueDone(r.id); if (r.i >= 0) unfolded[r.id] = true; if ((Project.part(r.id) || {}).kind !== 'level') levelShut = false; }
     tree();
     if (selected) inspect(selected); else closeInspector();
     emit('select', r.id);
@@ -280,6 +326,14 @@ var Editor = (function () {
     // a number: a place (where a thing is, schema.js) or the part's own setting
     function put(f, k, v) { if (f.place) { var to = {}; to[k] = v; place(sel, to, true); } else set(p.id, k, v, true); }
     function now(f, k) { return f.place ? (Schema.where(p, i) || {})[k] : p[k]; }
+    var nm = box.querySelector('.oname');
+    if (nm) {
+      nm.addEventListener('change', function () { rename(sel, nm.value); });
+      nm.addEventListener('keydown', function (e) {
+        if (e.key === 'Enter') { e.preventDefault(); nm.blur(); }
+        if (e.key === 'Escape') { e.preventDefault(); e.stopPropagation(); nm.value = nameOf(sel); nm.blur(); }
+      });
+    }
     each('[data-set]', function (b) { b.addEventListener('click', function () { var k = b.getAttribute('data-set'); set(p.id, k, !p[k]); }); });
     each('[data-fold]', function (b) { b.addEventListener('click', function () { var n = b.getAttribute('data-fold'); folded[n] = b.getAttribute('aria-expanded') === 'true'; inspect(sel); }); });
     each('[data-slide]', function (r) {
@@ -429,7 +483,7 @@ var Editor = (function () {
   /* ---------- Undo and Redo ---------- */
   var undos = [], redos = [], playMark = 0;
   var WORD = { solid: 'Box Collider', hurts: 'Hazard', look: 'Sprite', sound: 'Clip', size: 'Scale', tint: 'Color', shape: 'hero', gravityScale: 'Gravity Scale', jump: 'Jump Force', w: 'Width',
-               x: 'Position', y: 'Position', spots: 'Position', pieces: 'Position' };
+               x: 'Position', y: 'Position', spots: 'Position', pieces: 'Position', name: 'name', names: 'name' };
   function record(id, key, before, after, quiet) {
     var last = undos[undos.length - 1], t = Date.now();
     // one slider drag is one step, not forty
@@ -495,7 +549,13 @@ var Editor = (function () {
      A cue ends when it is done: the button pressed, the part picked, the setting changed. Anything
      falsy clears it. tree() and inspect() rebuild their rows, so both call paintCue after. */
   var cueing = null;
-  function cue(which) { cueing = which === true ? 'play' : which || null; cuedAt = null; paintCue(); }
+  function cue(which) {
+    cueing = which === true ? 'play' : which || null; cuedAt = null;
+    // a part pointed at is on screen: a folded level opens (tree(), levelShut)
+    var p = cueing && Project.part(cueing.split('.')[0]);
+    if (p && p.kind !== 'level' && levelShut) { levelShut = false; tree(); return; }
+    paintCue();
+  }
   function paintCue() {
     $('bPlay').classList.toggle('cue', cueing === 'play');
     $('bStop').classList.toggle('cue', cueing === 'stop');
@@ -866,7 +926,10 @@ var Editor = (function () {
   /* Tickets sit above the Hierarchy (a ticket is what the kid is working on; the Hierarchy is where),
      and the Console beside the Project window, as Unity's are. */
   var PANELS = { tickets: 'dTickets', hierarchy: 'dHier', inspector: 'inspector', chat: 'dMentor', project: 'dProject', console: 'dConsole' };
-  var DEFAULT = { left: ['tickets', 'hierarchy'], right: ['inspector', 'chat'], bottom: ['project', 'console'], lw: 264, rw: 388, bh: 232, grow: { tickets: 2, hierarchy: 3, project: 3, console: 2 } };
+  /* The bottom row is tall (Jay, Sept 30: "The project tab should be a lot taller than it is"): 232
+     showed one row of assets and a half. On a short screen sizes() gives way to the Game view
+     (limits()). */
+  var DEFAULT = { left: ['tickets', 'hierarchy'], right: ['inspector', 'chat'], bottom: ['project', 'console'], lw: 264, rw: 388, bh: 340, grow: { tickets: 2, hierarchy: 3, project: 3, console: 2 } };
   var BIG = { left: ['tickets', 'hierarchy'], right: ['inspector', 'chat'], bottom: ['project', 'console'], lw: 200, rw: 316, bh: 120, grow: { tickets: 2, hierarchy: 3, project: 3, console: 2 } };
   var LAYOUT_KEY = 'studio.layout.v3', L = null;
   function copy(o) { return JSON.parse(JSON.stringify(o)); }
@@ -900,7 +963,7 @@ var Editor = (function () {
     var ed = $('editor');
     ed.style.setProperty('--lw', (L.left.length ? L.lw : 0) + 'px');
     ed.style.setProperty('--rw', (L.right.length ? L.rw : 0) + 'px');
-    ed.style.setProperty('--bh', (L.bottom.length ? L.bh : 0) + 'px');
+    ed.style.setProperty('--bh', (L.bottom.length ? (ed.clientHeight ? clamp(L.bh, limits('bottom')) : L.bh) : 0) + 'px');
   }
   /* A splitter: `edge` sits on an area's inner edge and resizes the area; `panels` sits between two
      panels in one area and shares the room between them. Both work from the keyboard too (a

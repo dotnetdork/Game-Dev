@@ -150,7 +150,7 @@ var Schema = (function () {
   }
   /* A part with several things is a prefab: its things are the Hierarchy's rows under it. */
   function many(p) { var t = things(p); return !!t && t.length > 1; }
-  function childName(p, i) { return (p.kind === 'coin' ? 'Coin' : p.name) + ' (' + (i + 1) + ')'; }
+  function childName(p, i) { return (p.names && p.names[i]) || (p.kind === 'coin' ? 'Coin' : p.name) + ' (' + (i + 1) + ')'; }
   /* Where thing i is; i < 0 is the whole part, at its things' top-left corner. */
   function where(p, i) {
     var t = things(p);

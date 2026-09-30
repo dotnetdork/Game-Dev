@@ -253,8 +253,8 @@ body.resizing-x iframe, body.resizing-y iframe { pointer-events: none; }   /* th
                   border: 0; background: transparent; border-radius: 5px; text-align: left; color: var(--ink); cursor: pointer; }
 .tree li button svg { color: var(--ink-2); }
 .tree li button:hover { background: var(--panel-2); }
-.tree li.child button { padding-left: 30px; }
-.tree li button .fold { width: 14px; margin-right: -4px; }
+.tree li.parent:not(.child) > button:not(.twisty) { padding-left: 30px; }
+.tree li.child button { padding-left: 50px; }
 .tree li button[aria-pressed="true"] { background: var(--select); color: var(--ink); }
 .tree li button[aria-pressed="true"] svg { color: var(--ink); }
 .tree li button small { margin-left: auto; color: var(--ink-3); font-size: 12px; min-width: 0; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
@@ -267,7 +267,12 @@ body.resizing-x iframe, body.resizing-y iframe { pointer-events: none; }   /* th
 .tree li.parent > .twisty svg { width: 12px; height: 12px; transform: rotate(-90deg); transition: transform .2s var(--ease); }
 .tree li.parent > .twisty[aria-expanded="true"] svg { transform: none; }
 .tree li.parent > .twisty:hover { background: var(--hover); }
-.tree li.grand button { padding-left: 52px; }
+.tree li.child.parent > .twisty { left: 24px; }
+.tree li.grand button { padding-left: 72px; }
+/* renaming a row in place (editor.js, renameRow): the box sits where the name was */
+.tree li button[hidden] { display: none; }
+.tree li .rn { width: calc(100% - 8px); margin: 6px 4px; min-height: 32px; padding: 0 8px; font: inherit; color: var(--ink);
+               background: var(--panel); border: 1px solid var(--accent); border-radius: 5px; outline: none; box-shadow: 0 0 0 3px var(--accent-soft); }
 @keyframes snap { from { transform: translateX(-14px); opacity: 0; background: var(--accent-soft); } 60% { background: var(--accent-soft); } to { transform: none; opacity: 1; } }
 
 /* ---------- the Game view ---------- */
@@ -630,7 +635,12 @@ button.qopt:hover .n, button.qopt:focus-visible .n { background: var(--accent); 
 .ohead { display: flex; align-items: center; gap: 10px; margin: 0 -12px; padding: 10px 12px; border-bottom: 1px solid var(--line); }
 .ohead > svg { width: 22px; height: 22px; color: var(--ink-2); }
 .ohead p { margin: 0; min-width: 0; }
-.ohead strong { display: block; font-size: 15px; font-weight: 700; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.ohead p { flex: 1; }
+/* the name is a box to type in, as Unity's is, drawn as the heading until it's used */
+.ohead .oname { display: block; width: 100%; margin: -3px 0 1px -6px; padding: 2px 6px; font: inherit; font-size: 15px; font-weight: 700; color: var(--ink);
+                background: transparent; border: 1px solid transparent; border-radius: 5px; text-overflow: ellipsis; }
+.ohead .oname:hover { border-color: var(--line); }
+.ohead .oname:focus { outline: none; background: var(--panel); border-color: var(--accent); box-shadow: 0 0 0 3px var(--accent-soft); }
 .ohead small { display: block; font-size: 12px; color: var(--ink-3); }
 .x { border: 0; background: transparent; color: var(--ink-2); min-height: 36px; min-width: 44px; border-radius: 5px; cursor: pointer; display: grid; place-items: center; }
 .x:hover { background: var(--hover); color: var(--ink); }
@@ -654,7 +664,8 @@ button.qopt:hover .n, button.qopt:focus-visible .n { background: var(--accent); 
 .cbox[aria-checked="true"] i { background: var(--accent); border-color: var(--accent); color: var(--accent-ink); }
 .cbox[aria-checked="true"] i svg { opacity: 1; }
 .comp-body { padding: 6px 0 12px; }
-.comp-body[hidden] { display: none; }
+.comp-body[hidden], .comp.bare + .comp-body { display: none; }
+span.fold, span.fold:hover { cursor: default; background: transparent; }   /* a bare component's spacer (editor.js, header) */
 .irow { position: relative; display: grid; grid-template-columns: minmax(0, 1fr) minmax(0, 1.6fr); align-items: center; gap: 10px; min-height: 48px; font-size: 14px; }
 .irow.wide { grid-template-columns: minmax(0, 1fr) minmax(0, 1.6fr); }
 .irow label, .irow .lbl { color: var(--ink-2); }
