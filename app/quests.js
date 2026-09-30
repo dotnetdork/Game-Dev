@@ -205,6 +205,9 @@ function checkTickets(t, file) {
        to the kid; tickets.yaml says why). `detail` and `done` are the ticket's page: what is wrong,
        and how the kid will know it's fixed. */
     if (!k.says) problem(list, w, 'needs says: the finding as a kid would put it');
+    // the report's second question, what should have happened (tickets.yaml says why)
+    if (!k.should_ask || !/\?\s*$/.test(k.should_ask)) problem(list, w, 'needs should_ask: a question that leads a kid to what should happen');
+    if (!k.should) problem(list, w, 'needs should: what should happen, in a kid\'s words, said if they stay stuck');
     if (!k.detail) problem(list, w, 'needs detail: what is wrong, for the ticket\'s page');
     if (!k.done) problem(list, w, 'needs done: how the kid will know it is fixed, for the ticket\'s page');
   });

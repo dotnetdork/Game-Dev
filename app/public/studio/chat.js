@@ -472,7 +472,7 @@ var Chat = (function () {
   var HELP_ME = /^\s*(idk|i ?d(on|o)n?['’]?t know|dunno|no idea|not sure|help( me)?|hint|i['’]?m stuck|stuck|you (pick|choose|decide)|\?+)\s*[.!?]*\s*$/i;
   function expect(ph, fn, opts) {
     opts = opts || {};
-    expecting = { fn: fn, ph: ph, card: opts.card || null, who: opts.who || active };
+    expecting = { fn: fn, ph: ph, card: opts.card || null, who: opts.who || active, takesHelp: opts.takesHelp || null };
     hideCard(); question = null; placeholder(); hintButton();
     if (!Runner.isPlaying()) input.focus({ preventScroll: true });
   }
@@ -496,8 +496,9 @@ var Chat = (function () {
     if (!e) return;
     if (!q && e.card && HELP_ME.test(text)) { offerCard(); return; }   // asked for ideas: here they are
     // a question with no suggestions (what did you find: a list would be the answers) gets the step's
-    // next hint instead, the same as tapping Hint
-    if (!q && !e.card && hintHandler && HELP_ME.test(text)) { hintHandler(); return; }
+    // next hint instead, the same as tapping Hint. Unless the asker takes "idk" itself right now
+    // (`takesHelp`): mid-question, the Mentor leads them on from what they said (quest.js, askFindings)
+    if (!q && !e.card && hintHandler && HELP_ME.test(text) && !(e.takesHelp && e.takesHelp())) { hintHandler(); return; }
     expecting = null; question = null; hideCard(); placeholder(); hintButton();
     if (e.fn(text, active) === false) { expecting = e; placeholder(); hintButton(); }
   }

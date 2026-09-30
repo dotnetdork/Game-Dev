@@ -14,6 +14,12 @@
 # answers away (Jay, 2026-09-30). `detail` is what the ticket's page says is wrong, and `done` how the
 # kid will know it's fixed.
 #
+# `should_ask` and `should` teach the other half of a bug report, what SHOULD have happened (Jay,
+# 2026-09-30: "a kid isn't going to know the direct answer ... they need to be taught the answer by
+# the AI pushing them deeper into explaining it"). Once a finding is filed the Mentor asks what should
+# have happened; a kid who doesn't know gets `should_ask`, a question that leads there from what any
+# player knows; still stuck, the Mentor says `should`. Neither names a problem the kid hasn't found.
+#
 # `quest` is the department shift that fixes it; `fixed_when` closes it early if the kid (or the AI)
 # fixes it first.
 tickets:
@@ -22,6 +28,8 @@ tickets:
     says: I fell through the floor
     detail: Part of the floor looks solid, but the player drops right through it.
     done: The player can walk across the whole floor without falling.
+    should_ask: When you walk onto a floor in a game, what should it do?
+    should: A floor should hold you up, so you can walk across it.
     department: engineering
     quest: floor-is-a-picture
     found_by: { event: fell }
@@ -33,6 +41,8 @@ tickets:
     says: The coins don’t make a sound
     detail: Grabbing a coin is silent, so the player can’t tell they got it.
     done: Every coin plays a sound when the player grabs it.
+    should_ask: When you grab a coin in a game, how do you usually know you got it?
+    should: A coin should make a sound, so you know you got it.
     department: audio
     quest: silent-coins
     found_by: { event: coin, state: { coins.sound: null } }
@@ -44,11 +54,14 @@ tickets:
     says: Everything is grey
     detail: Every part is a plain grey block, so a player can’t tell coins from danger.
     done: The coins and the lava each have a picture a player can tell apart.
+    should_ask: If everything looks the same, how would a player tell a coin from lava?
+    should: Each thing should look different, so a player can tell good from dangerous.
     department: art
     quest: greybox
     # Not found by an event: it is plain to see. If the kid doesn't say it, the art director files it
     # herself (first-day.yaml), as a colleague would.
-    words: "gr[ae]y|colou?r|plain|boring|blank|ugly|art|picture|block"
+    # not "boring" or "ugly": those are feelings, and the Mentor asks what made them (quest.js, FEEL)
+    words: "gr[ae]y|colou?r|plain|blank|art|picture|block"
     fixed_when: { state: { coins.look: set, lava.look: set } }
 
   - id: harmless-lava
@@ -56,6 +69,8 @@ tickets:
     says: The lava doesn’t hurt
     detail: The lava looks dangerous, but touching it does nothing.
     done: Touching the lava sends the player back to the start.
+    should_ask: In most games, what happens when you touch lava?
+    should: Lava should hurt you, so it is something to get past.
     department: design
     quest: harmless-lava
     found_by: { event: lava }

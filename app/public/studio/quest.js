@@ -141,7 +141,7 @@ var Quest = (function () {
      wasn't the kid (the art director, the game itself), for the row in the chat. */
   function file(id, words, by) {
     var t = ticketOf(id); if (!t || S.tickets[id]) return false;
-    S.tickets[id] = { status: 'open', words: words ? String(words).slice(0, 80) : null, by: by || null, n: Object.keys(S.tickets).length + 1 };
+    S.tickets[id] = { status: 'open', words: words ? String(words).slice(0, 160) : null, by: by || null, n: Object.keys(S.tickets).length + 1 };
     save(); paintTickets();
     Chat.event((by ? by + ' filed ' : 'You filed ') + 'ticket #' + S.tickets[id].n + ': ' + t.title, 'i-ticket', { kind: 'ticket' });
     UI.feel($('dTickets'), 'good');
@@ -238,6 +238,7 @@ var Quest = (function () {
     part('What’s wrong', t.detail);
     if (mine.words) part('You reported', '“' + mine.words + '”', 'quote');
     else part('Reported by', mine.by === 'The game' ? 'The game, when you ran into it' : (mine.by || 'The studio'));
+    if (mine.should) part('Should happen', '“' + mine.should + '”', 'quote');   // their half of the bug report (askFindings)
     part('Fixed when', t.done);
     var act = el('div', 'tact');
     if (mine.status === 'open') {
@@ -553,41 +554,121 @@ var Quest = (function () {
     /* After the first finding the box says how to finish: in Jay's playthrough (Sept 30) the Mentor
        said "that's a ticket now" and waited, and nothing said that "that's all" was the way on. */
     var more = function () { return Object.keys(S.tickets).length > before; };
-    Chat.expect(function () { return more() ? 'Another one, or “that’s all”…' : 'Like “the jump feels floaty”…'; }, function (text) {
+    /* DISCOVERY, NOT SORTING. Jay, 2026-09-30: "It should ask why its boring, or why what they said.
+       Ask for more deeper understanding", and "a kid isn't going to know the direct answer ... they
+       need to be taught the answer by the AI pushing them deeper into explaining it". "Its boring" had
+       been filed on the spot as the grey-box ticket, and "there are dots" got "noted!".
+       So each finding is a short bug report, and the Mentor walks the kid down it:
+       1. WHAT HAPPENED. A feeling ("its boring") or a thing with no problem yet ("there are dots") is
+          asked about: what did you see, hear or do; where; try it again and watch. Up to three
+          follow-ups, and what they say next is read together with what came before, so the ticket
+          keeps all of their words ("its boring. everything is grey"). Still vague, it's an idea.
+       2. WHAT SHOULD HAVE HAPPENED. Once it is a problem it is filed (it lands on the board as it is
+          said) and the Mentor asks what should have happened. "idk" gets the ticket's `should_ask`, a
+          question that leads there from what any player knows; still stuck, the Mentor says `should`
+          (tickets.yaml). Their answer goes on the ticket's page.
+       The code runs the ladder, so it works with the AI down; the AI, when up, words each question
+       from what the kid actually said. `pending` is the rung in progress. */
+    var pending = null, taught = false;
+    var FEEL = /\b(boring|bored|dull|meh|lame|bad|weird|strange|odd|ugly|annoying|sucks?|dumb|stupid|confusing|off|wrong|broken|buggy|glitchy|hard|easy|not fun|no fun)\b/i;
+    var STUCK = /^\s*(idk|i ?d(on|o)n?['’]?t know|dunno|no idea|not sure|nothing|no+|nope|um+|uh+|\?+)\s*[.!?]*\s*$/i;
+    var FINISH = /^\s*(that['’]?s (it|all|everything)|thats? all|(i['’]?m |all )?done|finished|no more|move on|next)\s*[.!]*\s*$/i;
+    function concrete(text) { return COURSE.tickets.filter(function (t) { return t.words && new RegExp('\\b(?:' + t.words + ')', 'i').test(text); }); }
+    function cap(s) { return s.charAt(0).toUpperCase() + s.slice(1); }
+    // one question to the kid: the AI's wording when it is up, the plain one when it isn't or fails
+    function put(text, task, plain, then) {
+      if (!aiUp()) { say([plain], who); if (then) then(); return false; }
+      mentor(text, null, who, task).then(function (res) { if (frame() !== f) return; say([(res && res.reply) || plain], who); if (then) then(); });
+      return false;
+    }
+    function dig(said) {
+      var n = (pending && pending.kind === 'dig' ? pending.n : 0) + 1, feel = (said.join(' ').match(FEEL) || [])[1];
+      pending = { kind: 'dig', said: said, n: n };
+      var plain = n === 1 ? (feel ? '“' + cap(feel) + '” how? What did you see or hear that made it feel ' + feel + '?' : 'What happened with it? Tell me what you did, and what the game did.')
+        : n === 2 ? 'Where in the level was that? What were you doing right then?'
+        : 'Try it again and watch closely. What does the game do?';
+      Chat.placeholder();
+      return put(said[said.length - 1], 'TASK: the kid is reporting what seemed wrong in the game, but it is not a clear problem yet. Everything they said so far: "' + said.join(' / ') + '". Ask ONE short question that pushes them to explain more: what exactly they saw, heard or did, where, or what happens when they try the thing they mentioned (you may say what a thing is, like "those dots are coins: what happens when you grab one?"). Never say what is wrong. No praise, no list.', plain);
+    }
+    function filed(ts, words, reply) {
+      pending = null;
+      ts.forEach(function (t) { file(t.id, words); });
+      track('finding', { text: words, tickets: ts.map(function (t) { return t.id; }) });
+      reveal('tickets'); paintTickets();
+      pending = { kind: 'should', ticket: ts[0].id, n: 1 };
+      say([reply || (ts.length > 1 ? 'Good catches. Those are tickets now.' : 'Good catch. That’s ticket #' + number(ts[0].id) + ' now.'), 'What should have happened instead?'], who);
+      Chat.placeholder();
+      return false;
+    }
+    function anythingElse() { return 'Anything else? If not, say “that’s all”.'; }
+    function should(text) {
+      var t = ticketOf(pending.ticket), tk = S.tickets[pending.ticket];
+      if (FINISH.test(text)) { pending = null; return finish(); }
+      var stuck = STUCK.test(text) || text.trim().length < 3;
+      if (stuck && pending.n === 1) {
+        pending.n = 2;
+        return put(text, 'TASK: the kid does not know what should have happened for this problem: "' + t.title + '". Ask ONE short, friendly question that leads them there from what any player knows, like "' + t.should_ask + '" Do not give the answer.', t.should_ask);
+      }
+      pending = null;
+      // the first time, name what they just did: both halves make a bug report
+      var tail = (taught ? [] : ['That’s a real bug report: what happened, and what should have.']).concat([anythingElse()]);
+      var lines = function (first) { return [first].concat(tail); };
+      taught = true;
+      if (stuck) { say(lines('Here’s the idea: ' + t.should.charAt(0).toLowerCase() + t.should.slice(1)), who); Chat.placeholder(); return false; }
+      if (tk) { tk.should = String(text).slice(0, 120); save(); paintTickets(); }
+      if (!aiUp()) { say(lines('Yes, that’s it.'), who); Chat.placeholder(); return false; }
+      mentor(text, null, who, 'TASK: the kid said what should have happened for the problem "' + t.title + '": "' + text + '". The idea to reach: "' + t.should + '". In ONE short line, build on their own words: if they have it, say so; if not quite, lead them the rest of the way. Nothing else.')
+        .then(function (res) { if (frame() !== f) return; say(lines((res && res.reply) || 'Yes, that’s it.'), who); Chat.placeholder(); });
+      return false;
+    }
+    Chat.expect(function () { return pending && pending.kind === 'should' ? 'Like “it should…”' : pending ? 'Say what you saw, heard or did…' : more() ? 'Another one, or “that’s all”…' : 'Like “the jump feels floaty”…'; }, function (text) {
       if (frame() !== f) return;
+      if (pending && pending.kind === 'should') {
+        // "oh and the lava doesn't hurt" is a new finding, not the answer to what should have happened
+        var other = concrete(text).filter(function (t) { return !S.tickets[t.id]; });
+        if (!other.length || /\bshould\b/i.test(text)) return should(text);
+        pending = null;
+      }
+      // stuck mid-dig ("idk", "nothing"): the next rung, a different way in, without their "idk" in the ticket
+      if (pending && pending.kind === 'dig' && STUCK.test(text)) {
+        if (pending.n >= 3) { idea(pending.said.join('. '), true); pending = null; say(['That’s okay. I’ve kept it as an idea.', 'Anything else that seemed broken?'], who); return false; }
+        return dig(pending.said);
+      }
       if (DONE.test(text)) {
-        if (Object.keys(S.tickets).length) { S.reported = true; save(); say(['Great report. Those are your tickets now.'], who); next(); return; }
+        if (pending) { idea(pending.said.join('. '), true); pending = null; }
+        if (Object.keys(S.tickets).length) return finish();
         say(['Nothing yet? Let’s look again.'], who);
         next(a.if_none);
         return;
       }
-      var hit = COURSE.tickets.filter(function (t) { return t.words && new RegExp('\\b(?:' + t.words + ')', 'i').test(text); });
-      var fresh = hit.filter(function (t) { return !S.tickets[t.id]; });
-      if (fresh.length) { fresh.forEach(function (t) { file(t.id, text); }); track('finding', { text: text, tickets: fresh.map(function (t) { return t.id; }) }); return found(who, fresh.length); }
-      if (hit.length) { say(['That one’s on the board already.'], who); return false; }
+      var said = pending && pending.kind === 'dig' ? pending.said.concat([text]) : [text], words = said.join('. ');
+      var hit = concrete(text), fresh = hit.filter(function (t) { return !S.tickets[t.id]; });
+      if (fresh.length) return filed(fresh, words);
+      if (hit.length) { pending = null; say(['That’s ticket #' + number(hit[0].id) + ' already. Good detail.', anythingElse()], who); return false; }
+      // three follow-ups and still no problem: keep it, and move on kindly
+      if (pending && pending.n >= 3) { idea(words, true); pending = null; say(['I’ve kept that as an idea.', 'Anything else that seemed broken?'], who); return false; }
+      // a feeling is always asked about first, never sorted into a ticket on its own
+      if (!pending && FEEL.test(text)) return dig(said);
       var unfiled = COURSE.tickets.filter(function (t) { return !S.tickets[t.id]; });
-      track('finding', { text: text, tickets: [] });
-      if (!unfiled.length || !aiUp()) { say(['I didn’t catch which problem that is.', 'Say what happened and where, like “the jump feels floaty”.'], who); return false; }
+      if (!unfiled.length || !aiUp()) return dig(said);
       // the last option: they're done, or asking to move on ("ok where", "where are the tickets?"):
       // the conversation moves the day on, not a magic phrase (Jay, 2026-09-30)
       var hidden = { text: 'Which problem did the kid just report?', options: unfiled.map(function (t) { return { text: t.title + (t.says ? ' (a kid might say “' + t.says + '”)' : '') }; })
         .concat(more() ? [{ text: 'None: they are done reporting, or asking what happens next' }] : []) };
-      mentor(text, hidden, who, 'TASK: the kid is reporting something broken they found while playing. If it means one of the listed problems, set choose to it and reply in one short line. If they are done or asking what is next, choose the "done" option and reply in one short line. If it is something else, thank them in one line and say you noted it. Never mention a problem they did not describe.')
+      mentor(words, hidden, who, 'TASK: the kid is reporting something broken they found while playing. Everything they said about it: "' + said.join(' / ') + '". Only if that clearly describes one of the listed problems, set choose to it and reply in one short line. If it is vague, a feeling, or a thing with no problem yet, do not choose: ask ONE short question that pushes them to explain what exactly they saw, heard or did (you may say what a thing is, like "those dots are coins: what happens when you grab one?"). If they are done or asking what is next, choose the "done" option and reply in one short line. Never say what is wrong with anything.')
         .then(function (res) {
           if (frame() !== f) return;
-          if (res && res.choose === unfiled.length + 1 && more()) { Chat.stopExpecting(); S.reported = true; save(); if (res.reply) say([res.reply], who); next(); return; }
-          if (res && res.choose && unfiled[res.choose - 1]) { file(unfiled[res.choose - 1].id, text); found(who, 1, res.reply); }
-          else { if (res && res.reply) say([res.reply], who); else say(['I didn’t catch which problem that is. Say what happened?'], who); idea(text, true); }
+          if (res && res.choose === unfiled.length + 1 && more()) { Chat.stopExpecting(); finish(res.reply); return; }
+          if (res && res.choose && unfiled[res.choose - 1]) { filed([unfiled[res.choose - 1]], words, res.reply); return; }
+          if (res && res.reply && /\?\s*["”]?\s*$/.test(res.reply)) { pending = { kind: 'dig', said: said, n: (pending && pending.kind === 'dig' ? pending.n : 0) + 1 }; say([res.reply], who); Chat.placeholder(); return; }
+          dig(said);   // no question from the AI ("noted!"): the ladder asks its own
         });
       return false;   // still listening: returning false keeps the box expecting a finding (chat.js expect)
-    }, { who: who });
-    /* Each finding lands on the board as it is said, so the kid sees what a report becomes; the
-       Tickets dock opens with the first one. Then the Mentor asks for more, and says how to stop. */
-    function found(who, n, reply) {
-      reveal('tickets'); paintTickets();
-      say([reply || (n > 1 ? 'Good catches. Those are tickets now.' : 'Good catch. That’s a ticket now.'), 'Anything else? If not, say “that’s all”.'], who);
-      Chat.placeholder();
-      return false;
+    }, { who: who, takesHelp: function () { return !!pending; } });
+    function finish(reply) {
+      S.reported = true; save();
+      say([reply || 'Great report. Those are your tickets now.'], who);
+      next();
     }
   }
 

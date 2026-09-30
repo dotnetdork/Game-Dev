@@ -220,21 +220,42 @@ async function launch() {
     check('an open question has no card: it is a line, and the box says what to type, with an example', await p.isHidden('#qcard') && /^Like “/.test(await p.getAttribute('#say', 'placeholder')), await p.getAttribute('#say', 'placeholder'));
     await type('the coins dont make any sound');
     await p.waitForFunction(function () { return !!Quest.dev.state().tickets['silent-coins']; }, null, { timeout: 9000 });
-    await waitLog('say “that’s all”');
+    await waitLog('What should have happened');
     check('a finding lands on the board as it is said: the Tickets dock opens with it', await p.isVisible('#ticketList') && await p.$$eval('#ticketList button.tk', function (x) { return x.length; }) === 1);
+    check('then the other half of a bug report: what should have happened, with an example in the box', /^Like “it should/.test(await p.getAttribute('#say', 'placeholder')), await p.getAttribute('#say', 'placeholder'));
+    await type('idk');
+    await waitLog('how do you usually know you got it?');
+    check('"idk" there is not the hint box: the Mentor leads her there with a question, and gives no answer', await p.isHidden('#hintBox') && !/should make a sound/.test(await log()));
+    await shot(p, 'p01a-should-ask');
+    await type('it should ding');
+    await waitLog('say “that’s all”');
+    check('her answer goes on the ticket', (await state()).tickets['silent-coins'].should === 'it should ding', JSON.stringify((await state()).tickets['silent-coins']));
     check('and the Mentor says how to finish, in the chat and in the box', /^Another one, or “that’s all”/.test(await p.getAttribute('#say', 'placeholder')), await p.getAttribute('#say', 'placeholder'));
     await type('idk');
     await p.waitForFunction(function () { return !document.getElementById('hintBox').hidden; }, null, { timeout: 6000 });
     const hintSaid = await p.$eval('#hintText', function (e) { return e.textContent; });
     await shot(p, 'p01b-report-hint');
     check('"idk" on the report is a hint, where to look, never the answers: no card, no problem named', await p.isHidden('#qcard') && /Think back/.test(hintSaid) && !/floor|grey|lava|coin/i.test(hintSaid), hintSaid);
+    // a feeling is asked about, never sorted into a ticket (Jay, Sept 30: "It should ask why its boring")
+    where = 'the first day: digging into a feeling';
+    await type('its boring');
+    await waitLog('“Boring” how?');
+    check('"its boring" files nothing: the Mentor asks what made it feel that way', Object.keys((await state()).tickets).length === 1);
+    await shot(p, 'p01c-dig');
+    await type('everything is grey');
+    await p.waitForFunction(function () { return !!Quest.dev.state().tickets.greybox; }, null, { timeout: 9000 });
+    check('what she says next is read with it, and the ticket keeps all of her words', (await state()).tickets.greybox.words === 'its boring. everything is grey', (await state()).tickets.greybox.words);
+    await type('idk'); await waitLog('how would a player tell a coin from lava?');
+    await type('idk'); await waitLog('Here’s the idea: each thing should look different');
+    check('stuck twice, the Mentor teaches the answer, and her "idk" is not kept as one', !(await state()).tickets.greybox.should);
+    where = 'the first day: the report';
     await type('I fell through the floor');
     await p.waitForFunction(function () { return !!Quest.dev.state().tickets.floor; }, null, { timeout: 9000 });
     await type('that’s all');
     await waitLog('Tell me which one', 12000);
     st = await state();
-    check('what she said became tickets, in her words, and the departments filed what she missed', st.tickets.floor.words === 'I fell through the floor' && st.tickets['silent-coins'].words === 'the coins dont make any sound'
-      && ['greybox', 'harmless-lava'].every(function (id) { return st.tickets[id] && st.tickets[id].by && !st.tickets[id].words; }), JSON.stringify(st.tickets));
+    check('what she said became tickets, in her words, and the department filed what she missed', st.tickets.floor.words === 'I fell through the floor' && st.tickets['silent-coins'].words === 'the coins dont make any sound'
+      && st.tickets['harmless-lava'] && st.tickets['harmless-lava'].by && !st.tickets['harmless-lava'].words, JSON.stringify(st.tickets));
     check('and nothing stalled: the day moved on to picking a ticket, asked in the chat with no card', /What should we fix first/.test(await log()) && await p.isHidden('#qcard') && await p.isVisible('#sayForm'));
     const board = await p.$$eval('#ticketList button.tk', function (x) { return x.map(function (e) { return e.textContent; }); });
     check('the Tickets dock lists them as buttons, numbered, with a clear title and a status', board.length === 4
