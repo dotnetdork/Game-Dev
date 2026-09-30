@@ -218,7 +218,7 @@ var Quest = (function () {
       cards: function () { return S.cards.map(cardOf); }, hero: function () { return S.hero || null; } })
       .then(function (list) {
         list.forEach(function (t) { fileOwn(t, null, 'doc-ticket', true); });
-        Project.docBuilt();
+        Project.docBuilt(keys);
         track('design-filed', { sections: keys, tickets: list.length });
         if (list.length) say([list.length === 1 ? 'Your design has one thing to build. It’s on the board now.' : 'Your design has ' + list.length + ' things to build. They’re on the board now.'], who);
         then();

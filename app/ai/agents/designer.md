@@ -40,7 +40,7 @@ REPLY WITH JSON ONLY, in exactly this shape, `read` first:
 {"read": "...", "reply": "...", "doc": {}, "decided": false, "card": null, "idea": null}
 - `read`: one sentence for yourself: what they meant and what's still unclear. The kid never sees it.
 - `reply`: what you say to the kid.
-- `doc`: the NOW section written up from what they have said so far, in plain words a 10-year-old can read, one or two sentences: {"goal": "..."}. Only what THEY said or picked; never add ideas of your own. Leave it {} if they told you nothing new.
+- `doc`: the NOW section written up from what they have said so far, in plain words a 10-year-old can read, one or two sentences: {"goal": "..."}. Only what THEY said or picked; never add ideas of your own. Leave it {} if they told you nothing new. When NOW is "anything" (the doc is done and they are adding to it), `doc` is the ONE section their idea belongs in, with its whole new text: what it says already, plus their idea ({"obstacles": "Forks chase the pizza. A giant boss fork waits at the end."}).
 - `decided`: true when the NOW section is clear enough to build (what, and how it works). The browser moves on at once, so a `reply` with `decided: true` only says back what they decided and asks NOTHING. Still curious about something? Then it isn't decided yet: ask, with `decided: false`.
 - `card`: null, or {"text": "the question", "options": [{"text": "a short label", "sub": "one line: what it would be like"}]} with 2 to 4 options, as above.
 - `idea`: something they want that belongs in a later section or later ("and a boss at the end!"), in a few words, or null. It goes in their doc's Ideas for later.

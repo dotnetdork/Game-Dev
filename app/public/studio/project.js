@@ -141,9 +141,14 @@ var Project = (function () {
     var d = state.doc; d.ideas.push(String(text).slice(0, 200)); if (d.ideas.length > 40) d.ideas.shift();
     save(); docChanged(null);
   }
-  /* The doc's changes are on the board as tickets now (quest.js fileDesign), so the next filing starts
-     from nothing. */
-  function docBuilt() { state.doc.changed = []; state.doc.builtAt = Date.now(); save(); docChanged(null); }
+  /* Those sections are on the board as tickets now (quest.js fileDesign), so they are off the change
+     list. Only those: a section still being planned (the hero, "started" after round 1) stays on it,
+     or deciding it later in the same words would never file it. */
+  function docBuilt(keys) {
+    var d = state.doc;
+    d.changed = keys ? d.changed.filter(function (k) { return keys.indexOf(k) < 0; }) : [];
+    d.builtAt = Date.now(); save(); docChanged(null);
+  }
 
   return { load: load, save: save, onSave: function (fn) { onSave.push(fn); }, KEY: KEY, reset: reset, flush: flush, freeze: freeze, code: code, part: part, clone: clone,
            get: function () { return state; }, internsParts: internsParts, migrate: migrate,

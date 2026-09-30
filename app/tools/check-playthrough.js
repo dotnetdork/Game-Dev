@@ -469,7 +469,7 @@ async function launch() {
     check('round 1 is filed as tickets: how you play, the goal and the fun, each Design\'s, in her words',
       filedD.own.map(function (t) { return t.title + '/' + t.dept + '/' + t.by; }).join(' | ') === 'Build how you play/design/Design | Build how you win and lose/design/Design | Build the best moment/design/Design'
       && filedD.own.every(function (t) { return t.quest === 'doc-ticket'; }) && filedD.own[1].detail === 'grab every coin, lava gets you', JSON.stringify(filedD.own.map(function (t) { return t.title + ' (' + t.secs + ')'; })));
-    check('and the doc is all on the board: nothing left to file', filedD.changed.length === 0, filedD.changed.join());
+    check('and what was decided is all on the board: only her hero, still being planned, is left to file', filedD.changed.join() === 'hero', filedD.changed.join());
     await waitLog('Which one should we build first?', 9000);
     await type('#' + (await p.evaluate(function (id) { return Quest.dev.state().tickets[id].n; }, filedD.own[1].id)));
     await waitLog('This one’s from your design doc. grab every coin, lava gets you', 9000);
@@ -489,6 +489,41 @@ async function launch() {
     check('"too easy" earns Balance and goes in Ideas for later as a playtest note', rev.cards.indexOf('balance') >= 0 && rev.ideas.indexOf('Playtest of the goal: felt too easy') >= 0, JSON.stringify(rev.ideas));
     const back = await p.waitForFunction(function () { return Quest.dev.where() === 'first-day › build-yours'; }, null, { timeout: 9000 }).then(function () { return true; }, function () { return false; });
     check('and it\'s back to the board for the next one', back, await p.evaluate(function () { return Quest.dev.where(); }));
+
+    /* Her own game, round 2 (own-game.yaml, AI off): what round 1 left comes first, added to rather
+       than asked again (her hero is a drawn frog, "started"), then what gets in the way and the world.
+       Filed, each goes to the department that builds it. */
+    where = 'her own game: round 2';
+    const ownBeat = function (id) { return p.evaluate(function (id) { var S = Quest.dev.state(); Object.keys(S.own).forEach(function (k) { delete S.tickets[k]; delete S.own[k]; }); Quest.dev.jump('own-game', Quest.dev.course().quests['own-game'].beats.map(function (b) { return b.id; }).indexOf(id)); }, id); };
+    await ownBeat('design-2');
+    await waitLog('Round two!', 9000);
+    await waitLog('Let’s finish your hero. So far it says “frog”. What else, like', 9000);
+    check('round 2 first finishes her hero from what it says, not "Who do you play as?"', !/Who do you play as/.test(await log()));
+    await type('it can double jump');
+    await waitLog('What gets in the player’s way, like', 9000);
+    await type('spiky robots that chase you');
+    await waitLog('Where does it happen? What does it look like, like', 9000);
+    await type('a volcano at night');
+    await waitLog('That’s what gets in your way, and the world, in your design doc.', 9000);
+    const r2 = await p.evaluate(function () { var s = Project.doc().sections; return ['hero', 'obstacles', 'world'].map(function (k) { return s[k].text + ' [' + s[k].state + ']'; }); });
+    check('round 2 writes them in, and her hero keeps what it said', r2.join(' | ') === 'frog. it can double jump [decided] | spiky robots that chase you [decided] | a volcano at night [decided]', r2.join(' | '));
+    await p.waitForFunction(function () { return Object.keys(Quest.dev.state().own).length === 3; }, null, { timeout: 9000 });
+    const t2 = await p.evaluate(function () { var S = Quest.dev.state(); return Object.keys(S.own).map(function (id) { return S.own[id].title + '/' + S.own[id].department; }).join(' | '); });
+    check('and files them for the departments that build them: the hero and the world are Art\'s', t2 === 'Build your hero/art | Build what gets in your way/design | Build the world and its look/art', t2);
+    await waitLog('Which one should we build first?', 9000);
+
+    /* Round `more`, AI off: the doc is done, so an idea goes in Ideas for later, and "that's all"
+       ends it, with nothing new to file, on "What next?". */
+    where = 'her own game: more';
+    await ownBeat('design-more');
+    await waitLog('What would make your game even better?', 9000);
+    await type('a boss at the end');
+    await waitLog('It’s in your Ideas for later. Anything else?', 9000);
+    check('with the AI off, an idea for a done doc goes in Ideas for later', await p.evaluate(function () { return Project.doc().ideas.indexOf('a boss at the end') >= 0; }));
+    await type('thats all');
+    await waitLog('They’re saved in your Ideas for later.', 9000);
+    const wn = await p.waitForFunction(function () { return Quest.dev.where() === 'own-game › what-next'; }, null, { timeout: 9000 }).then(function () { return true; }, function () { return false; });
+    check('"that\'s all" ends it: nothing new to build, so on to What next?', wn && /Add to my design.*Just build something.*Clock out/.test(await options()), await p.evaluate(function () { return Quest.dev.where(); }));
     await p.evaluate(function () { var S = Quest.dev.state(); Object.keys(S.own).forEach(function (id) { delete S.tickets[id]; delete S.own[id]; }); });
 
     /* A problem nobody planned (Jay, Sept 30: "It should be able to file and create tickets for
@@ -579,6 +614,23 @@ async function launch() {
     await waitLog('The concept artist is joining us', 9000);
     const f2 = await p.evaluate(function () { return { fun: Project.doc().sections.fun, ideas: Project.doc().ideas.slice(-2) }; });
     check('stand-in designer: the fun is decided, and the boss she mentioned is kept for later', f2.fun.state === 'decided' && f2.ideas.indexOf('A boss fork at the end') >= 0, JSON.stringify(f2));
+    /* Round `more` with the stand-in: the idea goes into the section it belongs in, which keeps what it
+       said, and filing it builds only the new part, titled in her words. */
+    DSTUB['a giant boss fork at the end'] = { reply: 'A boss fork! That’s in what gets in your way. Anything else?', doc: { obstacles: 'Spiky robots chase you. A giant boss fork waits at the end.' } };
+    await p.evaluate(function () {
+      var S = Quest.dev.state(); Object.keys(S.own).forEach(function (k) { delete S.tickets[k]; delete S.own[k]; });
+      Project.docBuilt();   // the goal and fun above were decided here, never filed: as if they were built
+      Quest.dev.jump('own-game', Quest.dev.course().quests['own-game'].beats.map(function (b) { return b.id; }).indexOf('design-more'));
+    });
+    await waitLog('What would make your game even better?', 9000);
+    await type('a giant boss fork at the end');
+    await waitLog('A boss fork! That’s in what gets in your way.', 9000);
+    const ob = await p.evaluate(function () { return Project.doc().sections.obstacles; });
+    check('stand-in designer: a new idea goes into its section, which keeps what it said', /Spiky robots/.test(ob.text) && /boss fork/.test(ob.text) && ob.state === 'decided', JSON.stringify(ob));
+    await type('thats all');
+    await p.waitForFunction(function () { return Object.keys(Quest.dev.state().own).length === 1; }, null, { timeout: 9000 });
+    const add = await p.evaluate(function () { var S = Quest.dev.state(), t = S.own[Object.keys(S.own)[0]]; return t.title + ' / ' + t.detail; });
+    check('stand-in designer: filed, it builds only the new part, in her words', add === 'Add a giant boss fork at the end / a giant boss fork at the end', add);
     await p.unroute('**/api/ai');
   } catch (e) {
     check('the playthrough got through ' + where, false, e.message.split('\n')[0]);

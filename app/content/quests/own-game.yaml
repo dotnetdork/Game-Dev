@@ -1,18 +1,92 @@
-# After the board is clear: the game is the kid's, and the studio builds what they ask for. The
-# Mentor hands a request the settings can't do to the Builder (builder.js, ai/agents/builder.md).
-# No dead end (Jay's playthrough ended at "that's everything for now"): this runs next, and File ›
-# Clock out ends the day whenever the kid is ready.
+# After the first day: the kid's own game, planned and built in rounds (spec D47-D50; Jay, Sept 30:
+# "We want them to be building games after the tutorial teaches them the early basics"). Each round
+# is the same three steps the first day ended on: plan part of the design doc with the Mentor
+# (studio/design.js), file what was decided as tickets (quest.js fileDesign), and build them with
+# the departments (doc-ticket.yaml). Round 2 is what gets in your way and the world, round 3 the
+# sound and the story, and each first finishes what an earlier round left (design.js ROUNDS, carry).
+# Then `more`: the doc is done, and each new idea goes into its section and onto the board.
+# No dead end (Jay's playthrough ended at "that's everything for now"): "What next?" goes round
+# again, or to asking the Mentor for anything, and File › Clock out ends the day whenever.
 id: own-game
 title: Make it yours
 department: studio
 character: mentor
 next_quest: clock-out
 beats:
+  - id: design-2
+    goal: Plan what gets in your way, and your world
+    do: { stop: true }
+    ask:
+      text: Round two! Let’s plan what gets in your way, and where it all happens.
+      from: design
+      round: 2
+
+  - id: file-2
+    do: { stop: true, file: design, reveal: [tickets] }
+
+  - id: build-2
+    goal: Pick a ticket from your design
+    ask:
+      text: Which one should we build first?
+      from: tickets
+      then: again
+
+  - id: design-3
+    goal: Plan the sound and the story
+    do: { stop: true }
+    ask:
+      text: Last round! How your game sounds, and its story.
+      from: design
+      round: 3
+
+  - id: file-3
+    do: { stop: true, file: design, reveal: [tickets] }
+
+  - id: build-3
+    goal: Pick a ticket from your design
+    ask:
+      text: Which one should we build first?
+      from: tickets
+      then: again
+
+  - id: design-more
+    goal: Think of something that would make it better
+    do: { stop: true }
+    ask:
+      text: Your design doc is done! What would make your game even better?
+      from: design
+      round: more
+
+  - id: file-more
+    do: { stop: true, file: design, reveal: [tickets] }
+
+  - id: build-more
+    goal: Pick a ticket from your design
+    ask:
+      text: Which one should we build first?
+      from: tickets
+      then: again
+
+  - id: what-next
+    goal: Build something else, or clock out
+    ask:
+      text: What next?
+      answers:
+        - text: Add to my design
+          sub: More ideas, then build them
+          goto: design-more
+        - text: Just build something
+          sub: Tell the Mentor what to add
+          goto: ask-anything
+        - text: Clock out for today
+          sub: Save your game and finish
+          goto: end
+
+  # Asking for anything, the way own-game began before the design doc: the Mentor hands a request the
+  # settings can't do to the Builder (builder.js, ai/agents/builder.md).
   - id: ask-anything
     goal: Ask for something new in your game
     do: { stop: true, reveal: [project, console] }
-    say:
-      - "The board is clear, so now the fun part. Coins that spin, a jump pad, a second level: anything you like."
     instruct: Tell me what you want in your game, and I’ll build it with you.
     hints_after: 45
     hints:
@@ -26,15 +100,4 @@ beats:
     do: { cue: play }
     instruct: Press Play and try it out!
     wait_for: { stop: true }
-
-  - id: more
-    goal: Build something else, or clock out
-    ask:
-      text: What next?
-      answers:
-        - text: Build something else
-          sub: Tell the Mentor what to add next
-          goto: ask-anything
-        - text: Clock out for today
-          sub: Save your game and finish
-          goto: next
+    next: what-next
