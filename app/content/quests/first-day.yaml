@@ -140,3 +140,18 @@ beats:
     award: { stars: 1 }
     done_say:
       - Your first star!
+
+  # Then they build it (spec D49; Jay's pick: "the running list is the ticket board"). What round 1
+  # decided goes on the board as tickets, each for the department that builds it, and the kid picks
+  # them the way they picked the tutorial's: the same loop, now on their own game (doc-ticket.yaml).
+  - id: file-design
+    do: { stop: true, file: design, reveal: [tickets] }
+    say:
+      - Each department builds its part of your design, with you.
+
+  - id: build-yours
+    goal: Pick a ticket from your design
+    ask:
+      text: Which one should we build first?
+      from: tickets
+      then: again          # back here after each one, until the board is clear

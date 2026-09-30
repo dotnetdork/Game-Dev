@@ -38,8 +38,8 @@ var Project = (function () {
        state  'empty' (nothing yet), 'started' (something, still to finish), 'decided'
        by     who wrote the words last: 'kid' (typed it in the tab, or said it) or 'ai' (the designer,
               from what the kid said)
-     `changed` lists the sections written since the last build, which is what "Build it" sends;
-     `builtAt` is when that last build landed. `ideas` are the things the kid asked for that don't
+     `changed` lists the sections written since they were last filed as tickets, which is what the
+     next `file: design` files (quest.js fileDesign); `builtAt` is when that last filing was. `ideas` are the things the kid asked for that don't
      belong in a section yet ("Ideas for later"). */
   /* [key, the kid's title, what the section asks]. The question is the empty section's prompt in the
      tab and the scripted question when the AI is down (design.js), so it is written once, here. */
@@ -141,8 +141,8 @@ var Project = (function () {
     var d = state.doc; d.ideas.push(String(text).slice(0, 200)); if (d.ideas.length > 40) d.ideas.shift();
     save(); docChanged(null);
   }
-  /* A build landed (quest.js): what it was sent is built now. A rollback never calls this, so the
-     next "Build it" sends the same changes again. */
+  /* The doc's changes are on the board as tickets now (quest.js fileDesign), so the next filing starts
+     from nothing. */
   function docBuilt() { state.doc.changed = []; state.doc.builtAt = Date.now(); save(); docChanged(null); }
 
   return { load: load, save: save, onSave: function (fn) { onSave.push(fn); }, KEY: KEY, reset: reset, flush: flush, freeze: freeze, code: code, part: part, clone: clone,

@@ -80,14 +80,15 @@ var Quest = (function () {
   }
   function voice() { return frame() ? (VOICE[character(beat())] || 'm') : (Chat.active() || 'm'); }
   /* {game}: the game's name. {role}: who is talking ("the lead programmer"). {ticket}: the ticket this
-     shift is fixing, as the board titles it. {cards}: the cards they have, by name ("Collider,
+     shift is fixing, as the board titles it; {detail}, what it says to build. {cards}: the cards they have, by name ("Collider,
      Feedback and Risk"), which is how the design meeting opens (spec D50). */
   function fill(t) {
     var f = frame(), tk = f && ticketFor(f) && ticketOf(ticketFor(f));
     return String(t).replace(/\{game\}/g, S.name || 'your game')
       .replace(/\{cards\}/g, function () { return cardList(S.cards); })
       .replace(/\{role\}/g, NAME[character(f && beat(f), f)] || 'the Mentor')
-      .replace(/\{ticket\}/g, tk ? tk.title.charAt(0).toLowerCase() + tk.title.slice(1) : 'this ticket');
+      .replace(/\{ticket\}/g, tk ? tk.title.charAt(0).toLowerCase() + tk.title.slice(1) : 'this ticket')
+      .replace(/\{detail\}/g, tk && tk.detail ? tk.detail : 'this ticket');   // what it builds, as the ticket's page says
   }
   function say(lines, who) { if (lines && lines.length) Chat.say(lines.map(function (l) { return [who || voice(), fill(l)]; })); }
   /* A step's words: its talk, then its instruction (`instruct`), which the chat draws as a step row
@@ -189,18 +190,39 @@ var Quest = (function () {
   var DEPT_WORDS = [['audio', /\b(sound|sounds|music|noise|noisy|quiet|loud|hear|heard|silent|beep|ding)\b/i],
     ['art', /\b(look|looks|colou?rs?|gr[ae]y|ugly|pictures?|drawn|sprites?|dark|bright|invisible|see)\b/i],
     ['design', /\b(boring|hard|easy|fun|unfair|confus\w*|too (many|few|long|short))\b/i]];
-  function fileOwn(t, words) {
+  /* `quest` is the shift that fixes it: your-ticket for a finding, doc-ticket for a piece of the
+     design doc (spec D49), whose `by` is the department that filed it and whose `sections` say which
+     parts of the doc it builds. */
+  function fileOwn(t, words, questId, by) {
     var n = Object.keys(S.own).length + 1, id = 'own-' + n;
     while (S.own[id]) id = 'own-' + (++n);
     var title = String(t.title || '').replace(/\s+/g, ' ').trim().replace(/[.!?]+$/, '').slice(0, 70);
     title = title.charAt(0).toUpperCase() + title.slice(1);
     var dept = DEPT[t.department] && t.department !== 'studio' ? t.department
       : ((DEPT_WORDS.filter(function (d) { return d[1].test(words || title); })[0] || ['engineering'])[0]);
-    S.own[id] = { id: id, own: true, title: title || 'Something you found', department: dept, quest: 'your-ticket',
+    S.own[id] = { id: id, own: true, title: title || 'Something you found', department: dept, quest: questId || 'your-ticket',
       detail: String(t.detail || words || title).slice(0, 200),
       done: String(t.done || 'You test it with Play, and it does what should happen.').slice(0, 160) };
-    file(id, words);
+    if (t.sections && t.sections.length) S.own[id].sections = t.sections.slice(0, 4);
+    file(id, words, by === true ? DEPT[dept] : by);
     return S.own[id];
+  }
+  /* `file: design` (spec D49): what the doc decided since it was last filed goes on the board, one
+     ticket per thing to build, each to its department (design.js wrap words them). Then the doc's
+     change list is empty, because it is all on the board now. */
+  function fileDesign(then) {
+    var d = Project.doc(), keys = d.changed.filter(function (k) { return d.sections[k] && d.sections[k].state === 'decided'; });
+    if (!keys.length) return then();
+    var who = voice();
+    Design.wrap({ keys: keys, who: who, name: NAME[BY_VOICE[who] || 'mentor'], aiUp: aiUp, log: log,
+      cards: function () { return S.cards.map(cardOf); }, hero: function () { return S.hero || null; } })
+      .then(function (list) {
+        list.forEach(function (t) { fileOwn(t, null, 'doc-ticket', true); });
+        Project.docBuilt();
+        track('design-filed', { sections: keys, tickets: list.length });
+        if (list.length) say([list.length === 1 ? 'Your design has one thing to build. It’s on the board now.' : 'Your design has ' + list.length + ' things to build. They’re on the board now.'], who);
+        then();
+      });
   }
   function checkTickets(ev) {
     COURSE.tickets.forEach(function (t) {
@@ -275,6 +297,7 @@ var Quest = (function () {
      it, and what they learned once it's fixed. */
   function paintTicket(t) {
     var page = $('ticketPage'), mine = S.tickets[t.id], who = lead(t), W = Chat.WHO[who], asker = NAME[BY_VOICE[who]];
+    var build = t.quest === 'doc-ticket';   // a piece of their design to build (spec D49): nothing is wrong with it
     var focused = page.contains(document.activeElement) ? document.activeElement.getAttribute('data-key') : null;
     page.innerHTML = ''; page.setAttribute('data-dept', t.department);
     var back = el('button', 'tbtn quiet back'); back.type = 'button'; back.setAttribute('data-key', 'back');
@@ -289,18 +312,19 @@ var Quest = (function () {
     page.appendChild(el('h3', '', t.title));
     var owner = el('p', 'towner'); owner.setAttribute('data-who', who);
     var face = el('span', 'face'); face.appendChild(icon(W[2])); owner.appendChild(face);
-    owner.appendChild(el('span', '', W[0] + ' · ' + (mine.status === 'done' ? 'fixed it with you' : 'will help you fix it')));
+    owner.appendChild(el('span', '', W[0] + ' · ' + (mine.status === 'done' ? (build ? 'built it with you' : 'fixed it with you') : (build ? 'will build it with you' : 'will help you fix it'))));
     page.appendChild(owner);
     function part(label, text, cls) { var sec = el('section', 'tsec' + (cls ? ' ' + cls : '')); sec.appendChild(el('h4', '', label)); sec.appendChild(el('p', '', text)); page.appendChild(sec); }
-    part('What’s wrong', t.detail);
+    part(build ? 'What to build' : 'What’s wrong', t.detail);
     if (mine.words) part('You reported', '“' + mine.words + '”', 'quote');
+    else if (build) part('From your design doc', (t.sections || []).map(function (k) { return (Project.SECTIONS.filter(function (x) { return x[0] === k; })[0] || [k, k])[1]; }).join(', ') || 'Your plan');
     else part('Reported by', mine.by === 'The game' ? 'The game, when you ran into it' : (mine.by || 'The studio'));
     if (mine.should) part('Should happen', '“' + mine.should + '”', 'quote');   // their half of the bug report (askFindings)
-    part('Fixed when', t.done);
+    part(build ? 'Done when' : 'Fixed when', t.done);
     var act = el('div', 'tact');
     if (mine.status === 'open') {
       var why = whyNot(t), go = el('button', 'tbtn on'); go.type = 'button'; go.setAttribute('data-key', 'fix');
-      go.appendChild(icon('i-hammer')); go.appendChild(el('span', '', 'Fix this one'));
+      go.appendChild(icon('i-hammer')); go.appendChild(el('span', '', build ? 'Build this one' : 'Fix this one'));
       if (why) { go.disabled = true; act.appendChild(go); act.appendChild(el('p', 'tnote', why)); }
       else { go.addEventListener('click', function () { fixTicket(t); }); act.appendChild(go); }
     } else if (mine.status === 'doing') {
@@ -316,14 +340,14 @@ var Quest = (function () {
       // a ticket the kid filed is closed by the kid, once they've tested it (claimFixed)
       if (here && ownShift(f)) {
         var fx = el('button', 'tbtn on'); fx.type = 'button'; fx.setAttribute('data-key', 'fixed');
-        fx.appendChild(icon('i-check')); fx.appendChild(el('span', '', 'It’s fixed'));
+        fx.appendChild(icon('i-check')); fx.appendChild(el('span', '', build ? 'It works' : 'It’s fixed'));
         fx.addEventListener('click', function () { claimFixed(who); });
         act.insertBefore(fx, act.firstChild);
       }
     } else {
       var q = COURSE.quests[t.quest], c = q && q.concept && S.cards.indexOf(q.concept) >= 0 ? cardOf(q.concept) : null;
       var fixed = el('p', 'tnote good'); fixed.appendChild(icon('i-check'));
-      fixed.appendChild(document.createTextNode(c ? 'Fixed. You earned the ' + c.name + ' card (Project › Cards).' : 'Fixed. Nice work.'));
+      fixed.appendChild(document.createTextNode(c ? 'Fixed. You earned the ' + c.name + ' card (Project › Cards).' : build ? 'Built. Nice work.' : 'Fixed. Nice work.'));
       act.appendChild(fixed);
     }
     page.appendChild(act);
@@ -367,6 +391,7 @@ var Quest = (function () {
     Editor.cue(null);   // a cue is the last step's; a beat lights only what it names
     act(b.do);
     if (b.do && b.do.recap) return recap(function () { go(f, b); });
+    if (b.do && b.do.file === 'design') return fileDesign(function () { if (frame() === f && beat(f) === b) go(f, b); });
     go(f, b);
   }
   function go(f, b) {
@@ -481,7 +506,8 @@ var Quest = (function () {
       var rest = COURSE.tickets.filter(function (t) { return !S.tickets[t.id]; });
       rest.forEach(function (t) { file(t.id, null, DEPT[t.department]); });
       if (rest.length) say([rest.length > 1 ? 'The team spotted ' + rest.length + ' more and filed them too.' : 'The team spotted one more and filed it too.'], voice());
-    } else (d.file || []).forEach(function (id) { var t = ticketOf(id); file(id, null, t ? DEPT[t.department] : 'The studio'); });
+    } else if (Array.isArray(d.file)) d.file.forEach(function (id) { var t = ticketOf(id); file(id, null, t ? DEPT[t.department] : 'The studio'); });
+    // `file: design` waits on the AI's wording, so enter() runs it (fileDesign) before the beat speaks
     if (d.stop && Runner.isPlaying()) Editor.togglePlay();
     if (d.play && !Runner.isPlaying()) Editor.togglePlay();
     if (d.close_inspector) Editor.closeInspector();
@@ -597,7 +623,8 @@ var Quest = (function () {
     picking = function (t) { if (frame() === f) go(t); };
     picking.f = f;
     // every way to answer, said plainly (Jay, Sept 30): a kid shouldn't have to guess what counts
-    say([fill(a.text), 'Type its number, or tell me what it’s about. Or tap a ticket on the Tickets board and press Fix this one.'], who);
+    var button = open().some(function (t) { return t.quest === 'doc-ticket'; }) ? 'Build this one' : 'Fix this one';   // as its page says (paintTicket)
+    say([fill(a.text), 'Type its number, or tell me what it’s about. Or tap a ticket on the Tickets board and press ' + button + '.'], who);
     Chat.expect('Like “#' + number(open()[0].id) + '” or “the ' + DEPT[open()[0].department].toLowerCase() + ' one”…', function (text) {
       if (frame() !== f) return;
       var list = open(), t = ticketFrom(text, list);
@@ -1137,6 +1164,12 @@ var Quest = (function () {
   function context(qOnScreen, who, task) {
     var f = frame(), q = f && quest(f), b = f && beat(f), out = [];
     out.push('You are speaking as ' + NAME[BY_VOICE[who] || 'mentor'] + '.');
+    /* The design doc, near the top so the 7000-character cut below never takes it (spec D41: the doc is
+       what the studio builds from; the Builder gets this same block). Decided sections first. */
+    var secs = Project.doc().sections, docLines = Project.SECTIONS.filter(function (x) { return secs[x[0]].text; })
+      .sort(function (x, y) { return (secs[y[0]].state === 'decided') - (secs[x[0]].state === 'decided'); })
+      .map(function (x) { return x[1] + (secs[x[0]].state === 'decided' ? '' : ' (not decided yet)') + ': ' + secs[x[0]].text; });
+    if (docLines.length) out.push(('THEIR DESIGN DOC (their game as they planned it; build what it says): ' + docLines.join(' | ')).slice(0, 1200));
     if (q) {
       var tk = ticketFor(f) && ticketOf(ticketFor(f)), idea = q.concept && CARDS[q.concept];
       out.push('Quest: "' + q.title + '" (' + DEPT[q.department] + ').'
@@ -1146,7 +1179,11 @@ var Quest = (function () {
       if (b && b.say) out.push('This step just said: ' + b.say.map(fill).join(' ') + (b.instruct ? ' Then: ' + fill(b.instruct) : ''));
       /* A ticket the kid filed has no set answer, so it isn't "their job to figure out" the way a planned
          one is: the lead helps them find the cause, and does the change when they say it clearly. */
-      if (b && b.wait_for && b.wait_for.fixed) {
+      if (b && b.wait_for && b.wait_for.fixed && tk && tk.quest === 'doc-ticket') {
+        /* A piece of their design doc (doc-ticket.yaml): nothing is broken, so there is no cause to find.
+           The lead builds it with them, and the lesson is saying exactly what you want (mentor.md). */
+        out.push('This ticket builds part of their design doc' + (tk.sections ? ' (' + tk.sections.join(', ') + ')' : '') + '. There is no set answer: build it WITH them. Ask how exactly they want it (what it looks like, how it moves, when it happens) until you could build it, one question at a time. When they have said it clearly, do it (actions, or build for what the settings can\'t do) and say it worked because they said exactly what they wanted. When it\'s changed, tell them to press Play and test it, then say "fixed" or press It\'s fixed on the ticket.');
+      } else if (b && b.wait_for && b.wait_for.fixed) {
         out.push('This is a ticket the kid found and filed themselves' + (tk && S.tickets[tk.id] && S.tickets[tk.id].should ? ', and they said it should: "' + S.tickets[tk.id].should + '"' : '') + '. There is no set answer: help them fix it. Ask what they think causes it and which part it is about, and point them at the Hierarchy and the Inspector. When they say clearly what to change, do it (actions, or build for what the settings can\'t do) and say it worked because they said exactly what they wanted. When it\'s changed, tell them to press Play and test it, then say "fixed" or press It\'s fixed on the ticket.');
       } else if (b && b.wait_for) {
         var rung = Math.min(f.rung || 0, (b.hints || []).length);

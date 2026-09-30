@@ -255,5 +255,58 @@ var Design = (function () {
     host.done();
   }
 
-  return { round: round, ROUNDS: ROUNDS, CONCEPT: CONCEPT, busy: function () { return !!M; } };
+  /* ---------- the doc, filed as tickets (spec D49; quest.js fileDesign) ----------
+     What was decided since the last filing becomes the board's next tickets, each for the department
+     that builds it: how it plays is Design's, how it looks is Art's, how it sounds is Audio's. The AI
+     words them when it is up ("Forks chase the pizza", not "Build the obstacles"), at most 4, and the
+     page checks each is made of the doc's words and names only the sections being filed. A section no
+     ticket covers, or all of them with the AI down, gets one ticket of its own, titled for what it
+     builds and carrying the doc's words. "The idea" is the whole game, which the other sections build,
+     so it only gets one when it is all there is. */
+  var DEPT_OF = { idea: 'design', play: 'design', goal: 'design', fun: 'design', obstacles: 'design', story: 'design', hero: 'art', world: 'art', sound: 'audio' };
+  var TITLE_OF = { idea: 'Build the idea', play: 'Build how you play', goal: 'Build how you win and lose', fun: 'Build the best moment',
+    obstacles: 'Build what gets in your way', hero: 'Build your hero', world: 'Build the world and its look', sound: 'Add the sound and music', story: 'Add the story' };
+  var DONE = 'You press Play, and it works the way your design doc says.';
+  function wrap(o) {
+    var d = Project.doc(), keys = o.keys.slice();
+    function plain(k) { return { title: TITLE_OF[k] || 'Build ' + title(k).toLowerCase(), department: DEPT_OF[k] || 'design', detail: d.sections[k].text.slice(0, 200), done: DONE, sections: [k] }; }
+    function rest(list) {
+      var covered = {}; list.forEach(function (t) { t.sections.forEach(function (k) { covered[k] = true; }); });
+      var left = keys.filter(function (k) { return !covered[k] && (k !== 'idea' || keys.length === 1); });
+      return list.concat(left.map(plain));
+    }
+    if (!o.aiUp()) return Promise.resolve(rest([]));
+    var docText = keys.map(function (k) { return d.sections[k].text; }).join(' ').toLowerCase();
+    var studioText = ['You are speaking as ' + o.name + '.',
+      'THE DOC: ' + Project.SECTIONS.filter(function (x) { return d.sections[x[0]].text; }).map(function (x) { return '"' + x[0] + '" (' + x[1] + ') [' + d.sections[x[0]].state + ']: ' + d.sections[x[0]].text; }).join('; ') + '.',
+      'TO FILE: ' + keys.map(function (k) { return '"' + k + '"'; }).join(', ') + '.',
+      'Their hero: ' + (o.hero() || 'none yet') + '.',
+      'TASK: the meeting is over. Add "tickets": the TO FILE sections written up as the studio\'s next tickets, at most 4. Each ticket is ONE thing they can build and then test by pressing Play, in their words ("Forks chase the pizza", not "Build the obstacles"). Put small things together; split a section only if it is two different jobs. "idea" is the whole game: only give it a ticket of its own if nothing else covers it. Only what the doc says, nothing new. `reply`: one short line, and no question. `doc` {}, `decided` false, `card` null.'].join('\n');
+    var ctl = typeof AbortController === 'function' ? new AbortController() : null, t0 = Date.now();
+    var timer = setTimeout(function () { if (ctl) ctl.abort(); }, TIMEOUT);
+    var wait = Chat.thinking(o.who);
+    return fetch('/api/ai', {
+      method: 'POST', headers: { 'Content-Type': 'application/json' }, signal: ctl ? ctl.signal : undefined,
+      body: JSON.stringify({ agent: 'designer', message: '(the meeting is over: file the tickets)', history: [], where: 'The end of a design round, filing the doc as tickets.', studio: studioText })
+    }).then(function (r) { return r.json().catch(function () { return {}; }).then(function (j) { return { ok: r.ok, j: j }; }); })
+      .then(function (res) {
+        clearTimeout(timer); wait.done();
+        var list = (res.ok && Array.isArray(res.j.tickets) ? res.j.tickets : []).map(function (t) {
+          var secs = (t.sections || []).filter(function (k) { return keys.indexOf(k) >= 0; });
+          return { title: t.title, department: t.department || DEPT_OF[secs[0]] || 'design', detail: t.detail || (secs[0] ? d.sections[secs[0]].text : ''), done: t.done || DONE, sections: secs };
+        }).filter(function (t) {
+          // theirs: it names what it builds, and it is made of the doc's words
+          return t.title && t.sections.length && words(t.title + ' ' + t.detail).some(function (w) { return docText.indexOf(w.slice(0, 5)) >= 0; })
+            && !(t.sections.join() === 'idea' && keys.length > 1);   // the whole game, which the others build (asked, and given one anyway)
+        }).slice(0, 4);
+        o.log('ai', { agent: 'designer', how: res.ok ? 'wrap' : 'failed', tickets: list.map(function (t) { return t.title; }), ms: Date.now() - t0 });
+        return rest(list);
+      }, function (e) {
+        clearTimeout(timer); wait.done();
+        o.log('ai', { agent: 'designer', how: e && e.name === 'AbortError' ? 'timeout' : 'offline', ms: Date.now() - t0 });
+        return rest([]);
+      });
+  }
+
+  return { round: round, wrap: wrap, ROUNDS: ROUNDS, CONCEPT: CONCEPT, busy: function () { return !!M; } };
 })();

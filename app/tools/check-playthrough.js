@@ -461,6 +461,23 @@ async function launch() {
     check('the game\'s name is not asked on the first day: it belongs to the design doc', !/called\?/.test(await log()));
     await runJump(3000); await waitLog('first star', 9000);
 
+    /* Her design, filed (spec D49): with the AI off, one ticket per section round 1 decided, each for
+       its department and in her words; the idea is the whole game, so it gets none of its own. */
+    where = 'the first day: her design, filed as tickets';
+    await waitLog('things to build', 9000);
+    const filedD = await p.evaluate(function () { var S = Quest.dev.state(); return { own: Object.keys(S.own).map(function (id) { var t = S.own[id]; return { id: id, title: t.title, dept: t.department, quest: t.quest, detail: t.detail, secs: (t.sections || []).join(), by: S.tickets[id] && S.tickets[id].by }; }), changed: Project.doc().changed.slice() }; });
+    check('round 1 is filed as tickets: how you play, the goal and the fun, each Design\'s, in her words',
+      filedD.own.map(function (t) { return t.title + '/' + t.dept + '/' + t.by; }).join(' | ') === 'Build how you play/design/Design | Build how you win and lose/design/Design | Build the best moment/design/Design'
+      && filedD.own.every(function (t) { return t.quest === 'doc-ticket'; }) && filedD.own[1].detail === 'grab every coin, lava gets you', JSON.stringify(filedD.own.map(function (t) { return t.title + ' (' + t.secs + ')'; })));
+    check('and the doc is all on the board: nothing left to file', filedD.changed.length === 0, filedD.changed.join());
+    await waitLog('Which one should we build first?', 9000);
+    await type('#' + (await p.evaluate(function (id) { return Quest.dev.state().tickets[id].n; }, filedD.own[1].id)));
+    await waitLog('This one’s from your design doc. grab every coin, lava gets you', 9000);
+    check('a design ticket is Design\'s shift: the lead designer builds it with her', await p.$eval('#dMentor', function (e) { return e.getAttribute('data-who'); }) === 'd' && await task() === 'Build it, then test it with Play', await task());
+    const dpage = await p.evaluate(function (id) { document.querySelector('#ticketList [data-key="ticket:' + id + '"]').click(); return document.getElementById('ticketPage').textContent; }, filedD.own[1].id);
+    check('its page says what to build, not what is wrong', /What to build/.test(dpage) && /From your design doc/.test(dpage) && !/What’s wrong/.test(dpage), dpage.slice(0, 160));
+    await p.evaluate(function () { var S = Quest.dev.state(); Object.keys(S.own).forEach(function (id) { delete S.tickets[id]; delete S.own[id]; }); });
+
     /* A problem nobody planned (Jay, Sept 30: "It should be able to file and create tickets for
        different departments. It also just kinda shoots for the expected tickets"): filed in her words,
        given to a department, fixed in that department's shift, and closed only once it's tested. */

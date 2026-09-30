@@ -1,0 +1,32 @@
+# The shift for a ticket from the kid's design doc (spec D49; Jay, Sept 30: "We want them to be
+# building games after the tutorial teaches them the early basics"). A design round files what it
+# decided as tickets, one per thing to build, each for its department (quest.js fileDesign,
+# studio/design.js wrap), and picking one from the board runs this with that department's lead.
+#
+# your-ticket.yaml's sibling, not a copy of it: nothing here is broken, so there is no cause to find
+# and "you found this one yourself" would be wrong. The lead asks how exactly the kid wants it and
+# builds it when they say (the mentor, with actions or the Builder: quest.js context says so for a
+# doc ticket), because saying exactly what you want is the lesson (mentor.md, TEACH THEM TO ASK). It
+# ends the way every ticket does: changed, tested with Play, and closed by the one who tested it.
+id: doc-ticket
+title: Build your design
+department: studio
+character: department
+ticket: own
+beats:
+  - id: meet
+    goal: "Build it, then test it with Play"
+    do: { reveal: [hierarchy], stop: true }
+    say:
+      - Hi @name, I’m {role}! This one’s from your design doc. {detail}
+    instruct: Tell me exactly how you want it, and I’ll build it.
+    hints_after: 40
+    hints:
+      - Say what it looks like, how it moves, or when it happens.
+      - Like “the forks slide in from the right, slowly at first”.
+      - The more exactly you say it, the closer I get. Then press Play to test it.
+    wait_for: { fixed: true }
+    pass: true
+    award: { stars: 1 }
+    done_say:
+      - Built and tested, straight from your design. That’s how a studio works.

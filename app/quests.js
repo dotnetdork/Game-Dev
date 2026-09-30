@@ -187,8 +187,9 @@ function checkQuest(q, file, ticketIds) {
       (b.do.reveal || []).forEach(function (p) { if (PANELS.indexOf(p) < 0) problem(list, w, 'reveal: unknown panel "' + p + '"'); });
       if (b.do.point && PANELS.indexOf(b.do.point) < 0) problem(list, w, 'point: unknown panel "' + b.do.point + '"');
       (b.do.allow || []).forEach(function (c) { if (COMPONENTS.indexOf(c) < 0) problem(list, w, 'allow: unknown component "' + c + '"'); });
-      // `file: rest` files every ticket the kid didn't report, each by its department (quest.js act)
-      if (b.do.file !== undefined && b.do.file !== 'rest' && !Array.isArray(b.do.file)) problem(list, w, 'file is a list of tickets, or "rest"');
+      // `file: rest` files every ticket the kid didn't report, each by its department (quest.js act);
+      // `file: design` files what the design doc decided since it was last filed (quest.js fileDesign)
+      if (b.do.file !== undefined && b.do.file !== 'rest' && b.do.file !== 'design' && !Array.isArray(b.do.file)) problem(list, w, 'file is a list of tickets, "rest" or "design"');
       if (Array.isArray(b.do.file)) b.do.file.forEach(function (t) { if (ticketIds.indexOf(t) < 0) problem(list, w, 'file: no ticket "' + t + '"'); });
     }
     if (b.ask) checkAsk(list, w, b.ask, ids);
