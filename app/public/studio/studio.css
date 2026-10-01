@@ -426,6 +426,11 @@ body.resizing-x iframe, body.resizing-y iframe { pointer-events: none; }   /* th
 .dsec[data-state="decided"] .mark { color: var(--good); stroke-width: 2; }
 .dsec .sw { margin-left: auto; font-size: 12.5px; font-weight: 500; color: var(--ink-3); }
 .dsec[data-state="decided"] .sw { color: var(--good); }
+/* the section the design meeting is on (views.js docNow), and one whose words just arrived from the chat */
+.dsec[data-now] .sw { color: var(--accent); font-weight: 600; }
+.dsec[data-now] textarea { border-color: color-mix(in srgb, var(--accent) 60%, var(--edge)); }
+.dsec.just textarea { animation: justWritten 1.4s var(--ease); }
+@keyframes justWritten { 0%, 35% { background-color: var(--accent-soft); border-color: var(--accent); } }
 .dsec textarea { display: block; width: 100%; min-height: 3.1em; field-sizing: content; resize: none; margin: 0; padding: 9px 12px;
                  border: 1px solid var(--line-soft); border-radius: 8px; background: var(--panel); color: var(--ink);
                  font: inherit; font-size: 15px; line-height: 1.5; transition: border-color .15s var(--ease), background-color .15s var(--ease); }

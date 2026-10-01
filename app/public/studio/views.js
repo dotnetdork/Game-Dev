@@ -395,6 +395,20 @@ var Views = (function () {
     var secs = Project.doc().sections, n = Project.SECTIONS.filter(function (s) { return secs[s[0]].state === 'decided'; }).length;
     return n + ' of ' + Project.SECTIONS.length + ' decided';
   }
+  /* The section the design meeting is on (design.js), marked "Planning now" and scrolled to, so a kid
+     watching the doc sees their words land: at 1366×768 three sections fit, and round 2's were below
+     the fold. `just` scrolls to one without marking it (an idea just added to it, round `more`). */
+  var docNowKey = null;
+  function docNow(key, just) {
+    docNowKey = just ? null : key || null;
+    if (current !== 'doc') return;
+    paintDoc();
+    var sec = key && document.querySelector('.dsec[data-sec="' + key + '"]');
+    // at once, not smooth: a smooth scroll never moved in the app's own browser pane, and the `just` light is the motion
+    if (sec && sec.scrollIntoView) sec.scrollIntoView({ block: 'nearest' });
+  }
+  // words written into a section from the chat light it for a moment, so the kid sees where they went
+  function flash(sec) { sec.classList.remove('just'); void sec.offsetWidth; sec.classList.add('just'); setTimeout(function () { sec.classList.remove('just'); }, 1500); }
   function paintDoc() {
     if (current !== 'doc') return;
     buildDoc();
@@ -402,12 +416,19 @@ var Views = (function () {
     document.querySelector('.gdd h2').textContent = game || 'Your game';
     Project.SECTIONS.forEach(function (s) {
       var sec = document.querySelector('.dsec[data-sec="' + s[0] + '"]'), v = d.sections[s[0]];
+      var now = s[0] === docNowKey && v.state !== 'decided';
       sec.setAttribute('data-state', v.state);
+      sec.toggleAttribute('data-now', now);
       sec.querySelector('.mark use').setAttribute('href', '#' + MARKS[v.state]);
-      sec.querySelector('.sw').textContent = STATE_WORDS[v.state];
+      sec.querySelector('.sw').textContent = now ? 'Planning now' : STATE_WORDS[v.state];
       var t = sec.querySelector('textarea');
       // never under the kid's fingers: the box they are in keeps what they're typing
-      if (document.activeElement !== t && !typing[s[0]] && t.value !== v.text) { t.value = v.text; grow(t); }
+      if (document.activeElement !== t && !typing[s[0]] && t.value !== v.text) {
+        var seen = sec.hasAttribute('data-seen');
+        t.value = v.text; grow(t);
+        if (seen && v.text) flash(sec);
+      }
+      sec.setAttribute('data-seen', '');
     });
     var ul = document.querySelector('.dideas ul'); ul.innerHTML = '';
     if (!d.ideas.length) { var e = document.createElement('li'); e.className = 'empty'; e.textContent = 'Nothing yet. Anything you ask for that isn’t built yet is kept here.'; ul.appendChild(e); }
@@ -449,6 +470,6 @@ var Views = (function () {
   }
 
   return { init: init, show: show, openCode: openCode, revealScene: revealScene, paintScene: paintScene,
-           revealDoc: revealDoc, openDoc: openDoc, paintDoc: paintDoc, docOn: function () { return docOn; },
+           revealDoc: revealDoc, openDoc: openDoc, paintDoc: paintDoc, docNow: docNow, docOn: function () { return docOn; },
            current: function () { return current; } };
 })();

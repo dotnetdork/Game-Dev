@@ -110,9 +110,10 @@ var Design = (function () {
     var had = Project.doc().sections[k];
     M.s = { key: k, turns: 0, answers: 0, said: [], picks: [], carded: false, text: had.text || '', was: had.state === 'started' ? had.text : '' };
     // the page's own first question, with its example in it; its own last mark stays at the end
+    Views.docNow(k);   // marked and in view in the doc tab, where they watch it being written
     var q = question(k), mark = (q.match(/[.?!]\s*$/) || ['?'])[0].trim();
     // a section carried over with words in it is added to, not asked from the start ("Who do you play as?" to a kid who drew a frog)
-    if (M.s.text && Project.doc().sections[k].state === 'started') M.host.say(['Let’s finish ' + title(k).toLowerCase() + '. So far it says “' + M.s.text + '”. What else' + (h[0] ? ', ' + h[0] : '') + '?']);
+    if (M.s.text && Project.doc().sections[k].state === 'started') M.host.say(['Let’s finish ' + title(k).toLowerCase() + '. So far it says “' + M.s.text.replace(/[.!?]+$/, '') + '”. What else' + (h[0] ? ', ' + h[0] : '') + '?']);
     else M.host.say([h[0] ? q.replace(/[.?!]\s*$/, '') + ', ' + h[0] + mark : q]);
     listen();
   }
@@ -265,6 +266,7 @@ var Design = (function () {
     var host = M.host, R = M.R, n = Object.keys(decidedNow()).length;
     Chat.stopExpecting();
     M = null;
+    Views.docNow(null);
     if (R.keys.length) host.say([n ? 'That’s ' + R.sum + ', in your design doc.' : 'Your design doc is ready whenever you are.'].concat(R.handoff ? [R.handoff] : []));
     if (Views.current() === 'doc') Views.show('game');
     host.done();
@@ -326,6 +328,7 @@ var Design = (function () {
         if (!k || !words(line).some(function (w) { return text.toLowerCase().indexOf(w.slice(0, 5)) >= 0; })) return later();
         if (was && !words(was).some(function (w) { return line.toLowerCase().indexOf(w.slice(0, 5)) >= 0; })) line = (was + ' ' + text).slice(0, 300);
         Project.writeDoc(k, line, 'ai', 'decided');
+        Views.docNow(k, true);   // in view, where it just went
         added[k] = (added[k] ? added[k] + '; ' : '') + text.slice(0, 120);
         kept(String(j.reply).trim(), true);
       }, function (e) {
