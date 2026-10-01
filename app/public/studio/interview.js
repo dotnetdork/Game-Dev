@@ -247,6 +247,9 @@
     input.value = '';
     CARD.typedSomething = true;
     echo(text);
+    // not about the game (ui.js, SAFETY): a fixed, kind answer, and the line goes no further, not even into the log
+    var worry = UI.concern(text, 'interview');
+    if (worry) { say(worry.reply); return; }
     turn(text);
   });
   /* One kid turn: `said` is what goes to the director, `tap` the tablet goal it came from (if any).
@@ -272,6 +275,8 @@
         if (settled) return;
         if (!res.ok || !res.j.reply || !res.j.learned) return fail();
         settled = true; clearTimeout(timer); CARD.fails = 0;
+        // the server's safety check answered instead of the AI (ai/safety.js): nothing is learned from it
+        if (res.j.concern) { CARD.log = CARD.log.filter(function (m) { return !(m.role === 'user' && m.content === said); }); return say(res.j.reply); }
         learn(res.j.learned, said);
         if (!tap) net(focus, step, said, prev, res.j.reply);
         answered(res.j.reply, res.j.show, res.j.done);

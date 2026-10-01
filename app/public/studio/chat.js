@@ -227,8 +227,8 @@ var Chat = (function () {
      who said it, what kind of line it is, and its words. A listener that throws is ignored. */
   var taps = [];
   function tap(kind, k, text, extra) { taps.forEach(function (fn) { try { fn(kind, k, fill(String(text || '')), extra); } catch (e) {} }); }
-  function line(k, text) {
-    tap(k === 'k' ? 'kid' : 'said', k, text);
+  function line(k, text, quiet) {
+    if (!quiet) tap(k === 'k' ? 'kid' : 'said', k, text);
     var last = box.lastElementChild;
     var b = document.createElement('div');
     b.className = 'msg in' + (k === 'k' ? ' kid' : '');
@@ -242,8 +242,10 @@ var Chat = (function () {
     var p = rich(document.createElement('p'), fill(text));
     b.appendChild(p);
     box.appendChild(b); trim();
-    history.push({ role: k === 'k' ? 'user' : 'assistant', content: (k === 'k' || k === active ? '' : who(k)[0] + ': ') + fill(text) });
-    if (history.length > 16) history.shift();
+    if (!quiet) {
+      history.push({ role: k === 'k' ? 'user' : 'assistant', content: (k === 'k' || k === active ? '' : who(k)[0] + ': ') + fill(text) });
+      if (history.length > 16) history.shift();
+    }
     scroll();
   }
 
@@ -588,6 +590,11 @@ var Chat = (function () {
   function expectingNow() { return !!expecting; }
 
   function typed(text) {
+    /* A line that isn't about the game (ui.js, SAFETY): the kid sees what they wrote and a fixed, kind
+       answer, and nothing else happens. `quiet` keeps their words out of the log and out of the
+       history the AI is sent, so the next turn is not about it either. */
+    var worry = window.UI && UI.concern ? UI.concern(text, 'studio') : null;
+    if (worry) { quieten(); flush(); line('k', text, true); say([[active || 'm', worry.reply]]); reask(); return; }
     if (expecting) return answer(text);
     quieten(); flush();
     line('k', text);

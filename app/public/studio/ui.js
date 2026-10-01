@@ -13,7 +13,8 @@
    4. TOOLTIPS: every control with data-tip gets one (spec §3.3: "every button has an icon, a word
       and a tooltip"). One tooltip element for the page. It shows after a short rest on hover, at
       once on keyboard focus, and goes on a press, Escape or leaving. It is extra, never the only
-      place a thing is said: the button's own word or aria-label already names it. */
+      place a thing is said: the button's own word or aria-label already names it.
+   5. SAFETY: a kid's line checked before any AI, below. */
 var UI = (function () {
   var FILES = { play: 'sfx-select.ogg', stop: 'sfx-back.ogg', good: 'sfx-confirm.ogg', nope: 'sfx-lowrandom.ogg',
                 card: 'sfx-powerup2.ogg', tool: 'platformer/sfx_magic.ogg', hired: 'sfx-threetone2.ogg' };
@@ -98,7 +99,30 @@ var UI = (function () {
   document.addEventListener('focusout', hideTip);
   document.addEventListener('keydown', function (e) { if (e.key === 'Escape' && tipFor) hideTip(); }, true);
 
+  /* ---------- 5. SAFETY: a line that isn't about the game ----------
+     The list lives on the server (ai/safety.js, which says why it runs before any AI) and is fetched
+     once here, on both pages that take a kid's typing. concern(text) is the category and the reply to
+     give, or null; a match is reported as its category only, never the words. If the list never
+     arrived, this says null and the server's own check in /api/ai is what is left. */
+  var rules = null, replies = {};
+  fetch('/api/safety', { credentials: 'same-origin' }).then(function (r) { return r.ok ? r.json() : null; }).then(function (j) {
+    if (!j || !Array.isArray(j.rules)) return;
+    rules = j.rules.map(function (r) { try { return [r[0], new RegExp(r[1], r[2])]; } catch (e) { return null; } }).filter(Boolean);
+    replies = j.reply || {};
+  }).catch(function () {});
+  function concern(text, where) {
+    if (!rules || !text) return null;
+    for (var i = 0; i < rules.length; i++) {
+      if (!rules[i][1].test(String(text))) continue;
+      var c = rules[i][0];
+      fetch('/api/safety', { method: 'POST', credentials: 'same-origin', headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ category: c, where: where || '' }) }).catch(function () {});
+      return { category: c, reply: replies[c] || 'Please tell your teacher or a grown-up you trust.' };
+    }
+    return null;
+  }
+
   if (document.readyState === 'loading') document.addEventListener('DOMContentLoaded', init); else init();
   return { sound: sound, muted: function () { return muted; }, onMute: function (fn) { onMute.push(fn); },
-           keepFocus: keepFocus, feel: feel, hideTip: hideTip };
+           keepFocus: keepFocus, feel: feel, hideTip: hideTip, concern: concern };
 })();

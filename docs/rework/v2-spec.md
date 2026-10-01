@@ -547,3 +547,32 @@ order. Later that day, planning the meeting itself, Jay picked the options in D4
     lead designer asks one playtest question on a card (how hard was it? could you tell when it
     worked?), and the first "how hard" earns Balance. (4) The characters name a card the kid already
     has instead of explaining it again ("that's feedback, like the coin ding").
+
+### Round 11: after the whole-app audit (2026-09-30)
+
+Jay asked for an Impeccable critique and audit of the whole studio: teaching, the learner model, the
+AI, and the screen. It scored 26/40 on design health and 13/20 on the technical audit. The report,
+with its evidence and its plan in five tiers, is the Artifact
+https://claude.ai/artifact/GRdzuPdNQBHJvNH6pEr8PS (the snapshot is in `.impeccable/critique/`). Jay's
+answers to its questions:
+
+51. **Safety and truth come first** (the audit's tier 1), ahead of the screen and the teaching:
+    - a safety check before any AI call;
+    - a design ticket closes only on a real build;
+    - the AI's words match what the page actually changed;
+    - the Builder can't drop the game's quest events;
+    - the AI comes back after it fails.
+52. **In own-game time the kid makes one choice, then the AI builds.** Before a build, the kid picks
+    one setting that carries the concept (how fast, when, how many) on a card. Then the AI does the
+    work. This is not withholding: the build still happens straight away, with a decision the kid made
+    in it. It answers the research that an AI which builds whatever is typed can make kids feel
+    productive without learning (Bastani et al. 2025).
+53. **Typing first stays** (D43 holds). Suggestions in the design meeting still come only after
+    "idk" or Hint, even though slow typers pay for each turn.
+54. **Design rounds 2 and 3 move to week 2.** Day one is round 1, the hero and its tickets. Fast kids
+    get more tickets and free building, so they don't run out. The reason is spacing, not a word cap.
+    Jay: the curriculum map's budget "is not 100% a gatekeeper". The research agrees that the count
+    matters less than whether each word comes back, recalled rather than re-shown, across sessions.
+    Look-alike ideas taught together (goal, reward, challenge) blur, so they are contrasted on purpose.
+    There is no week 2 in the code yet: this needs the session count from the audit's tier 4, so
+    `own-game.yaml` changes when that is built. Until then §4's Sunday table still lists the rounds.

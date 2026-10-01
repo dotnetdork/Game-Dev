@@ -188,6 +188,8 @@ var Design = (function () {
         if (!on() || M.at !== at) return done('late', res.j);
         if (!res.ok || !res.j.reply) { M.fails++; done(res.ok ? 'empty' : 'failed', res.j); return scripted(s, text); }
         M.fails = 0; done('ok', res.j);
+        // the server's safety check answered instead of the AI (ai/safety.js): the line is not the doc's
+        if (res.j.concern) { s.said = s.said.filter(function (t) { return t !== text; }); M.kid = M.kid.filter(function (t) { return t !== text; }); M.host.say([res.j.reply]); return; }
         answered(s, res.j);
       }, function (e) {
         if (!M) return;

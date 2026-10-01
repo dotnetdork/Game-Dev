@@ -19,6 +19,7 @@ const provider = require('../ai/provider');
 const guards = require('../ai/guards');
 const cleanQuizQuestion = require('../ai/quiz-check').cleanQuizQuestion;
 const cleanGrade = require('../ai/grade-check').cleanGrade;
+const safety = require('../ai/safety');
 
 /* Pulled off the modules above so the moved code reads exactly as it did in server.js. */
 const { AGENT_TOOLS, resolveModel } = models;
@@ -226,6 +227,18 @@ function mount(app, deps) {
     return (await store.bump('ai:' + id, RATE.windowSec)) > RATE.max;
   }
 
+  /* ---- the safety list, for the browser's own check (studio/ui.js UI.concern) ----
+     GET is the list, so the page can check a line before any AI and on the paths that have none.
+     POST is the page saying one matched: the category and where, never the words (ai/safety.js). */
+  app.get('/api/safety', function (req, res) { res.json(safety.forBrowser()); });
+  app.post('/api/safety', function (req, res) {
+    const b = req.body || {};
+    const category = safety.CATEGORIES.indexOf(b.category) >= 0 ? b.category : null;
+    if (!category) return res.status(400).json({ ok: false });
+    tel.record('concern', { who: tel.who(auth, req), category: category, where: String(b.where || '').slice(0, 40) || undefined });
+    res.json({ ok: true });
+  });
+
   // ---- the agent endpoint: relays the AI and returns a change for the browser to apply ----
   //      The student's code lives in the browser and is sent with the request. The server
   //      never stores or runs student code — it just talks to the model and returns "ops".
@@ -306,6 +319,17 @@ function mount(app, deps) {
        log has to say which one actually answered or it will disagree with what the child saw. */
     seen.agent = agent;
     seen.q = message;
+
+    /* A kid saying they are hurt, or unsafe, or sharing where they live: answered here, with no AI and
+       the same words every time, and logged as the category only (ai/safety.js says why). The browser
+       has usually caught it already; this is for when it never got the list. The Builder's brief is
+       the mentor's, so it is the kid's own words beside it that are checked. */
+    const worry = safety.concern(message) || safety.concern(req.body && req.body.kidSaid);
+    if (worry) {
+      seen.q = '[' + worry + ']';
+      tel.record('concern', { who: seen.who, category: worry, agent: agent, where: 'server' });
+      return res.json({ reply: safety.REPLY[worry], concern: worry, held: 'concern', learned: {}, doc: {}, actions: [] });
+    }
 
     // Context the browser sends about where the student is and what exists in their project.
     const b = req.body || {};

@@ -1393,6 +1393,8 @@ var Quest = (function () {
         else say(['I couldn’t reach the studio’s AI just now. Try asking again in a minute.'], who);
         return Chat.reask();
       }
+      // the server's safety check answered instead of the AI (ai/safety.js): its words, and nothing done
+      if (j.concern) { Chat.say([[who, j.reply]]); return Chat.reask(); }
       Chat.say([[who, j.reply]]);
       var acted = (j.actions || []).filter(allowed);
       acted.forEach(function (a) { Editor.set(a.part, a.key, a.value); });
