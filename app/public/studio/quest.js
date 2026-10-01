@@ -182,7 +182,7 @@ var Quest = (function () {
      wasn't the kid (the art director, the game itself), for the row in the chat. */
   function file(id, words, by) {
     var t = ticketOf(id); if (!t || S.tickets[id]) return false;
-    S.tickets[id] = { status: 'open', words: words ? String(words).slice(0, 160) : null, by: by || null, n: Object.keys(S.tickets).length + 1 };
+    S.tickets[id] = { status: 'open', words: words ? clip(words, 160) : null, by: by || null, n: Object.keys(S.tickets).length + 1 };
     save(); paintTickets();
     Chat.event((by ? by + ' filed ' : 'You filed ') + 'ticket #' + S.tickets[id].n + ': ' + t.title, 'i-ticket', { kind: 'ticket' });
     UI.feel($('dTickets'), 'good');
@@ -246,6 +246,23 @@ var Quest = (function () {
   /* A ticket's name for the AI and the Director: the board's title, with the kid's words when they
      reported it, so the AI can tell "the floor thing" means this one. */
   function titleOf(t) { var mine = S.tickets[t.id]; return t.title + (mine && mine.words ? ' (they reported it as “' + mine.words + '”)' : ''); }
+  /* A kid's words cut to fit: at the last whole word, with an ellipsis, never mid-word. */
+  function clip(text, n) {
+    text = String(text).trim(); if (text.length <= n) return text;
+    var c = text.slice(0, n), sp = c.lastIndexOf(' ');
+    return (sp > n * 0.6 ? c.slice(0, sp) : c).replace(/[\s,.;:!?]+$/, '') + '…';
+  }
+  /* ONE MESSAGE, SEVERAL PROBLEMS. "I fell through the level, coins disappear but dont make noise, and
+     I touched lava that didnt hurt" filed three tickets, and each one's page quoted all of it; the
+     answer to what should have happened went whole onto the first (Jay's playthrough, Oct 1). The
+     message is split into its parts at commas, "and", "also" (never "but" or "or", which join one
+     problem's halves), and each ticket keeps the parts in its own words. */
+  function clauses(text) { return String(text).split(/\s*(?:[,;.!?]+|\band then\b|\band\b|\balso\b|\bplus\b)\s*/i).filter(function (c) { return c.replace(/\W/g, '').length >= 3; }); }
+  function partFor(t, text) {
+    if (!t.words) return text;
+    var re = new RegExp('\\b(?:' + t.words + ')', 'i'), mine = clauses(text).filter(function (c) { return re.test(c); });
+    return mine.length ? mine.join(', ') : text;
+  }
   function number(id) { var mine = S.tickets[id]; return (mine && mine.n) || Object.keys(S.tickets).indexOf(id) + 1; }
   var STATUS = { open: 'Open', doing: 'In progress', done: 'Fixed' };
   function lead(t) { var q = COURSE.quests[t.quest]; return VOICE[t.own ? LEADS[t.department] : (q && q.character) || 'mentor'] || 'm'; }
@@ -270,7 +287,9 @@ var Quest = (function () {
     UI.keepFocus(ul, function () {
       ul.innerHTML = '';
       if (!ids.length) { ul.innerHTML = '<li class="empty">Nothing yet. Play the game and tell the Mentor what’s broken.</li>'; return; }
-      ids.slice().sort(function (a, b) { return number(a) - number(b); }).forEach(function (id) {
+      // what's left to do first, the fixed ones after: the board is a to-do list, not a history
+      var RANK = { doing: 0, open: 1, done: 2 };
+      ids.slice().sort(function (a, b) { return (RANK[S.tickets[a].status] - RANK[S.tickets[b].status]) || number(a) - number(b); }).forEach(function (id) {
         var t = ticketOf(id), mine = S.tickets[id]; if (!t) return;
         var li = el('li'), b = el('button', 'tk ' + mine.status);
         b.type = 'button'; b.setAttribute('data-key', 'ticket:' + id); b.setAttribute('data-dept', t.department);
@@ -306,26 +325,34 @@ var Quest = (function () {
     var build = t.quest === 'doc-ticket';   // a piece of their design to build (spec D49): nothing is wrong with it
     var focused = page.contains(document.activeElement) ? document.activeElement.getAttribute('data-key') : null;
     page.innerHTML = ''; page.setAttribute('data-dept', t.department);
+    /* The way back and the ticket's line from the board, then the page. In a wide dock (the bottom
+       one, at a Chromebook's full width) the page is two columns, the ticket and what the kid said
+       about it; in a narrow one it is a single column, their words after what's wrong (studio.css). */
+    var head = el('div', 'thead');
     var back = el('button', 'tbtn quiet back'); back.type = 'button'; back.setAttribute('data-key', 'back');
-    back.appendChild(icon('i-undo')); back.appendChild(el('span', '', 'All tickets'));
+    back.appendChild(icon('i-back')); back.appendChild(el('span', '', 'All tickets'));
     back.addEventListener('click', closeTicket);
-    page.appendChild(back);
+    head.appendChild(back);
     var top = el('p', 'tmeta');
     top.appendChild(el('span', 'tid', '#' + number(t.id)));
     top.appendChild(el('span', 'tdept', DEPT[t.department]));
     top.appendChild(pill(mine.status, t.quest === 'doc-ticket'));
-    page.appendChild(top);
-    page.appendChild(el('h3', '', t.title));
+    head.appendChild(top);
+    page.appendChild(head);
+    var grid = el('div', 'tgrid'); page.appendChild(grid);
+    grid.appendChild(el('h3', '', t.title));
     var owner = el('p', 'towner'); owner.setAttribute('data-who', who);
     var face = el('span', 'face'); face.appendChild(icon(W[2])); owner.appendChild(face);
     owner.appendChild(el('span', '', W[0] + ' · ' + (mine.status === 'done' ? (build ? 'built it with you' : 'fixed it with you') : (build ? 'will build it with you' : 'will help you fix it'))));
-    page.appendChild(owner);
-    function part(label, text, cls) { var sec = el('section', 'tsec' + (cls ? ' ' + cls : '')); sec.appendChild(el('h4', '', label)); sec.appendChild(el('p', '', text)); page.appendChild(sec); }
+    grid.appendChild(owner);
+    function part(label, text, cls, into) { var sec = el('section', 'tsec' + (cls ? ' ' + cls : '')); sec.appendChild(el('h4', '', label)); sec.appendChild(el('p', '', text)); (into || grid).appendChild(sec); }
     part(build ? 'What to build' : 'What’s wrong', t.detail);
-    if (mine.words) part('You reported', '“' + mine.words + '”', 'quote');
-    else if (build) part('From your design doc', (t.sections || []).map(function (k) { return (Project.SECTIONS.filter(function (x) { return x[0] === k; })[0] || [k, k])[1]; }).join(', ') || 'Your plan');
-    else part('Reported by', mine.by === 'The game' ? 'The game, when you ran into it' : (mine.by || 'The studio'));
-    if (mine.should) part('Should happen', '“' + mine.should + '”', 'quote');   // their half of the bug report (askFindings)
+    var side = el('div', 'tside');
+    if (mine.words) part('You reported', '“' + mine.words + '”', 'quote', side);
+    else if (build) part('From your design doc', (t.sections || []).map(function (k) { return (Project.SECTIONS.filter(function (x) { return x[0] === k; })[0] || [k, k])[1]; }).join(', ') || 'Your plan', '', side);
+    else part('Reported by', mine.by === 'The game' ? 'The game, when you ran into it' : (mine.by || 'The studio'), '', side);
+    if (mine.should) part('Should happen', '“' + mine.should + '”', 'quote', side);   // their half of the bug report (askFindings)
+    grid.appendChild(side);
     part(build ? 'Done when' : 'Fixed when', t.done);
     var act = el('div', 'tact');
     if (mine.status === 'open') {
@@ -353,10 +380,10 @@ var Quest = (function () {
     } else {
       var q = COURSE.quests[t.quest], c = q && q.concept && S.cards.indexOf(q.concept) >= 0 ? cardOf(q.concept) : null;
       var fixed = el('p', 'tnote good'); fixed.appendChild(icon('i-check'));
-      fixed.appendChild(document.createTextNode(c ? 'Fixed. You earned the ' + c.name + ' card (Project › Cards).' : build ? 'Built. Nice work.' : 'Fixed. Nice work.'));
+      fixed.appendChild(document.createTextNode(c ? 'Fixed. You earned the ' + c.name + ' card. It’s in your profile, top right.' : build ? 'Built. Nice work.' : 'Fixed. Nice work.'));
       act.appendChild(fixed);
     }
-    page.appendChild(act);
+    grid.appendChild(act);
     if (focused) { var again = page.querySelector('[data-key="' + focused + '"]'); if (again) again.focus({ preventScroll: true }); }
   }
   /* Why "Fix this one" can't start it now, in words; null when it can. */
@@ -364,7 +391,7 @@ var Quest = (function () {
     if (pickable(t) >= 0) return null;
     var on = S.stack.map(ticketFor).filter(Boolean)[0];
     if (on) return 'Finish ticket #' + number(on) + ' first.';
-    if (busyWithQuest()) return 'You’ll pick one to fix when the Mentor asks.';
+    if (busyWithQuest()) return 'You’ll pick one when the Mentor asks.';
     return null;
   }
   function pickable(t) {
@@ -710,7 +737,7 @@ var Quest = (function () {
     picking.f = f;
     // every way to answer, said plainly (Jay, Sept 30): a kid shouldn't have to guess what counts
     var button = open().some(function (t) { return t.quest === 'doc-ticket'; }) ? 'Build this one' : 'Fix this one';   // as its page says (paintTicket)
-    say([fill(a.text), 'Type its number, or tell me what it’s about. Or tap a ticket on the Tickets board and press ' + button + '.'], who);
+    say([fill(a.text), 'Type its number or what it’s about, or open it on the Tickets board and press ' + button + '.'], who);
     Chat.expect('Like “#' + number(open()[0].id) + '” or “the ' + DEPT[open()[0].department].toLowerCase() + ' one”…', function (text) {
       if (frame() !== f) return;
       var list = open(), t = ticketFrom(text, list);
@@ -777,7 +804,8 @@ var Quest = (function () {
     var STUCK = /^\s*(idk|i ?d(on|o)n?['’]?t know|dunno|no idea|(i['’]?m |im )?not sure|nothing|no+|nope|um+|uh+|\?+)\s*[.!?]*\s*$/i;
     var ASKING = /^\s*(what|where|which|huh|wdym)\b(?!.*\b(nothing|happened|did)\b)|\?\s*$/i;
     var FINISH = /^\s*(that['’]?s (it|all|everything)|thats? all|(i['’]?m |all )?done|finished|no more|move on|next)\s*[.!]*\s*$/i;
-    var ELSE = ['What else did you notice?', 'Anything else seem off?', 'Good. What else?'];
+    // never a "Good." of its own: it lands after the AI's line, which has already said so (Oct 1)
+    var ELSE = ['What else did you notice?', 'Anything else seem off?', 'What else?'];
     /* On the first day the level is grey boxes, and nothing says which box is what (Jay, Sept 30:
        "theres no way to know thats lava"). The Mentor may say what a thing is, never what's wrong
        with it, so the AI is told the names, and the script names the two a kid can't guess. */
@@ -811,11 +839,14 @@ var Quest = (function () {
     }
     function filed(ts, words, reply, by) {
       pending = null;
-      ts.forEach(function (t) { file(t.id, words, by); });
+      ts.forEach(function (t) { file(t.id, words && ts.length > 1 ? partFor(t, words) : words, by); });
       track('finding', { text: words, tickets: ts.map(function (t) { return t.id; }) });
       reveal('tickets'); paintTickets();
       var t0 = ticketOf(ts[0].id);
-      var ack = reply || (ts.length > 1 ? 'Good catches. Those are tickets now.' : ACKS[acked++ % ACKS.length].replace('#N', '#' + number(ts[0].id)));
+      var nums = ts.map(function (t) { return '#' + number(t.id); }), list = nums.length > 1 ? nums.slice(0, -1).join(', ') + ' and ' + nums[nums.length - 1] : nums[0];
+      var ack = reply || (ts.length > 1 ? 'Good catches. Those are tickets ' + list + ' now.' : ACKS[acked++ % ACKS.length].replace('#N', '#' + number(ts[0].id)));
+      // the AI's line may not say the numbers, and the next ticket's "#4" then comes from nowhere
+      if (reply && ts.length > 1 && reply.indexOf('#') < 0) ack += ' They’re tickets ' + list + ' now.';
       // one nobody planned says where it goes: every ticket belongs to a department
       if (t0.own && !reply) ack += ' It goes to ' + DEPT[t0.department] + '.';
       /* "What should have happened?" is asked once, the first time, to teach the other half of a bug
@@ -823,8 +854,8 @@ var Quest = (function () {
          every finding made the Mentor sound like it wasn't listening). A ticket nobody planned has no
          `should` to say, so it is always asked: only the kid knows. */
       if (taught && !t0.own) return onward(ack + ' ' + t0.should);
-      pending = { kind: 'should', ticket: ts[0].id, n: 1 };
-      say([ack, t0.should_q || (t0.own && taught ? 'What should happen instead?' : 'What should have happened instead?')], who);
+      pending = { kind: 'should', ticket: ts[0].id, tickets: ts.map(function (t) { return t.id; }), n: 1 };
+      say([ack, ts.length > 1 ? 'What should have happened instead? Tell me for each one.' : t0.should_q || (t0.own && taught ? 'What should happen instead?' : 'What should have happened instead?')], who);
       Chat.placeholder();
       return false;
     }
@@ -865,8 +896,31 @@ var Quest = (function () {
       if (pending.n === 0) { pending.n = 1; say(['Press Play and try it, then tell me what happened.'], who); Chat.placeholder(); return false; }
       return onward('That’s okay. We’ll come back to it.');
     }
+    /* Their "should" answer, onto the tickets it is about: all of it on one, or each part on the
+       ticket in whose words it is. A part about none of them that is a finding of its own ("also the
+       colors are boring") is handed back, to be heard as one, so they don't have to say it twice. */
+    function keepShould(ids, text) {
+      var parts = clauses(text), got = {}, extra = [];
+      var about = function (id, c) { var t = ticketOf(id); return t && t.words && new RegExp('\\b(?:' + t.words + ')', 'i').test(c); };
+      var finding = function (c) { return concrete(c).some(function (t) { return !S.tickets[t.id]; }) || (FEEL.test(c) && !/\bshould|\bwould|\bneeds? to\b/i.test(c)); };   // "it shouldn't feel broken" is the answer, not a finding
+      if (ids.length < 2) {   // one ticket: all of it, but a part that is plainly another finding
+        var one = S.tickets[ids[0]], t1 = ticketOf(ids[0]);
+        extra = t1 && t1.words ? parts.filter(function (c) { return !about(ids[0], c) && finding(c); }) : [];
+        var kept = parts.filter(function (c) { return extra.indexOf(c) < 0; });
+        if (one) one.should = clip(extra.length && kept.length ? kept.join(', ') : text, 160);
+        return extra.length && kept.length ? extra.join(', ') : null;
+      }
+      parts.forEach(function (c) {
+        var to = ids.filter(function (id) { return about(id, c); });
+        to.forEach(function (id) { (got[id] = got[id] || []).push(c); });
+        if (!to.length && finding(c)) extra.push(c);
+      });
+      if (!Object.keys(got).length) got[ids[0]] = [text];
+      Object.keys(got).forEach(function (id) { if (S.tickets[id]) S.tickets[id].should = clip(got[id].join(', '), 160); });
+      return extra.length ? extra.join(', ') : null;
+    }
     function should(text) {
-      var t = ticketOf(pending.ticket), tk = S.tickets[pending.ticket];
+      var t = ticketOf(pending.ticket), tk = S.tickets[pending.ticket], ids = pending.tickets || [pending.ticket];
       if (FINISH.test(text)) return wantsOut();
       var stuck = STUCK.test(text) || text.trim().length < 3;
       var lead2 = t.should_ask || 'Think of a game you like. What would happen there instead?';
@@ -879,10 +933,14 @@ var Quest = (function () {
       var lead = function (first) { return first + (taught ? '' : ' That’s a real bug report: what happened, and what should have.'); };
       var wasTaught = taught; taught = true;
       if (stuck) return onward(lead(t.should ? 'Here’s the idea: ' + t.should.charAt(0).toLowerCase() + t.should.slice(1) : 'That’s okay. We’ll work it out when we fix it.'));
-      if (tk) { tk.should = String(text).slice(0, 120); save(); paintTickets(); }
-      if (!aiUp()) return onward(lead(wasTaught ? 'Exactly.' : 'Yes, that’s it.'));
-      mentor(text, null, who, 'TASK: the kid said what should have happened for the problem "' + t.title + '": "' + text + '". ' + (t.should ? 'The idea to reach: "' + t.should + '". In ONE short line, build on their own words: if they have it, say so; if not quite, lead them the rest of the way.' : 'Nobody planned this problem, so there is no set answer: in ONE short line, build on their words, and if it is unclear, say what you think they mean.') + ' Nothing else.')
-        .then(function (res) { if (frame() !== f) return; onward(lead((res && res.reply) || 'Yes, that’s it.')); });
+      var extra = tk ? keepShould(ids, text) : null; if (tk) { save(); paintTickets(); }
+      var then = function (line) { if (!extra) return onward(line); say([line], who); return hear(extra); };
+      if (!aiUp()) return then(lead(wasTaught ? 'Exactly.' : 'Yes, that’s it.'));
+      var many = ids.length > 1 ? ids.map(ticketOf).filter(Boolean) : null;
+      mentor(text, null, who, many
+        ? 'TASK: the kid said what should have happened for these problems: ' + many.map(function (x) { return '"' + x.title + '"' + (x.should ? ' (the idea: "' + x.should + '")' : ''); }).join(', ') + '. They said: "' + text + '". In ONE short line, build on their own words for all of them together, not just the first. Nothing else.'
+        : 'TASK: the kid said what should have happened for the problem "' + t.title + '": "' + text + '". ' + (t.should ? 'The idea to reach: "' + t.should + '". In ONE short line, build on their own words: if they have it, say so; if not quite, lead them the rest of the way.' : 'Nobody planned this problem, so there is no set answer: in ONE short line, build on their words, and if it is unclear, say what you think they mean.') + ' Nothing else.')
+        .then(function (res) { if (frame() !== f) return; then(lead((res && res.reply) || 'Yes, that’s it.')); });
       return false;
     }
     var hear = function (text) {

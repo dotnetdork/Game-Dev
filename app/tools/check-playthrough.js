@@ -262,7 +262,7 @@ async function launch() {
     await p.waitForFunction(function () { return !!Quest.dev.state().tickets['harmless-lava']; }, null, { timeout: 9000 });
     check('"nothing", to what happened on the lava, is the finding: she filed it', (await state()).tickets['harmless-lava'].by === 'You');
     await type('that’s all');
-    await waitLog('Type its number, or tell me', 12000);
+    await waitLog('Type its number or what it’s about', 12000);
     st = await state();
     check('what she said became tickets, in her words, and she found all four, so the team filed none', st.tickets.floor.words === 'I fell through the floor' && st.tickets['silent-coins'].words === 'the coins dont make any sound'
       && !/The team spotted/.test(await log()), JSON.stringify(st.tickets));
@@ -308,7 +308,7 @@ async function launch() {
     check('the fixed ticket stays on the board, crossed out', await p.$eval('#ticketList [data-key="ticket:silent-coins"]', function (b) { return b.classList.contains('done') && /line-through/.test(getComputedStyle(b.querySelector('.tt')).textDecorationLine); }));
     const left = await p.$$eval('#ticketList button.tk', function (x) { return x.map(function (e) { return e.textContent; }).join(' | '); });
     check('the floor ticket is still on the board after the coins were fixed first', /Open.*falls through a floor tile/.test(left), left);
-    check('the Mentor says every way to pick: its number, what it is about, or a tap and Fix this one', /Type its number, or tell me what it’s about\. Or tap a ticket/.test(await log()));
+    check('the Mentor says every way to pick: its number, what it is about, or a tap and Fix this one', /Type its number or what it’s about, or open it on the Tickets board and press Fix this one\./.test(await log()));
     // tapped on the board while the Mentor asks: that selects it, and Fix this one confirms (Jay, Sept 30)
     await p.click('#ticketList [data-key="ticket:floor"]');
     check('a tap alone opens its page and starts nothing', await p.isVisible('#ticketPage') && await p.evaluate(function () { return Quest.dev.state().tickets.floor.status; }) === 'open');

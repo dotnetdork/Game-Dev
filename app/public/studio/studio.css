@@ -786,21 +786,43 @@ button.qopt:hover .n, button.qopt:focus-visible .n { background: var(--accent); 
 .pill.open { color: var(--ink); background: var(--ground); box-shadow: inset 0 0 0 1px var(--edge); }
 .pill.doing { color: var(--accent-ink); background: var(--accent); }
 .pill.done { color: var(--good); background: var(--ground); }
+.tickets { container-type: inline-size; }
+@container (min-width: 560px) {
+  .tk { grid-template-columns: 44px minmax(0, 1fr) 140px 104px; align-items: center; gap: 0 12px; min-height: 46px; padding: 6px 12px; }
+  .tk .tmeta { display: contents; }
+  .tk .tid { grid-column: 1; grid-row: 1; }
+  .tk .tt { grid-column: 2; grid-row: 1; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+  .tk .tdept { grid-column: 3; grid-row: 1; }
+  .tk .pill { grid-column: 4; grid-row: 1; justify-self: end; margin: 0; }
+  .tickets { gap: 4px; }
+}
 
-.tpage { display: grid; gap: 10px; align-content: start; animation: msgIn .25s var(--ease) both; }
+/* A ticket's page. One column in a narrow dock; from 640px (the bottom dock, mostly) two: the ticket
+   on the left, the kid's own words on the right in a well of their own, so a wide dock is not one
+   long line of label, text, label, text. Spacing groups it, not a rule under every line. */
+.tpage { display: grid; gap: 12px; align-content: start; animation: msgIn .25s var(--ease) both; container-type: inline-size; }
 .tpage[hidden] { display: none; }
-.tpage .back { justify-self: start; height: 36px; padding: 0 10px 0 6px; margin: -2px 0 -2px -6px; }
-.tpage h3 { margin: -4px 0 0; font-size: 17px; font-weight: 700; line-height: 1.3; text-wrap: balance; }
+.thead { display: flex; align-items: center; gap: 12px; min-width: 0; max-width: 1080px; }
+.thead .tmeta { flex: 1; }
+.tpage .back { flex: none; height: 34px; padding: 0 10px 0 4px; margin: -2px 0 -2px -6px; gap: 2px; }
+.tgrid { display: grid; gap: 14px; align-content: start; max-width: 1080px; }
+.tpage h3 { margin: 0; font-size: 18px; font-weight: 700; line-height: 1.3; text-wrap: balance; }
+.tgrid > .towner { margin-top: -8px; }
 .towner { display: flex; align-items: center; gap: 8px; margin: 0; font-size: 13px; color: var(--ink-2); }
 .towner .face { width: 28px; height: 28px; }
 .towner .face svg { width: 16px; height: 16px; }
-.tsec { padding-top: 10px; border-top: 1px solid var(--line-soft); }
-.tsec h4 { margin: 0 0 3px; font-size: 12px; font-weight: 700; color: var(--ink-3); }
-.tsec p { margin: 0; font-size: 14px; line-height: 1.45; max-width: 60ch; }
-.tsec.quote p { display: inline-block; padding: 6px 11px; border-radius: 12px 12px 12px 4px; background: var(--kid-bubble); }   /* their words, as their chat bubble */
-.tact { display: grid; gap: 8px; padding-top: 12px; border-top: 1px solid var(--line-soft); }
+.tsec h4 { margin: 0 0 4px; font-size: 12.5px; font-weight: 700; color: var(--ink-3); }
+.tsec p { margin: 0; font-size: 14.5px; line-height: 1.5; max-width: 62ch; }
+.tside { display: grid; gap: 12px; align-content: start; padding: 12px; border-radius: 10px; background: var(--ground); }
+.tsec.quote p { display: inline-block; padding: 7px 12px; border-radius: 12px 12px 12px 4px; background: var(--kid-bubble); }   /* their words, as their chat bubble */
+.tact { display: grid; gap: 8px; padding-top: 4px; }
 .tact .tbtn { justify-self: start; }
 .tbtn.on:disabled { background: var(--panel-2); color: var(--ink-3); }
+@container (min-width: 640px) {
+  .tgrid { grid-template-columns: minmax(0, 1.2fr) minmax(260px, 1fr); column-gap: 28px; }
+  .tgrid > * { grid-column: 1; }
+  .tgrid > .tside { grid-column: 2; grid-row: 1 / span 6; align-self: start; }
+}
 .tnow { margin: 0; padding: 8px 10px; border-radius: 8px; background: var(--ground); font-size: 14px; font-weight: 600; line-height: 1.35; }
 .tnow small { display: block; font-size: 12px; color: var(--ink-2); margin-bottom: 1px; }
 .tnote { display: flex; align-items: center; gap: 7px; margin: 0; font-size: 13px; line-height: 1.4; color: var(--ink-2); }

@@ -54,7 +54,7 @@ beats:
     # it, and a missed finding must never stall the day. One finding is enough to get here.
     do: { file: rest, reveal: [tickets] }
     say:
-      - Each ticket goes to a department, and you pick which we fix first.
+      - Each ticket goes to the department that fixes it.
     ask:
       text: What should we fix first?
       from: tickets
