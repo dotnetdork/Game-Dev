@@ -809,7 +809,7 @@ var Quest = (function () {
     /* On the first day the level is grey boxes, and nothing says which box is what (Jay, Sept 30:
        "theres no way to know thats lava"). The Mentor may say what a thing is, never what's wrong
        with it, so the AI is told the names, and the script names the two a kid can't guess. */
-    var LEVEL = 'The level is all grey today, so the kid may not know what things are: the grey circles are coins; the dip in the floor between the coins is the lava; the grey block standing on the left is the player. So a gap, dip, hole or pit in the middle that does nothing IS the lava problem, however they put it. Say what a thing is only when they mention it, never to point them at something new. They are 10 and write short and misspell: "i fall", "i walk den i fell", "no soud" say what happened, and what happened is all a report needs. Never ask why or what caused it: that is the fix, and working it out is the shift\'s job.';
+    var LEVEL = 'The level is all grey today, and that is one of the problems (the grey boxes): when they say it is grey, plain or boring to look at, that IS the finding, never "just how it looks" or "not the bug". Because it is grey, the kid may not know what things are: the grey circles are coins; the dip in the floor between the coins is the lava; the grey block standing on the left is the player. So a gap, dip, hole or pit in the middle that does nothing IS the lava problem, however they put it. Say what a thing is only when they mention it, never to point them at something new. They are 10 and write short and misspell: "i fall", "i walk den i fell", "no soud" say what happened, and what happened is all a report needs. Never ask why or what caused it: that is the fix, and working it out is the shift\'s job.';
     var NAMES = [[/\b(gap|dip|pit|dent|low(er)? (bit|part))\b/i, 'That dip between the coins is meant to be lava.'], [/\b(dots?|circles?|balls?|round things?)\b/i, 'Those circles are coins.']];
     function named(said) { var t = said.join(' '), n = NAMES.filter(function (x) { return x[0].test(t); })[0]; return n ? n[1] + ' ' : ''; }
     /* A dig that names a planned thing is about that ticket, the same as a nudge: "There are dots ...
@@ -996,8 +996,11 @@ var Quest = (function () {
       // still no problem after the follow-ups: keep it, and move on kindly
       if (aim && pending.n >= 2 && !fresh.length) return retry();
       if (pending && pending.n >= 3) { idea(words, true); return onward('I’ve kept that as an idea.'); }
-      // a feeling is always asked about first, never sorted into a ticket on its own
-      if (!pending && FEEL.test(text)) return dig(said);
+      /* a feeling on its own is asked about first, never sorted into a ticket. One that comes with what
+         made it ("everything is grey and boring") has said why already: the AI went on to dig at it, read
+         "the level is all grey today" as grey being fine, and told the kid "Grey's just today's look,
+         not the bug we're hunting" (Jay's playthrough, Oct 1). With the AI down the words file it. */
+      if (!pending && FEEL.test(text) && !fresh.length) return dig(said);
       if (!aiUp()) return unplanned();
       // the last options: a problem nobody planned, an idea, or they're done ("ok where", "where are the
       // tickets?"): the conversation moves the day on, not a magic phrase (Jay, 2026-09-30)
