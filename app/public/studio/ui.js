@@ -4,8 +4,12 @@
    1. UI SOUNDS, for a room of about 20 kids. A sound only when the kid CAUSED A CHANGE (Play and
       Stop, a step passed, a wrong answer, a card or tool earned, being hired); routine taps are
       silent, because twenty trackpads clicking at once is noise. Quiet (gain 0.15-0.35), short
-      (Kenney CC0, all under a second), never two within 250ms. One Sound switch mutes these AND the
-      game; the game's pops still show. Here the files are fetched from /assets rather than inlined.
+      (Kenney CC0, all under a second), never two within 250ms. Two switches, both in the studio's
+      Settings (spec D56): Game sound mutes the GAME (its pops still show), Studio sounds mutes these.
+      Until Sept 30 one switch on the bar did both, so a kid who wanted their game quiet lost the
+      "you did it" sounds too; on Oct 1 the bar's speaker went (Jay: it's in Settings now). The
+      interview page has no game and no Settings, so its own Sound button is the Studio sounds
+      switch (interview.js). Here the files are fetched from /assets rather than inlined.
    2. keepFocus(): a rebuild with innerHTML drops keyboard focus to <body>; run it inside keepFocus
       and focus returns to the control with the same data-key.
    3. feel(): a small visual answer on what the kid acted on: a pulse on success, one shake on
@@ -15,7 +19,9 @@
       once on keyboard focus, and goes on a press, Escape or leaving. It is extra, never the only
       place a thing is said: the button's own word or aria-label already names it.
    5. SAFETY: a kid's line checked before any AI, below.
-   6. gate(): when to stop asking a failing AI, and when to try it again. */
+   6. gate(): when to stop asking a failing AI, and when to try it again.
+   7. SETTINGS (spec D56): the studio's own switches, kept in this browser and set on <html> as data
+      attributes the CSS reads, so they hold on every page that loads this file, the interview too. */
 var UI = (function () {
   var FILES = { play: 'sfx-select.ogg', stop: 'sfx-back.ogg', good: 'sfx-confirm.ogg', nope: 'sfx-lowrandom.ogg',
                 card: 'sfx-powerup2.ogg', tool: 'platformer/sfx_magic.ogg', hired: 'sfx-threetone2.ogg' };
@@ -23,13 +29,40 @@ var UI = (function () {
   var AC = null, buf = {}, last = 0, muted = false, onMute = [];
   try { muted = localStorage.getItem('studio.sound') === 'off'; } catch (e) {}
 
+  /* ---------- 7. settings ----------
+     sounds   the studio's own sounds (1 above), not the game's
+     motion   'less' stops the pulses, shakes and the card's flip, whatever the computer says
+     text     'big' makes the whole studio bigger, as the browser's zoom does (kids don't know Ctrl and +)
+     tips     the tooltips (4 below); the words on the buttons stay
+     contrast 'more' lifts the quiet greys and the edges */
+  var DEFAULTS = { sounds: true, motion: 'normal', text: 'normal', tips: true, contrast: 'normal' };
+  var settings = {}, onSetting = [];
+  try { settings = JSON.parse(localStorage.getItem('studio.settings') || '{}') || {}; } catch (e) { settings = {}; }
+  function setting(k) { return k in settings ? settings[k] : DEFAULTS[k]; }
+  function applySettings() {
+    var h = document.documentElement;
+    h.setAttribute('data-motion', setting('motion'));
+    h.setAttribute('data-text', setting('text'));
+    h.setAttribute('data-contrast', setting('contrast'));
+  }
+  function set(k, v) {
+    if (!(k in DEFAULTS)) return;
+    settings[k] = v;
+    try { localStorage.setItem('studio.settings', JSON.stringify(settings)); } catch (e) {}
+    applySettings();
+    if (k === 'tips' && !v) hideTip();
+    onSetting.forEach(function (fn) { fn(k, v); });
+  }
+  function lessMotion() { return setting('motion') === 'less' || !!(window.matchMedia && matchMedia('(prefers-reduced-motion: reduce)').matches); }
+  applySettings();
+
   function ctx() {
     try { if (!AC) AC = new (window.AudioContext || window.webkitAudioContext)(); } catch (e) { return null; }
     if (AC.state === 'suspended') AC.resume();
     return AC;
   }
   function sound(id) {
-    if (muted || !FILES[id]) return;
+    if (!setting('sounds') || !FILES[id]) return;
     var t = Date.now(); if (t - last < 250) return; last = t;
     var ac = ctx(); if (!ac) return;
     var go = function () {
@@ -41,20 +74,10 @@ var UI = (function () {
       .then(function (a) { return new Promise(function (ok, no) { ac.decodeAudioData(a, ok, no); }); })
       .then(function (b) { buf[id] = b; go(); }).catch(function () {});
   }
-  function paint() {
-    var b = document.getElementById('bSound'); if (!b) return;
-    b.setAttribute('aria-pressed', String(!muted));
-    b.querySelector('use').setAttribute('href', muted ? '#i-sound-off' : '#i-sound');
-    b.setAttribute('data-tip', muted ? 'Sound is off. Turn the studio’s and your game’s sounds back on' : 'Sound: the studio’s sounds and your game’s');
-  }
-  function init() {
-    var b = document.getElementById('bSound'); if (!b) return;
-    b.addEventListener('click', function () {
-      muted = !muted;
-      try { localStorage.setItem('studio.sound', muted ? 'off' : 'on'); } catch (e) {}
-      paint(); onMute.forEach(function (fn) { fn(muted); });
-    });
-    paint();
+  function setMuted(m) {
+    muted = !!m;
+    try { localStorage.setItem('studio.sound', muted ? 'off' : 'on'); } catch (e) {}
+    onMute.forEach(function (fn) { fn(muted); });
   }
   function keepFocus(box, rebuild) {
     var a = document.activeElement, key = a && box && box.contains(a) && a.getAttribute ? a.getAttribute('data-key') : null;
@@ -62,7 +85,7 @@ var UI = (function () {
     if (key) { var el = box.querySelector('[data-key="' + key.replace(/"/g, '') + '"]'); if (el) el.focus({ preventScroll: true }); }
   }
   function feel(el, kind) {
-    if (!el || (window.matchMedia && matchMedia('(prefers-reduced-motion: reduce)').matches)) return;
+    if (!el || lessMotion()) return;
     el.classList.remove('feel-good', 'feel-nope'); void el.offsetWidth; el.classList.add(kind === 'nope' ? 'feel-nope' : 'feel-good');
   }
   /* ---------- tooltips ---------- */
@@ -72,7 +95,7 @@ var UI = (function () {
     return tip;
   }
   function showTip(el) {
-    var text = el.getAttribute('data-tip'); if (!text) return;
+    var text = el.getAttribute('data-tip'); if (!text || !setting('tips')) return;
     var t = tipEl(); t.textContent = text; t.hidden = false; tipFor = el;
     el.setAttribute('aria-describedby', 'tip');
     var r = el.getBoundingClientRect(), w = t.offsetWidth, h = t.offsetHeight, vw = document.documentElement.clientWidth;
@@ -140,7 +163,7 @@ var UI = (function () {
     };
   }
 
-  if (document.readyState === 'loading') document.addEventListener('DOMContentLoaded', init); else init();
-  return { sound: sound, muted: function () { return muted; }, onMute: function (fn) { onMute.push(fn); },
-           keepFocus: keepFocus, feel: feel, hideTip: hideTip, concern: concern, gate: gate };
+  return { sound: sound, muted: function () { return muted; }, setMuted: setMuted, onMute: function (fn) { onMute.push(fn); },
+           keepFocus: keepFocus, feel: feel, hideTip: hideTip, concern: concern, gate: gate,
+           setting: setting, set: set, lessMotion: lessMotion, onSetting: function (fn) { onSetting.push(fn); } };
 })();

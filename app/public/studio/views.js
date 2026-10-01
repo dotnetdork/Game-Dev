@@ -336,7 +336,12 @@ var Views = (function () {
     $('codeState').textContent = 'Saved. Starting your game…';
     Chat.event('You changed game.js', 'i-script');
     watching = true;
-    Runner.mount($('stage'), code, st.parts, UI.muted()).then(function () { if (!lastError) $('codeState').textContent = 'Saved. Your game restarted with it'; setTimeout(Runner.askThumbs, 600); });
+    Runner.mount($('stage'), code, st.parts, UI.muted()).then(function () {
+      if (!lastError) $('codeState').textContent = 'Saved. Your game restarted with it';
+      setTimeout(Runner.askThumbs, 600);
+      // a second later, still no error: their code ran (the Coder badge, quest.js)
+      setTimeout(function () { if (!lastError && saved === code && window.Quest) Quest.handle({ type: 'coded' }); }, 1000);
+    });
   }
   var watching = false;
   Runner.on(function (name, t, line) {

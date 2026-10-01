@@ -576,3 +576,53 @@ answers to its questions:
     Look-alike ideas taught together (goal, reward, challenge) blur, so they are contrasted on purpose.
     There is no week 2 in the code yet: this needs the session count from the audit's tier 4, so
     `own-game.yaml` changes when that is built. Until then §4's Sunday table still lists the rounds.
+
+### Round 12: the profile, badges and cards, and the studio as an engine (2026-09-30)
+
+Jay: "audit this for its functionality like an engine", "the profile dropdown needs a rework", "the
+cards do not belong in project. Rename them from cards to badges. Then make cards…", and "add a
+right click context menu… We should be able to drag and drop from the project browser too." Two
+audits came first, both checked against the code: what the studio can do against Phaser 4 and
+Unity, and Unity's context menus and drag-and-drop against what the studio has to click.
+
+55. **Badges are what you did; cards are what you learned.** Both leave the Project window, which
+    holds files, as Unity's does, and live in the kid's profile.
+    - A *badge* marks a first: the first fix, finding a problem yourself, the first build with the
+      AI, making your hero, the design meeting's first round, changing the code yourself, a clear
+      board, the first clock-out. The code awards them, never the AI.
+    - A *card* is one of the game ideas (quest.js `CARDS`), drawn as a trading card. The front has
+      the idea's picture, its name and its one line. The back says where the kid earned it and
+      either what Unity and Phaser call it (the engine ideas) or a real game that uses it (the design
+      ideas). In the profile, the cards sit as a row of small cards. Tapping one opens it big over the
+      studio, and tapping again flips it. Levels (word → idea → use, research 06) come later: nothing
+      records yet whether an idea was used again.
+56. **The profile is a panel, not a menu,** because it holds a summary, cards, settings and the way
+    out. It keeps one way to each thing: no stat repeats a control. **Settings** live inside it:
+    - Game sound (it was the speaker on the bar until Oct 1, when Jay had the speaker removed);
+    - Studio sounds, separate from the game's;
+    - Less motion;
+    - Text size;
+    - Tooltips;
+    - Higher contrast.
+
+    Each is remembered in this browser. The kid's circle shows **an animal or a bug** (Jay, Oct 1),
+    picked from their first name so it's the same on every Chromebook. It isn't something they
+    choose; one more control would be the opposite of "fewer controls, one way".
+57. **A right-click menu holds actions that already exist somewhere else**, plus the few Unity ones
+    that kids need. It is the browser's own menu in text: the chat, the code, the doc, a name box.
+    The audit's per-target list is the plan: Hierarchy row, Scene part, Project tile, component
+    header, dock tab. It opens with a two-finger tap, long-press, Shift+F10 or the menu key, and it
+    is the studio's one menu engine (editor.js `popup`). Nothing is only in it.
+58. **Dragging from the Project window works where Unity's does.** A sprite goes onto an Inspector
+    slot (as now), onto a part in the Scene view, or onto its Hierarchy row, when it fits that part.
+    A sound goes onto the Coins. Every drop goes through Undo.
+59. **The engine gaps, in Jay's order** (prioritised, none cut):
+    1. Create, Duplicate (Ctrl+D) and Delete for coins, platforms and lava, through Undo;
+    2. Box Collider 2D with Is Trigger on every object, plus Bounce and Drag on Rigidbody 2D;
+    3. score, and a win/lose screen;
+    4. camera follow and a wider level;
+    5. an Enemy object;
+    6. Add Component from a list;
+    7. more than one script, with files you can rename and create;
+    8. music;
+    9. a second level.

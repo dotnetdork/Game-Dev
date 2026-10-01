@@ -187,6 +187,7 @@ var Quest = (function () {
     Chat.event((by ? by + ' filed ' : 'You filed ') + 'ticket #' + S.tickets[id].n + ': ' + t.title, 'i-ticket', { kind: 'ticket' });
     UI.feel($('dTickets'), 'good');
     track('ticket-filed', { ticket: id, words: words || null, by: by || 'kid' });
+    if (words && !by) badge('found-it');
     handle({ type: 'filed', name: id });
     return true;
   }
@@ -431,9 +432,10 @@ var Quest = (function () {
     if (f.beat >= q.beats.length) return endQuest();
     enter();
   }
-  function ticketDone(tid) { if (tid && S.tickets[tid]) { S.tickets[tid].status = 'done'; if (openTicket === tid) openTicket = null; paintTickets(); save(); } }
+  function ticketDone(tid) { if (tid && S.tickets[tid]) { S.tickets[tid].status = 'done'; if (openTicket === tid) openTicket = null; paintTickets(); save(); badgeCheck(); } }
   function endQuest() {
     var f = S.stack[S.stack.length - 1], q = COURSE.quests[f.quest], tid = ticketFor(f), who = character(null, f);
+    if (f.quest === 'clock-out') badge('first-shift');
     S.stack.pop();
     clearTimeout(hintTimer);
     // back to the board, where it is crossed off (Jay, Sept 30: "completing a ticket should close the
@@ -540,32 +542,107 @@ var Quest = (function () {
   function award(a) {
     if (a.stars) { S.stars = (S.stars || 0) + a.stars; Editor.stars(S.stars); reveal('stars'); Chat.event('+' + a.stars + (a.stars === 1 ? ' star' : ' stars'), 'i-star', { kind: 'good' }); }
     if (a.card && S.cards.indexOf(a.card) < 0) {
-      S.cards.push(a.card); reveal('project'); Editor.project(); UI.sound('card');
-      Chat.event('New card: ' + cardOf(a.card).name + ' (Project › Cards)', 'i-cards', { kind: 'good' });
+      S.cards.push(a.card); S.cardAt = S.cardAt || {};
+      var f = frame(), q = f && quest(f);
+      S.cardAt[a.card] = { at: Date.now(), where: q ? q.title : '' };   // the card's back says where it was earned
+      // the first card is still when the Project window arrives (the first day's Play-mode beat): the
+      // cards moved to the profile (D55), but the sprites in it are what the next tickets need
+      reveal('project'); Editor.project();
+      Editor.news('card'); UI.sound('card');
+      Chat.event('New card: ' + cardOf(a.card).name + ' (tap your circle, top right, to see it)', 'i-cards', { kind: 'good' });
     }
     save();
   }
-  /* A card: the idea's name and one short line a 10-year-old can read. */
+  /* A CARD (spec D55) is an idea the kid learned, drawn as a trading card (editor.js cardFace). The
+     front: its picture (`icon`, a symbol in index.html), its name, and one short line a 10-year-old can
+     read. The back: where they earned it, then either what Unity and Phaser call it (`unity`,
+     `phaser`: the engine ideas, Jed's "Unity names stay, Phaser code replaces C#") or a real game that
+     does it (`seen`: the design ideas). `family` is its colour and the word on its bottom line. The
+     order here is the collection's order in the profile. A real game named on a back is one most
+     kids have played, and says only what anyone can see by playing it. */
   var CARDS = {
-    'play-mode': ['Play mode', 'Changes you make while the game runs are undone when you press Stop.'],
-    collider: ['Collider', 'The invisible shape that makes a part solid, so things can stand on it.'],
-    feedback: ['Feedback', 'The game telling you something happened: a sound, a flash, a number.'],
-    readability: ['Readability', 'A player can tell what everything is at a glance.'],
-    risk: ['Risk', 'A danger that makes the player’s choices matter.'],
+    'play-mode': { name: 'Play mode', family: 'engine', icon: 'i-play', text: 'Changes you make while the game runs are undone when you press Stop.',
+      unity: 'Play Mode. The Play button turns the editor blue-grey so you notice', phaser: 'Your code runs from the start each time the game loads' },
+    collider: { name: 'Collider', family: 'engine', icon: 'i-c-collider', text: 'The invisible shape that makes a part solid, so things can stand on it.',
+      unity: 'Box Collider 2D', phaser: 'this.physics.add.collider(player, floor)' },
+    feedback: { name: 'Feedback', family: 'feel', icon: 'i-c-feedback', text: 'The game telling you something happened: a sound, a flash, a number.',
+      seen: 'In Super Mario Bros., every coin goes “bling” and the coin count goes up.' },
+    readability: { name: 'Readability', family: 'feel', icon: 'i-c-eye', text: 'A player can tell what everything is at a glance.',
+      seen: 'In most platformers, spikes look sharp and stand out, so you know they hurt before you touch them.' },
+    risk: { name: 'Risk', family: 'challenge', icon: 'i-c-risk', text: 'A danger that makes the player’s choices matter.',
+      seen: 'In Super Mario Bros., a coin over a pit is a risk you choose to jump for.' },
     /* The design meeting's concepts, one per section of the doc (spec D50; design.js CONCEPT says which
        section teaches which, and says this line when the section is decided). */
-    genre: ['Genre', 'The kind of game it is: a platformer, a racer, a puzzle…'],
-    'core-loop': ['Core loop', 'What the player does again and again: run, jump, grab.'],
-    goal: ['Goal', 'What the player is trying to do. Without one it’s a toy, not a game.'],
-    reward: ['Reward', 'Something good the game gives you for doing well.'],
-    'player-character': ['Player character', 'Who you are in the game, and what they can do.'],
-    challenge: ['Challenge', 'What makes the goal hard, so winning feels good.'],
-    theme: ['Theme', 'The world it’s set in, which ties how everything looks together.'],
-    mood: ['Mood', 'Music and sound set how a game feels: spooky, fast, happy.'],
-    story: ['Story', 'Why the player is doing all this.'],
-    balance: ['Balance', 'Not too easy, not too hard.']
+    genre: { name: 'Genre', family: 'game', icon: 'i-c-genre', text: 'The kind of game it is: a platformer, a racer, a puzzle…',
+      seen: 'Mario Kart is a racer, Tetris is a puzzle game, and Minecraft is a sandbox.' },
+    'core-loop': { name: 'Core loop', family: 'game', icon: 'i-again', text: 'What the player does again and again: run, jump, grab.',
+      seen: 'In Pac-Man: eat the dots, dodge the ghosts, clear the maze, and again.' },
+    goal: { name: 'Goal', family: 'game', icon: 'i-flag', text: 'What the player is trying to do. Without one it’s a toy, not a game.',
+      seen: 'In Super Mario Bros., you reach the flagpole at the end of each level.' },
+    reward: { name: 'Reward', family: 'challenge', icon: 'i-c-reward', text: 'Something good the game gives you for doing well.',
+      seen: 'In Zelda, opening a chest plays a little tune and gives you something new.' },
+    'player-character': { name: 'Player character', family: 'game', icon: 'i-person', text: 'Who you are in the game, and what they can do.',
+      seen: 'Mario runs and jumps on enemies. Kirby floats and swallows them.' },
+    challenge: { name: 'Challenge', family: 'challenge', icon: 'i-c-challenge', text: 'What makes the goal hard, so winning feels good.',
+      seen: 'In Flappy Bird, the narrow gaps between the pipes are the whole challenge.' },
+    theme: { name: 'Theme', family: 'feel', icon: 'i-palette', text: 'The world it’s set in, which ties how everything looks together.',
+      seen: 'Plants vs. Zombies is a garden under attack, so everything in it is a plant or a zombie.' },
+    mood: { name: 'Mood', family: 'feel', icon: 'i-music', text: 'Music and sound set how a game feels: spooky, fast, happy.',
+      seen: 'Mario’s underground levels change to slower, echoey music, so they feel like a cave.' },
+    story: { name: 'Story', family: 'feel', icon: 'i-c-story', text: 'Why the player is doing all this.',
+      seen: 'In Super Mario Bros., you’re on your way to rescue Princess Peach.' },
+    balance: { name: 'Balance', family: 'challenge', icon: 'i-c-balance', text: 'Not too easy, not too hard.',
+      seen: 'In Mario Kart, whoever is behind gets better items, so they can catch up.' }
   };
-  function cardOf(c) { var k = CARDS[c]; return k ? { id: c, name: k[0], text: k[1] } : { id: c, name: c, text: '' }; }
+  var FAMILY = { engine: 'Engine idea', game: 'Game idea', challenge: 'Challenge idea', feel: 'Feel idea' };
+  function cardOf(c) {
+    var k = CARDS[c]; if (!k) return { id: c, name: c, text: '' };
+    var at = (S && S.cardAt && S.cardAt[c]) || {};
+    return { id: c, name: k.name, text: k.text, family: k.family, kind: FAMILY[k.family], icon: k.icon,
+             unity: k.unity || '', phaser: k.phaser || '', seen: k.seen || '', where: at.where || '', at: at.at || 0 };
+  }
+
+  /* BADGES (spec D55) are firsts: things the kid did, not ideas they learned. The code awards them
+     from what happened (badgeCheck), never the AI, and a save from before badges gets the ones its
+     history already shows, quietly (catchUp). [id, name, how it's earned, icon]. */
+  var BADGES = [
+    ['first-fix', 'First fix', 'Fixed your first ticket', 'i-check'],
+    ['found-it', 'Bug hunter', 'Found a problem in the game yourself', 'i-search'],
+    ['hero', 'Hero maker', 'Made your own hero', 'i-person'],
+    ['designer', 'Designer', 'Planned how your game plays in the design doc', 'i-doc'],
+    ['first-build', 'Director', 'Told the AI what to build, and it built it', 'i-hammer'],
+    ['coder', 'Coder', 'Changed your game’s code yourself, and it ran', 'i-script'],
+    ['clean-board', 'Clean board', 'Fixed every ticket on the board', 'i-ticket'],
+    ['first-shift', 'First shift', 'Clocked out of your first day', 'i-clapper']
+  ];
+  var DESIGNED = ['idea', 'play', 'goal', 'fun'];   // the design meeting's round 1 (design.js ROUNDS): how the game plays
+  function badge(id, quiet) {
+    S.badges = S.badges || [];
+    var b = BADGES.filter(function (x) { return x[0] === id; })[0];
+    if (!b || S.badges.indexOf(id) >= 0) return;
+    S.badges.push(id); save();
+    if (quiet) return;
+    Editor.news('badge'); UI.sound('tool');
+    Chat.event('New badge: ' + b[1] + '. ' + b[2], b[3], { kind: 'good' });
+    track('badge', { badge: id });
+  }
+  function badgeCheck() {
+    var ids = Object.keys(S.tickets), fixed = ids.filter(function (id) { return S.tickets[id].status === 'done'; }).length;
+    if (fixed) badge('first-fix');
+    if (ids.length >= 3 && fixed === ids.length) badge('clean-board');
+  }
+  function catchUp() {
+    var ids = Object.keys(S.tickets), fixed = ids.filter(function (id) { return S.tickets[id].status === 'done'; }).length, s = Project.doc().sections;
+    if (fixed) badge('first-fix', true);
+    if (ids.length >= 3 && fixed === ids.length) badge('clean-board', true);
+    if (ids.some(function (id) { return S.tickets[id].words && !S.tickets[id].by; })) badge('found-it', true);
+    if (S.hero) badge('hero', true);
+    if (DESIGNED.every(function (k) { return s[k] && s[k].state === 'decided'; })) badge('designer', true);
+    if (S.built) badge('first-build', true);
+    if (Project.get().codeEdited) badge('coder', true);
+    if (S.done.indexOf('clock-out') >= 0) badge('first-shift', true);
+  }
+  function badgeOf(id) { var b = BADGES.filter(function (x) { return x[0] === id; })[0]; return { id: b[0], name: b[1], how: b[2], icon: b[3], earned: !!S && (S.badges || []).indexOf(b[0]) >= 0 }; }
   function cardList(ids) { var n = ids.map(function (c) { return cardOf(c).name; }); return n.length > 1 ? n.slice(0, -1).join(', ') + ' and ' + n[n.length - 1] : n[0] || 'no cards yet'; }
 
   /* ---------- questions ---------- */
@@ -974,7 +1051,7 @@ var Quest = (function () {
     Editor.set('player', 'shape', shape);
     if (Project.part('player').look !== 'hero') Editor.set('player', 'look', 'hero');
     // the kid's own words go in the doc as a start; the second round digs into the hero (design.js)
-    if (word) { S.hero = word; save(); card({ hero: word }); Project.writeDoc('hero', word, 'kid', 'started'); }
+    if (word) { S.hero = word; save(); card({ hero: word }); Project.writeDoc('hero', word, 'kid', 'started'); badge('hero'); }
     setTimeout(Runner.askThumbs, 600);
   }
   function examples(a) { return (a.examples || []).map(function (x) { return { text: x }; }); }
@@ -1171,6 +1248,7 @@ var Quest = (function () {
     remember(ev);
     if (!(ev.type === 'event' && ev.name === 'coin')) log('did', { type: ev.type, name: ev.name || undefined, set: ev.type === 'set' && ev.detail ? ev.detail.id + '.' + ev.detail.key + ' = ' + JSON.stringify(ev.detail.value) : undefined });
     if (ev.type === 'play' || ev.type === 'select') Editor.point(null);   // the pointer's job is done once they act
+    if (ev.type === 'coded') badge('coder');   // their own code saved, and the game ran it (views.js save)
     if (ev.type === 'event' || ev.type === 'set' || ev.type === 'play') checkTickets(ev);
     if (ev.type === 'event') Chat.event(EVENT_WORDS[ev.name] || ev.name, EVENT_ICON[ev.name] || 'i-pad');
     if (ev.type === 'select' || ev.type === 'set' || ev.type === 'play' || ev.type === 'stop') busyKid();
@@ -1444,7 +1522,7 @@ var Quest = (function () {
         wait.done();
         say([r.reply], who);
         if (r.ok) {
-          S.built = (S.built || 0) + 1; save();
+          S.built = (S.built || 0) + 1; save(); badge('first-build');
           Chat.event('Built: ' + (r.summary || brief), 'i-hammer', { kind: 'good' });
           Editor.project(); setTimeout(Runner.askThumbs, 800);
           handle({ type: 'built' });
@@ -1505,6 +1583,8 @@ var Quest = (function () {
       if (name === 'set') handle({ type: 'set', detail: d });
     });
     Chat.onAsk(typed);
+    catchUp();
+    Project.onDoc(function () { var s = Project.doc().sections; if (DESIGNED.every(function (k) { return s[k] && s[k].state === 'decided'; })) badge('designer'); });
     watchBuilder();
     logOn();
     // Put the screen back the way this kid left it.
@@ -1521,6 +1601,11 @@ var Quest = (function () {
 
   return { start: start, handle: handle, clockOut: clockOut,
     cards: function () { return S ? S.cards.map(cardOf) : []; },
+    /* For the profile (editor.js): every card and badge in the collection's order, each with `earned`. */
+    collection: function () {
+      return { cards: Object.keys(CARDS).map(function (c) { var k = cardOf(c); k.earned = !!S && S.cards.indexOf(c) >= 0; return k; }),
+               badges: BADGES.map(function (b) { return badgeOf(b[0]); }) };
+    },
     ideas: function () { return Project.doc().ideas.slice(); },
     doneFirstDay: function () { return !!S && S.done.indexOf('first-day') >= 0; },
     /* For the kid's own menu (editor.js ME_ITEMS): the numbers, and what they're on now. */

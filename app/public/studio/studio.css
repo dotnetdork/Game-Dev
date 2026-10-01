@@ -120,22 +120,118 @@ svg.i { width: 18px; height: 18px; fill: none; stroke: currentColor; stroke-widt
       background: var(--kid-bubble); color: var(--ink); font: 700 15px/1 inherit; cursor: pointer;
       box-shadow: inset 0 0 0 1.5px var(--grip); transition: box-shadow .15s ease-out; }
 .me:hover, .me.open { box-shadow: inset 0 0 0 2px var(--ink-2); }
-.me.big { width: 44px; height: 44px; font-size: 19px; cursor: default; }
-.menupop:has(.mehead) { min-width: 290px; }
-.mehead { display: flex; align-items: center; gap: 12px; padding: 8px 8px 10px; }
-.mehead p { margin: 0; min-width: 0; }
-.mehead b { display: block; font-size: 16px; }
-.mehead span { font-size: 13px; color: var(--ink-2); }
-.mestats { display: grid; grid-template-columns: repeat(3, 1fr); gap: 4px; margin: 0 4px 6px; }
-.mestats div { padding: 8px 6px; border-radius: 6px; background: var(--ground); text-align: center; }
-.mestats dd { margin: 0; font-size: 18px; font-weight: 700; font-variant-numeric: tabular-nums; }
-.mestats dt { display: flex; align-items: center; justify-content: center; gap: 4px; font-size: 12px; color: var(--ink-2); }
-.mestats dt svg { width: 13px; height: 13px; flex: none; }
-.mestats div:first-child dt svg { color: var(--accent); }
-.metoday { margin: 0 4px 4px; padding: 8px 10px; border-radius: 6px; background: var(--ground); font-size: 13px; line-height: 1.4; }
-.metoday small { display: block; font-size: 12px; font-weight: 600; color: var(--ink-3); }
-.metoday b { display: block; font-size: 14px; }
-.metoday span { color: var(--ink-2); }
+.me.big { width: 48px; height: 48px; font-size: 27px; cursor: default; }
+.me { position: relative; font-size: 20px; font-family: "Noto Color Emoji", "Segoe UI Emoji", "Apple Color Emoji", sans-serif; }
+.me .dot { position: absolute; top: -1px; right: -1px; width: 11px; height: 11px; border-radius: 50%; background: var(--accent);
+           box-shadow: 0 0 0 2px var(--frame); display: none; }
+.me.news .dot { display: block; }
+
+/* ---------- the profile (editor.js openProfile, spec D55/D56) ----------
+   A panel, not a menu: the kid's collection first, their way out last. The cards are tinted by kind of
+   idea (Engine, Game, Challenge, Feel), the same tint on the small card and the big one. */
+[data-family="engine"] { --fam: var(--c-p); }
+[data-family="game"] { --fam: var(--c-d); }
+[data-family="challenge"] { --fam: var(--c-r); }
+[data-family="feel"] { --fam: var(--c-a); }
+.profile { position: absolute; top: calc(100% + 6px); right: 0; z-index: 40; width: 344px; max-height: calc(100dvh - 64px); overflow: auto;
+           background: var(--frame); border: 1px solid var(--line-soft); border-radius: 12px; padding: 14px;
+           box-shadow: var(--lift); animation: popIn .16s var(--ease) both; display: grid; gap: 14px; }
+.phead { display: flex; align-items: center; gap: 12px; }
+.phead p { margin: 0; min-width: 0; }
+.phead b { display: block; font-size: 17px; line-height: 1.25; }
+.phead p span { font-size: 13.5px; color: var(--ink-2); }
+.pstats { margin: -4px 0 0; display: flex; gap: 16px; font-size: 13.5px; color: var(--ink-2); }
+.pstats span { display: inline-flex; align-items: center; gap: 6px; }
+.pstats b { color: var(--ink); font-weight: 700; font-variant-numeric: tabular-nums; }
+.pstats svg { width: 16px; height: 16px; }
+.pstats span:first-child svg { color: var(--accent); fill: var(--accent); }
+.pset h3 { margin: 0 0 8px; display: flex; align-items: baseline; justify-content: space-between; font-size: 14px; font-weight: 650; }
+.pset h3 small { font-size: 12.5px; font-weight: 500; color: var(--ink-3); font-variant-numeric: tabular-nums; }
+.pnone { margin: 8px 0 0; font-size: 13px; color: var(--ink-2); }
+/* fifteen small cards in three rows of five: the found ones face up, the rest an outline */
+.minis, .badges { list-style: none; margin: 0; padding: 0; display: grid; gap: 8px; }
+.minis { grid-template-columns: repeat(5, 1fr); }
+.mini { display: grid; place-items: center; width: 100%; aspect-ratio: 5 / 7; padding: 0; border-radius: 7px; cursor: pointer;
+        border: 1.5px solid var(--fam); color: var(--fam);
+        background: color-mix(in srgb, var(--fam) 18%, var(--panel));
+        box-shadow: 0 2px 0 color-mix(in srgb, var(--fam) 35%, var(--line));
+        transition: transform .18s var(--ease), box-shadow .18s var(--ease); }
+.mini svg { width: 22px; height: 22px; stroke-width: 2; }
+.mini:hover { transform: translateY(-3px) rotate(-2deg); box-shadow: 0 5px 0 color-mix(in srgb, var(--fam) 35%, var(--line)); }
+.mini.locked { cursor: default; border: 1.5px dashed var(--track-off); background: transparent; box-shadow: none; }
+.badges { grid-template-columns: repeat(8, 1fr); gap: 6px; }
+.badge { display: grid; place-items: center; width: 100%; aspect-ratio: 1; border-radius: 50%; color: var(--c-r);
+         background: color-mix(in srgb, var(--c-r) 16%, var(--panel)); box-shadow: inset 0 0 0 2px color-mix(in srgb, var(--c-r) 70%, var(--panel)); }
+.badge svg { width: 18px; height: 18px; stroke-width: 2; }
+.badge.locked { color: var(--ink-3); background: transparent; box-shadow: inset 0 0 0 1.5px var(--track-off); }
+.badge.locked svg { width: 14px; height: 14px; }
+.pacts { display: grid; gap: 2px; padding-top: 10px; border-top: 1px solid var(--line-soft); }
+.pact, .pback { display: flex; align-items: center; gap: 10px; width: 100%; min-height: 40px; padding: 0 10px; border: 0; border-radius: 6px;
+                background: transparent; color: var(--ink); font-size: 14px; text-align: left; cursor: pointer; }
+.pact > svg { color: var(--ink-2); }
+.pact.more::after { content: '›'; margin-left: auto; font-size: 18px; line-height: 1; color: var(--ink-3); }
+.pact:hover, .pback:hover { background: var(--select); }
+.ptop { display: flex; align-items: center; gap: 6px; margin: -4px 0 -2px -6px; }
+.ptop h3 { margin: 0; font-size: 16px; }
+.pback { width: auto; min-height: 36px; padding: 0 10px 0 4px; gap: 4px; color: var(--ink-2); font-size: 13.5px; }
+.pback svg { width: 18px; height: 18px; }
+.psettings { list-style: none; margin: 0; padding: 0; display: grid; gap: 4px; }
+.psettings li { padding: 8px 0; border-bottom: 1px solid var(--line-soft); }
+.psettings li:last-child { border-bottom: 0; }
+.psettings .sd { margin: 2px 0 0; font-size: 12.5px; line-height: 1.4; color: var(--ink-3); max-width: 34ch; }
+.switch { display: flex; align-items: center; justify-content: space-between; gap: 12px; width: 100%; min-height: 32px; padding: 0;
+          border: 0; background: transparent; color: var(--ink); font-size: 14.5px; font-weight: 550; text-align: left; cursor: pointer; }
+.switch .knob { position: relative; width: 40px; height: 24px; flex: none; border-radius: 12px; background: var(--track-off); transition: background-color .15s ease-out; }
+.switch .knob::after { content: ''; position: absolute; top: 3px; left: 3px; width: 18px; height: 18px; border-radius: 50%; background: var(--ink-2);
+                       transition: transform .18s var(--ease), background-color .15s ease-out; }
+.switch[aria-checked="true"] .knob { background: var(--accent); }
+.switch[aria-checked="true"] .knob::after { transform: translateX(16px); background: var(--accent-ink); }
+.ptext { display: flex; align-items: center; justify-content: space-between; gap: 12px; }
+.ptext .sl { font-size: 14.5px; font-weight: 550; }
+.seg { display: inline-flex; padding: 3px; gap: 2px; border-radius: 8px; background: var(--ground); }
+.seg button { min-height: 30px; padding: 0 12px; border: 0; border-radius: 6px; background: transparent; color: var(--ink-2); font-size: 13.5px; cursor: pointer; }
+.seg button[aria-pressed="true"] { background: var(--select); color: var(--ink); box-shadow: inset 0 0 0 1.5px var(--grip); }
+.seg button:last-child { font-size: 15.5px; }
+
+/* ---------- a card, big (editor.js cardView) ----------
+   A trading card: the picture on top, its name and one line, and its kind and number at the foot.
+   Turned over: where they got it, and what Unity and Phaser call it (or a real game it's in). */
+.cardview { position: fixed; inset: 0; z-index: 80; display: grid; place-items: center; }
+.cardview .dim { position: absolute; inset: 0; background: rgba(3, 9, 18, .72); opacity: 0; transition: opacity .2s ease-out; }
+.cardview.in .dim { opacity: 1; }
+.cvbody { position: relative; display: grid; justify-items: center; gap: 12px; perspective: 1200px; }
+.cvhint { margin: 0; font-size: 13px; color: var(--ink-2); }
+.cvclose { position: absolute; top: -6px; right: -52px; width: 40px; height: 40px; border-radius: 50%; background: var(--frame); }
+.tcard { --cw: min(300px, 78vw, calc((100dvh - 120px) * 5 / 7)); width: var(--cw); aspect-ratio: 5 / 7; padding: 0; border: 0; background: none;
+         color: var(--ink); cursor: pointer; transform: scale(.86) translateY(16px); opacity: 0;
+         transition: transform .32s var(--ease), opacity .2s ease-out; }
+.cardview.in .tcard { transform: none; opacity: 1; }
+.tcard:focus-visible { outline: none; }
+.tcard:focus-visible .cface { box-shadow: 0 0 0 3px var(--focus), var(--lift); }
+.tinner { position: relative; width: 100%; height: 100%; transform-style: preserve-3d; transition: transform .5s var(--ease); }
+.tcard[aria-pressed="true"] .tinner { transform: rotateY(180deg); }
+.cface { position: absolute; inset: 0; display: flex; flex-direction: column; border-radius: 16px; padding: 12px; text-align: left;
+        backface-visibility: hidden; -webkit-backface-visibility: hidden; overflow: hidden;
+        background: var(--panel); border: 3px solid var(--fam); box-shadow: var(--lift); }
+.cface .art { flex: 0 0 52%; display: grid; place-items: center; border-radius: 9px; color: var(--fam);
+             background: color-mix(in srgb, var(--fam) 20%, var(--ground));
+             background-image: radial-gradient(color-mix(in srgb, var(--fam) 22%, transparent) 1.5px, transparent 1.6px);
+             background-size: 14px 14px; }
+.cface .art svg { width: 42%; height: auto; aspect-ratio: 1; stroke-width: 1.6; }
+.cface h3 { margin: 12px 2px 4px; font-size: calc(var(--cw) * .085); line-height: 1.1; font-weight: 750; letter-spacing: -.01em; }
+.cface .line { margin: 0 2px; font-size: calc(var(--cw) * .05); line-height: 1.4; color: var(--ink-2); }
+.cface footer { margin-top: auto; display: flex; justify-content: space-between; align-items: center; padding: 8px 2px 0;
+               border-top: 1px solid var(--line-soft); font-size: 12px; color: var(--ink-3); font-variant-numeric: tabular-nums; }
+.cface .kind { color: var(--fam); font-weight: 650; }
+.cface.back { transform: rotateY(180deg); background: color-mix(in srgb, var(--fam) 10%, var(--panel)); }
+.cface.back h3 { margin-top: 2px; }
+.cface.back dl { margin: 6px 2px 0; display: grid; gap: 2px; }
+.cface.back dt { font-size: 12px; font-weight: 650; color: var(--fam); margin-top: 8px; }
+.cface.back dd { margin: 0; font-size: calc(var(--cw) * .048); line-height: 1.4; color: var(--ink); }
+.cface.back code { font: 500 12.5px/1.45 ui-monospace, "Cascadia Mono", Consolas, monospace; color: var(--ink-2); word-break: break-word; }
+.cface.back .mark { margin: auto auto 0; color: var(--fam); opacity: .22; }
+.cface.back .mark svg { width: calc(var(--cw) * .3); height: calc(var(--cw) * .3); stroke-width: 1.4; }
+.cface.back footer { margin-top: 10px; }
 .stepper { display: inline-flex; gap: 2px; }
 .stepper.closed { display: none; }
 .tbtn { display: inline-flex; align-items: center; gap: 7px; height: 44px; padding: 0 15px; border: 0;
@@ -924,6 +1020,15 @@ span.fold, span.fold:hover { cursor: default; background: transparent; }   /* a 
 }
 
 @media (prefers-reduced-motion: reduce) { *, *::before, *::after { transition: none !important; animation: none !important; } }
+
+/* ---------- Settings (ui.js 7, spec D56), set on <html> ---------- */
+html[data-motion="less"] *, html[data-motion="less"] *::before, html[data-motion="less"] *::after { transition: none !important; animation: none !important; }
+/* the quiet greys and the edges step up; ink-3 then passes AA on the selection and the hover too */
+html[data-contrast="more"] { --ink-2: #e0eaf5; --ink-3: #c0cfe0; --line-soft: #3f6189; --edge: #86acd9; --grip: #7aa3d4; --track-off: #47678c; }
+/* bigger everything, as the browser's own zoom would make it: the editor still fills the window
+   (its height is the window's, divided by the zoom) and the columns shrink before the words do */
+html[data-text="big"] { zoom: 1.15; }
+html[data-text="big"] .editor { height: calc(100dvh / 1.15); }
 
 /* ---------- the dev panel (localhost only; see dev.js) ---------- */
 .devpanel { position: fixed; right: 12px; bottom: 40px; z-index: 50; width: 360px; max-height: 70vh; overflow: auto; background: #050c17; color: #d6e0ec;

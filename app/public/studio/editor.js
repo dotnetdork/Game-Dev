@@ -585,7 +585,7 @@ var Editor = (function () {
     // a cue below the fold is no cue (the Clip slot sat under the chat in a short Inspector): the
     // first time a place is lit, it is scrolled into view; a repaint of the same place leaves it be
     var at = (key && on === id ? 'insp:' : 'tree:') + cueing;
-    if (at !== cuedAt) { cuedAt = at; el.scrollIntoView({ block: 'nearest', behavior: window.matchMedia && matchMedia('(prefers-reduced-motion: reduce)').matches ? 'auto' : 'smooth' }); }
+    if (at !== cuedAt) { cuedAt = at; el.scrollIntoView({ block: 'nearest', behavior: UI.lessMotion() ? 'auto' : 'smooth' }); }
   }
   var cuedAt = null;
   /* What the kid just did ends the cue it answers. */
@@ -606,7 +606,7 @@ var Editor = (function () {
     var el = $('hint');
     if (show) { el.hidden = false; el.classList.remove('gone'); }
     else if (!el.hidden) {   // fades, then hides (transitionend, init); at once when motion is off
-      if (window.matchMedia && matchMedia('(prefers-reduced-motion: reduce)').matches) el.hidden = true; else el.classList.add('gone');
+      if (UI.lessMotion()) el.hidden = true; else el.classList.add('gone');
     }
   }
   function linger(ms) { keysUntil = Date.now() + ms; hint(); setTimeout(hint, ms + 50); }
@@ -634,17 +634,16 @@ var Editor = (function () {
        Sounds   the clips an Audio Source can play (tap to hear one)
        Scripts  the game's code, game.js, to read; tap a line to ask what it does
        Docs     the kid's Ideas (what they asked for that isn't built yet) and the design doc
-       Cards    the game ideas they've learned
-     A sprite or sound can be dragged onto an object field in the Inspector, or tapped to hold it
+     The cards they've learned were a folder here until Sept 30; they're in the profile now (D55),
+     because this window holds what the game is made of, as Unity's does. A sprite or sound can be dragged onto an object field in the Inspector, or tapped to hold it
      and then a field tapped to take it (tap-to-slot, the Inspector's note). */
   var FOLDERS = [
     { id: 'sprites', name: 'Sprites', icon: 'i-image', path: 'Assets › Sprites' },
     { id: 'sounds', name: 'Sounds', icon: 'i-music', path: 'Assets › Sounds' },
     { id: 'scripts', name: 'Scripts', icon: 'i-script', path: 'Assets › Scripts' },
-    { id: 'docs', name: 'Docs', icon: 'i-doc', path: 'Docs' },
-    { id: 'cards', name: 'Cards', icon: 'i-cards', path: 'Cards' }
+    { id: 'docs', name: 'Docs', icon: 'i-doc', path: 'Docs' }
   ];
-  var folder = 'sprites', openDoc = null, seenCards = 0;
+  var folder = 'sprites', openDoc = null;
   function paintFolders() {
     var nav = $('pFolders');
     UI.keepFocus(nav, function () {
@@ -653,20 +652,18 @@ var Editor = (function () {
         var b = document.createElement('button');
         b.type = 'button'; b.className = 'pfold'; b.id = 'pf-' + f.id; b.setAttribute('role', 'tab'); b.setAttribute('data-key', 'folder:' + f.id);
         b.setAttribute('aria-selected', String(folder === f.id)); b.setAttribute('aria-controls', 'pBody'); b.tabIndex = folder === f.id ? 0 : -1;
-        b.innerHTML = '<svg class="i" aria-hidden="true"><use href="#' + (f.id === 'docs' || f.id === 'cards' ? f.icon : 'i-folder') + '"/></svg><span>' + f.name + '</span><i class="dot" aria-hidden="true"></i>';
-        if (f.id === 'cards' && cardList().length > seenCards && folder !== 'cards') b.classList.add('news');
+        b.innerHTML = '<svg class="i" aria-hidden="true"><use href="#' + (f.id === 'docs' ? f.icon : 'i-folder') + '"/></svg><span>' + f.name + '</span>';
         b.addEventListener('click', function () { openFolder(f.id); });
         nav.appendChild(b);
       });
     });
   }
-  function openFolder(id) { folder = id; openDoc = null; if (id === 'cards') seenCards = cardList().length; paintProject(); }
+  function openFolder(id) { folder = id; openDoc = null; paintProject(); }
   function folderKeys(e) {
     var d = { ArrowDown: 1, ArrowUp: -1 }[e.key]; if (!d) return;
     var i = FOLDERS.map(function (f) { return f.id; }).indexOf(folder), n = FOLDERS[(i + d + FOLDERS.length) % FOLDERS.length];
     e.preventDefault(); openFolder(n.id); $('pf-' + n.id).focus();
   }
-  function cardList() { return window.Quest && Quest.cards ? Quest.cards() : []; }
   function tile(face, name, opts) {
     var li = document.createElement('li'), b = document.createElement('button');
     b.type = 'button'; b.className = 'asset' + (opts.cls ? ' ' + opts.cls : '');
@@ -719,17 +716,6 @@ var Editor = (function () {
           if (openDoc) return doc(openDoc);
           grid.appendChild(tile('<svg class="i" aria-hidden="true"><use href="#i-bulb"/></svg>', 'Ideas', { key: 'doc:Ideas', run: function () { openDoc = 'Ideas'; paintProject(); } }));
         }
-      }
-      if (folder === 'cards') {
-        var list = cardList();
-        if (!list.length) { grid.className = 'assets list'; grid.innerHTML = '<li class="empty">No cards yet. You earn one each time you learn a game idea.</li>'; return; }
-        grid.className = 'assets cards';
-        list.slice().reverse().forEach(function (c) {
-          var li = document.createElement('li'); li.className = 'ctile';
-          li.innerHTML = '<svg class="i" aria-hidden="true"><use href="#i-cards"/></svg><b></b><span></span>';
-          li.querySelector('b').textContent = c.name; li.querySelector('span').textContent = c.text;
-          grid.appendChild(li);
-        });
       }
     });
   }
@@ -796,41 +782,224 @@ var Editor = (function () {
       isOpen('editTools') && { label: 'Redo', icon: 'i-redo', keys: 'Ctrl+Y', disabled: !canRedo(), run: redo },
       { label: 'Save', icon: 'i-save', keys: 'Ctrl+S', run: saveNow }].filter(Boolean);
   }
-  /* The kid's own menu, the circle at the right of the bar: who they are, how far they've come,
-     and the way out (Jay, 2026-09-29: sign out was hidden in File). */
-  var meName = '';
+  /* ---------- the kid's profile: the circle at the right of the bar (spec D55, D56) ----------
+     Who they are, what they've collected, their settings, and the way out (Jay, 2026-09-29: sign out
+     was hidden in File). It was a menu until Sept 30; it is a panel now (role=dialog, not role=menu),
+     because it holds a collection and switches as well as actions, and a menu's arrow keys would
+     skip them. Tab moves through it, Escape or a tap outside closes it, and focus goes back to the
+     circle. What it leaves out, on purpose: today's task (the chat's task card already shows it) and
+     a cards count of its own (the collection says "5 of 15").
+       CARDS  a row of small cards, every idea in the course, the ones not found yet as outlines. A
+              tap opens the card big over the studio, and a tap on it turns it over (cardView).
+       BADGES the firsts (quest.js BADGES), each with its tooltip: what earned it.
+       SETTINGS a second page of the same panel (ui.js keeps them). */
+  var meName = '', prof = null, news = { card: false, badge: false };
+  /* Their picture: an animal or a bug (Jay, Oct 1), picked from their name so it is the same one on
+     every Chromebook they sign in on, with nothing new to save. Emoji, because ChromeOS draws them
+     all in colour from its own font and they cost no download on a filtered network. */
+  var PETS = ['🦊', '🐸', '🐢', '🐝', '🐞', '🦉', '🐙', '🐌', '🐰', '🐧', '🦋', '🦎', '🐼', '🐨', '🦔', '🐳',
+              '🐛', '🦀', '🐱', '🐶', '🦜', '🐹', '🐯', '🦕'];
+  var mePet = PETS[0];
   function me(name) {
     meName = name || '';
-    $('meInitial').textContent = meName ? meName.charAt(0).toUpperCase() : '?';
+    var h = 0, k = meName.toLowerCase();
+    for (var i = 0; i < k.length; i++) h = (h * 31 + k.charCodeAt(i)) >>> 0;
+    mePet = PETS[h % PETS.length];
+    $('mePic').textContent = mePet;
   }
-  function ME_ITEMS() {
-    var pr = window.Quest && Quest.progress ? Quest.progress() : {};
-    var head = document.createElement('div'); head.className = 'mehead';
+  /* Something new to see in the profile: a dot on the circle until it's opened. */
+  function newsFor(kind) { news[kind] = true; $('bMe').classList.add('news'); }
+  function el(tag, cls, text) { var e = document.createElement(tag); if (cls) e.className = cls; if (text !== undefined) e.textContent = text; return e; }
+  function ico(id) { return '<svg class="i" aria-hidden="true"><use href="#' + id + '"/></svg>'; }
+  function openProfile(focusFirst) {
+    closeMenu(false); UI.hideTip();
+    var b = $('bMe'), pop = el('div', 'profile'); pop.setAttribute('role', 'dialog'); pop.setAttribute('aria-label', 'Your profile');
+    b.parentNode.appendChild(pop);
+    prof = { pop: pop };
+    b.setAttribute('aria-expanded', 'true'); b.classList.add('open'); b.classList.remove('news');
+    paintProfile('home', focusFirst);
+    pop.addEventListener('focusout', function (e) { if (prof && prof.pop === pop && e.relatedTarget && !pop.contains(e.relatedTarget) && !e.relatedTarget.closest('.cardview') && e.relatedTarget !== b) closeProfile(false); });
+  }
+  function closeProfile(refocus) {
+    if (!prof) return;
+    var p = prof; prof = null; p.pop.remove();
+    $('bMe').setAttribute('aria-expanded', 'false'); $('bMe').classList.remove('open');
+    if (refocus) $('bMe').focus();
+  }
+  function paintProfile(view, focusFirst) {
+    var pop = prof.pop; pop.innerHTML = ''; pop.setAttribute('data-view', view);
+    if (view === 'settings') paintSettings(pop); else paintHome(pop);
+    var f = pop.querySelector(view === 'settings' ? '.pback' : 'button, [tabindex="0"]');
+    if (f && (focusFirst || view === 'settings')) f.focus();
+  }
+  function paintHome(pop) {
+    var pr = window.Quest && Quest.progress ? Quest.progress() : {}, col = window.Quest && Quest.collection ? Quest.collection() : { cards: [], badges: [] };
+    var head = el('div', 'phead');
     head.innerHTML = '<span class="me big" aria-hidden="true"></span><p><b></b><span></span></p>';
-    head.querySelector('.me').textContent = meName ? meName.charAt(0).toUpperCase() : '?';
+    head.querySelector('.me').textContent = mePet;
     head.querySelector('b').textContent = meName || 'New developer';
     head.querySelector('p span').textContent = pr.game ? 'Making ' + pr.game : 'Intern at the studio';
-    var st = document.createElement('dl'); st.className = 'mestats';
-    [['i-star', pr.stars || 0, pr.stars === 1 ? 'star' : 'stars'],
-     ['i-ticket', (pr.fixed || 0) + (pr.tickets ? ' of ' + pr.tickets : ''), 'tickets fixed'],
-     ['i-cards', pr.cards || 0, pr.cards === 1 ? 'card' : 'cards']].forEach(function (x) {
-      var d = document.createElement('div');
-      d.innerHTML = '<dd></dd><dt><svg class="i" aria-hidden="true"><use href="#' + x[0] + '"/></svg><span></span></dt>';
-      d.querySelector('dt span').textContent = x[2]; d.querySelector('dd').textContent = String(x[1]);
-      st.appendChild(d);
+    var st = el('p', 'pstats');
+    st.innerHTML = '<span>' + ico('i-star') + '<b></b> </span><span>' + ico('i-ticket') + '<b></b> </span>';
+    var sp = st.querySelectorAll('span');
+    sp[0].querySelector('b').textContent = String(pr.stars || 0); sp[0].appendChild(document.createTextNode(pr.stars === 1 ? 'star' : 'stars'));
+    sp[1].querySelector('b').textContent = (pr.fixed || 0) + (pr.tickets ? ' of ' + pr.tickets : ''); sp[1].appendChild(document.createTextNode('tickets fixed'));
+    pop.appendChild(head); pop.appendChild(st);
+    // the cards: earned ones open, the rest are outlines that say how many are still to find
+    var earned = col.cards.filter(function (c) { return c.earned; });
+    var cs = el('section', 'pset'); cs.setAttribute('aria-labelledby', 'pCards');
+    cs.innerHTML = '<h3 id="pCards">Cards<small></small></h3><ul class="minis"></ul>';
+    cs.querySelector('small').textContent = earned.length + ' of ' + col.cards.length;
+    col.cards.forEach(function (c) {
+      var li = el('li');
+      if (c.earned) {
+        var m = el('button', 'mini'); m.type = 'button'; m.setAttribute('data-family', c.family); m.setAttribute('data-key', 'card:' + c.id);
+        m.setAttribute('aria-label', c.name + ' card'); m.setAttribute('data-tip', c.name);
+        m.innerHTML = ico(c.icon);
+        m.addEventListener('click', function () { cardView(earned, earned.indexOf(c), m); });
+        li.appendChild(m);
+      } else { var lk = el('span', 'mini locked'); lk.setAttribute('aria-hidden', 'true'); li.appendChild(lk); }
+      cs.querySelector('ul').appendChild(li);
     });
-    var today = null;
-    if (pr.quest) {
-      today = document.createElement('p'); today.className = 'metoday';
-      today.innerHTML = '<small>Now</small><b></b><span></span>';
-      today.querySelector('b').textContent = pr.quest;
-      today.querySelector('span').textContent = pr.task || '';
+    if (!earned.length) cs.appendChild(el('p', 'pnone', 'You get a card for each game idea you learn.'));
+    pop.appendChild(cs);
+    var got = col.badges.filter(function (x) { return x.earned; });
+    var bs = el('section', 'pset'); bs.setAttribute('aria-labelledby', 'pBadges');
+    bs.innerHTML = '<h3 id="pBadges">Badges<small></small></h3><ul class="badges"></ul>';
+    bs.querySelector('small').textContent = got.length + ' of ' + col.badges.length;
+    col.badges.forEach(function (x) {
+      var li = el('li'), m = el('span', 'badge' + (x.earned ? '' : ' locked'));
+      // a badge not earned yet still says how to earn it: that is the point of showing it
+      m.tabIndex = 0; m.setAttribute('role', 'img');
+      m.setAttribute('aria-label', x.name + (x.earned ? ': ' : ', not yet: ') + x.how);
+      m.setAttribute('data-tip', x.earned ? x.name + ': ' + x.how : 'Not yet. ' + x.how);
+      m.innerHTML = ico(x.earned ? x.icon : 'i-lock');
+      li.appendChild(m); bs.querySelector('ul').appendChild(li);
+    });
+    pop.appendChild(bs);
+    var acts = el('div', 'pacts');
+    function act(label, icon, tip, run) {
+      var a = el('button', 'pact'); a.type = 'button'; a.innerHTML = ico(icon) + '<span></span>'; a.querySelector('span').textContent = label;
+      if (tip) a.setAttribute('data-tip', tip);
+      a.addEventListener('click', run); acts.appendChild(a); return a;
     }
-    var doneDay = window.Quest && Quest.doneFirstDay && Quest.doneFirstDay();
-    return [{ node: head }, { node: st }, today && { node: today }, { sep: true },
-      doneDay && { label: 'Clock out', icon: 'i-clapper', tip: 'End today’s shift. The Studio Director sums it up', run: function () { Quest.clockOut(); } },
-      { label: 'Sign out', icon: 'i-exit', tip: 'Sign out of the studio. Your game stays saved in your account', run: function () { status('Saving, then signing out…'); Save.leave(function () { location.href = '/auth/logout'; }); } }
-    ].filter(Boolean);
+    act('Settings', 'i-gear', 'Sounds, motion, text size and tooltips', function () { paintProfile('settings'); }).classList.add('more');
+    if (window.Quest && Quest.doneFirstDay && Quest.doneFirstDay())
+      act('Clock out', 'i-clapper', 'End today’s shift. The Studio Director sums it up', function () { closeProfile(true); Quest.clockOut(); });
+    act('Sign out', 'i-exit', 'Sign out of the studio. Your game stays saved in your account', function () { closeProfile(false); status('Saving, then signing out…'); Save.leave(function () { location.href = '/auth/logout'; }); });
+    pop.appendChild(acts);
+    news.card = news.badge = false;
+  }
+  /* Settings (ui.js 7): each a switch, and the text size two buttons. A change shows at once. */
+  var SETTINGS = [
+    ['game', 'Game sound', 'Your game’s music and sound effects when you press Play.'],
+    ['sounds', 'Studio sounds', 'The studio’s little sounds when you do something, like earning a card.'],
+    ['motion', 'Less motion', 'No pulses, shakes or card flips.', 'less', 'normal'],
+    ['tips', 'Tooltips', 'The notes that pop up when you rest on a button.'],
+    ['contrast', 'Higher contrast', 'Brighter grey words and edges.', 'more', 'normal']
+  ];
+  function paintSettings(pop) {
+    var top = el('div', 'ptop');
+    var back = el('button', 'pback'); back.type = 'button'; back.setAttribute('data-key', 'pback');
+    back.innerHTML = ico('i-back') + '<span>Back</span>';
+    back.addEventListener('click', function () { paintProfile('home', true); });
+    top.appendChild(back); top.appendChild(el('h3', '', 'Settings'));
+    pop.appendChild(top);
+    var list = el('ul', 'psettings');
+    SETTINGS.forEach(function (s) {
+      // Game sound is ui.js's own mute (the interview page's Sound button shares it), not a setting
+      var on = s[0] === 'game' ? !UI.muted() : s[3] ? UI.setting(s[0]) === s[3] : !!UI.setting(s[0]);
+      var li = el('li'), sw = el('button', 'switch'); sw.type = 'button'; sw.setAttribute('role', 'switch'); sw.setAttribute('aria-checked', String(on));
+      sw.setAttribute('data-key', 'set:' + s[0]); sw.id = 'set-' + s[0]; sw.setAttribute('aria-describedby', 'set-' + s[0] + '-d');
+      sw.innerHTML = '<span class="sl"></span><span class="knob" aria-hidden="true"></span>';
+      sw.querySelector('.sl').textContent = s[1];
+      sw.addEventListener('click', function () {
+        var now = sw.getAttribute('aria-checked') !== 'true';
+        if (s[0] === 'game') UI.setMuted(!now); else UI.set(s[0], s[3] ? (now ? s[3] : s[4]) : now);
+        sw.setAttribute('aria-checked', String(now));
+      });
+      var d = el('p', 'sd', s[2]); d.id = 'set-' + s[0] + '-d';
+      li.appendChild(sw); li.appendChild(d); list.appendChild(li);
+    });
+    // text size: two choices, one pressed
+    var li = el('li', 'ptext'), lab = el('span', 'sl', 'Text size'); lab.id = 'set-text-l';
+    var grp = el('div', 'seg'); grp.setAttribute('role', 'group'); grp.setAttribute('aria-labelledby', 'set-text-l');
+    [['normal', 'Normal'], ['big', 'Big']].forEach(function (o) {
+      var b = el('button', '', o[1]); b.type = 'button'; b.setAttribute('aria-pressed', String(UI.setting('text') === o[0])); b.setAttribute('data-key', 'set:text:' + o[0]);
+      b.addEventListener('click', function () {
+        UI.set('text', o[0]);
+        Array.prototype.forEach.call(grp.children, function (x) { x.setAttribute('aria-pressed', String(x === b)); });
+        setTimeout(function () { window.dispatchEvent(new Event('resize')); }, 0);   // the docks fit the window again (zoomed)
+      });
+      grp.appendChild(b);
+    });
+    li.appendChild(lab); li.appendChild(grp); list.appendChild(li);
+    pop.appendChild(list);
+  }
+
+  /* ---------- a card, big (spec D55) ----------
+     Over the studio, with the room dimmed: it's a moment of collecting, so it may interrupt. A tap on
+     the card turns it over; ← and → go through the other cards they have; Escape, the ×, or a tap on
+     the dim closes it and puts focus back on the small card it came from. */
+  var cv = null;
+  function cardFace(c, n, of) {
+    var front = '<div class="cface front"><div class="art">' + ico(c.icon) + '</div><h3></h3><p class="line"></p>'
+      + '<footer><span class="kind"></span><span class="num"></span></footer></div>';
+    var rows = (c.where ? '<dt>Where you got it</dt><dd class="where"></dd>' : '')
+      + (c.unity ? '<dt>In Unity</dt><dd class="unity"></dd>' : '') + (c.phaser ? '<dt>In Phaser</dt><dd class="phaser"><code></code></dd>' : '')
+      + (c.seen ? '<dt>In a real game</dt><dd class="seen"></dd>' : '');
+    var back = '<div class="cface back"><h3></h3><dl>' + rows + '</dl><span class="mark">' + ico(c.icon) + '</span><footer><span class="kind"></span></footer></div>';
+    var w = el('div', 'tinner'); w.innerHTML = front + back;
+    w.querySelectorAll('h3').forEach(function (h) { h.textContent = c.name; });
+    w.querySelector('.line').textContent = c.text;
+    w.querySelectorAll('.kind').forEach(function (k) { k.textContent = c.kind || ''; });
+    w.querySelector('.num').textContent = n + ' of ' + of;
+    if (c.where) w.querySelector('.where').textContent = c.where;
+    if (c.unity) w.querySelector('.unity').textContent = c.unity;
+    if (c.phaser) w.querySelector('.phaser code').textContent = c.phaser;
+    if (c.seen) w.querySelector('.seen').textContent = c.seen;
+    return w;
+  }
+  function cardView(list, i, from) {
+    closeCard(false);
+    var all = window.Quest && Quest.collection ? Quest.collection().cards : [];
+    var box = el('div', 'cardview'); box.setAttribute('role', 'dialog'); box.setAttribute('aria-modal', 'true');
+    box.innerHTML = '<div class="dim"></div><div class="cvbody"><button type="button" class="tcard" aria-pressed="false"></button>'
+      + '<p class="cvhint"></p><button type="button" class="x cvclose" aria-label="Close the card">' + ico('i-x') + '</button></div>';
+    document.body.appendChild(box);
+    cv = { box: box, list: list, i: i, from: from };
+    function show() {
+      var c = cv.list[cv.i], t = box.querySelector('.tcard');
+      t.innerHTML = ''; t.setAttribute('data-family', c.family); t.setAttribute('aria-pressed', 'false');
+      t.appendChild(cardFace(c, all.map(function (x) { return x.id; }).indexOf(c.id) + 1, all.length));
+      t.setAttribute('aria-label', c.name + ' card. ' + c.text + ' Press to turn it over');
+      box.setAttribute('aria-label', c.name + ' card');
+      box.querySelector('.cvhint').textContent = 'Tap the card to turn it over' + (cv.list.length > 1 ? '. ← and → for your other cards' : '');
+    }
+    cv.show = show; show();
+    var t = box.querySelector('.tcard');
+    t.addEventListener('click', function () {
+      var on = t.getAttribute('aria-pressed') !== 'true'; t.setAttribute('aria-pressed', String(on));
+      var c = cv.list[cv.i];
+      t.setAttribute('aria-label', on ? c.name + ', the back. ' + [c.where && 'Where you got it: ' + c.where, c.unity && 'In Unity: ' + c.unity, c.phaser && 'In Phaser: ' + c.phaser, c.seen && 'In a real game: ' + c.seen].filter(Boolean).join('. ') : c.name + ' card. ' + c.text + ' Press to turn it over');
+    });
+    box.querySelector('.dim').addEventListener('click', function () { closeCard(true); });
+    box.querySelector('.cvclose').addEventListener('click', function () { closeCard(true); });
+    box.addEventListener('keydown', function (e) {
+      if (e.key === 'Escape') { e.preventDefault(); e.stopPropagation(); closeCard(true); }
+      if ((e.key === 'ArrowRight' || e.key === 'ArrowLeft') && cv.list.length > 1) { e.preventDefault(); cv.i = (cv.i + (e.key === 'ArrowRight' ? 1 : cv.list.length - 1)) % cv.list.length; show(); t.focus(); }
+      if (e.key === 'Tab') {   // the two buttons, round and round: nothing behind the dim takes focus
+        var f = [t, box.querySelector('.cvclose')], k = f.indexOf(document.activeElement);
+        e.preventDefault(); f[(k + 1) % 2].focus();
+      }
+    });
+    requestAnimationFrame(function () { box.classList.add('in'); });
+    t.focus();
+  }
+  function closeCard(refocus) {
+    if (!cv) return;
+    var c = cv; cv = null; c.box.remove();
+    if (refocus && c.from && document.body.contains(c.from)) c.from.focus();
   }
   function LAYOUT_ITEMS() {
     return [{ label: 'Default', icon: 'i-layout', checked: layoutIs(DEFAULT), tip: 'Put every panel back where it started', run: function () { useLayout(DEFAULT); } },
@@ -1282,6 +1451,8 @@ var Editor = (function () {
   function keys(e) {
     if (e.key === 'Escape' && drag) { tabEnd(); return; }
     if (e.key === 'Escape' && openMenu) { closeMenu(true); return; }
+    if (e.key === 'Escape' && cv) { closeCard(true); return; }
+    if (e.key === 'Escape' && prof) { if (prof.pop.getAttribute('data-view') === 'settings') paintProfile('home', true); else closeProfile(true); return; }
     if (e.key === 'Escape' && pickerEl) { closePicker(true); return; }
     if (e.key === 'Escape' && held) { drop(); status('Put it down'); return; }
     if (e.key === 'Escape' && maxed) { var m = maxed; unmaximize(); var mb = m.querySelector('.maxb'); if (mb) mb.focus(); return; }
@@ -1306,10 +1477,7 @@ var Editor = (function () {
     $('bStop').addEventListener('click', stop);
     $('bPause').addEventListener('click', togglePause);
     $('bStep').addEventListener('click', stepFrame);
-    $('bMe').addEventListener('click', function () {
-      var b = $('bMe'); if (openMenu && openMenu.btn === b) closeMenu(true); else popup(b, ME_ITEMS(), false, false);
-    });
-    $('bMe').addEventListener('keydown', function (e) { if (e.key === 'ArrowDown') { e.preventDefault(); popup($('bMe'), ME_ITEMS(), true, false); } });
+    $('bMe').addEventListener('click', function (e) { if (prof) closeProfile(true); else openProfile(e.detail === 0); });   // detail 0: Enter or Space, so focus goes in
     $('inspClose').addEventListener('click', function () { closeInspector(); });
     Object.keys(PANELS).forEach(function (name) {
       var t = $(PANELS[name]).querySelector(':scope > .tabs > .tab[data-drag]'); if (!t) return;
@@ -1343,6 +1511,7 @@ var Editor = (function () {
     document.addEventListener('pointerdown', function (e) {
       if (openMenu && !openMenu.pop.contains(e.target) && e.target !== openMenu.btn) closeMenu(false);
       if (pickerEl && !pickerEl.contains(e.target) && !pickerEl.from.contains(e.target)) closePicker(false);
+      if (prof && !cv && !prof.pop.contains(e.target) && !$('bMe').contains(e.target)) closeProfile(false);
     });
     $('editor').addEventListener('pointerdown', tabDown);
     $('gamebody').addEventListener('pointerdown', function () { Runner.focusGame(); });
@@ -1364,6 +1533,6 @@ var Editor = (function () {
 
   return { init: init, on: on, openDock: openDock, reveal: reveal, unmin: unmin, tree: tree, allow: allow, select: select,
            inspect: inspect, closeInspector: closeInspector, set: set, place: place, refOf: refOf, togglePlay: togglePlay, cue: cue, point: point,
-           paintPlay: paintPlay, me: me, setProjectName: setProjectName, stars: stars, project: paintProject, undo: undo, redo: redo,
+           paintPlay: paintPlay, me: me, news: newsFor, setProjectName: setProjectName, stars: stars, project: paintProject, undo: undo, redo: redo,
            selected: function () { return selected; }, allowed: function () { return allowed; } };
 })();

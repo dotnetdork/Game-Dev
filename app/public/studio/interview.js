@@ -95,7 +95,7 @@
       tried: { playTap: s.playTap, jumpTap: s.jumpTap, wordsHeard: s.wordsHeard, decoyTicked: !!s.decoyTicked, coinFixed: CARD.coinFixed } };
   }
   function esc(t) { return String(t).replace(/[&<>"]/g, function (c) { return { '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' }[c]; }); }
-  function reduced() { return window.matchMedia && matchMedia('(prefers-reduced-motion: reduce)').matches; }
+  function reduced() { return UI.lessMotion(); }
   function named() { return CARD.first + (CARD.initial ? ' ' + CARD.initial + '.' : ''); }
   function clip(t, n) { t = String(t || '').replace(/\s+/g, ' ').trim(); return t.length > n ? t.slice(0, n - 1).replace(/\s+\S*$/, '') + '…' : t; }
   function short(t) { var w = String(t).split(/\s+/); return w.length > 6 ? w.slice(0, 6).join(' ') + '…' : String(t); }
@@ -637,7 +637,20 @@
   }
 
   var SFX = { ding: '/assets/platformer/sfx_coin.ogg', thud: '/assets/platformer/sfx_bump.ogg', boing: '/assets/platformer/sfx_jump.ogg' };
-  function play(id) { if (UI.muted()) return; try { var a = new Audio(SFX[id]); a.volume = .55; a.play().catch(function () {}); } catch (e) {} }
+  /* The Sound button by the clipboard: there is no game here, so it is the studio's own sounds, the
+     same switch as Studio sounds in the studio's Settings (ui.js 1). */
+  (function () {
+    var b = $('bSound'); if (!b) return;
+    function paint() {
+      var on = !!UI.setting('sounds');
+      b.setAttribute('aria-pressed', String(on));
+      b.querySelector('use').setAttribute('href', on ? '#i-sound' : '#i-sound-off');
+      b.querySelector('span').textContent = on ? 'Sound on' : 'Sound off';
+    }
+    b.addEventListener('click', function () { UI.set('sounds', !UI.setting('sounds')); paint(); });
+    paint();
+  })();
+  function play(id) { if (!UI.setting('sounds')) return; try { var a = new Audio(SFX[id]); a.volume = .55; a.play().catch(function () {}); } catch (e) {} }
   function sounds() {
     var sc = screen('<h2>Which coin sound?</h2><div class="pair">'
       + '<div class="opt"><button type="button" class="tile" data-play="ding"><svg class="i" aria-hidden="true"><use href="#i-sound"/></svg>Hear A</button><button type="button" class="tile pickit" data-v="ding">Pick A</button></div>'

@@ -80,7 +80,7 @@ var Chat = (function () {
   var t0 = Date.now();
 
   function $(id) { return document.getElementById(id); }
-  function reduced() { return window.matchMedia && matchMedia('(prefers-reduced-motion: reduce)').matches; }
+  function reduced() { return UI.lessMotion(); }
   function who(k) { return WHO[k] || WHO.m; }
 
   function init() {
