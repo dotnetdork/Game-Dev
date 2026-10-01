@@ -12,7 +12,8 @@ The kid's game is two things, the way a Unity project is.
 
 **1. The parts.** Plain data: every row in the Hierarchy, and every setting the Inspector shows. Each part has an `id`, a `name`, a `kind`, and its own settings. For example:
 `{"id":"coins","name":"Coins","kind":"coin","spots":[[480,400],[832,400]],"size":1,"look":null,"sound":null}`
-Positions are in the game's own 960 × 540 pixels; y grows downward. `spots` and `pieces` are lists of number pairs.
+Positions are in the game's own 960 × 540 pixels; y grows downward. `spots` are [x, y] pairs; `pieces` (a floor's blocks, and the lava's) are [x, width] or [x, width, y].
+Every object has a Box Collider 2D: `solid` says whether it touches anything, and `trigger` (Is Trigger) whether things pass through it while the touch still counts, which is how a coin is grabbed. The Player's Rigidbody 2D also has `drag` and `bounce`. `connect` in the code is where these take effect.
 
 **2. The code.** One Phaser 4 file, shown in full below. It defines one scene, `class Level extends Phaser.Scene`, and ends by starting the game with `new Phaser.Game({...})`. Read it before you change it; its exact shape can differ from what is described here, and the file is the truth. It usually has:
 - `create()`: sets up the level, then builds every part with `Studio.parts.forEach(p => this.build(p))`.

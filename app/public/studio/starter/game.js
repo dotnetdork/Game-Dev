@@ -50,9 +50,9 @@ class Level extends Phaser.Scene {
   build(p) {
     const things = [];
     if (p.kind === 'player') things.push(this.makePlayer(p));
-    // each block of floor: [x, width], or [x, width, y] once it has been moved up or down
+    // each block of floor or lava: [x, width], or [x, width, y] once it has been moved up or down
     if (p.kind === 'floor') p.pieces.forEach(([x, w, y = p.y]) => things.push(this.makeFloor(p, x, w, y)));
-    if (p.kind === 'lava') things.push(this.makeLava(p));
+    if (p.kind === 'lava') p.pieces.forEach(([x, w, y = p.y]) => things.push(this.makeLava(p, x, w, y)));
     if (p.kind === 'coin') p.spots.forEach(([x, y]) => things.push(this.makeCoin(p, x, y)));
     this.made[p.id] = things;
     if (p.kind !== 'player' && this.player) this.connect(p);
@@ -85,6 +85,8 @@ class Level extends Phaser.Scene {
     hero.body.setCollideWorldBounds(false);
     // Gravity Scale: 1 is normal. The world pulls everyone; this adds or takes away for the hero.
     hero.body.setGravityY(Studio.part('level').gravity * ((p.gravityScale ?? 1) - 1));
+    // Bounce: 0 lands with a thud, 1 bounces back as high as it fell.
+    hero.body.setBounce(0, p.bounce ?? 0);
     this.player = hero;
     Studio.parts.forEach(q => { if (q.kind !== 'player' && this.made[q.id]) this.connect(q); });
     return hero;
@@ -117,8 +119,8 @@ class Level extends Phaser.Scene {
     return floor;
   }
 
-  makeLava(p) {
-    const lava = this.block(p, p.x, p.y, p.w, p.look, 0x7c7c7c, 0x747474);
+  makeLava(p, x, w, y) {
+    const lava = this.block(p, x, y, w, p.look, 0x7c7c7c, 0x747474);
     this.physics.add.existing(lava, true);
     return lava;
   }
@@ -133,14 +135,24 @@ class Level extends Phaser.Scene {
   }
 
   // ---------- how parts touch each other ----------
+  // Every object has a Box Collider 2D (in the Inspector). Its checkbox is `solid`, and
+  // Is Trigger is `trigger`. Two solid colliders bump into each other. When either one is
+  // a trigger, they pass through, and the touch is only noticed: a coin is grabbed, the
+  // lava hurts. A collider that's switched off touches nothing at all.
   connect(p) {
-    const hero = this.player;
+    const hero = this.player, me = Studio.part('player');
     (this.made[p.id] || []).forEach(thing => {
       if (!thing.active) return;           // a coin already grabbed
       if (thing.link) thing.link.destroy();
-      if (p.kind === 'floor') thing.link = this.physics.add.collider(hero, thing);
-      if (p.kind === 'lava') thing.link = this.physics.add.collider(hero, thing, () => this.touchLava(p));
-      if (p.kind === 'coin') thing.link = this.physics.add.overlap(hero, thing, () => this.grab(p, thing));
+      thing.link = null;
+      if (!['floor', 'lava', 'coin'].includes(p.kind)) return;
+      if (p.solid === false || me.solid === false) return;
+      const bump = !p.trigger && !me.trigger;
+      // what touching it does: the lava's Hazard; a coin is grabbed only through a trigger
+      const touch = p.kind === 'lava' ? () => this.touchLava(p)
+        : p.kind === 'coin' && !bump ? () => this.grab(p, thing) : undefined;
+      if (bump) thing.link = this.physics.add.collider(hero, thing, touch);
+      else if (touch) thing.link = this.physics.add.overlap(hero, thing, touch);
     });
   }
 
@@ -189,7 +201,7 @@ class Level extends Phaser.Scene {
   }
 
   // ---------- every frame ----------
-  update() {
+  update(time, delta) {
     if (!Studio.playing || !this.player) return;
     const p = Studio.part('player'), body = this.player.body, k = this.keys;
     const left = k.LEFT.isDown || k.A.isDown, right = k.RIGHT.isDown || k.D.isDown;
@@ -197,6 +209,8 @@ class Level extends Phaser.Scene {
     if (this.player.setFlipX && (left || right)) this.player.setFlipX(left);
     const onGround = body.blocked.down || body.touching.down;
     if ((k.UP.isDown || k.W.isDown || k.SPACE.isDown) && onGround) body.setVelocityY(-p.jump);
+    // Linear Drag: air pushing back on the way up and down. 0 is none.
+    if (p.drag) body.velocity.y *= Math.max(0, 1 - p.drag * delta / 1000);
 
     // Standing on the fixed floor tile, not jumping over it.
     const tile = Studio.part('tile');

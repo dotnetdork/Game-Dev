@@ -18,6 +18,9 @@
    "every thing in the scene can be moved"): tapping one picks that coin, and dragging it moves
    just it; with the Coins' own row picked, a drag moves them all, as dragging a parent does in
    Unity. The tab arrives with the Hierarchy, because before that there are no parts to pick.
+   A sprite or a sound dragged in from the Project window drops onto the part under it (spec D58):
+   it goes into the slot it fits (Editor.takes), and onto the level around them a background goes
+   into the level's. A right-click here is the context menu's (editor.js), not a drag.
 
    THE GAME FRAME IS NEVER HIDDEN. The Scene and code views are laid over the Game view rather than
    swapping it out: an iframe set to display:none gets a zero-size canvas that Phaser doesn't grow
@@ -111,7 +114,6 @@ var Views = (function () {
   }
   function rect(x, y, w, h, fill, extra) { return '<rect x="' + x + '" y="' + y + '" width="' + w + '" height="' + h + '" fill="' + fill + '"' + (extra || '') + '/>'; }
   function image(u, b, extra) { return '<image href="' + u + '" x="' + b[0] + '" y="' + b[1] + '" width="' + b[2] + '" height="' + b[3] + '"' + (extra || '') + '/>'; }
-  /* A floor or the lava: a 64px block with its fill below it, as the game's block() draws it. */
   /* A floor block or the lava: 64px tall with its fill below it, as the game's block() draws it. A
      picture with no fill of its own (a coin's, on a floor) fills with itself, as the game does. */
   function block(p, x, y, w, grey, greyFill) {
@@ -123,8 +125,7 @@ var Views = (function () {
   /* Each part's boxes in level pixels, one per thing it draws (schema.js, things): what's drawn,
      what a tap hits, the outline when picked, the collider gizmo. */
   function boxes(p) {
-    if (p.kind === 'floor') return Schema.things(p).map(function (q) { return [q.x, q.y, q.w, H - q.y]; });
-    if (p.kind === 'lava') return [[p.x, p.y, p.w, H - p.y]];
+    if (p.kind === 'floor' || p.kind === 'lava') return (Schema.things(p) || []).map(function (q) { return [q.x, q.y, q.w, H - q.y]; });
     if (p.kind === 'coin') return (p.spots || []).map(function (s) { var z = coinSize(p); return [s[0] - z[0] / 2, s[1] - z[1] / 2, z[0], z[1]]; });
     if (p.kind === 'player') return [heroBox(p)];
     return [];
@@ -139,8 +140,9 @@ var Views = (function () {
     return d ? [p.x - d.w / 2, p.y + 28 - d.h, d.w, d.h] : [p.x - 20, p.y - 28, 40, 56];
   }
   function drawPart(p) {
-    if (p.kind === 'floor') return Schema.things(p).map(function (q) { return block(p, q.x, q.y, q.w, '#6e6e6e', '#5f5f5f'); }).join('');
-    if (p.kind === 'lava') return block(p, p.x, p.y, p.w, '#7c7c7c', '#747474');
+    if (p.kind === 'floor' || p.kind === 'lava') return (Schema.things(p) || []).map(function (q) {
+      return p.kind === 'lava' ? block(p, q.x, q.y, q.w, '#7c7c7c', '#747474') : block(p, q.x, q.y, q.w, '#6e6e6e', '#5f5f5f');
+    }).join('');
     if (p.kind === 'coin') {
       var cu = p.look && Runner.thumb(p.look), art = cu && dim(cu);
       return boxes(p).map(function (b, i) {
@@ -171,8 +173,12 @@ var Views = (function () {
         + bx.map(function (b, n) { return '<rect class="hit" data-i="' + n + '" x="' + b[0] + '" y="' + b[1] + '" width="' + b[2] + '" height="' + b[3] + '"/>'; }).join('');
       if (on) {
         body += bx.map(function (b, n) { return mine(n) ? '<rect class="sel" x="' + b[0] + '" y="' + b[1] + '" width="' + b[2] + '" height="' + b[3] + '"/>' : ''; }).join('');
-        // the collider gizmo, Unity's green box, on a part whose Box Collider 2D is switched on
-        if (p.kind === 'floor' && p.solid) body += bx.map(function (b, n) { return mine(n) ? '<rect class="gizmo" x="' + b[0] + '" y="' + b[1] + '" width="' + b[2] + '" height="64"/>' : ''; }).join('');
+        /* the collider gizmo, Unity's green box, on a part whose Box Collider 2D is switched on: a
+           floor's or the lava's is its 64px top, not the fill under it; a trigger's is dashed */
+        if (p.solid) body += bx.map(function (b, n) {
+          var h = p.kind === 'floor' || p.kind === 'lava' ? 64 : b[3];
+          return mine(n) ? '<rect class="gizmo' + (p.trigger ? ' trig' : '') + '" x="' + b[0] + '" y="' + b[1] + '" width="' + b[2] + '" height="' + h + '"/>' : '';
+        }).join('');
       }
       body += '</g>';
     });
@@ -204,6 +210,7 @@ var Views = (function () {
   /* What a tap picks: the thing under it (one coin), unless its part is already picked whole, when
      the drag moves them all. */
   function sceneDown(e) {
+    if (e.button !== 0) return;   // the right button is the context menu's (editor.js)
     var g = e.target.closest && e.target.closest('[data-part]');
     if (!g) { if (Editor.selected()) Editor.closeInspector(); paintScene(); return; }
     var id = g.getAttribute('data-part'), p = Project.part(id), hit = e.target.closest('[data-i]');
@@ -235,6 +242,28 @@ var Views = (function () {
     Editor.place(d.sel, { x: d.x, y: d.y }, true, true);
     Editor.place(d.sel, to);
     paintScene();
+  }
+
+  /* An asset from the Project window over the Scene view: the part under it, or the level when it is
+     over none of them, lit while it can take it. */
+  var over = null;
+  function dropId(e) {
+    var g = e.target.closest && e.target.closest('[data-part]');
+    if (g) return g.getAttribute('data-part');
+    var lv = Project.get().parts.filter(function (p) { return p.kind === 'level'; })[0];
+    return lv ? lv.id : null;
+  }
+  function light(el) { if (over === el) return; if (over) over.classList.remove('drop'); over = el; if (el) el.classList.add('drop'); }
+  function sceneOver(e) {
+    var id = dropId(e), ok = id && Editor.takes(id);
+    if (!ok) { light(null); return; }
+    e.preventDefault();
+    var g = e.target.closest && e.target.closest('[data-part]');
+    light(g || $('sceneSvg'));
+  }
+  function sceneDrop(e) {
+    var id = dropId(e); light(null);
+    if (id && Editor.takes(id)) { e.preventDefault(); Editor.give(id); }
   }
 
   /* ---------- game.js ---------- */
@@ -503,6 +532,9 @@ var Views = (function () {
     $('codeErrBack').addEventListener('click', putBack);
     var svg = $('sceneSvg');
     svg.addEventListener('pointerdown', sceneDown);
+    svg.addEventListener('dragover', sceneOver);
+    svg.addEventListener('drop', sceneDrop);
+    svg.addEventListener('dragleave', function (e) { if (!e.relatedTarget || !svg.contains(e.relatedTarget)) light(null); });
     svg.addEventListener('pointermove', sceneMove);
     svg.addEventListener('pointerup', sceneUp);
     svg.addEventListener('pointercancel', sceneUp);

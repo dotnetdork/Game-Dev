@@ -626,3 +626,17 @@ Unity, and Unity's context menus and drag-and-drop against what the studio has t
     7. more than one script, with files you can rename and create;
     8. music;
     9. a second level.
+
+    Gaps 1 and 2 were built on Oct 1. These are the choices made then, for Jay to overturn:
+    - **The lava is a list**, like a floor (`pieces`), so there can be more than one. Old saves are
+      moved over (project.js `migrate`).
+    - **Delete takes away one thing, never a whole part.** The story points at the Coins, the Lava
+      and the rest by id, and a ticket whose part was gone could never be fixed. The last coin,
+      block or lava stays. Unticking its Box Collider 2D makes it do nothing.
+    - **Duplicate puts the copy beside the original, not on top of it** as Unity does: a copy
+      exactly over the first looks as if nothing happened. Create puts one in the middle of the
+      level. Both pick the new thing.
+    - **A coin is a trigger.** With Is Trigger off it is solid: you stand on it and can't grab it,
+      which is Unity's rule for a pickup.
+    - **The Box Colliders on the Player, the lava and the coins start folded until the first day is
+      done** (gate `colliders`), so the floor's is still the one to find.

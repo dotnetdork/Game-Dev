@@ -24,10 +24,10 @@ const PANELS = ['game', 'play', 'hierarchy', 'inspector', 'tickets', 'quest', 'p
 const EVENTS = ['fell', 'coin', 'lava', 'hurt', 'crossed', 'cleared'];  // what the game itself reports (cleared: every coin grabbed)
 /* The parts a quest may name, and their settings. The Inspector's own list is public/studio/schema.js
    (the browser's); check-studio.js checks every setting here is one the schema has. */
-const PARTS = { level: ['look', 'gravity'], player: ['look', 'speed', 'jump', 'gravityScale', 'tint', 'shape', 'x', 'y'],
-  ground: ['solid', 'look', 'tint'], tile: ['solid', 'look', 'tint'], lava: ['look', 'hurts', 'w', 'tint'],
-  coins: ['look', 'sound', 'size', 'tint', 'volume', 'pitch'] };
-const COMPONENTS = ['coinArt', 'coinSound', 'coinSize', 'lavaArt', 'lavaSize', 'hazard', 'floorArt', 'playerMove', 'heroArt'];
+const PARTS = { level: ['look', 'gravity'], player: ['look', 'speed', 'jump', 'gravityScale', 'drag', 'bounce', 'solid', 'trigger', 'tint', 'shape', 'x', 'y'],
+  ground: ['solid', 'trigger', 'look', 'tint'], tile: ['solid', 'trigger', 'look', 'tint'], lava: ['look', 'hurts', 'solid', 'trigger', 'tint'],
+  coins: ['look', 'sound', 'size', 'solid', 'trigger', 'tint', 'volume', 'pitch'] };
+const COMPONENTS = ['coinArt', 'coinSound', 'coinSize', 'lavaArt', 'hazard', 'floorArt', 'playerMove', 'heroArt', 'colliders'];
 /* A question whose answers come from the game, not the file. `findings`, `heroes`, `names` and
    `feedback` are TYPED: the kid says what they found, what their hero is, what their game is called,
    what they thought of the day, in their own words (Jay, 2026-09-28: the game name typed in chat,

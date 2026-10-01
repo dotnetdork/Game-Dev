@@ -25,14 +25,22 @@
 
    EVERY THING IN THE SCENE CAN BE MOVED (Jay, Sept 30: "not sure why i cannot move the position of
    the coins. Also, the coins should appear as separate objects shouldnt they?"). A part draws one
-   thing or several: the Coins a coin at each of its `spots`, a floor a block for each of its
-   `pieces` ([x, width] or [x, width, y]; y is the part's own when left out). A part with several is
+   thing or several: the Coins a coin at each of its `spots`, a floor or the lava a block for each of
+   its `pieces` ([x, width] or [x, width, y]; y is the part's own when left out). A part with several is
    a Unity prefab and its instances: each thing is its own row in the Hierarchy ("Coin (1)"), with
    its own Position, and they share everything else, so setting the Clip on one sets it on every
    coin. The part's own row moves them all together. things(), where() and moveTo() below are the
    one account of it: the Inspector, the Scene view and the drag all go through them. A `place`
    field (Position X, Position Y, a floor's Width) is one of those and is not in rules(): moving
-   things stays the kid's job, and the Builder's in code.
+   things stays the kid's job, and the Builder's in code. listKey() and copyOf() are how there come
+   to be more of them (Duplicate, and GameObject › Create: spec D59), and fewer (Delete).
+
+   EVERY OBJECT HAS A BOX COLLIDER 2D (spec D59), as every one in a Unity 2D scene has: its checkbox
+   (`solid`) says whether it touches anything at all, and Is Trigger (`trigger`) whether it is a
+   wall or only a sensor, that things pass through but still notice. That is how Unity tells a coin
+   (a trigger: walk through it and it's grabbed) from a floor (solid: stand on it), and the kid can
+   change either. The Player's Rigidbody 2D has Unity's Linear Drag (air pushing back) and a Bounce
+   (Unity keeps that on a Physics Material 2D; here it sits with the other physics numbers).
 
    THE ART IS CODE-DRAWN (Jay, 2026-09-28: lay off the Kenney sprites). Each sprite here is drawn by
    the game's own code (starter/game.js, SPRITES), so the kid's code owns its look and the Builder can
@@ -64,12 +72,21 @@ var Schema = (function () {
 
   function num(key, label, tip, min, max, step, unit) { return { key: key, type: 'number', label: label, tip: tip, min: min, max: max, step: step, unit: unit || '' }; }
   function gated(f, gate) { f.gate = gate; return f; }
+  function bool(key, label, tip) { return { key: key, type: 'bool', label: label, tip: tip }; }
   function placed(f, one) { f.place = true; if (one) f.one = true; return f; }   // one: a single thing's, not the group's
   var PLACE = {
     x: placed(num('x', 'Position X', 'Position X: left to right, in pixels', 0, 960, 8)),
     y: placed(num('y', 'Position Y', 'Position Y: top to bottom, in pixels', 0, 540, 8)),
     w: placed(num('w', 'Width', 'Width: how wide it is, in pixels', 32, 960, 16), true)
   };
+  /* The Box Collider 2D on every object. `what` is the plain words for what ticking it does. A floor's
+     is ungated, since it is the floor ticket's answer; the others wait folded until the first day is
+     done (gate `colliders`), so the day's one knob per job stays the one to find. */
+  function collider(what, gate) {
+    return { name: 'Box Collider 2D', icon: 'i-cube', toggle: 'solid', gate: gate, tip: 'Box Collider 2D: tick it and ' + what,
+             on: 'It touches things.', off: 'Nothing touches it.',
+             fields: [bool('trigger', 'Is Trigger', 'Is Trigger: things pass through it, but touching it still counts')] };
+  }
   var KINDS = {
     level: [
       { name: 'Scene', icon: 'i-pad', fields: [
@@ -87,8 +104,11 @@ var Schema = (function () {
         { key: 'tint', type: 'color', label: 'Color', tip: 'Color: a plain colour instead of a picture. Pick one or the other' }
       ] },
       { name: 'Rigidbody 2D', icon: 'i-sliders', gate: 'playerMove', fields: [
-        num('gravityScale', 'Gravity Scale', 'Gravity Scale: 1 is normal, 0 floats, 2 falls fast', 0, 3, 0.1, '×')
+        num('gravityScale', 'Gravity Scale', 'Gravity Scale: 1 is normal, 0 floats, 2 falls fast', 0, 3, 0.1, '×'),
+        num('drag', 'Linear Drag', 'Linear Drag: air pushing back. 0 is none; more and the hero falls slowly, like a parachute', 0, 10, 0.5),
+        num('bounce', 'Bounce', 'Bounce: 0 lands with a thud, 1 bounces back as high as it fell', 0, 1, 0.05)
       ] },
+      collider('the hero bumps into things. Untick it and the hero falls through everything', 'colliders'),
       { name: 'Player Move (Script)', icon: 'i-script', gate: 'playerMove', fields: [
         num('speed', 'Speed', 'Speed: how fast the hero walks, in pixels a second', 60, 600, 10),
         num('jump', 'Jump Force', 'Jump Force: how hard the hero jumps', 200, 1200, 20)
@@ -100,17 +120,15 @@ var Schema = (function () {
         { key: 'look', type: 'sprite', of: 'floor', label: 'Sprite', tip: 'Sprite: the picture this part is drawn with' },
         { key: 'tint', type: 'color', label: 'Color', tip: 'Color: a plain colour instead of a picture. Pick one or the other' }
       ] },
-      { name: 'Box Collider 2D', icon: 'i-cube', toggle: 'solid', tip: 'Box Collider 2D: tick it and things can stand on this part',
-        on: 'Things stand on it.', off: 'Things fall through.' }
+      collider('things can stand on this part')
     ],
     lava: [
-      { name: 'Transform', icon: 'i-cube', fields: [PLACE.x, PLACE.y,
-        gated(num('w', 'Width', 'Width: how wide the lava is, in pixels', 32, 320, 16), 'lavaSize')
-      ] },
+      { name: 'Transform', icon: 'i-cube', fields: [PLACE.x, PLACE.y, PLACE.w] },
       { name: 'Sprite Renderer', icon: 'i-image', gate: 'lavaArt', fields: [
         { key: 'look', type: 'sprite', of: 'lava', label: 'Sprite', tip: 'Sprite: the picture this part is drawn with' },
         { key: 'tint', type: 'color', label: 'Color', tip: 'Color: a plain colour instead of a picture. Pick one or the other' }
       ] },
+      collider('the hero can stand on the lava, or sink into it as a trigger', 'colliders'),
       { name: 'Hazard (Script)', icon: 'i-script', gate: 'hazard', toggle: 'hurts', tip: 'Hazard: a script. Tick it and touching this part sends the player back',
         on: 'Touching it sends you back.', off: 'It’s just a floor.' }
     ],
@@ -122,6 +140,7 @@ var Schema = (function () {
         { key: 'look', type: 'sprite', of: 'coin', label: 'Sprite', tip: 'Sprite: the picture this part is drawn with' },
         { key: 'tint', type: 'color', label: 'Color', tip: 'Color: a plain colour instead of a picture. Pick one or the other' }
       ] },
+      collider('the hero can grab a coin. A pickup is a trigger: untick Is Trigger and the coins are solid', 'colliders'),
       { name: 'Audio Source', icon: 'i-sound', gate: 'coinSound', fields: [
         { key: 'sound', type: 'sound', label: 'Clip', tip: 'Clip: the sound that plays when a coin is grabbed' },
         num('volume', 'Volume', 'Volume: 0 is silent, 1 is full', 0, 1, 0.05),
@@ -129,7 +148,7 @@ var Schema = (function () {
       ] }
     ]
   };
-  var GATES = ['coinArt', 'coinSound', 'coinSize', 'lavaArt', 'lavaSize', 'hazard', 'floorArt', 'playerMove', 'heroArt'];
+  var GATES = ['coinArt', 'coinSound', 'coinSize', 'lavaArt', 'hazard', 'floorArt', 'playerMove', 'heroArt', 'colliders'];
   var COLORS = ['#ffffff', '#ffd75e', '#ff8a65', '#ef5350', '#ec6fcf', '#9c7bff', '#4fc3f7', '#4dd0a8', '#9be36f', '#8d6e63', '#9e9e9e', '#37474f'];
 
   function components(kind) { return KINDS[kind] || []; }
@@ -145,7 +164,7 @@ var Schema = (function () {
   function things(p) {
     if (!p) return null;
     if (p.kind === 'coin' && Array.isArray(p.spots)) return p.spots.map(function (s) { return { x: s[0], y: s[1] }; });
-    if (p.kind === 'floor' && Array.isArray(p.pieces)) return p.pieces.map(function (q) { return { x: q[0], y: typeof q[2] === 'number' ? q[2] : p.y, w: q[1] }; });
+    if ((p.kind === 'floor' || p.kind === 'lava') && Array.isArray(p.pieces)) return p.pieces.map(function (q) { return { x: q[0], y: typeof q[2] === 'number' ? q[2] : p.y, w: q[1] }; });
     return null;
   }
   /* A part with several things is a prefab: its things are the Hierarchy's rows under it. */
@@ -174,6 +193,20 @@ var Schema = (function () {
     if (p.kind === 'coin') return [['spots', t.map(function (q) { return [q.x, q.y]; })]];
     return [['pieces', t.map(function (q) { return q.y === p.y ? [q.x, q.w] : [q.x, q.w, q.y]; })]];
   }
+  /* The setting that holds a part's things ('spots' or 'pieces'), or null for a part that is one thing. */
+  function listKey(p) { return !p ? null : p.kind === 'coin' && Array.isArray(p.spots) ? 'spots' : Array.isArray(p.pieces) && things(p) ? 'pieces' : null; }
+  /* A new thing like thing i, for the list, in the list's own shape, placed beside it where it can be
+     seen: to its right (a coin a step on, a block with a jumpable gap), or its left at the level's
+     edge. Not on top of it, as Unity's Duplicate is: a copy exactly over the first looks like nothing
+     happened. `at` ({ x, y }) puts it there instead. Kept inside the level. */
+  function copyOf(p, i, at) {
+    var t = things(p), q = t[Math.max(0, Math.min(t.length - 1, i))];
+    var w = (at && at.w) || q.w || 0, step = p.kind === 'coin' ? 48 : w + 32, x = at ? at.x : q.x + step, y = at ? at.y : q.y;
+    if (!at && x > 960 - Math.max(w, 16)) x = q.x - step;
+    x = Math.max(0, Math.min(960 - w, Math.round(x / 8) * 8)); y = Math.max(16, Math.min(540 - 8, Math.round(y / 8) * 8));
+    if (p.kind === 'coin') return [x, y];
+    return y === p.y ? [x, w] : [x, w, y];
+  }
   /* Everything a character may set on a part, as field → rule. A part the Builder added (a kind
      with no schema) may have its plain number and on/off settings changed, within reason. */
   function rules(p) {
@@ -192,7 +225,7 @@ var Schema = (function () {
   function can(p, key, value) {
     var r = p && rules(p)[key];
     if (!r) return false;
-    if (r.type === 'bool') return typeof value === 'boolean';
+    if (r.type === 'bool') return typeof value === 'boolean';   // a component's checkbox, or a field like Is Trigger
     if (r.type === 'number') return typeof value === 'number' && isFinite(value) && value >= r.min && value <= r.max;
     if (r.type === 'sprite') return value === null || fits(value, r.of);
     if (r.type === 'sound') return value === null || !!SOUNDS[value];
@@ -228,5 +261,5 @@ var Schema = (function () {
 
   return { SPRITES: SPRITES, SOUNDS: SOUNDS, KINDS: KINDS, GATES: GATES, COLORS: COLORS,
            components: components, spritesFor: spritesFor, fits: fits, rules: rules, can: can, describe: describe, label: label,
-           things: things, many: many, childName: childName, where: where, moveTo: moveTo };
+           things: things, many: many, childName: childName, where: where, moveTo: moveTo, listKey: listKey, copyOf: copyOf };
 })();

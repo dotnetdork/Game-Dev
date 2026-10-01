@@ -18,6 +18,10 @@
      Step is the one that waits for the story (stepTools).
    - Undo and Redo cover what the kid changed in the Inspector. What was changed in Play mode is
      undone by Stop anyway, so Stop drops those steps rather than offering to undo them twice.
+   - Duplicate, Delete and GameObject › Create make more coins, blocks and lava, or fewer (spec D59;
+     "more of a thing, or fewer", below). A right-click opens a menu of what can be done to the thing
+     under it (spec D57; "the right-click menu", below), and an asset from the Project window drops
+     onto a Hierarchy row or a part in the Scene view as well as onto its slot (spec D58).
    - DOCKS. Every panel but the Game view can be dragged by its tab into the left, right or bottom
      area, and every edge between panels can be dragged to resize. The layout is the kid's own, kept
      in this browser; Layout › Default puts it back. None of it is needed to do anything: a kid who
@@ -80,6 +84,11 @@ var Editor = (function () {
     b.addEventListener('click', pick);
     b.addEventListener('dblclick', function () { renameRow(key); });
     b.addEventListener('keydown', function (e) { if (e.key === 'F2') { e.preventDefault(); renameRow(key); } });
+    // an asset dragged in from the Project window, onto the part it fits (takes)
+    var id = refOf(key).id;
+    b.addEventListener('dragover', function (e) { if (takes(id)) { e.preventDefault(); b.classList.add('over'); } });
+    b.addEventListener('dragleave', function () { b.classList.remove('over'); });
+    b.addEventListener('drop', function (e) { b.classList.remove('over'); if (takes(id)) { e.preventDefault(); give(id); } });
     li.appendChild(b); ul.appendChild(li);
     return li;
   }
@@ -98,6 +107,7 @@ var Editor = (function () {
   function renameRow(sel) {
     if (selected !== sel) select(sel);   // a double-click's two clicks picked it and put it down again
     var b = $('tree').querySelector('[data-key="part:' + sel + '"]'); if (!b) return;
+    unmin(b);   // from the Scene view's menu, or Edit › Rename, with the Hierarchy folded or behind a tab
     var box = document.createElement('input'), done = false;
     box.className = 'rn'; box.value = nameOf(sel); box.maxLength = 32; box.spellcheck = false;
     box.setAttribute('aria-label', 'New name for ' + nameOf(sel)); box.setAttribute('data-key', 'rename:' + sel);
@@ -179,7 +189,7 @@ var Editor = (function () {
      is stuff attached to that thing"). A spacer keeps the names in line. */
   function header(c, p, later, bare) {
     var id = c.name.replace(/\W+/g, '-').toLowerCase(), shut = !bare && (c.name in folded ? !!folded[c.name] : !!later);
-    var h = '<div class="comp' + (shut ? ' folded' : '') + (bare ? ' bare' : '') + '">'
+    var h = '<div class="comp' + (shut ? ' folded' : '') + (bare ? ' bare' : '') + '" data-comp="' + esc(c.name) + '">'
       + (bare ? '<span class="fold" aria-hidden="true"></span>'
         : '<button type="button" class="fold" data-fold="' + esc(c.name) + '" data-key="fold:' + id + '" aria-expanded="' + !shut + '" aria-controls="cb-' + id + '" aria-label="Fold ' + esc(c.name) + '" data-tip="Fold or open this component"><svg class="i" aria-hidden="true"><use href="#i-fold"/></svg></button>')
       + '<svg class="i cicon" aria-hidden="true"><use href="#' + (c.icon || 'i-cube') + '"/></svg>';
@@ -199,6 +209,11 @@ var Editor = (function () {
     return '<div class="irow num"><label for="r-' + f.key + '" data-tip="' + esc(f.tip || f.label) + '">' + esc(f.label) + '</label>'
       + '<div class="rng"><input id="r-' + f.key + '" type="range" data-key="r:' + f.key + '" data-slide="' + f.key + '" min="' + f.min + '" max="' + f.max + '" step="' + f.step + '" value="' + v + '" aria-valuetext="' + fmt(f, v) + (f.unit || '') + '">'
       + '<input type="number" class="nbox" id="n-' + f.key + '" data-key="n:' + f.key + '" data-num="' + f.key + '" min="' + f.min + '" max="' + f.max + '" step="' + f.step + '" value="' + fmt(f, v) + '" aria-label="' + esc(f.label) + ', exact value"></div></div>';
+  }
+  /* A setting that is on or off, inside a component (Is Trigger): Unity's checkbox with its label. */
+  function boolField(f, p) {
+    return '<div class="irow"><button type="button" class="cbox inline" role="checkbox" data-set="' + f.key + '" data-key="c:' + f.key + '" aria-checked="' + !!p[f.key] + '" data-tip="' + esc(f.tip || f.label) + '">'
+      + '<i aria-hidden="true"><svg class="i"><use href="#i-check"/></svg></i><strong>' + esc(f.label) + '</strong></button></div>';
   }
   /* An asset as the Project window and the object fields show it: the game's own picture of it for a
      sprite (runner.js, thumbnails), the sound icon for a sound. */
@@ -237,6 +252,7 @@ var Editor = (function () {
       if (f.type === 'number') return numberField(f, p);
       if (f.type === 'sprite' || f.type === 'sound') return objectField(f, p);
       if (f.type === 'color') return colorField(f, p);
+      if (f.type === 'bool') return boolField(f, p);
       return '';
     }).join('');
   }
@@ -459,6 +475,29 @@ var Editor = (function () {
     Array.prototype.forEach.call(document.querySelectorAll('#inspBody .ofield'), function (s) {
       s.classList.toggle('can-take', !!(held && fits(s, held)) || !!(dragging && fits(s, dragging)));
     });
+    // while one is dragged, the Hierarchy rows it can go on (a sound: the Coins)
+    Array.prototype.forEach.call(document.querySelectorAll('#tree [data-key^="part:"]'), function (b) {
+      b.classList.toggle('can-take', !!dragging && takes(refOf(b.getAttribute('data-key').slice(5)).id));
+    });
+  }
+  /* WHERE AN ASSET GOES ON A PART (spec D58): into its first slot of that kind that fits it, a sprite
+     into its Sprite (or the level's Background), a sound into its Clip; null if it has none. The
+     Inspector's slots, its Hierarchy row and the part in the Scene view all take a drop through
+     this, so they never disagree about what fits. */
+  function slotFor(p, a) {
+    var out = null;
+    Schema.components(p.kind).forEach(function (c) {
+      (c.fields || []).forEach(function (f) { if (!out && f.type === a.kind && (a.kind !== 'sprite' || Schema.fits(a.key, f.of))) out = f.key; });
+    });
+    return out;
+  }
+  function takes(id) { var p = Project.part(id); return !!(dragging && p && slotFor(p, dragging)); }
+  function give(id) {
+    var p = Project.part(id), a = dragging, k = p && a && slotFor(p, a); if (!k) return false;
+    dragging = null; glow();
+    set(p.id, k, a.key);
+    status('Put ' + assetName(a.kind, a.key) + ' on ' + p.name + '. Undo takes it off');
+    return true;
   }
 
   /* The one way the kid changes a part. `quiet` leaves the Inspector alone (a slider mid-drag);
@@ -477,7 +516,8 @@ var Editor = (function () {
     if (!Runner.isPlaying()) Project.save();
     if (key === 'sound' && value) previewSound(value);
     if (key === 'look' || key === 'shape') setTimeout(Runner.askThumbs, 600);   // the Project window shows the new picture
-    if ((!quiet || replay) && selected && refOf(selected).id === id) inspect(selected);   // repaint the open Inspector; never open one the kid didn't ask for
+    // repaint the open Inspector, never opening one the kid didn't ask for; a thing that's gone (Undo of a Duplicate) leaves its part there
+    if ((!quiet || replay) && selected && refOf(selected).id === id && !inspect(selected)) inspect(id);
     cueDone(id + '.' + key);
     tree();
     emit('set', { id: id, key: key, value: value });
@@ -494,15 +534,16 @@ var Editor = (function () {
   var WORD = { solid: 'Box Collider', hurts: 'Hazard', look: 'Sprite', sound: 'Clip', size: 'Scale', tint: 'Color', shape: 'hero', gravityScale: 'Gravity Scale', jump: 'Jump Force', w: 'Width',
                x: 'Position', y: 'Position', spots: 'Position', pieces: 'Position', name: 'name', names: 'name' };
   function record(id, key, before, after, quiet, g) {
-    var last = undos[undos.length - 1], t = Date.now();
+    var last = undos[undos.length - 1], t = Date.now(), w = batch ? batch.word : null;
+    if (batch) g = g || batch.g;
     // one slider drag is one step, not forty
     if (quiet && !g && last && last.id === id && last.key === key && t - last.t < 1200) { last.after = after; last.t = t; }
-    else undos.push({ id: id, key: key, before: before, after: after, t: t, g: g || null });
+    else undos.push({ id: id, key: key, before: before, after: after, t: t, g: g || null, w: w });
     if (undos.length > 50) { undos.shift(); playMark = Math.max(0, playMark - 1); }
     redos = [];
    
   }
-  function what(e) { var p = Project.part(e.id); return (p ? p.name + ' ' : '') + (WORD[e.key] || e.key); }
+  function what(e) { if (e.w) return e.w; var p = Project.part(e.id); return (p ? p.name + ' ' : '') + (WORD[e.key] || e.key); }
   function canUndo() { return undos.length > (Runner.isPlaying() ? playMark : 0); }
   function canRedo() { return redos.length > 0; }
   function undo() {
@@ -519,6 +560,155 @@ var Editor = (function () {
     set(e.id, e.key, e.after, false, true);
     while (e.g && redos.length && redos[redos.length - 1].g === e.g) { var e2 = redos.pop(); undos.push(e2); set(e2.id, e2.key, e2.after, false, true); e = e2; }
     status('Redid: ' + what(e));
+  }
+
+  /* ---------- more of a thing, or fewer (spec D59) ----------
+     Duplicate (Ctrl+D), Delete (the Delete key) and GameObject › Create, for coins, blocks of floor
+     and lava. Each is one of a prefab's things (schema.js): a new one is one more in its part's list
+     (spots or pieces) and Delete takes one out, so each is a change to one setting, and Undo has it
+     for nothing. A name the kid gave one (`names`, kept by place in the list) moves with it, in the
+     same step. What they don't do, on purpose:
+       - A whole part (the Coins, the Player) is never deleted: the story points at the parts by id
+         (quest.js), and a ticket whose part is gone could never be fixed. Its things can be, down to
+         the last one, which stays: switching its Box Collider off makes it do nothing.
+       - Duplicate needs one thing picked. On a prefab's own row it would mean copying all of them;
+         Create adds one more, which is what a kid after "more coins" means. */
+  var batch = null;   // { g, word }: the settings one Duplicate or Delete changes, undone as one step
+  function together(word, fn) { batch = { g: Date.now() + Math.random(), word: word }; try { fn(); } finally { batch = null; } }
+  function pick(sel) { if (selected !== sel) select(sel); else inspect(sel); }
+  // the thing `sel` names in its part's list: { p, key, i, n }, i < 0 for a prefab's own row
+  function thingOf(sel) {
+    var r = refOf(sel), p = Project.part(r.id), key = Schema.listKey(p); if (!key) return null;
+    var n = p[key].length;
+    return { p: p, key: key, i: r.i >= 0 ? r.i : n === 1 ? 0 : -1, n: n };
+  }
+  function canDuplicate(sel) { var t = sel && thingOf(sel); return !!(t && t.i >= 0); }
+  function canDelete(sel) { var t = sel && thingOf(sel); return !!(t && t.i >= 0 && t.n > 1); }
+  function whyNot(sel, act) {
+    var t = sel && thingOf(sel);
+    if (!t) return act === 'Duplicate' ? 'Pick a coin, a block of floor or the lava first' : 'Pick a coin, a block of floor or some lava first';
+    if (t.i < 0) return 'Pick one of the ' + t.p.name + ' first';
+    return 'The last one stays. To have it do nothing, untick its Box Collider 2D';
+  }
+  function duplicate(sel) {
+    if (!canDuplicate(sel)) return;
+    var t = thingOf(sel), at = t.i + 1, list = t.p[t.key].slice(), word = 'Duplicate ' + Schema.childName(t.p, t.i);
+    list.splice(at, 0, Schema.copyOf(t.p, t.i));
+    together(word, function () {
+      if (t.p.names && t.p.names.length > at) { var nm = t.p.names.slice(); nm.splice(at, 0, null); set(t.p.id, 'names', nm); }
+      set(t.p.id, t.key, list);
+    });
+    pick(t.p.id + '#' + (at + 1));
+    status('Made ' + Schema.childName(t.p, at) + ' beside it. Drag it in the Scene view to move it');
+  }
+  function remove(sel) {
+    if (!canDelete(sel)) return;
+    var t = thingOf(sel), list = t.p[t.key].slice(), gone = Schema.childName(t.p, t.i);
+    list.splice(t.i, 1);
+    together('Delete ' + gone, function () {
+      if (t.p.names && t.p.names.length > t.i) { var nm = t.p.names.slice(); nm.splice(t.i, 1); set(t.p.id, 'names', nm); }
+      set(t.p.id, t.key, list);
+    });
+    pick(list.length > 1 ? t.p.id + '#' + Math.min(t.i + 1, list.length) : t.p.id);
+    status('Deleted ' + gone + '. Undo puts it back');
+  }
+  /* GameObject › Create: one more, in the open middle of the level, picked so it is outlined there. A
+     platform joins the solid floor (the Ground), never the first day's tile. */
+  var MAKE = [['coin', 'Coin', 'i-star', { x: 480, y: 288 }], ['floor', 'Platform', 'i-cube', { x: 416, y: 352, w: 128 }], ['lava', 'Lava', 'i-flag', { x: 416, w: 96 }]];
+  function makeInto(kind) {
+    var ps = Project.get().parts.filter(function (p) { return p.kind === kind && Schema.listKey(p); });
+    return ps.filter(function (p) { return kind !== 'floor' || p.solid; })[0] || ps[0] || null;
+  }
+  function create(kind) {
+    var m = MAKE.filter(function (x) { return x[0] === kind; })[0], p = makeInto(kind); if (!m || !p) return;
+    var key = Schema.listKey(p), list = p[key].slice(), n = list.length, at = { x: m[3].x, y: 'y' in m[3] ? m[3].y : p.y, w: m[3].w };
+    list.push(Schema.copyOf(p, n - 1, at));
+    together('Create ' + m[1], function () { set(p.id, key, list); });
+    pick(p.id + '#' + (n + 1));
+    status('Added ' + Schema.childName(p, n) + ' to the ' + p.name + '. Drag it where you want it in the Scene view');
+  }
+  function createItems(only) {
+    return MAKE.filter(function (m) { return (!only || m[0] === only) && makeInto(m[0]); }).map(function (m) {
+      return { label: only ? 'Add a ' + m[1].toLowerCase() : m[1], icon: m[2], tip: 'One more ' + m[1].toLowerCase() + ', in the middle of the level', run: function () { create(m[0]); } };
+    });
+  }
+
+  /* ---------- the right-click menu (spec D57) ----------
+     Unity's context menu, on the five things that have one here: a Hierarchy row, a part in the Scene
+     view, a tile in the Project window, a component's header, and a panel's tab. It opens on a
+     right-click, a two-finger tap on a Chromebook's trackpad or a long press on a touch screen (the
+     browser's contextmenu, all three), and on Shift+F10 or the menu key for whatever has focus. It is
+     drawn by the menus' own popup(), so it works and looks as they do. Its rule is the menus' (spec
+     §3.3): it holds what can be done to that thing right now, and every item in it is somewhere else
+     too (a menu on the bar, a key, a button), so a kid who never right-clicks misses nothing.
+     Anywhere else, and in anything typed into (the chat, the code, the doc, a name box), the browser
+     keeps its own menu, with its spelling and paste. A right-click on a part picks it first, as in
+     Unity, so the Inspector shows what the menu is about. */
+  function q(v) { return window.CSS && CSS.escape ? CSS.escape(v) : String(v).replace(/"/g, '\\"'); }
+  function typingIn(t) { return !!(t.closest('input, textarea, [contenteditable=""], [contenteditable="true"], .CodeMirror')); }
+  function objectItems(sel) {
+    var p = Project.part(refOf(sel).id); if (!p) return [];
+    var t = thingOf(sel), out = [{ label: 'Rename', icon: 'i-pen', keys: 'F2', tip: 'Give it a new name', run: function () { renameRow(sel); } }];
+    if (t && t.i >= 0) out.push(
+      { label: 'Duplicate', icon: 'i-copy', keys: 'Ctrl+D', run: function () { duplicate(sel); } },
+      { label: 'Delete', icon: 'i-trash', keys: 'Del', disabled: !canDelete(sel), tip: canDelete(sel) ? '' : whyNot(sel, 'Delete'), run: function () { remove(sel); } });
+    else if (t) out = out.concat(createItems(p.kind));
+    else if (p.kind === 'level') out = out.concat([{ sep: true, label: 'Create' }], createItems());
+    return out;
+  }
+  function assetItems(a) {
+    var r = selected && refOf(selected), p = r && Project.part(r.id), k = p && slotFor(p, a), out = [];
+    if (a.kind === 'sound') out.push({ label: 'Play it', icon: 'i-play', tip: 'Hear it once', run: function () { previewSound(a.key); } });
+    if (k) out.push({ label: 'Use on ' + p.name, icon: a.kind === 'sound' ? 'i-music' : 'i-image', tip: 'Put it in ' + p.name + '’s slot, as dropping it there does', run: function () { set(p.id, k, a.key); } });
+    out.push({ label: held && held.key === a.key ? 'Put it down' : 'Hold it', icon: 'i-pick', tip: 'Then tap a slot in the Inspector that fits it', run: function () { hold(a); } });
+    return out;
+  }
+  function compItems(name) {
+    var p = selected && Project.part(refOf(selected).id); if (!p) return [];
+    var c = Schema.components(p.kind).filter(function (x) { return x.name === name; })[0]; if (!c) return [];
+    var box = $('inspBody').querySelector('.comp[data-comp="' + q(name) + '"]'), fold = box && box.querySelector('[data-fold]'), out = [];
+    if (c.toggle) out.push({ label: c.name, checked: !!p[c.toggle], tip: c.tip, run: function () { set(p.id, c.toggle, !p[c.toggle]); } });
+    if (fold) { var open = fold.getAttribute('aria-expanded') === 'true'; out.push({ label: open ? 'Fold it' : 'Open it', icon: 'i-fold', run: function () { folded[c.name] = open; inspect(selected); } }); }
+    if (/\(Script\)$/.test(c.name) && isOpen('dProject') && window.Views) out.push({ label: 'Edit Script', icon: 'i-script', tip: 'This script is part of game.js. Open it in the code editor', run: function () { Views.openCode(); } });
+    return out;
+  }
+  function tabItems(tab) {
+    var name = tab.getAttribute('data-of'), d = (name && $(PANELS[name])) || tab.closest('.dock'); if (!d) return [];
+    var out = [];
+    if (PANELS[d.getAttribute('data-panel')]) out.push({ label: d.classList.contains('min') ? 'Open it' : 'Minimize', icon: 'i-fold', run: function () { minimize(d); } });
+    out.push({ label: d === maxed ? 'Put it back' : 'Make it big', icon: d === maxed ? 'i-shrink' : 'i-grow', keys: d === maxed ? 'Esc' : '', run: function () { unmin(d); maximize(d); } });
+    if (isOpen('layoutTools')) out.push({ sep: true, label: 'Layouts' }, LAYOUT_ITEMS()[0]);
+    return out;
+  }
+  /* What a right-click on `t` is about: its name, its items (built when it opens, from what is true
+     then), and the element to open beside and give focus back to (found again after picking, which
+     redraws the Hierarchy and the Scene view). Null: the browser's own menu. */
+  function ctxFor(t) {
+    if (!t || !t.closest || typingIn(t) || !$('editor').contains(t)) return null;
+    var b = t.closest('#tree [data-key^="part:"]');
+    if (b) {
+      var key = b.getAttribute('data-key').slice(5);
+      return { label: nameOf(key), items: function () { pick(key); return objectItems(key); }, el: function () { return $('tree').querySelector('[data-key="part:' + q(key) + '"]'); } };
+    }
+    if (t.closest('#sceneSvg')) {
+      var g = t.closest('[data-part]');
+      if (!g) return { label: 'Scene', items: function () { return [{ sep: true, label: 'Create' }].concat(createItems()); }, el: function () { return $('sceneSvg'); } };
+      var id = g.getAttribute('data-part'), p = Project.part(id), hit = t.closest('[data-i]');
+      var sel = p && Schema.many(p) ? id + '#' + ((hit ? +hit.getAttribute('data-i') : 0) + 1) : id;
+      return { label: nameOf(sel), items: function () { pick(sel); return objectItems(sel); }, el: function () { return $('sceneSvg'); } };
+    }
+    if ((b = t.closest('#assetGrid .asset')) && b.ctx) { var a = b; return { label: a.textContent.trim(), items: a.ctx, el: function () { return document.body.contains(a) ? a : $('assetGrid'); } }; }
+    if ((b = t.closest('#inspBody .comp[data-comp]'))) { var n = b.getAttribute('data-comp'); return { label: n, items: function () { return compItems(n); }, el: function () { return b; } }; }
+    if ((b = t.closest('.tabs > .tab'))) { var tb = b; return { label: tb.textContent.trim(), items: function () { return tabItems(tb); }, el: function () { return tb; } }; }
+    return null;
+  }
+  function openCtx(c, at, keyboard) {
+    var items = c.items().filter(Boolean); if (!items.length) return false;
+    var el = c.el(); if (!el) return false;
+    if (!at) { var r = el.getBoundingClientRect(); at = { x: r.left + 12, y: r.bottom + 2 }; }
+    at.label = c.label;
+    popup(el, items, keyboard, false, at);
+    return true;
   }
 
   /* ---------- Play, Pause, Stop, Step ---------- */
@@ -673,6 +863,7 @@ var Editor = (function () {
     if (opts.pressed !== undefined) b.setAttribute('aria-pressed', String(opts.pressed));
     if (opts.tip) b.setAttribute('data-tip', opts.tip);
     if (opts.run) b.addEventListener('click', opts.run);
+    if (opts.ctx) b.ctx = opts.ctx;   // its right-click menu (ctxFor)
     if (opts.drag) {
       b.draggable = true;
       b.addEventListener('dragstart', function (e) { dragging = opts.drag; try { e.dataTransfer.setData('text/plain', opts.drag.key); e.dataTransfer.effectAllowed = 'copy'; } catch (x) {} glow(); });
@@ -694,24 +885,24 @@ var Editor = (function () {
       if (folder === 'sprites') Object.keys(Schema.SPRITES).forEach(function (k) {
         var a = { kind: 'sprite', key: k, of: Schema.SPRITES[k][1] };
         grid.appendChild(tile(assetFace('sprite', k), Schema.SPRITES[k][0], { key: 'asset:' + k, pressed: !!held && held.key === k, drag: a,
-          tip: Schema.SPRITES[k][0] + ': drag it onto a Sprite slot, or tap it, then tap the slot', run: function () { hold(a); } }));
+          tip: Schema.SPRITES[k][0] + ': drag it onto a part or a Sprite slot, or tap it, then tap the slot', run: function () { hold(a); }, ctx: function () { return assetItems(a); } }));
       });
       if (folder === 'sounds') Object.keys(Schema.SOUNDS).forEach(function (k) {
         var a = { kind: 'sound', key: k };
         grid.appendChild(tile(assetFace('sound', k), Schema.SOUNDS[k][0], { key: 'asset:' + k, pressed: !!held && held.key === k, drag: a,
-          tip: Schema.SOUNDS[k][0] + ': tap to hear it and hold it, then tap a Clip slot', run: function () { previewSound(k); hold(a); } }));
+          tip: Schema.SOUNDS[k][0] + ': tap to hear it and hold it, then tap a Clip slot', run: function () { previewSound(k); hold(a); }, ctx: function () { return assetItems(a); } }));
       });
       if (folder === 'scripts') {
         // game.js opens in the centre, in its own tab beside the Game view (views.js)
         grid.appendChild(tile('<svg class="i" aria-hidden="true"><use href="#i-script"/></svg>', 'game.js', { key: 'asset:game.js',
-          tip: 'Your game’s code. Open it to read and change it', run: function () { Views.openCode(); } }));
+          tip: 'Your game’s code. Open it to read and change it', run: function () { Views.openCode(); }, ctx: function () { return [{ label: 'Open', icon: 'i-script', run: function () { Views.openCode(); } }]; } }));
       }
       if (folder === 'docs') {
         /* Before the first design round, the Ideas the kid has asked for; after it, the design doc,
            which opens in the centre (views.js) and keeps the ideas at its end. */
         if (window.Views && Views.docOn()) {
           grid.appendChild(tile('<svg class="i" aria-hidden="true"><use href="#i-doc"/></svg>', 'Design doc', { key: 'doc:Design doc',
-            tip: 'Your game, written down. Open it to read and change it', run: function () { Views.openDoc(); } }));
+            tip: 'Your game, written down. Open it to read and change it', run: function () { Views.openDoc(); }, ctx: function () { return [{ label: 'Open', icon: 'i-doc', run: function () { Views.openDoc(); } }]; } }));
         } else {
           if (openDoc) return doc(openDoc);
           grid.appendChild(tile('<svg class="i" aria-hidden="true"><use href="#i-bulb"/></svg>', 'Ideas', { key: 'doc:Ideas', run: function () { openDoc = 'Ideas'; paintProject(); } }));
@@ -760,8 +951,15 @@ var Editor = (function () {
          that repeated it was the kind of doubling Jay pointed at (2026-09-29). */
       { id: 'edit', label: 'Edit', items: [
         isOpen('editTools') && { label: canUndo() ? 'Undo ' + what(undos[undos.length - 1]) : 'Undo', icon: 'i-undo', keys: 'Ctrl+Z', disabled: !canUndo(), run: undo },
-        isOpen('editTools') && { label: canRedo() ? 'Redo ' + what(redos[redos.length - 1]) : 'Redo', icon: 'i-redo', keys: 'Ctrl+Y', disabled: !canRedo(), run: redo }
+        isOpen('editTools') && { label: canRedo() ? 'Redo ' + what(redos[redos.length - 1]) : 'Redo', icon: 'i-redo', keys: 'Ctrl+Y', disabled: !canRedo(), run: redo },
+        // what the Hierarchy's right-click menu does to the part picked, as in Unity's Edit menu
+        isOpen('dHier') && { sep: true },
+        isOpen('dHier') && { label: canDuplicate(selected) ? 'Duplicate ' + nameOf(selected) : 'Duplicate', icon: 'i-copy', keys: 'Ctrl+D', disabled: !canDuplicate(selected), tip: canDuplicate(selected) ? '' : whyNot(selected, 'Duplicate'), run: function () { duplicate(selected); } },
+        isOpen('dHier') && { label: canDelete(selected) ? 'Delete ' + nameOf(selected) : 'Delete', icon: 'i-trash', keys: 'Del', disabled: !canDelete(selected), tip: canDelete(selected) ? '' : whyNot(selected, 'Delete'), run: function () { remove(selected); } },
+        isOpen('dHier') && { label: 'Rename', icon: 'i-pen', keys: 'F2', disabled: !selected, tip: selected ? '' : 'Pick a part first', run: function () { renameRow(selected); } }
       ] },
+      /* GameObject: Unity's menu for making things. Create adds one more coin, platform or lava. */
+      { id: 'gameobject', label: 'GameObject', items: isOpen('dHier') ? [{ sep: true, label: 'Create' }].concat(createItems()) : [] },
       { id: 'window', label: 'Window', items: Object.keys(PANEL_NAMES).filter(met).map(function (k) {
         var n = PANEL_NAMES[k];
         return { label: n[0], icon: n[1], checked: k === 'inspector' ? $('inspector').classList.contains('open') : true, run: function () { showPanel(k); } };
@@ -780,6 +978,9 @@ var Editor = (function () {
       isOpen('stepTools') && { label: 'Step one frame', icon: 'i-step', keys: 'Ctrl+Alt+P', disabled: !Runner.isPaused(), run: stepFrame },
       isOpen('editTools') && { label: 'Undo', icon: 'i-undo', keys: 'Ctrl+Z', disabled: !canUndo(), run: undo },
       isOpen('editTools') && { label: 'Redo', icon: 'i-redo', keys: 'Ctrl+Y', disabled: !canRedo(), run: redo },
+      isOpen('dHier') && { label: 'Duplicate', icon: 'i-copy', keys: 'Ctrl+D', disabled: !canDuplicate(selected), run: function () { duplicate(selected); } },
+      isOpen('dHier') && { label: 'Delete', icon: 'i-trash', keys: 'Del', disabled: !canDelete(selected), run: function () { remove(selected); } },
+      isOpen('dHier') && { label: 'Rename', icon: 'i-pen', keys: 'F2', disabled: !selected, run: function () { renameRow(selected); } },
       { label: 'Save', icon: 'i-save', keys: 'Ctrl+S', run: saveNow }].filter(Boolean);
   }
   /* ---------- the kid's profile: the circle at the right of the bar (spec D55, D56) ----------
@@ -1050,11 +1251,13 @@ var Editor = (function () {
     var m = MENUS().filter(function (x) { return x.id === id; })[0]; if (!m) return;
     popup(btn, m.items, focusFirst, true);
   }
-  function popup(btn, items, focusFirst, bar) {
+  /* `at` ({ x, y, label }): the right-click menu, opened at that point over everything rather than
+     under a button on the bar. */
+  function popup(btn, items, focusFirst, bar, at) {
     closeMenu(false);
     UI.hideTip();
-    var pop = document.createElement('div'); pop.className = 'menupop'; pop.setAttribute('role', 'menu');
-    pop.setAttribute('aria-label', btn.textContent.trim());
+    var pop = document.createElement('div'); pop.className = 'menupop' + (at ? ' ctx' : ''); pop.setAttribute('role', 'menu');
+    pop.setAttribute('aria-label', at ? at.label : btn.textContent.trim());
     items.forEach(function (it) {
       if (it.node) { pop.appendChild(it.node); return; }
       if (it.sep) { var s = document.createElement('div'); s.className = 'msep'; s.setAttribute('role', 'separator'); if (it.label) s.textContent = it.label; pop.appendChild(s); return; }
@@ -1080,19 +1283,31 @@ var Editor = (function () {
       if (e.key === 'Tab') closeMenu(false);
       if (bar && (e.key === 'ArrowRight' || e.key === 'ArrowLeft')) { e.preventDefault(); barMove(btn, e.key === 'ArrowRight' ? 1 : -1, true); }
     });
-    btn.parentNode.appendChild(pop);
-    btn.setAttribute('aria-expanded', 'true'); btn.classList.add('open');
-    // keep it on screen
-    var r = pop.getBoundingClientRect(), vw = document.documentElement.clientWidth;
-    if (r.right > vw - 8) pop.style.left = Math.round(vw - 8 - r.right) + 'px';
-    openMenu = { btn: btn, pop: pop, bar: bar };
-    if (focusFirst) { var f = pop.querySelector('.mitem'); if (f) f.focus(); }
+    var vw = document.documentElement.clientWidth, vh = document.documentElement.clientHeight;
+    if (at) {
+      // at the pointer, turned back from the right and bottom edges so all of it shows
+      document.body.appendChild(pop);
+      var cr = pop.getBoundingClientRect();
+      pop.style.left = Math.round(Math.max(8, Math.min(at.x, vw - cr.width - 8))) + 'px';
+      pop.style.top = Math.round(at.y + cr.height > vh - 8 ? Math.max(8, at.y - cr.height) : at.y) + 'px';
+      pop.tabIndex = -1;
+    } else {
+      btn.parentNode.appendChild(pop);
+      btn.setAttribute('aria-expanded', 'true'); btn.classList.add('open');
+      // keep it on screen
+      var r = pop.getBoundingClientRect();
+      if (r.right > vw - 8) pop.style.left = Math.round(vw - 8 - r.right) + 'px';
+    }
+    openMenu = { btn: btn, pop: pop, bar: bar, ctx: !!at };
+    var f = focusFirst && pop.querySelector('.mitem');
+    if (f) f.focus(); else if (at) pop.focus({ preventScroll: true });   // the arrow keys work in it straight away
   }
   function closeMenu(refocus) {
     if (!openMenu) return;
     var m = openMenu; openMenu = null;
-    m.pop.remove(); m.btn.setAttribute('aria-expanded', 'false'); m.btn.classList.remove('open');
-    if (refocus) m.btn.focus();
+    m.pop.remove();
+    if (!m.ctx) { m.btn.setAttribute('aria-expanded', 'false'); m.btn.classList.remove('open'); }
+    if (refocus && document.body.contains(m.btn)) m.btn.focus({ preventScroll: true });
   }
 
   function showPanel(k) {
@@ -1449,6 +1664,11 @@ var Editor = (function () {
 
   /* ---------- keys: Unity's own, where the browser allows them ---------- */
   function keys(e) {
+    if (e.key === 'ContextMenu' || (e.shiftKey && e.key === 'F10')) {   // the right-click menu, from the keyboard
+      var c = ctxFor(document.activeElement);
+      if (c && openCtx(c, null, true)) e.preventDefault();
+      return;
+    }
     if (e.key === 'Escape' && drag) { tabEnd(); return; }
     if (e.key === 'Escape' && openMenu) { closeMenu(true); return; }
     if (e.key === 'Escape' && cv) { closeCard(true); return; }
@@ -1458,9 +1678,15 @@ var Editor = (function () {
     if (e.key === 'Escape' && maxed) { var m = maxed; unmaximize(); var mb = m.querySelector('.maxb'); if (mb) mb.focus(); return; }
     if (e.key === 'Escape' && $('inspector').classList.contains('open')) { closeInspector(); return; }
     var t = e.target, typing = t && (t.tagName === 'INPUT' || t.tagName === 'TEXTAREA' || t.isContentEditable);
+    // Unity's keys for the part picked; a row's own F2 got there first (defaultPrevented)
+    if (!typing && !openMenu && !e.defaultPrevented && isOpen('dHier') && !e.ctrlKey && !e.metaKey) {   // Alt too: a Chromebook's Delete is Alt+Backspace
+      if (e.key === 'Delete' && canDelete(selected)) { e.preventDefault(); remove(selected); return; }
+      if (e.key === 'F2' && selected) { e.preventDefault(); renameRow(selected); return; }
+    }
     if (!(e.ctrlKey || e.metaKey) || typing) return;
     var k = e.key.toLowerCase();
     if (k === 's') { e.preventDefault(); saveNow(); }
+    if (k === 'd' && !e.shiftKey && isOpen('dHier')) { e.preventDefault(); duplicate(selected); }   // the browser's bookmark key, kept for Unity's
     if (k === 'z' && !e.shiftKey && isOpen('editTools')) { e.preventDefault(); undo(); }
     if ((k === 'y' || (k === 'z' && e.shiftKey)) && isOpen('editTools')) { e.preventDefault(); redo(); }
     if (k === 'p' && isOpen('transport')) {
@@ -1514,6 +1740,12 @@ var Editor = (function () {
       if (prof && !cv && !prof.pop.contains(e.target) && !$('bMe').contains(e.target)) closeProfile(false);
     });
     $('editor').addEventListener('pointerdown', tabDown);
+    document.addEventListener('contextmenu', function (e) {
+      var c = ctxFor(e.target); if (!c) return;   // the browser's own menu
+      e.preventDefault();
+      // a contextmenu with no pointer at all is the keyboard's (some browsers send one for Shift+F10)
+      openCtx(c, e.clientX || e.clientY ? { x: e.clientX, y: e.clientY } : null, !e.clientX && !e.clientY);
+    });
     $('gamebody').addEventListener('pointerdown', function () { Runner.focusGame(); });
     // a click into the game frame blurs the page; the keys stay a moment longer, then go
     window.addEventListener('blur', function () { if (openMenu) closeMenu(false); setTimeout(function () { if (!$('hint').hidden && !$('hint').classList.contains('gone')) linger(LINGER); else hint(); }, 0); });
@@ -1534,5 +1766,6 @@ var Editor = (function () {
   return { init: init, on: on, openDock: openDock, reveal: reveal, unmin: unmin, tree: tree, allow: allow, select: select,
            inspect: inspect, closeInspector: closeInspector, set: set, place: place, refOf: refOf, togglePlay: togglePlay, cue: cue, point: point,
            paintPlay: paintPlay, me: me, news: newsFor, setProjectName: setProjectName, stars: stars, project: paintProject, undo: undo, redo: redo,
+           takes: takes, give: give, duplicate: duplicate, remove: remove, create: create,
            selected: function () { return selected; }, allowed: function () { return allowed; } };
 })();

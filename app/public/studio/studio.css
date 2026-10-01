@@ -82,6 +82,9 @@ svg.i { width: 18px; height: 18px; fill: none; stroke: currentColor; stroke-widt
            background: var(--frame); border: 1px solid var(--line-soft); border-radius: 8px; padding: 5px;
            box-shadow: var(--lift); animation: popIn .16s var(--ease) both; }
 .mright .menupop { left: auto; right: 0; }
+/* the right-click menu (editor.js): at the pointer, over the panels and a big one */
+.menupop.ctx { position: fixed; z-index: 65; }
+.menupop.ctx:focus { outline: none; }
 @keyframes popIn { from { opacity: 0; transform: translateY(-4px); } to { opacity: 1; transform: none; } }
 .mitem { display: grid; grid-template-columns: 16px 18px minmax(0, 1fr) auto; align-items: center; gap: 8px; width: 100%;
          min-height: 38px; padding: 0 10px 0 6px; border: 0; border-radius: 5px; background: transparent; color: var(--ink);
@@ -251,6 +254,9 @@ svg.i { width: 18px; height: 18px; fill: none; stroke: currentColor; stroke-widt
    the fill. */
 .tree li button.cue, .cbox.cue, .ofield.cue, .irow.cue, .cfield.cue { box-shadow: inset 0 0 0 2px var(--accent); animation: cuein 1.6s var(--ease) infinite; }
 .tree li button.cue { border-radius: 6px; }
+/* an asset from the Project window being dragged: the rows it can go on, and the one under it */
+.tree li button.can-take { box-shadow: inset 0 0 0 1px var(--accent); border-radius: 6px; }
+.tree li button.over { background: var(--accent-soft); box-shadow: inset 0 0 0 2px var(--accent); border-radius: 6px; }
 .irow.cue { margin: 0 -6px; padding: 0 6px; border-radius: 7px; }
 @keyframes cuein { 50% { background-color: var(--accent-soft); } }
 .snd-toggle[aria-pressed="false"] { color: var(--ink-3); }
@@ -466,6 +472,10 @@ body.resizing-x iframe, body.resizing-y iframe { pointer-events: none; }   /* th
 .spart .hit:hover { fill: rgba(234, 241, 248, .08); }
 .spart .sel { fill: none; stroke: var(--focus); stroke-width: 2; vector-effect: non-scaling-stroke; pointer-events: none; }
 .spart .gizmo { fill: none; stroke: var(--good); stroke-width: 2; vector-effect: non-scaling-stroke; pointer-events: none; }
+.spart .gizmo.trig { stroke-dasharray: 6 4; }
+/* an asset from the Project window over a part that can take it (views.js, sceneOver) */
+.spart.drop .hit { fill: var(--accent-soft); stroke: var(--accent); stroke-width: 2; vector-effect: non-scaling-stroke; }
+.scenesvg.drop .bounds { stroke: var(--accent); stroke-dasharray: none; }
 .scenehint { position: absolute; left: 12px; bottom: 12px; margin: 0; max-width: calc(100% - 24px); padding: 6px 10px; border-radius: 8px;
              background: rgba(6, 16, 29, .88); color: var(--ink-2); font-size: 13.5px; pointer-events: none; }
 

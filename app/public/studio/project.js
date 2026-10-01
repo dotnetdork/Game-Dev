@@ -22,11 +22,11 @@ var Project = (function () {
   function internsParts() {
     return [
       { id: 'level', name: 'Level 1', kind: 'level', gravity: 1200, look: null },
-      { id: 'player', name: 'Player', kind: 'player', x: 96, y: 420, speed: 240, jump: 600, gravityScale: 1, look: null, tint: null, shape: null },
-      { id: 'ground', name: 'Ground', kind: 'floor', y: 448, pieces: [[0, 320], [384, 192], [704, 256]], solid: true, look: null, tint: null },
-      { id: 'tile', name: 'Floor tile', kind: 'floor', y: 448, pieces: [[320, 64]], solid: false, look: null, tint: null },
-      { id: 'lava', name: 'Lava', kind: 'lava', x: 576, y: 464, w: 128, hurts: false, look: null, tint: null },
-      { id: 'coins', name: 'Coins', kind: 'coin', spots: [[480, 400], [832, 400]], size: 1, look: null, tint: null, sound: null, volume: 0.6, pitch: 1 }
+      { id: 'player', name: 'Player', kind: 'player', x: 96, y: 420, speed: 240, jump: 600, gravityScale: 1, drag: 0, bounce: 0, solid: true, trigger: false, look: null, tint: null, shape: null },
+      { id: 'ground', name: 'Ground', kind: 'floor', y: 448, pieces: [[0, 320], [384, 192], [704, 256]], solid: true, trigger: false, look: null, tint: null },
+      { id: 'tile', name: 'Floor tile', kind: 'floor', y: 448, pieces: [[320, 64]], solid: false, trigger: false, look: null, tint: null },
+      { id: 'lava', name: 'Lava', kind: 'lava', y: 464, pieces: [[576, 128]], hurts: false, solid: true, trigger: false, look: null, tint: null },
+      { id: 'coins', name: 'Coins', kind: 'coin', spots: [[480, 400], [832, 400]], size: 1, solid: true, trigger: true, look: null, tint: null, sound: null, volume: 0.6, pitch: 1 }
     ];
   }
 
@@ -69,6 +69,14 @@ var Project = (function () {
   function migrate(s) {
     var base = internsParts();
     s.parts.forEach(function (p) {
+      /* The lava was one block at its own x and w until Oct 1, when it became a list like a floor's so
+         there can be more than one (spec D59). Moved before the settings below are filled in, which
+         would otherwise give it the intern's lava as well. A kid whose own code still draws it from x
+         and w (codeEdited) keeps those too, so their game doesn't lose it; the Builder moves it on. */
+      if (p.kind === 'lava' && !Array.isArray(p.pieces) && typeof p.x === 'number') {
+        p.pieces = [[p.x, typeof p.w === 'number' ? p.w : 128]];
+        if (!s.codeEdited) { delete p.x; delete p.w; }
+      }
       var b = base.filter(function (q) { return q.id === p.id; })[0];
       if (b) Object.keys(b).forEach(function (k) { if (!(k in p)) p[k] = b[k]; });
       delete p.note;
