@@ -416,11 +416,53 @@ body.resizing-x iframe, body.resizing-y iframe { pointer-events: none; }   /* th
    that is plainly somewhere to type (a border at rest, the field edge on hover, the focus ring when
    in). The state is a drawn mark and a word beside the title: grey and dashed with nothing yet, half
    full when started, green with a tick when decided. No red: an empty section is not a mistake. */
-.dochost { flex: 1; min-height: 0; overflow-y: auto; scrollbar-gutter: stable; }
-.gdd { max-width: 70ch; margin: 0 auto; padding: 22px 24px 40px; display: grid; gap: 18px; }
-.gdd header h2 { margin: 0 0 4px; font-size: 22px; line-height: 1.2; font-weight: 700; text-wrap: balance; }
-.gdd header p { margin: 0; font-size: 14px; color: var(--ink-2); max-width: 60ch; }
-.dsec h3, .dideas h3 { display: flex; align-items: center; gap: 8px; margin: 0 0 6px; font-size: 15px; font-weight: 650; color: var(--ink); }
+.dochost { flex: 1; min-height: 0; overflow-y: auto; scrollbar-gutter: stable; container-type: inline-size; }
+/* laid out as one page (views.js says why): the cover, the loop, the look, the ideas. Wider than a
+   reading column, so the loop's two boxes a row each keep a full line of words */
+.gdd { max-width: 940px; margin: 0 auto; padding: 18px 24px 40px; display: grid; gap: 26px; }
+.gcover { display: grid; gap: 12px; padding-bottom: 20px; border-bottom: 1px solid var(--line-soft); }
+.gcover h2 { margin: 0; font-size: 26px; line-height: 1.15; font-weight: 750; letter-spacing: -.01em; text-wrap: balance; }
+.gcover > p { margin: -8px 0 0; font-size: 14px; color: var(--ink-2); max-width: 62ch; }
+/* the idea is the game's one-line pitch, so it reads larger than the rest */
+.gcover .dsec textarea { font-size: 17px; line-height: 1.45; padding: 11px 14px; }
+.dgroup { display: grid; gap: 4px; }
+.dgroup > h3 { margin: 0; font-size: 18px; line-height: 1.25; font-weight: 700; color: var(--ink); }
+.dnote { margin: 0; font-size: 14px; color: var(--ink-2); }
+.dgroup .dbody { margin-top: 12px; }
+/* THE LOOP: four sections round a ring of arrows, clockwise. Each arrow sits in the gap between the
+   section it leaves and the one it points at; the up arrow, fun back to play, closes the ring. */
+.dloop .dbody { display: grid; grid-template-columns: minmax(0, 1fr) 52px minmax(0, 1fr); grid-template-rows: auto 48px auto;
+                grid-template-areas: "play r obstacles" "u again d" "fun l goal"; }
+.dloop .dsec { display: flex; flex-direction: column; }
+.dloop .dsec textarea { flex: 1 0 auto; }
+.dloop .arr { width: 24px; height: 24px; place-self: center; color: var(--edge); stroke-width: 2.25; }
+/* the middle of the ring: round and round */
+.dloop .again { grid-area: again; place-self: center; display: grid; place-items: center; width: 36px; height: 36px;
+                border-radius: 50%; border: 1px solid var(--line-soft); color: var(--ink-3); }
+.dloop .again svg { width: 18px; height: 18px; }
+.dloop .arr[data-dir="d"] { transform: rotate(90deg); }
+.dloop .arr[data-dir="l"] { transform: rotate(180deg); }
+.dloop .arr[data-dir="u"] { transform: rotate(-90deg); }
+/* the right and left arrows point at the boxes, below each heading, not at the headings */
+.dloop .arr[data-dir="r"], .dloop .arr[data-dir="l"] { margin-top: 28px; }
+.dlook .dbody { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 18px 40px; }
+/* the hero beside their picture, drawn as the game draws them */
+.dsec[data-sec="hero"]:has(.portrait:not([hidden])) { display: grid; grid-template-columns: 80px minmax(0, 1fr); column-gap: 12px; align-items: start; }
+.dsec[data-sec="hero"] .dh { grid-column: 1 / -1; }
+/* the hero's picture has room round the body for wings and hats (starter/game.js heroBody), so the box is snug */
+.dsec .portrait { width: 80px; height: 80px; object-fit: contain; padding: 2px; border-radius: 8px; background: var(--game-well); }
+.dsec .portrait[hidden] { display: none; }
+/* a narrow doc (the panel made small, or a small screen): one column, and the loop runs down the page
+   with each arrow pointing at the next box; the last one, back to the start, is left to the note */
+@container (max-width: 620px) {
+  .gdd { padding: 16px 16px 32px; gap: 22px; }
+  .dloop .dbody { grid-template-columns: minmax(0, 1fr); grid-template-rows: none; grid-template-areas: "play" "r" "obstacles" "d" "goal" "l" "fun"; }
+  .dloop .arr { height: 30px; margin-top: 0; }
+  .dloop .arr[data-dir="r"], .dloop .arr[data-dir="l"] { transform: rotate(90deg); margin-top: 0; }
+  .dloop .arr[data-dir="u"], .dloop .again { display: none; }
+  .dlook .dbody { grid-template-columns: minmax(0, 1fr); }
+}
+.dsec .dh, .dideas h3 { display: flex; align-items: center; gap: 8px; margin: 0 0 6px; font-size: 15px; font-weight: 650; color: var(--ink); }
 .dsec .mark { width: 18px; height: 18px; color: var(--ink-3); }
 .dsec[data-state="started"] .mark { color: var(--ink-2); }
 .dsec[data-state="decided"] .mark { color: var(--good); stroke-width: 2; }
@@ -441,7 +483,6 @@ body.resizing-x iframe, body.resizing-y iframe { pointer-events: none; }   /* th
 .dideas h3 svg { color: var(--ink-2); }
 .dideas ul { margin: 0; padding: 0 0 0 26px; display: grid; gap: 4px; color: var(--ink-2); font-size: 14.5px; }
 .dideas li.empty { list-style: none; margin-left: -26px; color: var(--ink-3); }
-@media (max-width: 1100px) { .gdd { padding: 16px 16px 32px; gap: 16px; } }
 .codeerr .tbtn[hidden] { display: none; }
 
 /* the game's keys (editor.js, hint): a strip at the bottom centre of the game that the pointer goes

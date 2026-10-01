@@ -64,7 +64,7 @@ var Views = (function () {
     $('gamebody').inert = name !== 'game';   // under a view: nothing in it can take focus
     if (name === 'scene') { paintScene(); Runner.askThumbs(); }   // a picture the game drew since the last ask
     if (name === 'code' && cm) setTimeout(function () { cm.refresh(); }, 0);
-    if (name === 'doc') paintDoc();
+    if (name === 'doc') { paintDoc(); Runner.askThumbs(); }   // the hero's picture, as the game last drew it
   }
   function tabKeys(e) {
     var d = { ArrowRight: 1, ArrowLeft: -1 }[e.key]; if (!d) return;
@@ -358,24 +358,67 @@ var Views = (function () {
   var STATE_WORDS = { empty: 'Not decided yet', started: 'Started', decided: 'Decided' };
   var MARKS = { empty: 'i-sec-empty', started: 'i-sec-started', decided: 'i-sec-decided' };
   var docBuilt = false, typing = {};
-  /* Built once: a heading, one section per entry in Project.SECTIONS, the ideas. paintDoc fills it. */
+  /* ONE PAGE, LAID OUT AS A PICTURE (Jay, Sept 30: "research images of game design documents"). Stone
+     Librande's one-page designs (GDC 2010: Diablo 3, Spore) found that nobody reads past the first
+     page and that a drawing of the game is read where a list is not, and the one-page templates kids
+     find online all open with a cover and draw the core loop as a cycle of boxes. So: a cover (the
+     game's name, and the idea as its one-line pitch), then HOW IT PLAYS drawn as the core loop, the
+     four gameplay sections round a ring of arrows in the order a player meets them (do something,
+     something gets in the way, reach the goal, the good part, and again), then how it looks and
+     sounds, the hero beside their picture, then the ideas. Every section is still one box to type in;
+     only where it sits changed. The tab order follows the loop. */
+  var LOOP = ['play', 'obstacles', 'goal', 'fun'];   // clockwise from the top left
+  var ARROWS = ['r', 'd', 'l', 'u'];                 // the arrow leaving each, toward the next
+  function docSection(s, h) {
+    var sec = document.createElement('section'); sec.className = 'dsec'; sec.setAttribute('data-sec', s[0]);
+    sec.innerHTML = '<' + h + ' class="dh" id="ds-' + s[0] + '"><svg class="i mark" aria-hidden="true"><use href="#i-sec-empty"/></svg><span class="st"></span><span class="sw"></span></' + h + '>'
+      + '<textarea rows="2" maxlength="600" spellcheck="true" aria-labelledby="ds-' + s[0] + '" data-key="doc:' + s[0] + '"></textarea>';
+    sec.querySelector('.st').textContent = s[1];
+    var t = sec.querySelector('textarea');
+    t.placeholder = s[2];
+    t.addEventListener('input', function () { grow(t); clearTimeout(typing[s[0]]); typing[s[0]] = setTimeout(function () { keep(s[0], t); }, 700); });
+    t.addEventListener('change', function () { keep(s[0], t); });
+    t.addEventListener('blur', function () { keep(s[0], t); });
+    return sec;
+  }
+  function docGroup(id, title, note) {
+    var g = document.createElement('section'); g.className = 'dgroup'; g.setAttribute('aria-labelledby', 'dg-' + id);
+    g.innerHTML = '<h3 id="dg-' + id + '"></h3>' + (note ? '<p class="dnote"></p>' : '') + '<div class="dbody"></div>';
+    g.querySelector('h3').textContent = title;
+    if (note) g.querySelector('.dnote').textContent = note;
+    return g;
+  }
+  /* Built once: the cover, the loop, the rest, the ideas. paintDoc fills it. */
   function buildDoc() {
     var host = $('docHost'); if (!host || docBuilt) return;
     docBuilt = true;
     var art = document.createElement('article'); art.className = 'gdd';
-    art.innerHTML = '<header><h2></h2><p>Your game, written down. The Builder builds what this says, so change anything you like.</p></header>';
-    Project.SECTIONS.forEach(function (s) {
-      var sec = document.createElement('section'); sec.className = 'dsec'; sec.setAttribute('data-sec', s[0]);
-      sec.innerHTML = '<h3 id="ds-' + s[0] + '"><svg class="i mark" aria-hidden="true"><use href="#i-sec-empty"/></svg><span class="st"></span><span class="sw"></span></h3>'
-        + '<textarea rows="2" maxlength="600" spellcheck="true" aria-labelledby="ds-' + s[0] + '" data-key="doc:' + s[0] + '"></textarea>';
-      sec.querySelector('.st').textContent = s[1];
-      var t = sec.querySelector('textarea');
-      t.placeholder = s[2];
-      t.addEventListener('input', function () { grow(t); clearTimeout(typing[s[0]]); typing[s[0]] = setTimeout(function () { keep(s[0], t); }, 700); });
-      t.addEventListener('change', function () { keep(s[0], t); });
-      t.addEventListener('blur', function () { keep(s[0], t); });
-      art.appendChild(sec);
+    art.innerHTML = '<header class="gcover"><h2></h2><p>Your game, written down. The Builder builds what this says, so change anything you like.</p></header>';
+    var by = {}; Project.SECTIONS.forEach(function (s) { by[s[0]] = s; });
+    art.querySelector('.gcover').appendChild(docSection(by.idea, 'h3'));
+    var loop = docGroup('play', 'How it plays', 'Your core loop. Each box leads to the next, then it all starts again.');
+    loop.classList.add('dloop');
+    LOOP.forEach(function (k, i) {
+      if (!by[k]) return;
+      var sec = docSection(by[k], 'h4'); sec.style.gridArea = k; loop.querySelector('.dbody').appendChild(sec);
+      var a = document.createElementNS('http://www.w3.org/2000/svg', 'svg');
+      a.setAttribute('class', 'i arr'); a.setAttribute('data-dir', ARROWS[i]); a.setAttribute('aria-hidden', 'true');
+      a.innerHTML = '<use href="#i-arrow"/>'; a.style.gridArea = ARROWS[i];
+      loop.querySelector('.dbody').appendChild(a);
     });
+    var again = document.createElement('span'); again.className = 'again'; again.setAttribute('aria-hidden', 'true');
+    again.innerHTML = '<svg class="i"><use href="#i-again"/></svg>';
+    loop.querySelector('.dbody').appendChild(again);
+    art.appendChild(loop);
+    var look = docGroup('look', 'How it looks and sounds'); look.classList.add('dlook');
+    Project.SECTIONS.forEach(function (s) {
+      if (s[0] === 'idea' || LOOP.indexOf(s[0]) >= 0) return;
+      var sec = docSection(s, 'h4');
+      // the hero beside their picture, once the concept artist has drawn one (paintDoc)
+      if (s[0] === 'hero') { var im = document.createElement('img'); im.className = 'portrait'; im.alt = ''; im.hidden = true; sec.insertBefore(im, sec.querySelector('textarea')); }
+      look.querySelector('.dbody').appendChild(sec);
+    });
+    art.appendChild(look);
     var ideas = document.createElement('section'); ideas.className = 'dideas';
     ideas.innerHTML = '<h3 id="ds-ideas"><svg class="i" aria-hidden="true"><use href="#i-bulb"/></svg><span class="st">Ideas for later</span></h3><ul aria-labelledby="ds-ideas"></ul>';
     art.appendChild(ideas);
@@ -430,6 +473,9 @@ var Views = (function () {
       }
       sec.setAttribute('data-seen', '');
     });
+    var hero = Project.get().parts.filter(function (p) { return p.kind === 'player'; })[0], pic = document.querySelector('.dsec .portrait');
+    var u = hero && hero.look && Runner.thumb(hero.look);
+    if (pic) { pic.hidden = !u; if (u && pic.getAttribute('src') !== u) pic.src = u; }
     var ul = document.querySelector('.dideas ul'); ul.innerHTML = '';
     if (!d.ideas.length) { var e = document.createElement('li'); e.className = 'empty'; e.textContent = 'Nothing yet. Anything you ask for that isn’t built yet is kept here.'; ul.appendChild(e); }
     d.ideas.slice().reverse().forEach(function (x) { var li = document.createElement('li'); li.textContent = x; ul.appendChild(li); });
@@ -457,7 +503,7 @@ var Views = (function () {
     svg.addEventListener('pointercancel', sceneUp);
     Editor.on(function (name) { if (name === 'select' || name === 'deselect' || name === 'set') { paintScene(); paintPick(); } });
     Project.onDoc(paintDoc);
-    Runner.on(function (name) { if (name === 'thumbs' || name === 'ready' || name === 'stop') { paintScene(); paintPick(); } if (name === 'play') playing(true); if (name === 'stop') playing(false); });
+    Runner.on(function (name) { if (name === 'thumbs' || name === 'ready' || name === 'stop') { paintScene(); paintPick(); } if (name === 'thumbs') paintDoc(); if (name === 'play') playing(true); if (name === 'stop') playing(false); });
     if (window.Builder) Builder.on(function (name) {
       if (name !== 'built' && name !== 'reverted') return;
       paintScene(); paintPick(); lastError = null;
