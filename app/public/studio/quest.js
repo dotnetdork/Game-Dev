@@ -40,7 +40,7 @@
    Code keeps the score here; the AI changes things through Editor.set, the same way a tap does, and
    through the Builder (builder.js) for anything the settings can't do. */
 var Quest = (function () {
-  var COURSE = null, S = null, hintTimer = null, lastFired = {}, aiFails = 0;
+  var COURSE = null, S = null, hintTimer = null, lastFired = {}, ai = UI.gate();   // ai: when to stop asking a failing AI, and when to try again (ui.js)
   var VOICE = { mentor: 'm', 'lead-programmer': 'p', 'art-director': 'a', 'concept-artist': 'c', 'sound-designer': 'u', 'lead-designer': 'd', director: 'r' };
   var NAME = { mentor: 'the Mentor', 'lead-programmer': 'the lead programmer', 'art-director': 'the art director', 'concept-artist': 'the concept artist', 'sound-designer': 'the sound designer', 'lead-designer': 'the lead designer', director: 'the Studio Director' };
   var BY_VOICE = {}; Object.keys(VOICE).forEach(function (k) { BY_VOICE[VOICE[k]] = k; });
@@ -65,6 +65,11 @@ var Quest = (function () {
   // the ticket a frame is fixing: its quest's, or, for your-ticket, the one it was started for
   function ticketFor(f) { return f && (f.ticket || (quest(f) && quest(f).ticket !== 'own' && quest(f).ticket)) || null; }
   function ownShift(f) { var q = f && quest(f); return !!(q && q.ticket === 'own' && f.ticket); }
+  /* A piece of the kid's design to build (doc-ticket.yaml, spec D49), rather than a bug to fix. It is
+     closed by something BUILT for it: the Builder's change, or settings the AI changed when the kid
+     described what they wanted. A tap in the Inspector does not count, because the audit (Sept 30,
+     D51) found "Add forks that chase you" closing on a jump height nudged to 401. */
+  function docShift(f) { return ownShift(f) && quest(f).id === 'doc-ticket'; }
   // who leads each department, for a shift whose character is `department`
   var LEADS = { engineering: 'lead-programmer', art: 'art-director', audio: 'sound-designer', design: 'lead-designer', studio: 'mentor' };
   function save() { Project.save(); }
@@ -245,7 +250,7 @@ var Quest = (function () {
   function lead(t) { var q = COURSE.quests[t.quest]; return VOICE[t.own ? LEADS[t.department] : (q && q.character) || 'mentor'] || 'm'; }
   function el(tag, cls, text) { var e = document.createElement(tag); if (cls) e.className = cls; if (text !== undefined) e.textContent = text; return e; }
   function icon(id) { var ns = 'http://www.w3.org/2000/svg', svg = document.createElementNS(ns, 'svg'), use = document.createElementNS(ns, 'use'); svg.setAttribute('class', 'i'); svg.setAttribute('aria-hidden', 'true'); use.setAttribute('href', '#' + id); svg.appendChild(use); return svg; }
-  function pill(status) { var p = el('span', 'pill ' + status, STATUS[status]); if (status === 'done') p.insertBefore(icon('i-check'), p.firstChild); return p; }
+  function pill(status, build) { var p = el('span', 'pill ' + status, build && status === 'done' ? 'Built' : STATUS[status]); if (status === 'done') p.insertBefore(icon('i-check'), p.firstChild); return p; }
 
   /* The Tickets dock: a board, the way a studio's bug tracker looks (Jay, 2026-09-29: "more
      professional, clear title, clicking it should provide further details on the problem, or help if
@@ -271,7 +276,7 @@ var Quest = (function () {
         var top = el('span', 'tmeta');
         top.appendChild(el('span', 'tid', '#' + number(id)));
         top.appendChild(el('span', 'tdept', DEPT[t.department]));
-        top.appendChild(pill(mine.status));
+        top.appendChild(pill(mine.status, t.quest === 'doc-ticket'));
         b.appendChild(top);
         b.appendChild(el('span', 'tt', t.title));
         b.setAttribute('aria-label', 'Ticket ' + number(id) + ': ' + t.title + '. ' + DEPT[t.department] + ', ' + STATUS[mine.status] + '. Open its page.');
@@ -307,7 +312,7 @@ var Quest = (function () {
     var top = el('p', 'tmeta');
     top.appendChild(el('span', 'tid', '#' + number(t.id)));
     top.appendChild(el('span', 'tdept', DEPT[t.department]));
-    top.appendChild(pill(mine.status));
+    top.appendChild(pill(mine.status, t.quest === 'doc-ticket'));
     page.appendChild(top);
     page.appendChild(el('h3', '', t.title));
     var owner = el('p', 'towner'); owner.setAttribute('data-who', who);
@@ -1142,7 +1147,7 @@ var Quest = (function () {
     Design.round({ round: a.round || 1, text: fill(a.text), who: who, name: NAME[BY_VOICE[who] || 'mentor'],
       say: function (lines) { say(lines, who); }, award: award, card: cardOf,
       cards: function () { return S.cards.map(cardOf); }, hero: function () { return S.hero || null; },
-      idea: function (t) { idea(t); }, log: log, aiUp: aiUp,
+      idea: function (t) { idea(t); }, log: log, aiUp: aiUp, ai: ai,
       still: function () { return frame() === f && f.beat === at; },
       done: function () { if (frame() === f && f.beat === at) next(); } });
   }
@@ -1171,7 +1176,7 @@ var Quest = (function () {
     if (ev.type === 'select' || ev.type === 'set' || ev.type === 'play' || ev.type === 'stop') busyKid();
     var f = frame(); if (!f) return;
     // for claimFixed: when the game last changed, and when it was last tested
-    if (ownShift(f)) { if (ev.type === 'set' || ev.type === 'built') f.changedAt = Date.now(); if (ev.type === 'play') f.playedAt = Date.now(); }
+    if (ownShift(f)) { if (ev.type === 'built' || (ev.type === 'set' && !docShift(f))) f.changedAt = Date.now(); if (ev.type === 'play') f.playedAt = Date.now(); }
     var q = quest(f), b = beat(f);
     ((b && b.on) || []).concat(q.on || []).forEach(function (h, n) {
       var key = (b && b.on && n < b.on.length ? 'b' : 'q') + n;
@@ -1306,7 +1311,7 @@ var Quest = (function () {
     if (c.fixed) return 'fix it, test it with Play, and say it is fixed';
     return 'carry on';
   }
-  function aiUp() { return aiFails < 2; }
+  function aiUp() { return ai.up(); }
   /* One call to the mentor agent, with a deadline. Resolves the answer, or null when there isn't one
      (and says so in the thread, honestly, unless `quiet`). */
   function mentor(text, qOnScreen, who, task) {
@@ -1318,15 +1323,17 @@ var Quest = (function () {
     var out = function (how, j) { log('ai', { how: how, said: String(text).slice(0, 300), task: task ? String(task).slice(0, 160) : undefined, reply: j && j.reply, choose: j && j.choose, actions: j && j.actions && j.actions.length ? j.actions : undefined, build: j && j.build || undefined, ms: Date.now() - t0 }); };
     return fetch('/api/ai', {
       method: 'POST', headers: { 'Content-Type': 'application/json' }, signal: ctl ? ctl.signal : undefined,
-      body: JSON.stringify({ agent: 'mentor', message: text, history: Chat.history(),
+      body: JSON.stringify({ agent: 'mentor', message: text, history: Chat.history(), budget: AI_MS,
         where: f ? quest(f).title + ', on step "' + (beat(f) ? beat(f).id : 'end') + '".' : 'Their own game, no quest running.',
         studio: context(qOnScreen, who, task) })
-    }).then(function (r) { return r.json().catch(function () { return {}; }).then(function (j) { return { ok: r.ok, j: j }; }); })
+    }).then(function (r) { return r.json().catch(function () { return {}; }).then(function (j) { return { ok: r.ok, status: r.status, j: j }; }); })
       .then(function (res) {
         clearTimeout(timer); wait.done();
-        if (!res.ok || !res.j.reply) { aiFails++; out(res.ok ? 'empty' : 'failed ' + (res.j.error || ''), res.j); return null; }
-        aiFails = 0; out('ok', res.j); return res.j;
-      }, function (e) { clearTimeout(timer); wait.done(); aiFails++; out(e && e.name === 'AbortError' ? 'timeout' : 'offline'); return null; });
+        // the studio's own rate limit: its words, honestly, and the AI is not down (ui.js gate)
+        if (res.status === 429) { out('limited', res.j); return { reply: res.j.reply || 'That’s a lot of messages at once. Give it a minute, then ask again.' }; }
+        if (!res.ok || !res.j.reply) { ai.fail(res.status); out(res.ok ? 'empty' : 'failed ' + (res.j.error || ''), res.j); return null; }
+        ai.ok(); out('ok', res.j); return res.j;
+      }, function (e) { clearTimeout(timer); wait.done(); ai.fail(); out(e && e.name === 'AbortError' ? 'timeout' : 'offline'); return null; });
   }
   /* Something the kid wanted, kept so it isn't lost: the design doc's "Ideas for later" (project.js),
      which is Project › Docs › Ideas until the doc itself has been opened up. */
@@ -1352,13 +1359,20 @@ var Quest = (function () {
   function claimFixed(who) {
     var f = frame(); if (!ownShift(f)) return false;
     who = who || voice();
-    if (!f.changedAt) { say(['Nothing in the game has changed yet. What do you think is causing it?'], who); return true; }
+    if (!f.changedAt) { say([docShift(f) ? 'Nothing’s been built for this one yet. Tell me how you want it, and I’ll build it.' : 'Nothing in the game has changed yet. What do you think is causing it?'], who); return true; }
     if (!(f.playedAt > f.changedAt)) {
       Chat.say([[who, 'Test it first!'], [who, 'Press Play and try it, then tell me.', 'step']]);
       Editor.cue('play'); return true;
     }
     handle({ type: 'fixed' });
     return true;
+  }
+  /* What the AI asked to change and the page refused, in a sentence: the kid's own fix is theirs to
+     make (protectedKeys), and anything else is a setting this part doesn't have, or can't show yet. */
+  function notChanged(refused) {
+    var a = refused[0], p = Project.part(a.part), what = p ? p.name + '’s ' + Schema.label(p.kind, a.key) : 'that';
+    if (protectedKeys()[a.part + '.' + a.key]) return 'I left ' + what + ' for you: that’s the fix you’re working on. It’s in the Inspector.';
+    return 'I couldn’t change ' + what + (refused.length > 1 ? ' and ' + (refused.length - 1) + ' more' : '') + ' from here, so ' + (refused.length > 1 ? 'those are' : 'it’s') + ' the same as before.';
   }
   function typed(text, qOnScreen, who) {
     who = who || Chat.active() || 'm';
@@ -1395,11 +1409,24 @@ var Quest = (function () {
       }
       // the server's safety check answered instead of the AI (ai/safety.js): its words, and nothing done
       if (j.concern) { Chat.say([[who, j.reply]]); return Chat.reask(); }
-      Chat.say([[who, j.reply]]);
-      var acted = (j.actions || []).filter(allowed);
+      /* CHECKED BEFORE IT IS SAID. The reply is the AI's account of what it did, so what it did is
+         filtered first, and anything refused is said plainly after it. When nothing it meant to do
+         survived, its reply is not shown at all: "Done, your jump is higher!" over an unchanged jump
+         is the lie the audit found (Sept 30, D51), and a 10-year-old believes the words over the game. */
+      var asked = j.actions || [], acted = asked.filter(allowed), refused = asked.filter(function (a) { return !allowed(a); });
+      var h = j.hero ? cleanHero(j.hero) : null;
+      var lines = [], did = acted.length || h || j.build || j.choose;
+      if (!refused.length && !(j.hero && !h)) lines.push([who, j.reply]);
+      else {
+        if (did) lines.push([who, j.reply]);
+        if (refused.length) lines.push([who, notChanged(refused)]);
+        if (j.hero && !h) lines.push([who, 'I couldn’t draw your hero that way, so it looks the same. Describe it another way?']);
+      }
+      Chat.say(lines);
       acted.forEach(function (a) { Editor.set(a.part, a.key, a.value); });
+      if (acted.length && docShift(frame())) frame().changedAt = Date.now();   // built by asking: it counts (docShift)
       if (acted.length) Chat.event('Changed: ' + acted.map(function (a) { var p = Project.part(a.part); return (p ? p.name : a.part) + ' ' + a.key; }).join(', '), 'i-sliders');
-      if (j.hero) { var h = cleanHero(j.hero); if (h) { setHero(h, null); Chat.event('Your hero was redrawn', 'i-palette'); } }
+      if (h) { setHero(h, null); Chat.event('Your hero was redrawn', 'i-palette'); }
       if (j.build && window.Builder) return build(j.build, text, who);
       if (j.choose && Chat.question() === qOnScreen && qOnScreen && qOnScreen.options[j.choose - 1]) Chat.choose(j.choose);
       else Chat.reask();
@@ -1411,7 +1438,7 @@ var Quest = (function () {
     if (Builder.busy()) { say(['I’m still building the last thing. One at a time!'], who); return Chat.reask(); }
     var wait = Chat.thinking(who, true);
     var f = frame();
-    Builder.ask(brief, { kidSaid: kidSaid, studio: context(null, who), history: Chat.history(),
+    Builder.ask(brief, { kidSaid: kidSaid, studio: context(null, who), history: Chat.history(), kept: Object.keys(protectedKeys()),
       where: f ? quest(f).title : 'Their own game, no quest running.' })
       .then(function (r) {
         wait.done();
@@ -1510,7 +1537,7 @@ var Quest = (function () {
       skip: function () { var f = frame(); if (!f) return; f.completing = false; next(); },
       jump: function (questId, beatIndex) { S.stack = [{ quest: questId, beat: beatIndex || 0, flags: {}, fired: {} }]; save(); enter(); },
       fire: function (ev) { handle(ev); },
-      aiBack: function () { aiFails = 0; },   // check-playthrough: a stand-in AI after the AI-off run
+      aiBack: function () { ai.ok(); },   // check-playthrough: a stand-in AI after the AI-off run
       onPaint: function (fn) { devPaint = fn; }
     } };
 })();

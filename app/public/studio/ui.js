@@ -14,7 +14,8 @@
       and a tooltip"). One tooltip element for the page. It shows after a short rest on hover, at
       once on keyboard focus, and goes on a press, Escape or leaving. It is extra, never the only
       place a thing is said: the button's own word or aria-label already names it.
-   5. SAFETY: a kid's line checked before any AI, below. */
+   5. SAFETY: a kid's line checked before any AI, below.
+   6. gate(): when to stop asking a failing AI, and when to try it again. */
 var UI = (function () {
   var FILES = { play: 'sfx-select.ogg', stop: 'sfx-back.ogg', good: 'sfx-confirm.ogg', nope: 'sfx-lowrandom.ogg',
                 card: 'sfx-powerup2.ogg', tool: 'platformer/sfx_magic.ogg', hired: 'sfx-threetone2.ogg' };
@@ -122,7 +123,24 @@ var UI = (function () {
     return null;
   }
 
+  /* ---------- 6. THE AI'S ON/OFF, for a page that has scripted lines to fall back on ----------
+     Two failures in a row and the page stops asking, so a kid isn't left waiting 20 seconds a turn on
+     an AI that's down. It used to stay off for the rest of the session: one bad minute on a school
+     network and the kid had the scripted studio until they reloaded (the audit, Sept 30, D51). Now
+     it asks again after a minute, and one more failure turns it off for another. A 429 is the studio's
+     own rate limit, not the AI being down, and doesn't count. */
+  var RETRY_MS = 60000;
+  function gate() {
+    var fails = 0, downAt = 0;
+    return {
+      up: function () { if (fails < 2) return true; if (Date.now() - downAt < RETRY_MS) return false; fails = 1; return true; },
+      fail: function (status) { if (status === 429) return; fails++; if (fails >= 2) downAt = Date.now(); },
+      ok: function () { fails = 0; },
+      fails: function () { return fails; }
+    };
+  }
+
   if (document.readyState === 'loading') document.addEventListener('DOMContentLoaded', init); else init();
   return { sound: sound, muted: function () { return muted; }, onMute: function (fn) { onMute.push(fn); },
-           keepFocus: keepFocus, feel: feel, hideTip: hideTip, concern: concern };
+           keepFocus: keepFocus, feel: feel, hideTip: hideTip, concern: concern, gate: gate };
 })();

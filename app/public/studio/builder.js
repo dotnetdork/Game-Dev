@@ -164,7 +164,7 @@ var Builder = (function () {
     return applied;
   }
 
-  /* request: the mentor's brief. opts: { kidSaid, studio, where, history }. */
+  /* request: the mentor's brief. opts: { kidSaid, studio, where, history, kept }. */
   function ask(request, opts) {
     opts = opts || {};
     request = String(request || '').trim();
@@ -178,8 +178,9 @@ var Builder = (function () {
       sent = code;
       var st = Project.get();
       return post({
-        agent: 'builder', message: request,
+        agent: 'builder', message: request, budget: TIMEOUT_MS,
         kidSaid: opts.kidSaid ? String(opts.kidSaid) : '',
+        kept: Array.isArray(opts.kept) ? opts.kept : [],   // "part.key"s that are the kid's own fix: never set for them
         studio: opts.studio ? String(opts.studio) : '',
         where: opts.where ? String(opts.where) : '',
         history: Array.isArray(opts.history) ? opts.history : [],

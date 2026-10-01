@@ -274,6 +274,28 @@ function runServerChecks() {
       check('refused', r.d.code === null && r.calls.length === 2, r.calls.length + ' calls');
       check('the kid is not handed a method name', !/bezierCurveTo/.test(r.d.reply), r.d.reply);
 
+      /* ---------- 6b. an edit that loses what the quests wait for (lostLandmarks, audit D51) ---------- */
+      const LOSE = { find: "    Studio.event('tick');\n", replace: '' };
+      return scenario([answer('Tidier!', [LOSE]), answer('Tidier!', [LOSE])], 'tidy up the update');
+    })
+    .then(function (r) {
+      console.log('\n--- an edit that deletes a Studio.event ---');
+      check('refused after one retry', r.d.code === null && r.calls.length === 2, r.calls.length + ' calls');
+      check('the retry names what was lost', r.calls.length === 2 && /Studio\.event\("tick"\)/.test(r.calls[1].last), r.calls.length === 2 ? r.calls[1].last.slice(-300) : '');
+      check('the kid hears the lessons need it', /lessons need/.test(r.d.reply), r.d.reply);
+      // moving it is fine: still there after the edit, so no retry
+      return scenario([answer('Moved.', [{ find: "    if (!Studio.playing) return;\n    Studio.event('tick');", replace: "    Studio.event('tick');\n    if (!Studio.playing) return;" }])], 'send tick first');
+    })
+    .then(function (r) {
+      check('an edit that only moves a Studio.event is applied', typeof r.d.code === 'string' && r.calls.length === 1, r.calls.length + ' calls');
+      // the fix the kid is working on is theirs: a Builder op on a kept key is dropped (quest.js protectedKeys)
+      return scenario([answer('Bigger!', [], [{ op: 'set', id: 'coins', key: 'size', value: 2 }, { op: 'set', id: 'coins', key: 'spin', value: 45 }])],
+        'make the coins bigger', { kept: ['coins.size'] });
+    })
+    .then(function (r) {
+      check('a set on the kid\'s own fix is dropped, the rest kept',
+        JSON.stringify(r.d.parts) === JSON.stringify([{ op: 'set', id: 'coins', key: 'spin', value: 45 }]), JSON.stringify(r.d.parts));
+
       /* ---------- 7. part ops, cleaned ---------- */
       return scenario([answer('Press Play: there is a slime now.', [], [
         { op: 'set', id: 'ghost', key: 'speed', value: 3 },                       // unknown part

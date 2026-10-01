@@ -66,6 +66,7 @@
   var KEY = 'studio.interview';
   var CAP = 30;          // kid turns, then the studio hires them with what it has
   var LET_GO = 6;        // turns a goal may sit as "next" before the interview moves past it
+  var ai = UI.gate();   // when to stop asking a failing director, and when to try again (ui.js)
   var TIMEOUT = 12000;   // ms the director gets per turn before the scripted line is said instead
   var CARD = null, busy = true;
 
@@ -78,7 +79,8 @@
              typedSomething: false, turns: 0, focus: { id: null, turns: 0 }, log: [], showing: null,
              fails: 0, scripted: false, hired: false, done: false };
   }
-  function save() { CARD.profile = profile(); try { localStorage.setItem(KEY, JSON.stringify(CARD)); } catch (e) {} }
+  // `fails` is the gate's count (ui.js), kept on the card for the log and the checks
+  function save() { CARD.profile = profile(); CARD.fails = ai.fails(); try { localStorage.setItem(KEY, JSON.stringify(CARD)); } catch (e) {} }
   function load() {
     try { CARD = JSON.parse(localStorage.getItem(KEY) || 'null'); } catch (e) { CARD = null; }
     if (!CARD || typeof CARD !== 'object' || CARD.v !== 2 || CARD.done) CARD = fresh();   // v1 was the scripted interview's card
@@ -259,22 +261,23 @@
     var prev = (CARD.log.filter(function (m) { return m.role === 'assistant'; }).pop() || {}).content || '';
     remember('user', said); tick(); save();
     thinking();
+    if (CARD.scripted && ai.up()) { CARD.scripted = false; showMode(); }   // a minute on, the director gets another go (ui.js gate)
     if (CARD.scripted) { setTimeout(function () { scripted(said, focus, step, tap); }, reduced() ? 60 : 450); return; }
-    var body = { agent: 'interviewer', message: said, history: CARD.log.slice(0, -1),
+    var body = { agent: 'interviewer', budget: TIMEOUT, message: said, history: CARD.log.slice(0, -1),
       where: 'The hiring interview: their very first minutes at the studio, before they have seen the game engine.', studio: context() };
     var ctl = window.AbortController ? new AbortController() : null, settled = false;
-    var fail = function () {
+    var fail = function (status) {
       if (settled) return; settled = true; clearTimeout(timer);
-      CARD.fails++; if (CARD.fails >= 2) { CARD.scripted = true; showMode(); }
+      ai.fail(typeof status === 'number' ? status : 0); if (!ai.up()) { CARD.scripted = true; showMode(); }
       scripted(said, focus, step, tap);
     };
     var timer = setTimeout(function () { if (ctl) ctl.abort(); fail(); }, TIMEOUT);
     fetch('/api/ai', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(body), signal: ctl ? ctl.signal : undefined })
-      .then(function (r) { return r.json().catch(function () { return {}; }).then(function (j) { return { ok: r.ok, j: j }; }); })
+      .then(function (r) { return r.json().catch(function () { return {}; }).then(function (j) { return { ok: r.ok, status: r.status, j: j }; }); })
       .then(function (res) {
         if (settled) return;
-        if (!res.ok || !res.j.reply || !res.j.learned) return fail();
-        settled = true; clearTimeout(timer); CARD.fails = 0;
+        if (!res.ok || !res.j.reply || !res.j.learned) return fail(res.status);
+        settled = true; clearTimeout(timer); ai.ok();
         // the server's safety check answered instead of the AI (ai/safety.js): nothing is learned from it
         if (res.j.concern) { CARD.log = CARD.log.filter(function (m) { return !(m.role === 'user' && m.content === said); }); return say(res.j.reply); }
         learn(res.j.learned, said);

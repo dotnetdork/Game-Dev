@@ -59,7 +59,10 @@ function callSignal(spec) {
   const ms = (spec && spec.deadline) ? budgetLeft(spec) : CALL_TIMEOUT_MS;
   const use = Math.min(CALL_TIMEOUT_MS, ms);
   if (use <= 0) throw new Error('out of time for this question');
-  return AbortSignal.timeout(use);
+  if (spec && spec.signal && spec.signal.aborted) throw new Error('the browser stopped waiting');
+  /* `spec.signal` is the browser hanging up (routes/ai.js): a kid who left, or a page that gave up at
+     its own deadline. Paying for an answer nobody will read is the waste the audit found (Sept 30). */
+  return spec && spec.signal && AbortSignal.any ? AbortSignal.any([AbortSignal.timeout(use), spec.signal]) : AbortSignal.timeout(use);
 }
 
 /* One turn with the model. Returns { content, assistant, toolCalls } — toolCalls is empty

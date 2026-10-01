@@ -89,7 +89,7 @@ var Design = (function () {
     var R = ROUNDS[host.round] || ROUNDS[1], secs = Project.doc().sections;
     var open = function (k) { return secs[k].state !== 'decided'; };
     var fresh = R.keys.filter(open), todo = (R.carry || []).filter(open).concat(fresh);
-    M = { host: host, R: R, todo: todo, at: -1, fails: host.aiUp() ? 0 : 2, kid: [], s: null, busy: false, placed: 0 };
+    M = { host: host, R: R, todo: todo, at: -1, kid: [], s: null, busy: false, placed: 0 };
     if (host.round === 'more') { if (Views.docOn()) Views.show('doc'); return more(); }
     // nothing left to plan (a kid back after planning it all): straight on, with nothing said
     if (!todo.length) { M = null; return host.done(); }
@@ -98,7 +98,8 @@ var Design = (function () {
     nextSection();
   }
   function on() { return M && M.host.still(); }
-  function aiUp() { return M.fails < 2; }
+  // the studio's one on/off for the AI (ui.js gate), shared with the mentor: the same model, the same outage
+  function aiUp() { return M.host.ai.up(); }
   function cap(s) { return s.charAt(0).toUpperCase() + s.slice(1); }
   function title(k) { return (Project.SECTIONS.filter(function (x) { return x[0] === k; })[0] || [k, k])[1]; }
   function question(k) { return (Project.SECTIONS.filter(function (x) { return x[0] === k; })[0] || [k, k, ''])[2]; }
@@ -181,19 +182,19 @@ var Design = (function () {
     };
     fetch('/api/ai', {
       method: 'POST', headers: { 'Content-Type': 'application/json' }, signal: ctl ? ctl.signal : undefined,
-      body: JSON.stringify({ agent: 'designer', message: text, history: Chat.history(),
+      body: JSON.stringify({ agent: 'designer', budget: TIMEOUT, message: text, history: Chat.history(),
         where: 'The design meeting, round ' + M.host.round + ', on “' + title(s.key) + '”.', studio: studio(s) })
-    }).then(function (r) { return r.json().catch(function () { return {}; }).then(function (j) { return { ok: r.ok, j: j }; }); })
+    }).then(function (r) { return r.json().catch(function () { return {}; }).then(function (j) { return { ok: r.ok, status: r.status, j: j }; }); })
       .then(function (res) {
         if (!on() || M.at !== at) return done('late', res.j);
-        if (!res.ok || !res.j.reply) { M.fails++; done(res.ok ? 'empty' : 'failed', res.j); return scripted(s, text); }
-        M.fails = 0; done('ok', res.j);
+        if (!res.ok || !res.j.reply) { M.host.ai.fail(res.status); done(res.ok ? 'empty' : 'failed', res.j); return scripted(s, text); }
+        M.host.ai.ok(); done('ok', res.j);
         // the server's safety check answered instead of the AI (ai/safety.js): the line is not the doc's
         if (res.j.concern) { s.said = s.said.filter(function (t) { return t !== text; }); M.kid = M.kid.filter(function (t) { return t !== text; }); M.host.say([res.j.reply]); return; }
         answered(s, res.j);
       }, function (e) {
         if (!M) return;
-        M.fails++; done(e && e.name === 'AbortError' ? 'timeout' : 'offline');
+        M.host.ai.fail(); done(e && e.name === 'AbortError' ? 'timeout' : 'offline');
         if (on() && M.at === at) scripted(s, text);
       });
   }
@@ -315,15 +316,16 @@ var Design = (function () {
       'Their cards (ideas they have learned): ' + (M.host.cards().map(function (c) { return c.name + ' (' + c.text + ')'; }).join('; ') || 'none') + '.'].join('\n');
     fetch('/api/ai', {
       method: 'POST', headers: { 'Content-Type': 'application/json' }, signal: ctl ? ctl.signal : undefined,
-      body: JSON.stringify({ agent: 'designer', message: text, history: Chat.history(), where: 'The design meeting, adding to a finished doc.', studio: studioText })
-    }).then(function (r) { return r.json().catch(function () { return {}; }).then(function (j) { return { ok: r.ok, j: j }; }); })
+      body: JSON.stringify({ agent: 'designer', budget: TIMEOUT, message: text, history: Chat.history(), where: 'The design meeting, adding to a finished doc.', studio: studioText })
+    }).then(function (r) { return r.json().catch(function () { return {}; }).then(function (j) { return { ok: r.ok, status: r.status, j: j }; }); })
       .then(function (res) {
         clearTimeout(timer); wait.done(); M && (M.busy = false);
         if (!on()) return;
         var j = res.j || {}, keys = Object.keys(j.doc || {}).filter(function (k) { return d.sections[k] && typeof j.doc[k] === 'string' && j.doc[k].trim(); });
         M.host.log('ai', { agent: 'designer', how: res.ok ? 'more' : 'failed', said: String(text).slice(0, 300), reply: j.reply, doc: j.doc, ms: Date.now() - t0 });
-        if (!res.ok || !j.reply) { M.fails++; return later(); }
-        M.fails = 0;
+        if (!res.ok || !j.reply) { M.host.ai.fail(res.status); return later(); }
+        M.host.ai.ok();
+        if (j.concern) { M.host.say([j.reply]); return; }   // the server's safety check (ai/safety.js): not an idea for later
         var k = keys[0], line = k && String(j.doc[k]).trim().slice(0, 300), was = k && d.sections[k].text;
         // theirs, and it still says what it said: a write-up that drops the section's old words gets them back
         // no section, or not their idea: Ideas for later, in the page's words (the AI's reply may say where it "put" it)
@@ -335,7 +337,7 @@ var Design = (function () {
         kept(String(j.reply).trim(), true);
       }, function (e) {
         clearTimeout(timer); wait.done(); if (!M) return;
-        M.busy = false; M.fails++;
+        M.busy = false; M.host.ai.fail();
         M.host.log('ai', { agent: 'designer', how: e && e.name === 'AbortError' ? 'timeout' : 'offline', ms: Date.now() - t0 });
         if (on()) later();
       });
@@ -385,8 +387,8 @@ var Design = (function () {
     var wait = Chat.thinking(o.who);
     return fetch('/api/ai', {
       method: 'POST', headers: { 'Content-Type': 'application/json' }, signal: ctl ? ctl.signal : undefined,
-      body: JSON.stringify({ agent: 'designer', message: '(the meeting is over: file the tickets)', history: [], where: 'The end of a design round, filing the doc as tickets.', studio: studioText })
-    }).then(function (r) { return r.json().catch(function () { return {}; }).then(function (j) { return { ok: r.ok, j: j }; }); })
+      body: JSON.stringify({ agent: 'designer', budget: TIMEOUT, message: '(the meeting is over: file the tickets)', history: [], where: 'The end of a design round, filing the doc as tickets.', studio: studioText })
+    }).then(function (r) { return r.json().catch(function () { return {}; }).then(function (j) { return { ok: r.ok, status: r.status, j: j }; }); })
       .then(function (res) {
         clearTimeout(timer); wait.done();
         var list = (res.ok && Array.isArray(res.j.tickets) ? res.j.tickets : []).map(function (t) {

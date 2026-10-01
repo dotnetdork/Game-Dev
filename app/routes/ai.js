@@ -55,6 +55,24 @@ function codeHash(s) {
   for (let i = 0; i < s.length; i++) { h ^= s.charCodeAt(i); h = Math.imul(h, 0x01000193) >>> 0; }
   return ('0000000' + h.toString(16)).slice(-8);
 }
+/* What the studio's quests stand on in game.js: every Studio.event the starter sends (a quest waits
+   for "coin", "fell", "crossed"...), the Level scene, and the line that starts the game. A Builder edit
+   that loses one has broken the course, not just the game, and nothing else would notice: the code
+   still compiles, the game still runs, and the quest waits forever for an event that is gone (the
+   audit, Sept 30, D51). Comments are left out, so a Studio.event in one counts for nothing. Returns
+   what `before` had and `after` doesn't, in words for the retry. */
+function lostLandmarks(before, after) {
+  const bare = function (c) { return String(c).replace(/\/\*[\s\S]*?\*\//g, '').replace(/(^|[^:'"])\/\/.*$/gm, '$1'); };
+  const marks = function (c) {
+    const out = {}, s = bare(c), re = /Studio\.event\(\s*['"]([\w-]+)['"]/g; let m;
+    while ((m = re.exec(s))) out['Studio.event("' + m[1] + '")'] = true;
+    if (/\bclass\s+Level\b/.test(s)) out['class Level'] = true;
+    if (/\bnew\s+Phaser\.Game\s*\(/.test(s)) out['new Phaser.Game(...)'] = true;
+    return out;
+  };
+  const had = marks(before), has = marks(after);
+  return Object.keys(had).filter(function (k) { return !has[k]; });
+}
 /* A part setting the Inspector could hold: true/false, a finite number, a short word, null, or a
    small list of number pairs (spots, pieces). Anything else is not plain data and is dropped. */
 function plainValue(v, strMax) {
@@ -95,8 +113,9 @@ function cleanSentParts(raw) {
 /* The model's part ops, cleaned. Ids are checked against the parts that exist, growing as `add`s
    are accepted, so "add a slime, then set its speed" works in one answer. Removing the level or the
    player is refused: the starter code reads both unconditionally, so either one gone is a crash. */
-function cleanPartOps(raw, sent) {
-  const known = {};
+function cleanPartOps(raw, sent, kept) {
+  const known = {}, keep = {};
+  (Array.isArray(kept) ? kept : []).forEach(function (k) { keep[String(k)] = true; });
   sent.forEach(function (p) { known[p.id] = true; });
   const ops = [], dropped = [];
   (Array.isArray(raw) ? raw : []).forEach(function (o) {
@@ -107,6 +126,8 @@ function cleanPartOps(raw, sent) {
       if (!known[id]) { dropped.push('set on unknown part "' + id.slice(0, 30) + '"'); return; }
       if (!SETTING_KEY.test(key) || key === 'id' || key === 'kind') { dropped.push('set of bad key "' + key.slice(0, 30) + '"'); return; }
       if (!plainValue(o.value)) { dropped.push('set ' + id + '.' + key + ' to a non-plain value'); return; }
+      // the fix the kid is working on is theirs to make (quest.js protectedKeys), whoever is asked
+      if (keep[id + '.' + key]) { dropped.push('set of ' + id + '.' + key + ', the kid’s own fix'); return; }
       ops.push({ op: 'set', id: id, key: key, value: o.value });
     } else if (o.op === 'add') {
       const p = o.part;
@@ -313,6 +334,19 @@ function mount(app, deps) {
        request's own spec so the retry chain cannot outlive it however many times it goes round — and
        so a second student pressing send cannot move it. See budgetLeft. */
     spec.deadline = t0 + TOTAL_BUDGET_MS;
+    /* ...and never longer than the browser will wait. Each studio page gives up at its own deadline
+       (12s for the interviewer, 20s for the mentor and designer, 40s for the Builder) and says so in
+       `budget`; a retry the server starts after that is paid for and never read. A little under it,
+       so the honest answer arrives while the page is still listening. */
+    const budget = Number(req.body && req.body.budget);
+    if (budget >= 3000 && budget < TOTAL_BUDGET_MS) spec.deadline = t0 + budget - 500;
+    /* The browser hanging up (a timeout, a closed tab) stops the provider call too (provider.js). */
+    const hungUp = new AbortController();
+    res.on('close', function () { if (!res.writableEnded) hungUp.abort(); });
+    spec.signal = hungUp.signal;
+    /* Whether there is time for one more call: the time this one has taken would fit again in what is
+       left. Replaces a fixed "20 seconds to spare" that meant no retry at all on a 20-second page. */
+    const room = function () { return Date.now() - t0 < spec.deadline - Date.now(); };
     /* The agent AFTER that whitelist, not the one the browser asked for — the UI can switch agent
        without the student doing anything (opening Learn while in Build forces Tutor, see
        paintAIModeAvailability in course.js), and an unrecognised name silently becomes the coder. The
@@ -468,11 +502,11 @@ function mount(app, deps) {
       try {
         raw = await callAI(spec, mentorSystem, message, true, history, null, onTool);
         // the same one retry as the interviewer's, for the empty answer a model sometimes gives
-        if (!String(raw || '').trim() && Date.now() < spec.deadline - 20000) raw = await callAI(spec, mentorSystem, message, true, history, null, onTool);
+        if (!String(raw || '').trim() && room()) raw = await callAI(spec, mentorSystem, message, true, history, null, onTool);
         /* ...and one for prose instead of JSON: prose loses `choose` and `actions`, so the kid is told
            something was done that wasn't (provider.js, jsonNow, has the story). The prose goes back as
            the model's own turn, to be put into the shape rather than written again. */
-        if (String(raw || '').trim() && !extractJSON(raw) && Date.now() < spec.deadline - 20000) {
+        if (String(raw || '').trim() && !extractJSON(raw) && room()) {
           const prose = String(raw).trim();
           const again = await callAI(spec, mentorSystem, 'That answer was not JSON. Put it into the JSON object your instructions describe, `read` first, with `choose`, `actions` or `ticket` filled if it meant one.',
             history.concat([{ role: 'user', content: message }, { role: 'assistant', content: prose }]), null, onTool).catch(function () { return null; });
@@ -534,7 +568,7 @@ function mount(app, deps) {
          says its scripted line instead (studio/interview.js, RESILIENCE). */
       try {
         raw = await callAI(spec, ivSystem, message, true, history, null, onTool);
-        if (!String(raw || '').trim() && Date.now() < spec.deadline - 20000) raw = await callAI(spec, ivSystem, message, true, history, null, onTool);
+        if (!String(raw || '').trim() && room()) raw = await callAI(spec, ivSystem, message, true, history, null, onTool);
       } catch (e) { return res.status(502).json({ reply: 'The director is not reachable right now (' + e.message + ').' }); }
       if (!String(raw || '').trim()) return res.status(502).json({ reply: 'The director gave an empty answer.' });
       const m = extractJSON(raw) || { reply: String(raw || '').trim() };
@@ -584,9 +618,9 @@ function mount(app, deps) {
       if (!dsSystem) return;
       try {
         raw = await callAI(spec, dsSystem, message, true, history, null, onTool);
-        if (!String(raw || '').trim() && Date.now() < spec.deadline - 20000) raw = await callAI(spec, dsSystem, message, true, history, null, onTool);
+        if (!String(raw || '').trim() && room()) raw = await callAI(spec, dsSystem, message, true, history, null, onTool);
         // prose instead of JSON loses the doc and the card: put it into the shape (the mentor's retry)
-        if (String(raw || '').trim() && !extractJSON(raw) && Date.now() < spec.deadline - 20000) {
+        if (String(raw || '').trim() && !extractJSON(raw) && room()) {
           const prose = String(raw).trim();
           const again = await callAI(spec, dsSystem, 'That answer was not JSON. Put it into the JSON object your instructions describe, `read` first, with `doc` filled from what they said.',
             history.concat([{ role: 'user', content: message }, { role: 'assistant', content: prose }]), null, onTool).catch(function () { return null; });
@@ -692,6 +726,7 @@ function mount(app, deps) {
       const code = sentCode.replace(/\r\n/g, '\n');
       const sentParts = cleanSentParts(b.parts);
       const kidSaid = String(b.kidSaid || '').trim().slice(0, 600);
+      const kept = Array.isArray(b.kept) ? b.kept.slice(0, 20).map(function (k) { return String(k).slice(0, 50); }) : [];
       const shown = code.length > BUILDER_SHOWN
         ? code.slice(0, BUILDER_SHOWN) + '\n// … (the rest of the file is not shown: only edit what you can see above)'
         : code;
@@ -719,7 +754,7 @@ function mount(app, deps) {
         const h = typeof p.held === 'string' ? p.held.trim().toLowerCase() : '';
         const held = ['question', 'blocked'].indexOf(h) >= 0 ? h : '';
         const applied = applyEdits(code, p.edits);
-        const partsOut = cleanPartOps(p.parts, sentParts);
+        const partsOut = cleanPartOps(p.parts, sentParts, kept);
         const hits = [];
         if (applied.bad.length) {
           hits.push({ name: 'bad-find', detail: applied.bad.map(function (x) { return '#' + x.i + (x.n < 0 ? ' malformed' : ' found ' + x.n + 'x'); }).join(', '),
@@ -744,6 +779,13 @@ function mount(app, deps) {
             hits.push({ name: 'bad-api', detail: apis.map(function (x) { return x.name; }).join(', '),
               retry: 'IMPORTANT: your change used ' + apis.map(function (x) { return '"' + x.name + '" (' + x.why + ': ' + x.hint + ')'; }).join('; ')
                 + '. Redo it using only Phaser methods that exist, or change nothing, set "held":"blocked" and say plainly what you can\'t do.' });
+          }
+          const lost = lostLandmarks(code, next);
+          if (lost.length) {
+            hits.push({ name: 'lost-landmark', detail: lost.join(', ').slice(0, 200),
+              retry: 'IMPORTANT: your edits removed ' + lost.join(', ') + ' from the code. The studio’s lessons wait for those, so the game '
+                + 'would run but the kid’s quest would never finish. Keep every one of them exactly as it was (move them if you must, '
+                + 'never delete them), then send your whole answer again.' });
           }
           const keysBefore = badKeysIn({ create: code }, '');
           const keys = badKeysIn({ create: next }, '').filter(function (k) { return keysBefore.indexOf(k) < 0; });

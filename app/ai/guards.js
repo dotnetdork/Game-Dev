@@ -310,7 +310,8 @@ const BUILDER_NOTES = {
   'bad-api': 'My change used a Phaser command that doesn’t exist',
   'bad-key': 'My change read a key your game never sets up, so it would have frozen',
   'bad-asset': 'My change used a picture or sound file the studio doesn’t have',
-  'no-ops': 'I didn’t manage to send a change that time'
+  'no-ops': 'I didn’t manage to send a change that time',
+  'lost-landmark': 'My change took out something the studio’s lessons need'
 };
 function builderNote(name) {
   const s = BUILDER_NOTES[name];

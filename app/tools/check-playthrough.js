@@ -476,8 +476,15 @@ async function launch() {
     check('a design ticket is Design\'s shift: the lead designer builds it with her', await p.$eval('#dMentor', function (e) { return e.getAttribute('data-who'); }) === 'd' && await task() === 'Build it, then test it with Play', await task());
     const dpage = await p.evaluate(function (id) { document.querySelector('#ticketList [data-key="ticket:' + id + '"]').click(); return document.getElementById('ticketPage').textContent; }, filedD.own[1].id);
     check('its page says what to build, not what is wrong', /What to build/.test(dpage) && /From your design doc/.test(dpage) && !/What’s wrong/.test(dpage), dpage.slice(0, 160));
-    // built (here, by hand), tested and closed, then the lead designer's playtest question (spec D50)
+    /* A tap in the Inspector is not building it (quest.js docShift, audit D51): "it works" after one
+       is told nothing's been built. Then a build (the Builder's `built`, fired here: the AI is off),
+       tested and closed, then the lead designer's playtest question (spec D50). */
     await p.evaluate(function () { Editor.set('player', 'speed', 280); });
+    await p.click('#bPlay'); await p.waitForTimeout(800); await p.click('#bStop');
+    await type('it works');
+    await waitLog('Nothing’s been built for this one yet', 9000);
+    check('a design ticket does not close on an Inspector tap', await p.evaluate(function (id) { return Quest.dev.state().tickets[id].status; }, filedD.own[1].id) !== 'done');
+    await p.evaluate(function () { Quest.dev.fire({ type: 'built' }); });
     await p.click('#bPlay'); await p.waitForTimeout(800); await p.click('#bStop');
     await type('it works');
     await waitLog('Playtest time! How hard was it?', 9000);
